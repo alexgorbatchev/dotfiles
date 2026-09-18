@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -62,5 +63,44 @@ export default defineTool((install) =>
 	}
 	if !reflect.DeepEqual(tool.Binaries, want) {
 		t.Errorf("binaries = %#v, want %#v", tool.Binaries, want)
+	}
+}
+
+// The bulk forms .bin() used to accept are type errors, but nothing type-checks during
+// a plain load, where they would have produced a tool with binaries missing and no
+// diagnostic. The load fails instead, naming the tool file and the mistake.
+func TestLoaderRejectsBulkBinaryForms(t *testing.T) {
+	tests := []struct {
+		name string
+		call string
+		want string
+	}{
+		{
+			name: "an array of names",
+			call: `.bin(["one", "two"])`,
+			want: ".bin() takes a binary name: expected a string, got an array",
+		},
+		{
+			name: "a list of names",
+			call: `.bin("one", "two", "three")`,
+			want: ".bin() takes a binary name and an optional pattern or options object, but got 3 arguments",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tool := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+				"export default defineTool((install) => install(\"manual\")" + tt.call + ");"
+			_, err := loadToolSource(t, tool)
+			if err == nil {
+				t.Fatal("expected loading to fail")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("expected an error mentioning %q, got: %v", tt.want, err)
+			}
+			if !strings.Contains(err.Error(), "probe.tool.ts") {
+				t.Errorf("expected the error to name the tool file, got: %v", err)
+			}
+		})
 	}
 }

@@ -17,6 +17,7 @@ Goja JS VM, TypeScript config loader, and authoring DSL bindings.
 - Strongly type `IProjectConfig` and `ConfigFactory` against `ProjectConfig` without loose `Record<string, unknown>` escape hatches.
 - `Libc` is the one DSL constant whose values Go owns: `libcConstants` in `bindings.go` binds the member names to the `pkg/arch` constants detection reports, `loader-api.ts` publishes it through the `libcConstants()` binding, and `TestLibcDeclarationMatchesConstants` pins the `dsl-types.ts` declaration to the same map. Never restate a libc string in TypeScript; detection and the enum have to stay one value.
 - Every `ctx.fs` / `fileSystem` binding reports failure through `throwOnFSError`, including the reads. `exists` is the only method for which an absent path is an answer (`false`) rather than a failure, and it still throws when the lookup itself cannot be made.
+- `.bin()` records exactly one `{name, pattern?, shim?}` object per call, carrying only the members the call gave, so Go can tell "shim not mentioned" from `shim: false` and "no pattern" from a pattern. The default pattern belongs to Go (`installer.defaultBinaryPattern`), never to the DSL. A call that passes an array instead of a name, or more than the two declared arguments, throws: nothing type-checks during `generate`, so the bulk forms would otherwise install a tool with binaries missing and say nothing.
 
 ## Local gotchas
 

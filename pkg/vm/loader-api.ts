@@ -581,7 +581,29 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     copies: [] as unknown[],
     shellConfigs: {} as Record<string, unknown>,
 
-    bin(name: unknown, pattern: unknown) {
+    // `extra` exists only to reject a call that passed more than the two declared
+    // arguments; a binary is declared one .bin() call at a time.
+    bin(name: unknown, pattern: unknown, ...extra: unknown[]) {
+      // A bulk call is a type error, but nothing type-checks during `dotfiles generate`,
+      // where an array name would be recorded as a binary Go then skips for having no
+      // string name, and a third argument would be dropped after its second was taken
+      // for a pattern. Either way the tool would install with binaries missing and
+      // nothing said, so the mistake is reported where it is made.
+      if (typeof name !== "string") {
+        throw new Error(
+          ".bin() takes a binary name: expected a string, got " +
+            (Array.isArray(name) ? "an array" : typeof name) +
+            " (declare one binary per .bin() call)",
+        );
+      }
+      if (extra.length > 0) {
+        throw new Error(
+          ".bin() takes a binary name and an optional pattern or options object, but got " +
+            (extra.length + 2) +
+            " arguments (declare one binary per .bin() call)",
+        );
+      }
+
       const b = (this["binaries"] || []) as unknown[];
       // One recorded shape for both declared forms: { name, pattern?, shim? } carrying
       // only the members the call gave, so Go can tell "shim not mentioned" from
