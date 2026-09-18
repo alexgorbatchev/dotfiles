@@ -52,12 +52,20 @@ curl -fsSL https://fly.io/install.sh | less
 
 Then use `args` or `env` with the dynamic context to redirect:
 
-```typescript
+```typescript body
 // Using args (if script accepts command-line arguments)
-args: (ctx) => ["--install-dir", ctx.stagingDir];
+install("curl-script", {
+  url: "https://example.com/install.sh",
+  shell: "bash",
+  args: (ctx) => ["--install-dir", ctx.stagingDir],
+});
 
 // Using env (if script reads environment variables)
-env: (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir });
+install("curl-script", {
+  url: "https://fly.io/install.sh",
+  shell: "sh",
+  env: (ctx) => ({ FLYCTL_INSTALL: ctx.stagingDir }),
+});
 ```
 
 ## Examples

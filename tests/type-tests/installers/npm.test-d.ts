@@ -29,11 +29,33 @@ defineTool((install) =>
   ),
 );
 
+// Every parameter the Go installer reads.
+defineTool((install) =>
+  install("npm", {
+    package: "prettier",
+    version: "3.0.0",
+    packageManager: "bun",
+    force: true,
+    auto: false,
+  }).bin("prettier"),
+);
+
 expectError(() =>
   defineTool((install) =>
     install("npm", {
       package: "prettier",
       unknown: "value",
+    }),
+  ),
+);
+
+// Anything other than "bun" is treated as npm by the runtime, so only the two names
+// that select a package manager are accepted.
+expectError(() =>
+  defineTool((install) =>
+    install("npm", {
+      package: "prettier",
+      packageManager: "pnpm",
     }),
   ),
 );

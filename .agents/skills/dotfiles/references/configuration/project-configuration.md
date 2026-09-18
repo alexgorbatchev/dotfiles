@@ -28,8 +28,12 @@ export default defineConfig(() => ({
 ### Async Configuration
 
 ```typescript
+async function loadToken(): Promise<string> {
+  return process.env.GITHUB_TOKEN ?? "";
+}
+
 export default defineConfig(async () => {
-  const token = await loadTokenFromVault();
+  const token = await loadToken();
   return {
     paths: { dotfilesDir: "~/.dotfiles" },
     github: { token },
@@ -53,7 +57,7 @@ export default defineConfig(({ configFileDir, systemInfo }) => ({
 
 Default values shown.
 
-```typescript
+```typescript config
 paths: {
   homeDir: '~',                                    // User's home directory
   dotfilesDir: '~/.dotfiles',                      // Root dotfiles directory
@@ -71,7 +75,7 @@ paths: {
 
 Auto-generates a markdown file listing all managed tools:
 
-```typescript
+```typescript config
 features: {
   catalog: {
     generate: true,                                // Enable catalog generation
@@ -86,7 +90,7 @@ The generated catalog includes tool names, installation methods, and available b
 
 Automatically adds sourcing to your shell configuration:
 
-```typescript
+```typescript config
 features: {
   shellInstall: {
     zsh: '~/.zshrc',                               // Path to zsh config
@@ -100,7 +104,7 @@ If a shell path is not provided, initialization for that shell is skipped. Only 
 
 ### github
 
-```typescript
+```typescript config
 github: {
   host: 'https://api.github.com',
   token: process.env.GITHUB_TOKEN,                 // Recommended for rate limits
@@ -114,7 +118,7 @@ github: {
 
 ### system
 
-```typescript
+```typescript config
 system: {
   sudoPrompt: 'Please enter your password to continue:',
 }
@@ -122,7 +126,7 @@ system: {
 
 ### updates
 
-```typescript
+```typescript config
 updates: {
   checkOnRun: true,                                // Check for updates on each run
   checkInterval: 86400,                            // Seconds between checks (24 hours)
@@ -194,10 +198,6 @@ The generator can be customized via a `dotfiles.config.ts` file located in your 
 import { defineConfig } from "@alexgorbatchev/dotfiles";
 
 export default defineConfig(() => ({
-  // Path to the user's config file.
-  // (string, default: ~/.dotfiles/dotfiles.config.ts)
-  userConfigPath: "~/.dotfiles/dotfiles.config.ts",
-
   // ---------------------------------------------------------------------------
   // File System Paths
   // ---------------------------------------------------------------------------

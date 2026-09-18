@@ -80,7 +80,7 @@ Shim usage tracking is enabled by default: every run of a shim appends a line to
 
 ### Hook Not Executing
 
-```typescript
+```typescript builder
 .hook('after-install', async ({ log, $ }) => {
   try {
     await $`./setup.sh`;

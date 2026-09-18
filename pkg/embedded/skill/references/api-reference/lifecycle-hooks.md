@@ -60,6 +60,10 @@ not provide is `undefined` rather than a misleading empty value, so destructurin
 `installedDir` in a `before-install` hook gives you `undefined` -- there is nothing
 installed yet to point at.
 
+Every event hands the handler the same type, `IHookContext`, exported from
+`@alexgorbatchev/dotfiles`; the event-specific members are optional on it. Annotate a
+handler's parameter with it when the handler is declared separately from `.hook()`.
+
 `$` is available only to hooks. A tool factory does not get one: configuration is read
 on every CLI invocation, so running commands from there would execute them constantly.
 
@@ -69,7 +73,7 @@ Commands run from the directory containing the tool's `.tool.ts`, so a script sh
 next to it is reached as `./scripts/setup.sh`. Anywhere else you might want is already
 in the context by name, and interpolating it says plainly which tree you mean:
 
-```typescript
+```typescript builder
 .hook('after-install', async ({ $, installedDir }) => {
   await $`./scripts/setup.sh`;          // next to the tool config
   await $`${installedDir}/bin/tool --version`;  // the installed tree
@@ -80,10 +84,10 @@ in the context by name, and interpolating it says plainly which tree you mean:
 
 ### File Operations
 
-```typescript
-.hook('after-install', async ({ fileSystem, systemInfo, log }) => {
-  const configDir = `${systemInfo.homeDir}/.config/tool`;
-  await fileSystem.mkdir(configDir, { recursive: true });
+```typescript builder
+.hook('after-install', async ({ fileSystem, projectConfig, log }) => {
+  const configDir = `${projectConfig.paths.homeDir}/.config/tool`;
+  await fileSystem.mkdir(configDir); // parents are created as needed
   await fileSystem.writeFile(`${configDir}/config.toml`, 'theme = "dark"');
   log.info('Configuration created');
 })
@@ -91,7 +95,7 @@ in the context by name, and interpolating it says plainly which tree you mean:
 
 ### Shell Commands
 
-```typescript
+```typescript builder
 .hook('after-install', async ({ $, installedDir }) => {
   // Run tool command
   await $`${installedDir}/tool init`;
@@ -105,7 +109,7 @@ in the context by name, and interpolating it says plainly which tree you mean:
 
 In `after-install` hooks, the shell's PATH is automatically enhanced to include the directories containing the installed binaries. This means you can execute freshly installed tools by name without specifying the full path:
 
-```typescript
+```typescript builder
 .hook('after-install', async ({ $ }) => {
   // The installed binary is automatically available by name
   await $`my-tool --version`;
@@ -138,11 +142,11 @@ is noise or is being captured with `.text()` instead.
 
 ### Platform-Specific Setup
 
-```typescript
+```typescript builder
 .hook('after-install', async ({ systemInfo, $ }) => {
-  if (systemInfo.platform === 'darwin') {
+  if (systemInfo.os === 'darwin') {
     await $`./setup-macos.sh`;
-  } else if (systemInfo.platform === 'linux') {
+  } else if (systemInfo.os === 'linux') {
     await $`./setup-linux.sh`;
   }
 })
@@ -154,7 +158,7 @@ is noise or is being captured with `.text()` instead.
 is replaced with or without the `g` flag, and the file is left alone when nothing matched
 or when the result is identical to what was already there.
 
-```typescript
+```typescript builder
 .hook('after-install', async ({ replaceInFile, installedDir }) => {
   await replaceInFile(`${installedDir}/config.toml`, /theme = ".*"/, 'theme = "dark"');
 })
@@ -164,7 +168,7 @@ Full parameters, options and the callback argument are in [utilities.md](utiliti
 
 ### Build from Source
 
-```typescript
+```typescript builder
 .hook('after-extract', async ({ extractDir, stagingDir, $ }) => {
   if (extractDir) {
     await $`cd ${extractDir} && make build`;
@@ -175,7 +179,7 @@ Full parameters, options and the callback argument are in [utilities.md](utiliti
 
 ## Error Handling
 
-```typescript
+```typescript builder
 .hook('after-install', async ({ $, log }) => {
   try {
     await $`./tool self-test`;
@@ -183,14 +187,13 @@ Full parameters, options and the callback argument are in [utilities.md](utiliti
     log.error('Self-test failed');
     throw error; // Re-throw to fail installation
   }
-});
+})
 ```
 
 ### Custom Binary Processing
 
 ```typescript
 import { defineTool } from "@alexgorbatchev/dotfiles";
-import path from "path";
 
 export default defineTool((install, ctx) =>
   install("github-release", { repo: "owner/custom-tool" })
@@ -198,13 +201,11 @@ export default defineTool((install, ctx) =>
     .hook("after-extract", async ({ extractDir, stagingDir, fileSystem, log }) => {
       if (extractDir) {
         // Custom binary selection and processing
-        const binaries = await fileSystem.readdir(path.join(extractDir, "bin"));
+        const binaries = await fileSystem.readdir(`${extractDir}/bin`);
         const mainBinary = binaries.find((name) => name.startsWith("main-"));
 
         if (mainBinary) {
-          const sourcePath = path.join(extractDir, "bin", mainBinary);
-          const targetPath = path.join(stagingDir ?? "", "tool");
-          await fileSystem.copy(sourcePath, targetPath);
+          await fileSystem.rename(`${extractDir}/bin/${mainBinary}`, `${stagingDir}/tool`);
           log.info(`Selected binary: ${mainBinary}`);
         }
       }
@@ -222,10 +223,10 @@ export default defineTool((install, ctx) =>
     .bin("custom-tool")
     .hook("after-install", async ({ systemInfo, fileSystem, log, $ }) => {
       // Platform-specific setup
-      if (systemInfo.platform === "darwin") {
+      if (systemInfo.os === "darwin") {
         // macOS-specific setup
         await $`./setup-macos.sh`;
-      } else if (systemInfo.platform === "linux") {
+      } else if (systemInfo.os === "linux") {
         // Linux-specific setup
         await $`./setup-linux.sh`;
       }
@@ -284,7 +285,6 @@ export default defineTool((install) =>
 
 ```typescript
 import { defineTool } from "@alexgorbatchev/dotfiles";
-import path from "path";
 
 export default defineTool((install, ctx) =>
   install("github-release", { repo: "owner/custom-tool" })
@@ -300,19 +300,16 @@ export default defineTool((install, ctx) =>
         await $`cd ${extractDir} && make plugins`;
       }
     })
-    .hook("after-install", async ({ toolName, installedDir, systemInfo, fileSystem, log, $ }) => {
+    .hook("after-install", async ({ toolName, installedDir, projectConfig, fileSystem, log, $ }) => {
       // Create data directory
-      const dataDir = path.join(systemInfo.homeDir, ".local/share", toolName);
-      await fileSystem.mkdir(dataDir, { recursive: true });
+      const dataDir = `${projectConfig.paths.homeDir}/.local/share/${toolName}`;
+      await fileSystem.mkdir(dataDir);
 
       // Initialize tool
-      await $`${path.join(installedDir ?? "", toolName)} init --data-dir ${dataDir}`;
+      await $`${installedDir}/${toolName} init --data-dir ${dataDir}`;
 
       // Set up completion
-      await $`${path.join(
-        installedDir ?? "",
-        toolName,
-      )} completion zsh > ${ctx.projectConfig.paths.generatedDir}/completions/_${toolName}`;
+      await $`${installedDir}/${toolName} completion zsh > ${projectConfig.paths.generatedDir}/completions/_${toolName}`;
 
       log.info(`Initialized ${toolName} with data directory: ${dataDir}`);
     })

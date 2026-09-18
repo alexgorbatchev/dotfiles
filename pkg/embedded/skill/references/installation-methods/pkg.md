@@ -23,25 +23,25 @@ export default defineTool((install) =>
 
 - `source` (required)
   - `{ type: 'url', url }`
-  - `{ type: 'github-release', repo, version?, assetPattern?, assetSelector?, ghCli?, prerelease? }`
+  - `{ type: 'github-release', repo, version?, assetPattern? }`
 - `target` (optional): target volume for `installer -target`. Defaults to `'/'`.
-- `binaryPath` (optional): absolute path to the primary installed binary. If omitted, each declared `.bin()` name is resolved with `command -v` after install.
-- `versionArgs` (optional): args used for version detection.
-- `versionRegex` (optional): regex used for version detection.
+- `token` (optional): GitHub API token for a `github-release` source.
+
+Each declared `.bin()` name is resolved from `PATH` after the package is installed.
 
 ## Examples
 
-```typescript
+```typescript body
 install("pkg", {
   source: {
     type: "url",
     url: "https://example.com/releases/my-tool.pkg",
   },
-  binaryPath: "/usr/local/bin/my-tool",
+  target: "/",
 }).bin("my-tool");
 ```
 
-```typescript
+```typescript body
 install("pkg", {
   source: {
     type: "github-release",
@@ -59,4 +59,3 @@ install("pkg", {
 - `.pkg` installers are externally managed after installation.
 - Packages that declare root authorization should opt into `.sudo()` so explicit `dotfiles install <tool>` runs execute the macOS installer via `sudo`.
 - GUI-only packages can omit `.bin()`.
-- If the binary is not on PATH after installation, set `binaryPath` explicitly.

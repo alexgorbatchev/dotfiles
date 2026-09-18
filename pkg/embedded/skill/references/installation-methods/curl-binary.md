@@ -27,7 +27,7 @@ export default defineTool((install) =>
 
 ### With Version Detection
 
-```typescript
+```typescript body
 install("curl-binary", {
   url: "https://example.com/tool-v1.0.0-linux-amd64",
   versionArgs: ["--version"],
@@ -37,7 +37,7 @@ install("curl-binary", {
 
 ### With Shell Configuration
 
-```typescript
+```typescript body
 install("curl-binary", {
   url: "https://example.com/tool-v1.0.0-linux-amd64",
 })

@@ -50,6 +50,23 @@ defineTool((install) =>
   ),
 );
 
+// Every parameter the Go installer reads.
+defineTool((install) =>
+  install("brew", {
+    formula: "visual-studio-code",
+    cask: true,
+    args: ["--no-quarantine"],
+    force: true,
+    link: { overwrite: true, force: false },
+    service: "start",
+    versionArgs: ["--version"],
+    versionRegex: /(\d+\.\d+\.\d+)/,
+    auto: false,
+  }),
+);
+
+defineTool((install) => install("brew", { formula: "redis", service: true, link: true }));
+
 expectError(() =>
   defineTool((install) =>
     install("brew", {
@@ -58,3 +75,6 @@ expectError(() =>
     }),
   ),
 );
+
+// `cask` is a switch; the cask's name goes in `formula`.
+expectError(() => defineTool((install) => install("brew", { cask: "iterm2" })));

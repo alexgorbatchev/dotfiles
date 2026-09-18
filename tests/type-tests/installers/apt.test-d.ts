@@ -41,3 +41,6 @@ expectError(() =>
     }),
   ),
 );
+
+// The package is named by `package`; the runtime reads no `packageName` alias.
+expectError(() => defineTool((install) => install("apt", { packageName: "ripgrep" })));

@@ -33,7 +33,7 @@ export default defineTool((install) => install("brew", { formula: "ripgrep" }));
 
 ### Homebrew Cask
 
-```typescript
+```typescript body
 install("brew", {
   formula: "visual-studio-code",
   cask: true,
@@ -42,7 +42,7 @@ install("brew", {
 
 ### With Tap Trust & Custom Tap
 
-```typescript
+```typescript body
 install("brew", {
   formula: "borders",
   tap: "FelixKratz/formulae",
@@ -52,7 +52,7 @@ install("brew", {
 
 ### Background Service & Keg-Only Linking
 
-```typescript
+```typescript body
 install("brew", {
   formula: "redis",
   service: "start",
@@ -62,7 +62,7 @@ install("brew", {
 
 ### Build Flags
 
-```typescript
+```typescript body
 install("brew", {
   formula: "custom-tool",
   args: ["--build-from-source"],

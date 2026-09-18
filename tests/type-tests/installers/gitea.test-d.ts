@@ -42,6 +42,17 @@ defineTool((install) =>
   ),
 );
 
+// Every parameter the Go installer reads.
+defineTool((install) =>
+  install("gitea-release", {
+    instanceUrl: "https://gitea.example.com",
+    repo: "org/private-tool",
+    assetPattern: /tool-v\d+.*linux/,
+    token: process.env.GITEA_TOKEN,
+    auto: true,
+  }).bin("tool"),
+);
+
 expectError(() =>
   defineTool((install) =>
     install("gitea-release", {
@@ -49,5 +60,18 @@ expectError(() =>
       repo: "Codeberg/pages-server",
       unknown: "value",
     }),
+  ),
+);
+
+// The release is chosen with .version(); prereleases and selector callbacks are not
+// part of the Gitea installer.
+expectError(() =>
+  defineTool((install) =>
+    install("gitea-release", { instanceUrl: "https://codeberg.org", repo: "owner/tool", version: "v2.1.0" }),
+  ),
+);
+expectError(() =>
+  defineTool((install) =>
+    install("gitea-release", { instanceUrl: "https://codeberg.org", repo: "owner/tool", prerelease: true }),
   ),
 );

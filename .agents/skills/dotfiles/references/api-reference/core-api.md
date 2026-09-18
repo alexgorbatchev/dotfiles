@@ -17,6 +17,7 @@ import {
 import type {
   ConfigFactory,
   IConfigContext,
+  IHookContext,
   IInstallFunction,
   IPlatformConfigBuilder,
   IPlatformInstallFunction,
@@ -34,6 +35,7 @@ Authoring helper types used by `defineTool` callbacks are also exported from the
 - `IToolConfigBuilder`
 - `IPlatformConfigBuilder`
 - `IToolConfigContext`
+- `IHookContext` (the context every lifecycle hook receives)
 
 ## defineTool
 
@@ -80,37 +82,21 @@ Usage tracking is enabled by default. The dashboard imports and compacts the loc
 
 ### Base Install Parameters
 
-All installation methods support these parameters:
+Every installation method accepts this parameter in addition to its own:
 
-| Parameter | Type                                                        | Description                                               |
-| --------- | ----------------------------------------------------------- | --------------------------------------------------------- |
-| `env`     | `Record<string, string> \| (ctx) => Record<string, string>` | Environment variables for installation                    |
-| `hooks`   | `object`                                                    | Lifecycle hooks configuration                             |
-| `auto`    | `boolean`                                                   | Auto-install during `generate` (default: method-specific) |
+| Parameter | Type      | Description                                                   |
+| --------- | --------- | ------------------------------------------------------------- |
+| `auto`    | `boolean` | Install during `dotfiles generate` as well (default: `false`) |
 
-> **Note**: The `auto` parameter defaults to `true` for `zsh-plugin` and `false` for all other installation methods. When `auto: true`, the tool is automatically installed during `dotfiles generate` without requiring a separate `dotfiles install` step.
+When `auto: true`, the tool is installed during `dotfiles generate` without requiring a separate `dotfiles install` step, together with the tools it depends on.
 
-The `env` parameter can be static or dynamic:
-
-```typescript
-// Static environment variables
-install("github-release", {
-  repo: "owner/tool",
-  env: { CUSTOM_FLAG: "true" },
-}).bin("tool");
-
-// Dynamic environment variables (receives context with projectConfig, stagingDir)
-install("github-release", {
-  repo: "owner/tool",
-  env: (ctx) => ({ INSTALL_DIR: ctx.stagingDir }),
-}).bin("tool");
-```
+Lifecycle hooks are registered with `.hook()` (see [lifecycle-hooks.md](lifecycle-hooks.md)), not through an install parameter. An `env` parameter exists only for `curl-script`, whose installer runs a script; see [curl-script.md](../installation-methods/curl-script.md).
 
 ### Shell Configuration
 
 The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell
     .completions('completions/_tool')
@@ -122,25 +108,24 @@ The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
 )
 ```
 
-| Shell Method                               | Description                                                                                                      |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `.completions(path \| config \| callback)` | Completion file, config object, or callback with `ctx.version` (generated after install only)                    |
-| `.env(obj)`                                | Environment variables (PATH prohibited - use `.path()`)                                                          |
-| `.path(dir)`                               | Add directory to PATH (deduplicated)                                                                             |
-| `.aliases(obj)`                            | Shell aliases                                                                                                    |
-| `.functions(obj)`                          | Shell functions                                                                                                  |
-| `.sourceFile(path)`                        | Source a file (skips if missing)                                                                                 |
-| `.sourceFunction(name)`                    | Source output of a function defined via `.functions()`                                                           |
-| `.always(script)`                          | Script run on every shell init                                                                                   |
-| `.once(script)`                            | Script written to a generated once-file, attributed to its `.tool.ts` source, then removed after first execution |
+| Shell Method                   | Description                                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `.completions(path \| config)` | Completion file, or `{ cmd }` run against the installed binary (generated after install only)                    |
+| `.env(obj)`                    | Environment variables (PATH prohibited - use `.path()`)                                                          |
+| `.path(dir)`                   | Add directory to PATH (deduplicated)                                                                             |
+| `.aliases(obj)`                | Shell aliases                                                                                                    |
+| `.functions(obj)`              | Shell functions                                                                                                  |
+| `.sourceFile(path)`            | Source a file (skips if missing)                                                                                 |
+| `.sourceFunction(name)`        | Source output of a function defined via `.functions()`                                                           |
+| `.always(script)`              | Script run on every shell init                                                                                   |
+| `.once(script)`                | Script written to a generated once-file, attributed to its `.tool.ts` source, then removed after first execution |
 
 **Completions examples:**
 
-```typescript
+```typescript shell
 .completions('completions/_tool')                    // Static path (relative to toolDir)
 .completions(`${ctx.currentDir}/completions/_tool`)  // Absolute path (from extracted archive)
-.completions({ cmd: 'tool completion zsh' })         // Dynamic via command
-.completions({ url: 'https://.../completions.tar.gz', source: `${ctx.currentDir}/_tool` })  // Archive URL
+.completions({ cmd: 'tool completion zsh' })         // Generated by running the installed binary
 ```
 
 ## defineConfig
@@ -167,11 +152,11 @@ export default defineTool((install) =>
 );
 ```
 
-| Value              | Description                      |
-| ------------------ | -------------------------------- |
-| `Platform.Linux`   | Linux systems                    |
-| `Platform.MacOS`   | macOS (alias: `Platform.Darwin`) |
-| `Platform.Windows` | Windows systems                  |
+| Value              | Description     |
+| ------------------ | --------------- |
+| `Platform.Linux`   | Linux systems   |
+| `Platform.MacOS`   | macOS           |
+| `Platform.Windows` | Windows systems |
 
 ## Architecture
 

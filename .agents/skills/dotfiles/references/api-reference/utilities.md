@@ -15,7 +15,7 @@ Performs a regex-based replacement within a file. Pre-bound with the context's f
 - No-op write: if output equals input, the file is not written
 - Returns `true` if replacements were made, `false` otherwise
 
-```typescript
+```typescript builder
 .hook('after-install', async (ctx) => {
   // Simple replacement (replaces all matches)
   const wasReplaced = await ctx.replaceInFile(
@@ -70,7 +70,7 @@ Resolves a glob pattern to a single file or directory path. Useful for referenci
 
 A relative pattern is resolved against `ctx.toolDir`, the directory containing the `.tool.ts` file, so it reaches files shipped next to the configuration. To look inside the installed tree, build an absolute pattern from a context path such as `installedDir`.
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell.always(/* zsh */ `
     source "${ctx.resolve('completions/*.zsh')}"
@@ -100,13 +100,13 @@ A relative pattern is resolved against `ctx.toolDir`, the directory containing t
 
 User-facing logger for tool operations. Messages are automatically prefixed with the tool name.
 
-```typescript
-.hook('after-install', async () => {
+```typescript builder
+.hook('after-install', async ({ $ }) => {
   ctx.log.info('Configuring tool settings...');
 
-  const result = await configureSettings();
+  const result = await $`tool configure --defaults`.noThrow();
 
-  if (result.warnings.length > 0) {
+  if (result.exitCode !== 0) {
     ctx.log.warn('Some settings could not be applied');
   }
 

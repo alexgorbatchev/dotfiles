@@ -13,7 +13,9 @@ export default defineTool((install, ctx) =>
     binaryPath: "./scripts/my-tool.sh",
   }).bin("my-tool"),
 );
+```
 
+```typescript
 // Without params (shell-only or dependency wrapper)
 export default defineTool((install) =>
   install("manual")
@@ -25,7 +27,9 @@ export default defineTool((install) =>
       }),
     ),
 );
+```
 
+```typescript
 // Configuration-only tool (no binary)
 export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: "ls -la" })));
 ```

@@ -102,7 +102,7 @@ To disable usage tracking globally, set `DOTFILES_LOCAL_USAGE_TRACKING=0` in you
 
 > **Every tool that provides a binary MUST have at least one `.bin()` declaration.** Without it, no shim is generated and the tool won't be accessible from the command line. Even if a tool is installed via brew or npm and is already on PATH, always declare `.bin()` so the dotfiles system manages it consistently.
 
-```ts
+```ts body
 // Single binary with default pattern
 install("github-release", { repo: "owner/tool" }).bin("tool");
 
@@ -130,23 +130,24 @@ install("github-release", { repo: "owner/tool" }).bin("tool", "*/bin/tool"); // 
 - `ctx.projectConfig.paths.generatedDir` → Generated files directory
 - `ctx.replaceInFile()` → Perform regex-based file modifications (see Step 6)
 - `ctx.resolve()` → Resolve a glob pattern to a single path (throws if 0 or multiple matches)
-- `ctx.log` → Logger for user-facing messages (trace/debug/info/warn/error)
+- `ctx.log` → Logger for user-facing messages (debug/info/warn/error)
 - Use `~/` for paths relative to user's home directory (tilde expansion is automatic)
 
 Reference: [API Reference](api-reference.md) and [Context API](api-reference.md#context-api)
 
-### Step 2.5: Configure Installation Environment (if needed)
+### Step 2.5: Configure the Install Script's Environment (curl-script only)
 
-All installation methods support an `env` parameter for setting environment variables during installation. This can be static or dynamic:
+The `curl-script` method runs a script, and takes an `env` parameter for it. This can be static or dynamic:
 
-```ts
+```ts body
 // Static environment variables
-install("github-release", {
-  repo: "owner/tool",
+install("curl-script", {
+  url: "https://example.com/install.sh",
+  shell: "bash",
   env: { CUSTOM_FLAG: "true" },
 }).bin("tool");
 
-// Dynamic environment variables (receives context with projectConfig, stagingDir)
+// Dynamic environment variables (receives the tool configuration context)
 install("curl-script", {
   url: "https://example.com/install.sh",
   shell: "bash",
@@ -159,13 +160,11 @@ install("curl-script", {
 - `ctx.projectConfig` → Full project configuration
 - `ctx.stagingDir` → Temporary installation directory (becomes versioned path after success)
 
-> **Note:** For `curl-script`, the env context also includes `scriptPath` (path to downloaded script).
-
 ### Step 3: Add Shell Integration
 
 Use the fluent shell configurator with `.zsh()`, `.bash()`, or `.powershell()` methods.
 
-```ts
+```ts body
 install("github-release", { repo: "owner/tool" })
   .bin("tool")
   .zsh((shell) =>
@@ -225,7 +224,7 @@ install("github-release", { repo: "owner/tool" })
 > not during `dotfiles generate`. This ensures cmd-based completions can execute the installed
 > binary and callbacks receive the actual installed version in `ctx.version`.
 
-```ts
+```ts shell
 // From static file next to .tool.ts
 .completions('_tool')
 
@@ -235,22 +234,8 @@ install("github-release", { repo: "owner/tool" })
 // From command output
 .completions({ cmd: 'tool completion zsh' })
 
-// From direct URL (filename derived from URL)
-.completions({
-  url: 'https://raw.githubusercontent.com/owner/repo/main/completions/_tool'
-})
-
-// From archive URL (requires source path within extracted archive)
-.completions({
-  url: 'https://github.com/owner/repo/releases/download/v1.0/completions.tar.gz',
-  source: `${ctx.currentDir}/completions/_tool`
-})
-
-// With version in URL (callback receives ctx.version after install)
-.completions((ctx) => ({
-  url: `https://github.com/owner/repo/releases/download/${ctx.version}/completions.tar.gz`,
-  source: `${ctx.currentDir}/completions/_tool`,
-}))
+// From a file under an explicit key
+.completions({ source: `${ctx.currentDir}/completions/_tool` })
 
 // With bin override (when binary name differs from tool name)
 .completions({
@@ -267,7 +252,7 @@ install("github-release", { repo: "owner/tool" })
 
 **Functions and sourceFunction Syntax**:
 
-```ts
+```ts shell
 // Define shell functions
 .functions({
   'my-wrapper': /* zsh */`
@@ -291,7 +276,7 @@ install("github-release", { repo: "owner/tool" })
 
 **source Syntax** (inline sourcing):
 
-```ts
+```ts shell
 // Source the output of inline shell code
 // Content must PRINT shell code to stdout - that output gets sourced
 .source('fnm env --use-on-cd')
@@ -314,7 +299,7 @@ Reference: [Shell Integration Guide](shell-and-hooks.md) and [Completions Guide]
 
 Relative symlink source paths resolve to `ctx.toolDir` (the directory containing the `.tool.ts` file). Leading `./` is optional.
 
-```ts
+```ts body
 install("github-release", { repo: "owner/tool" })
   .bin("tool")
   .symlink("config.toml", "~/.config/tool/config.toml") // Resolves to ctx.toolDir/config.toml
@@ -360,7 +345,7 @@ Reference: [Platform Support Guide](configuration/platform-specific.md)
 
 Use hooks for custom installation logic when fluent configuration is insufficient.
 
-```ts
+```ts body
 install("github-release", { repo: "owner/tool" })
   .bin("tool")
   .hook("after-install", async ({ log, $, installedDir }) => {
@@ -373,7 +358,7 @@ install("github-release", { repo: "owner/tool" })
 
 **Executing Installed Binaries**: In `after-install` hooks, the shell's PATH is automatically enhanced to include directories containing installed binaries. You can execute freshly installed tools by name:
 
-```ts
+```ts body
 install("github-release", { repo: "owner/tool" })
   .bin("tool")
   .hook("after-install", async ({ $, log }) => {
@@ -386,7 +371,7 @@ install("github-release", { repo: "owner/tool" })
 
 **File Modifications in Hooks**: Use `ctx.replaceInFile()` for regex-based file modifications:
 
-```ts
+```ts body
 install("github-release", { repo: "owner/tool" })
   .bin("tool")
   .hook("after-install", async (ctx) => {
@@ -421,7 +406,7 @@ install("github-release", { repo: "owner/tool" })
 
 **Resolving Glob Patterns**: Use `ctx.resolve()` to match a glob pattern to a single path:
 
-```ts
+```ts body
 install("github-release", { repo: "owner/tool" })
   .bin("tool")
   .zsh((shell) =>
@@ -445,7 +430,7 @@ Reference: [Hooks Guide](shell-and-hooks.md#hooks) and [API Reference](api-refer
 
 Use `.disable()` to temporarily skip a tool during generation without removing its configuration. A warning will be logged when the tool is skipped.
 
-```ts
+```ts body
 install("github-release", { repo: "owner/tool" }).bin("tool").disable(); // Tool will be skipped with a warning
 ```
 
@@ -459,7 +444,7 @@ This is useful for:
 
 Use `.hostname(pattern)` to restrict a tool to specific machines. When a hostname is specified, the tool is only installed on machines where the hostname matches the pattern.
 
-```ts
+```ts body
 // Exact hostname match
 install("github-release", { repo: "owner/work-tools" }).bin("work-tool").hostname("my-work-laptop");
 
@@ -486,7 +471,7 @@ When the hostname doesn't match:
 
 Create a file named `{tool-name}.tool.ts`:
 
-```ts
+```ts no-typecheck
 import { defineTool } from '@alexgorbatchev/dotfiles';
 
 export default defineTool((install, ctx) =>

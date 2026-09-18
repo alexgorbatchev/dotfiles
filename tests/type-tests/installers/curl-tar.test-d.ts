@@ -31,6 +31,17 @@ defineTool((install) =>
   ),
 );
 
+// Every parameter the Go installer reads.
+defineTool((install) =>
+  install("curl-tar", {
+    url: "https://example.com/tool.tar.gz",
+    sha256: "0123456789abcdef",
+    versionArgs: "--version",
+    versionRegex: "tool (\\d+\\.\\d+\\.\\d+)",
+    auto: true,
+  }).bin("tool"),
+);
+
 expectError(() =>
   defineTool((install) =>
     install("curl-tar", {
@@ -39,3 +50,6 @@ expectError(() =>
     }),
   ),
 );
+
+// Binaries are located by name or by a .bin() pattern; there is no binDir parameter.
+expectError(() => defineTool((install) => install("curl-tar", { url: "https://example.com/t.tar.gz", binDir: "bin" })));

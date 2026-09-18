@@ -31,7 +31,7 @@ export default defineTool((install) =>
 
 ### Exact Version
 
-```typescript
+```typescript body
 install("dnf", {
   package: "ripgrep",
   version: "13.0.0-1.fc40",
@@ -40,7 +40,7 @@ install("dnf", {
 
 ### Refresh Metadata First
 
-```typescript
+```typescript body
 install("dnf", {
   package: "ripgrep",
   refresh: true,

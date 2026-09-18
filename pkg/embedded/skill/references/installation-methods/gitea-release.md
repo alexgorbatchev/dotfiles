@@ -17,16 +17,14 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter       | Description                                                                                                                        |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `instanceUrl`   | **Required**. Base URL of the Gitea/Forgejo instance                                                                               |
-| `repo`          | **Required**. Repository in "owner/repo" format                                                                                    |
-| `assetPattern`  | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Use only if default automatic selection fails. |
-| `assetSelector` | Custom function to select the correct asset. **Optional**. Use only if default automatic selection fails.                          |
-| `version`       | Specific version (e.g., `'v1.2.3'`)                                                                                                |
-| `prerelease`    | Include prereleases when fetching latest (default: false)                                                                          |
-| `token`         | API token for authentication with the instance                                                                                     |
-| `env`           | Environment variables (static or dynamic function)                                                                                 |
+| Parameter      | Description                                                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `instanceUrl`  | **Required**. Base URL of the Gitea/Forgejo instance                                                                               |
+| `repo`         | **Required**. Repository in "owner/repo" format                                                                                    |
+| `assetPattern` | Glob or regex pattern (`string` or `RegExp`) to match release assets. **Optional**. Use only if default automatic selection fails. |
+| `token`        | API token for authentication with the instance                                                                                     |
+
+The release to install is chosen with `.version()`; without it the latest release is used.
 
 ## Examples
 
@@ -34,11 +32,11 @@ export default defineTool((install) =>
 
 The installer uses built-in smart selection logic by default. It parses filenames and correctly matches combinations of OS and CPU architecture (e.g. `linux`/`darwin`/`macos`/`win`/`windows` + `amd64`/`arm64`/`aarch64`/`x64`/`x86_64`).
 
-**You should ONLY provide an `assetPattern` or `assetSelector` if the default selection logic fails to find a file or downloads the wrong asset.**
+**You should ONLY provide an `assetPattern` if the default selection logic fails to find a file or downloads the wrong asset.**
 
 ### With Asset Pattern
 
-```typescript
+```typescript body
 install("gitea-release", {
   instanceUrl: "https://codeberg.org",
   repo: "owner/tool",
@@ -46,35 +44,22 @@ install("gitea-release", {
 }).bin("tool");
 ```
 
-### Custom Asset Selector
-
-Use `assetSelector` when the repository uses non-standard asset names or when you intentionally want something other than the default smart selector. Standard Linux `gnu` vs `musl` release names are handled automatically.
-
-```typescript
-install("gitea-release", {
-  instanceUrl: "https://codeberg.org",
-  repo: "owner/tool",
-  assetSelector: ({ assets }) => {
-    return assets.find((a) => a.name.endsWith("-portable.tar.gz"));
-  },
-}).bin("tool");
-```
-
 ### Specific Version
 
-```typescript
+```typescript body
 install("gitea-release", {
   instanceUrl: "https://codeberg.org",
   repo: "owner/tool",
-  version: "v2.1.0",
-}).bin("tool");
+})
+  .bin("tool")
+  .version("v2.1.0");
 ```
 
 ### With Authentication Token
 
 For private repositories or to avoid rate limits:
 
-```typescript
+```typescript body
 install("gitea-release", {
   instanceUrl: "https://gitea.example.com",
   repo: "org/private-tool",
@@ -98,16 +83,6 @@ Asset selection and the handling of the selected asset (archive extraction, raw 
 Glob syntax: `*` (any chars), `?` (single char), `[abc]` (char class), `{a,b}` (alternation)
 
 Regex patterns can also be used by wrapping in forward slashes: `/tool-v\d+.*linux/`
-
-## Platform Detection
-
-Available in `assetSelector` as `systemInfo`:
-
-| Property   | Values                     |
-| ---------- | -------------------------- |
-| `platform` | `darwin`, `linux`, `win32` |
-| `arch`     | `x64`, `arm64`             |
-| `libc`     | `gnu`, `musl`, `unknown`   |
 
 ## Supported Instances
 

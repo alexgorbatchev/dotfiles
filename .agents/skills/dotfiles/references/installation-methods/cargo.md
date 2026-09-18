@@ -16,16 +16,17 @@ export default defineTool((install, ctx) =>
 
 ## Parameters
 
-| Parameter        | Type                                               | Required | Description                                                                                                                                                    |
-| ---------------- | -------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `crateName`      | `string`                                           | Yes      | Name of the Rust crate                                                                                                                                         |
-| `binarySource`   | `'cargo-quickinstall' \| 'github-releases'`        | No       | Binary download source (default: `cargo-quickinstall`)                                                                                                         |
-| `versionSource`  | `'cargo-toml' \| 'crates-io' \| 'github-releases'` | No       | Version detection source (default: `cargo-toml` when `cargoTomlUrl` is set, `github-releases` when `binarySource` is `github-releases`, otherwise `crates-io`) |
-| `githubRepo`     | `string`                                           | No       | GitHub repo in `owner/repo` format                                                                                                                             |
-| `assetPattern`   | `string`                                           | No       | Pattern for GitHub release assets                                                                                                                              |
-| `cargoTomlUrl`   | `string`                                           | No       | Cargo.toml to read the version from with `versionSource: 'cargo-toml'` (default: `main` branch of `githubRepo` on raw.githubusercontent.com)                   |
-| `customBinaries` | `string[]`                                         | No       | Custom binary names if different from crate                                                                                                                    |
-| `env`            | `Record<string, string> \| (ctx) => Record<...>`   | No       | Environment variables (static or dynamic function)                                                                                                             |
+| Parameter       | Type                                               | Required | Description                                                                                                                                                    |
+| --------------- | -------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `crateName`     | `string`                                           | No       | Name of the Rust crate (defaults to the tool name)                                                                                                             |
+| `binarySource`  | `'cargo-quickinstall' \| 'github-releases'`        | No       | Binary download source (default: `cargo-quickinstall`)                                                                                                         |
+| `versionSource` | `'cargo-toml' \| 'crates-io' \| 'github-releases'` | No       | Version detection source (default: `cargo-toml` when `cargoTomlUrl` is set, `github-releases` when `binarySource` is `github-releases`, otherwise `crates-io`) |
+| `githubRepo`    | `string`                                           | No       | GitHub repo in `owner/repo` format, for `github-releases`                                                                                                      |
+| `assetPattern`  | `string`                                           | No       | Pattern for GitHub release assets                                                                                                                              |
+| `cargoTomlUrl`  | `string`                                           | No       | Cargo.toml to read the version from with `versionSource: 'cargo-toml'` (default: `main` branch of `githubRepo` on raw.githubusercontent.com)                   |
+| `sha256`        | `string`                                           | No       | Expected checksum of the downloaded archive                                                                                                                    |
+
+The version to install comes from `.version()`. When the prebuilt download fails, the crate is compiled with `cargo install`. Binaries are declared with `.bin()`, as for every other method.
 
 ### Asset Pattern Placeholders
 
@@ -51,13 +52,12 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-### Custom Binary Names
+### Binary Named Differently From the Crate
 
 ```typescript
 export default defineTool((install, ctx) =>
   install("cargo", {
     crateName: "fd-find",
-    customBinaries: ["fd"],
   }).bin("fd"),
 );
 ```

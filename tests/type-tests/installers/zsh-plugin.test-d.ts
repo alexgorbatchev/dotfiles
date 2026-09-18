@@ -40,11 +40,13 @@ defineTool((install) =>
   }),
 );
 
-// Test with optional pluginName
+// Every parameter the Go installer reads.
 defineTool((install) =>
   install("zsh-plugin", {
-    repo: "jeffreytse/zsh-vi-mode",
-    pluginName: "zsh-vi-mode",
+    url: "https://gitlab.com/user/custom-plugin.git",
+    pluginName: "custom-plugin",
+    source: "custom-init.zsh",
+    auto: false,
   }),
 );
 

@@ -27,7 +27,7 @@ export default defineTool((install) =>
 
 ### Binary in Subdirectory
 
-```typescript
+```typescript body
 install("curl-tar", {
   url: "https://releases.example.com/tool-v1.0.0.tar.gz",
 }).bin("tool", "bin/tool"); // Binary at bin/tool in archive
@@ -35,7 +35,7 @@ install("curl-tar", {
 
 ### With Version Detection
 
-```typescript
+```typescript body
 install("curl-tar", {
   url: "https://releases.example.com/tool-v1.0.0.tar.gz",
   versionArgs: ["--version"],
@@ -45,7 +45,7 @@ install("curl-tar", {
 
 ### With Shell Configuration
 
-```typescript
+```typescript body
 install("curl-tar", {
   url: "https://releases.example.com/tool-v1.0.0.tar.gz",
 })

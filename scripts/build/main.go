@@ -142,13 +142,14 @@ func generateSchemaTypes(rootDir string) error {
 
 	publicDeclarationsTemplate := strings.Join([]string{
 		"/**",
-		" * Helper function to dedent multiline strings.",
+		" * Removes the common leading indentation from a multiline string, and the blank",
+		" * lines around it. Usable as a plain function or as a tagged template.",
 		" */",
-		"export declare function dedentString(str: string): string;",
+		"export declare function dedentString(text: string | TemplateStringsArray, ...values: unknown[]): string;",
 		"/**",
-		" * Helper function to dedent multiline template literals.",
+		" * Alias of dedentString.",
 		" */",
-		"export declare function dedentTemplate(template: string, values: Record<string, string>): string;",
+		"export declare function dedentTemplate(text: string | TemplateStringsArray, ...values: unknown[]): string;",
 		dslTypesContent,
 		"/**",
 		" * Defines the main dotfiles project configuration.",
@@ -180,7 +181,7 @@ func generateSchemaTypes(rootDir string) error {
 		"\tIGithubReleaseInstallParams as z_internal_GithubReleaseInstallParams,",
 		"\tIInstallParamsRegistry as z_internal_IInstallParamsRegistry,",
 		"\tInstallMethod as z_internal_InstallMethod,",
-		"\tISystemInfoInternal as z_internal_ISystemInfo,",
+		"\tISystemInfo as z_internal_ISystemInfo,",
 		"\tIKnownBinNameRegistry as z_internal_IKnownBinNameRegistry,",
 		"};",
 	}, "\n")
@@ -244,6 +245,12 @@ func generateSchemaTypes(rootDir string) error {
 
 		if err := os.WriteFile(filepath.Join(dir, "cli.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
 			return fmt.Errorf("failed to write cli.d.ts to %s: %w", dir, err)
+		}
+
+		// Runtime globals travel as their own file: see pkg/vm/globals.d.ts for why they
+		// must not be folded into index.d.ts.
+		if err := copyFile(filepath.Join(rootDir, "pkg/vm/globals.d.ts"), filepath.Join(dir, "globals.d.ts")); err != nil {
+			return fmt.Errorf("failed to write globals.d.ts to %s: %w", dir, err)
 		}
 	}
 
@@ -597,6 +604,13 @@ func runTypeTests(rootDir string) error {
 		return fmt.Errorf("failed to write index.d.ts for tsd tests: %w", err)
 	}
 
+	// The tests see the same runtime globals a tool configuration does under the
+	// CLI-owned tsconfig, and nothing else: no Node or Bun types. tsd builds its program
+	// from the test files alone, so the globals file is handed to it as one of them.
+	if err := copyFile(filepath.Join(distDir, "globals.d.ts"), filepath.Join(tsdDir, "globals.d.ts")); err != nil {
+		return fmt.Errorf("failed to copy globals.d.ts for tsd tests: %w", err)
+	}
+
 	pkgJson := map[string]interface{}{
 		"name":    "tsd-tests",
 		"private": true,
@@ -645,7 +659,7 @@ func runTypeTests(rootDir string) error {
 		}
 	}
 
-	cmd := exec.Command("bun", "x", "tsd", "--typings", "./index.d.ts", "--files", "./**/*.test-d.ts")
+	cmd := exec.Command("bun", "x", "tsd", "--typings", "./index.d.ts", "--files", "./**/*.test-d.ts", "--files", "./globals.d.ts")
 	cmd.Dir = tsdDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -960,6 +974,10 @@ func main() {
 	// --assets-only stops after generating embedded assets, skipping the cross-platform
 	// binary build. It is what checks and tests need from a fresh checkout.
 	assetsOnly := flag.Bool("assets-only", false, "generate embedded assets without compiling binaries")
+	// --type-tests runs the tsd suite under tests/type-tests against the declarations
+	// already generated in .dist, so the suite can be part of a check without a
+	// cross-platform binary build.
+	typeTestsOnly := flag.Bool("type-tests", false, "run the tsd type tests against the generated declarations")
 	flag.Parse()
 
 	run := runBuild
@@ -970,6 +988,15 @@ func main() {
 				return fmt.Errorf("resolving repo root: %w", err)
 			}
 			return generateEmbeddedAssets(rootDir)
+		}
+	}
+	if *typeTestsOnly {
+		run = func() error {
+			rootDir, err := getRepoRoot()
+			if err != nil {
+				return fmt.Errorf("resolving repo root: %w", err)
+			}
+			return runTypeTests(rootDir)
 		}
 	}
 

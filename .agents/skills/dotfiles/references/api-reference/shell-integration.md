@@ -19,7 +19,7 @@ For other context properties (`toolDir`, `currentDir`, `projectConfig`, etc.), u
 
 ## Configurator Methods
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell
     .env({ VAR: 'value' })              // Environment variables (PATH prohibited)
@@ -60,7 +60,7 @@ export default defineTool((install, ctx) =>
 
 Add a directory to the PATH environment variable. Paths are deduplicated during shell init generation.
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell
     .path('$HOME/.local/bin')           // Static path with shell variable
@@ -82,7 +82,7 @@ Add a directory to the PATH environment variable. Paths are deduplicated during 
 
 Define shell functions that are generated into the shell init file.
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell.functions({
     'my-command': 'echo "Hello, world!"',
@@ -112,7 +112,7 @@ This is useful for defining wrapper functions or custom commands.
 Source a script file during shell initialization. If the file doesn't exist, it's silently skipped.
 The file is sourced in a way that respects the configured HOME directory while still affecting the current shell.
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell
     .sourceFile('init.zsh')                    // Relative to toolDir
@@ -142,7 +142,7 @@ Source the output of a shell function defined via `.functions()`. This is ideal 
 
 **Important**: When a function is used with `.sourceFunction()`, its body must **output shell code to stdout**. This output is then sourced (executed) in the current shell. Common tools like `fnm`, `pyenv`, `rbenv`, and `zoxide` have commands that print shell code for this purpose.
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell
     .functions({
@@ -174,7 +174,7 @@ source <(initFnm)
 
 Source the output of inline shell code without defining a named function. The content must **print shell code to stdout** - this output is then sourced.
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell
     // fnm env prints shell code like "export PATH=..."
@@ -208,7 +208,7 @@ For reusable functions, use `.functions()` + `.sourceFunction()` instead.
 
 For fast inline operations that run on every shell startup:
 
-```typescript
+```typescript builder
 .zsh((shell) =>
   shell.always(`
     eval "$(tool init zsh)"
@@ -237,8 +237,10 @@ export default defineTool((install, ctx) =>
 Share configuration across shells using the outer `ctx` from `defineTool`:
 
 ```typescript
+import { defineTool, type IShellConfigurator } from "@alexgorbatchev/dotfiles";
+
 export default defineTool((install, ctx) => {
-  const configureShell = (shell) => shell.env({ TOOL_HOME: ctx.currentDir }).aliases({ t: "tool" });
+  const configureShell = (shell: IShellConfigurator) => shell.env({ TOOL_HOME: ctx.currentDir }).aliases({ t: "tool" });
 
   return install("github-release", { repo: "owner/tool" }).bin("tool").zsh(configureShell).bash(configureShell);
 });
@@ -277,7 +279,7 @@ Create symlinks for configuration files with `.symlink()`.
 
 ### Syntax
 
-```typescript
+```typescript no-typecheck
 .symlink(source, target)
 ```
 
@@ -324,7 +326,7 @@ export default defineTool((install) =>
 
 ### Common Patterns
 
-```typescript
+```typescript builder
 // Configuration files
 .symlink('./gitconfig', '~/.gitconfig')
 
@@ -337,7 +339,7 @@ export default defineTool((install) =>
 
 ### Correct vs Incorrect
 
-```typescript
+```typescript builder
 // ✅ Tilde expansion (recommended)
 .symlink('./config.toml', '~/.config/tool/config.toml')
 

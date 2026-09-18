@@ -128,7 +128,7 @@ import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 | Export         | Description                                    |
 | -------------- | ---------------------------------------------- |
 | `defineTool`   | Factory function to create tool configurations |
-| `Platform`     | Enum: `Darwin`, `Linux`, `Windows`, `MacOS`    |
+| `Platform`     | Enum: `Linux`, `MacOS`, `Windows`, `All`       |
 | `Architecture` | Enum: `X86_64`, `Arm64`                        |
 
 ### Configuration-Only Tools
@@ -163,7 +163,7 @@ Add to your `tsconfig.json`:
 
 ### Common Type Errors
 
-```typescript
+```typescript no-typecheck
 // ❌ Missing required parameter
 install('github-release', {})  // Error: 'repo' is required
 

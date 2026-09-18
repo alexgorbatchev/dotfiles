@@ -29,6 +29,19 @@ defineTool((install) =>
   ),
 );
 
+// Every parameter the Go installer reads. The crate name defaults to the tool name.
+defineTool((install) =>
+  install("cargo", {
+    binarySource: "github-releases",
+    githubRepo: "eza-community/eza",
+    assetPattern: "eza-v{version}-{arch}-{platform}.tar.gz",
+    sha256: "0123456789abcdef",
+    auto: true,
+  }).bin("eza"),
+);
+
+defineTool((install) => install("cargo", { crateName: "bat", binarySource: "cargo-quickinstall" }).bin("bat"));
+
 expectError(() =>
   defineTool((install) =>
     install("cargo", {
@@ -37,3 +50,12 @@ expectError(() =>
     }),
   ),
 );
+
+// The two binary sources are the only ones the runtime knows.
+expectError(() => defineTool((install) => install("cargo", { crateName: "bat", binarySource: "crates-io" })));
+
+// The version comes from .version(), not from an install parameter.
+expectError(() => defineTool((install) => install("cargo", { crateName: "bat", version: "0.24.0" })));
+
+// Binaries are declared with .bin(); the runtime reads no customBinaries list.
+expectError(() => defineTool((install) => install("cargo", { crateName: "fd-find", customBinaries: ["fd"] })));

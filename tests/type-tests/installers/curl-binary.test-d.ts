@@ -29,6 +29,17 @@ defineTool((install) =>
   ),
 );
 
+// Every parameter the Go installer reads.
+defineTool((install) =>
+  install("curl-binary", {
+    url: "https://example.com/tool-v1.0.0-linux-amd64",
+    sha256: "0123456789abcdef",
+    versionArgs: ["--version"],
+    versionRegex: /v(\d+\.\d+\.\d+)/,
+    auto: true,
+  }).bin("tool"),
+);
+
 expectError(() =>
   defineTool((install) =>
     install("curl-binary", {

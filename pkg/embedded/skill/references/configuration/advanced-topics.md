@@ -4,23 +4,15 @@ Advanced configuration patterns for complex setups.
 
 ## Custom Asset Selection
 
-For non-standard release naming, use `assetSelector`:
+For non-standard release naming, narrow the candidates with an `assetPattern`; a
+`RegExp` is accepted when a glob is not expressive enough. The platform and
+architecture are still matched automatically within the narrowed set:
 
 ```typescript
 export default defineTool((install) =>
   install("github-release", {
     repo: "owner/tool",
-    assetSelector: ({ assets, systemInfo, release, log }) => {
-      const osMap: Record<string, string> = { darwin: "macos", linux: "linux" };
-      const archMap: Record<string, string> = { x64: "amd64", arm64: "arm64" };
-
-      return assets.find(
-        (a) =>
-          a.name.includes(osMap[systemInfo.platform]) &&
-          a.name.includes(archMap[systemInfo.arch]) &&
-          a.name.endsWith(".tar.gz"),
-      );
-    },
+    assetPattern: /^tool-(macos|linux)-(amd64|arm64)\.tar\.gz$/,
   }).bin("tool"),
 );
 ```
@@ -45,8 +37,8 @@ export default defineTool((install) =>
 Choose methods based on system capabilities:
 
 ```typescript
-export default defineTool((install) => {
-  if (process.platform === "darwin" && process.env.HOMEBREW_PREFIX) {
+export default defineTool((install, ctx) => {
+  if (ctx.systemInfo.os === "darwin" && process.env.HOMEBREW_PREFIX) {
     return install("brew", { formula: "tool" }).bin("tool");
   }
   return install("github-release", { repo: "owner/tool" }).bin("tool");
@@ -79,7 +71,7 @@ export default defineTool((install) =>
     .bin("tool")
     .dependsOn("node")
     .hook("before-install", async ({ log, $ }) => {
-      const result = await $`node --version`.nothrow();
+      const result = await $`node --version`.noThrow();
       if (result.exitCode !== 0) {
         throw new Error("Node is required but not available");
       }

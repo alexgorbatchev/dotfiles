@@ -172,7 +172,7 @@ export default defineTool((install, ctx) =>
 
 DMG also supports GitHub release sources:
 
-```typescript
+```typescript body
 install("dmg", {
   source: {
     type: "github-release",
@@ -195,7 +195,6 @@ export default defineTool((install, ctx) =>
       type: "url",
       url: "https://example.com/MyTool.pkg",
     },
-    binaryPath: "/usr/local/bin/my-tool",
   }).bin("my-tool"),
 );
 ```
@@ -242,7 +241,9 @@ export default defineTool((install, ctx) =>
     binaryPath: "./bin/my-script.sh",
   }).bin("my-script"),
 );
+```
 
+```typescript
 // Without params (shell-only or dependency wrapper)
 export default defineTool((install) =>
   install("manual")
@@ -254,7 +255,9 @@ export default defineTool((install) =>
       }),
     ),
 );
+```
 
+```typescript
 // Configuration-only
 export default defineTool((install, ctx) => install().zsh((shell) => shell.aliases({ ll: "ls -la" })));
 ```
@@ -343,16 +346,17 @@ Most installation methods support these common concepts:
 - **Platform Detection**: Automatic selection of appropriate binaries
 - **Binary Path**: Specify which file is the main executable
 - **Asset Selection**: Choose the right download for your platform
-- **Environment Variables**: Set `env` for installation (static or dynamic)
+- **Auto-install**: `auto: true` installs the tool during `dotfiles generate`
 
 ### Environment Variables (`env`)
 
-All installation methods support an `env` parameter for setting environment variables during installation:
+The `curl-script` method runs a script and accepts an `env` parameter for it, static or dynamic:
 
-```typescript
+```typescript body
 // Static environment variables
-install("github-release", {
-  repo: "owner/tool",
+install("curl-script", {
+  url: "https://example.com/install.sh",
+  shell: "bash",
   env: { CUSTOM_FLAG: "true" },
 }).bin("tool");
 
@@ -364,9 +368,4 @@ install("curl-script", {
 }).bin("tool");
 ```
 
-Dynamic `env` functions receive a context with:
-
-- `projectConfig` - Full project configuration
-- `stagingDir` - Temporary installation directory
-
-For `curl-script`, the context also includes `scriptPath`.
+A dynamic `env` function receives the tool configuration context (`projectConfig`, `stagingDir`, and the rest of `ctx`). The other installation methods run no script of yours, so they take no `env`.

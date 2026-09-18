@@ -39,6 +39,7 @@
   "exclude": [
     "**/.tmp/**",
     "**/tmp/**",
+    "pkg/vm/globals.d.ts",
     "packages/**/type-tests/**",
     "packages/**/__tests__/**/tool-types.d.ts",
     "packages/docs/**"

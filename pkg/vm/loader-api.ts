@@ -282,10 +282,10 @@ function createToolContext(toolName: string, eventContext: Record<string, unknow
     readdir(p: string) {
       return Promise.resolve(fsReadDir(p));
     },
-    readFile(p: string, _encoding?: string) {
+    readFile(p: string) {
       return Promise.resolve(fsReadFile(p));
     },
-    writeFile(p: string, content: string, _encoding?: string) {
+    writeFile(p: string, content: string) {
       fsWriteFile(p, content);
       return Promise.resolve();
     },

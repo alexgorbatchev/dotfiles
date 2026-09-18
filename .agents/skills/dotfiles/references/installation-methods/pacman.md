@@ -32,7 +32,7 @@ export default defineTool((install) =>
 
 ### Exact Version
 
-```typescript
+```typescript body
 install("pacman", {
   package: "ripgrep",
   version: "13.0.0-1",
@@ -41,7 +41,7 @@ install("pacman", {
 
 ### Upgrade System Before Syncing Package
 
-```typescript
+```typescript body
 install("pacman", {
   package: "ripgrep",
   sysupgrade: true,

@@ -29,36 +29,48 @@ export type DeepPartial<T> = T extends Function
       : T;
 
 /**
- * Interface for sandboxed file system operations.
- *
- * All methods execute synchronously within the Goja VM runtime, but return
- * Promises to preserve standard async/await compatibility in TypeScript.
+ * File operations available to a tool factory as `ctx.fs` and to lifecycle hooks as
+ * `fileSystem`. Every call is carried out by the Go runtime synchronously; the Promise
+ * return types keep `await` valid at the call site. Files are read and written as UTF-8.
  */
 export interface IFileSystem {
   /**
    * Reads the entire contents of a file.
    */
-  readFile(path: string, encoding?: string): Promise<string>;
+  readFile(path: string): Promise<string>;
   /**
    * Writes data to a file, replacing the file if it already exists.
    */
-  writeFile(path: string, content: string, encoding?: string): Promise<void>;
+  writeFile(path: string, content: string): Promise<void>;
   /**
    * Checks if a path exists on disk.
    */
   exists(path: string): Promise<boolean>;
   /**
-   * Creates a directory and all nested parent directories if needed.
+   * Creates a directory together with any missing parent directories. Succeeds when
+   * the directory already exists.
    */
   mkdir(path: string): Promise<void>;
   /**
-   * Reads the contents of a directory.
+   * Alias of `mkdir`.
+   */
+  ensureDir(path: string): Promise<void>;
+  /**
+   * Reads the entry names of a directory.
    */
   readdir(path: string): Promise<string[]>;
   /**
-   * Removes a file or directory.
+   * Removes a file, or a directory together with everything under it.
    */
   rm(path: string): Promise<void>;
+  /**
+   * Moves a file or directory.
+   */
+  rename(from: string, to: string): Promise<void>;
+  /**
+   * Creates a symbolic link at `linkPath` pointing at `target`.
+   */
+  symlink(target: string, linkPath: string): Promise<void>;
 }
 
 /**
@@ -185,11 +197,30 @@ export interface IProjectConfig extends DeepPartial<ProjectConfig> {
 }
 
 /**
+ * What the runtime reports about the machine a configuration is evaluated for. The
+ * values follow the `--platform` and `--arch` flags when those are given.
+ */
+export interface ISystemInfo {
+  /**
+   * Operating system name: `"darwin"`, `"linux"`, `"windows"`, or `"unknown"`.
+   */
+  os: string;
+  /**
+   * CPU architecture name: `"amd64"`, `"arm64"`, or `"unknown"`.
+   */
+  arch: string;
+  /**
+   * C library on Linux: `"gnu"`, `"musl"`, or `"unknown"` (compare against `Libc`).
+   */
+  libc: string;
+}
+
+/**
  * Context object passed to defineConfig callbacks.
  */
 export interface IConfigContext {
   configFileDir: string;
-  systemInfo: ISystemInfoInternal;
+  systemInfo: ISystemInfo;
 }
 
 /**
@@ -253,6 +284,16 @@ export type ReplaceInFileFn = (
 ) => Promise<boolean>;
 
 /**
+ * Structured logger. Messages are prefixed with the tool name.
+ */
+export interface ILogger {
+  debug(message: string): void;
+  info(message: string): void;
+  warn(message: string): void;
+  error(message: string): void;
+}
+
+/**
  * Context object for tool configuration.
  */
 export interface IToolConfigContext {
@@ -261,57 +302,53 @@ export interface IToolConfigContext {
    */
   toolName: string;
   /**
-   * Path to the directory containing the configuration file.
+   * Directory containing the project configuration file.
    */
   configFileDir: string;
   /**
-   * Directory containing the tool's configuration file (alias for configFileDir).
+   * Directory containing this tool's `.tool.ts` file.
    */
-  toolDir?: string;
+  toolDir: string;
   /**
    * Active project configuration.
    */
-  projectConfig?: IProjectConfig;
+  projectConfig: ProjectConfig;
   /**
-   * System environment information.
+   * Operating system, architecture and libc the configuration is evaluated for.
    */
-  systemInfo: ISystemInfoInternal;
+  systemInfo: ISystemInfo;
   /**
    * Absolute path to the active version directory of the tool.
    */
   currentDir: string;
   /**
-   * Absolute path to the temporary staging directory during installation.
+   * Temporary directory the installer stages into. While the configuration is merely
+   * being read no installation is under way, so the value is the literal placeholder
+   * `{stagingDir}`, which the runtime substitutes when the value is used in install
+   * parameters. A hook receives the real path.
    */
   stagingDir: string;
   /**
    * Logger utility for printing structured messages.
    */
-  log: {
-    trace: (msg: string) => void;
-    debug: (msg: string) => void;
-    info: (msg: string) => void;
-    warn: (msg: string) => void;
-    error: (msg: string) => void;
-  };
+  log: ILogger;
   /**
-   * Virtual sandboxed file system.
+   * File operations.
    */
   fs: IFileSystem;
+  /**
+   * The same bindings as `fs`, under the name hooks use.
+   */
+  fileSystem: IFileSystem;
   /**
    * Replaces text in a file.
    */
   replaceInFile: ReplaceInFileFn;
-}
-
-/**
- * System hardware and platform metrics.
- */
-export interface ISystemInfoInternal {
-  platform: Platform;
-  arch: Architecture;
-  homeDir: string;
-  hostname: string;
+  /**
+   * Resolves a glob pattern to exactly one path. A relative pattern is resolved
+   * against `toolDir`. Throws when the pattern matches nothing or more than one path.
+   */
+  resolve(pattern: string): string;
 }
 
 /**
@@ -329,11 +366,22 @@ export interface ICommonInstallParams {
 }
 
 /**
+ * Arguments passed to a binary to make it print its version, e.g. `["--version"]`.
+ */
+export type VersionArgs = string | string[];
+
+/**
+ * Pattern extracting the version from the binary's output. The first capture group is
+ * used when there is one, otherwise the whole match.
+ */
+export type VersionRegex = string | RegExp;
+
+/**
  * Parameters for manual installation method.
  */
 export interface IManualInstallParams extends ICommonInstallParams {
   /**
-   * Absolute or relative path to a pre-existing binary executable on disk.
+   * Path to a pre-existing executable, relative to the `.tool.ts` file or absolute.
    */
   binaryPath?: string;
   /**
@@ -347,24 +395,17 @@ export interface IManualInstallParams extends ICommonInstallParams {
  */
 export interface ICargoInstallParams extends ICommonInstallParams {
   /**
-   * Name of the Cargo crate to install.
-   */
-  crate?: string;
-  /**
-   * Alias for crate name.
+   * Name of the Cargo crate to install. Defaults to the tool name.
    */
   crateName?: string;
   /**
-   * Specific crate version constraint to install.
-   */
-  version?: string;
-  /**
    * Where the prebuilt binary is fetched from. Defaults to "cargo-quickinstall".
+   * When the prebuilt download fails the crate is compiled with `cargo install`.
    */
-  binarySource?: string;
+  binarySource?: "cargo-quickinstall" | "github-releases";
   /**
-   * GitHub repository to fetch a prebuilt release binary from, used when
-   * binarySource selects a GitHub release rather than cargo-quickinstall.
+   * GitHub repository in "owner/repo" format to fetch a prebuilt release binary from,
+   * used with `binarySource: "github-releases"`.
    */
   githubRepo?: string;
   /**
@@ -383,13 +424,13 @@ export interface ICargoInstallParams extends ICommonInstallParams {
  */
 export interface IBrewInstallParams extends ICommonInstallParams {
   /**
-   * Homebrew formula name (e.g. "ripgrep" or "node").
+   * Homebrew formula or cask name (e.g. "ripgrep"). Defaults to the tool name.
    */
   formula?: string;
   /**
-   * Homebrew Cask name for macOS GUI/binary packages (e.g. "iterm2"), or `true` if formula is a cask.
+   * Install `formula` as a cask (`brew install --cask`).
    */
-  cask?: boolean | string;
+  cask?: boolean;
   /**
    * Optional custom Homebrew tap repository or repositories (e.g. "user/repo" or ["user/repo1", "user/repo2"]).
    */
@@ -408,21 +449,22 @@ export interface IBrewInstallParams extends ICommonInstallParams {
    */
   force?: boolean;
   /**
-   * Link formula into Homebrew prefix (`--force` or `--overwrite`).
+   * Link the formula after installing (`brew link`), optionally with `--overwrite` or `--force`.
    */
   link?: boolean | { overwrite?: boolean; force?: boolean };
   /**
-   * Background service management action (`true`, `'start'`, `'stop'`, `'restart'`, etc.).
+   * Background service action run after installing (`brew services <action> <formula>`).
+   * `true` means "start".
    */
   service?: boolean | string;
   /**
    * Arguments passed to the binary to detect its version (e.g. `['--version']`).
    */
-  versionArgs?: string[];
+  versionArgs?: VersionArgs;
   /**
    * Regular expression pattern used to extract the version from command output.
    */
-  versionRegex?: string | RegExp;
+  versionRegex?: VersionRegex;
 }
 
 /**
@@ -430,15 +472,11 @@ export interface IBrewInstallParams extends ICommonInstallParams {
  */
 export interface IAptInstallParams extends ICommonInstallParams {
   /**
-   * APT package name.
-   */
-  packageName?: string;
-  /**
-   * Alias for packageName.
+   * APT package name. Defaults to the tool name.
    */
   package?: string;
   /**
-   * Target package version constraint.
+   * Exact package version, installed as `package=version`.
    */
   version?: string;
   /**
@@ -453,14 +491,11 @@ export interface IAptInstallParams extends ICommonInstallParams {
 export interface IPacmanInstallParams extends ICommonInstallParams {
   /**
    * Pacman package name (repository prefix like "extra/ripgrep" is automatically stripped).
-   */
-  packageName?: string;
-  /**
-   * Alias for packageName.
+   * Defaults to the tool name.
    */
   package?: string;
   /**
-   * Target package version constraint.
+   * Exact package version, installed as `package=version`.
    */
   version?: string;
   /**
@@ -474,42 +509,39 @@ export interface IPacmanInstallParams extends ICommonInstallParams {
  */
 export interface IDnfInstallParams extends ICommonInstallParams {
   /**
-   * DNF package name.
-   */
-  packageName?: string;
-  /**
-   * Alias for packageName.
+   * DNF package name. Defaults to the tool name.
    */
   package?: string;
   /**
-   * Target package version constraint.
+   * Exact version/release suffix, installed as `package-version`.
    */
   version?: string;
   /**
-   * Whether to run `dnf check-update` before installation.
+   * Whether to run `dnf makecache` before installation.
    */
   refresh?: boolean;
 }
 
 /**
- * Where the macOS `.dmg` / `.pkg` installers obtain their artifact. A "url" source
- * downloads a fixed address; a "github-release" source resolves an asset from a
- * repository release.
+ * A macOS `.dmg` / `.pkg` artifact downloaded from a fixed address.
  */
-export interface IMacInstallSource {
+export interface IMacUrlSource {
+  type: "url";
   /**
-   * Selects how the artifact is located. Anything other than "github-release" is
-   * treated as a direct URL.
+   * Direct HTTP/HTTPS URL of the artifact, or of an archive containing it.
    */
-  type?: "url" | "github-release";
+  url: string;
+}
+
+/**
+ * A macOS `.dmg` / `.pkg` artifact resolved from a GitHub release.
+ */
+export interface IMacGithubReleaseSource {
+  type: "github-release";
   /**
-   * Direct HTTP/HTTPS URL, for the "url" source type.
+   * GitHub repository in "owner/repo" format.
    */
-  url?: string;
-  /**
-   * GitHub repository in "owner/repo" format, for the "github-release" source type.
-   */
-  repo?: string;
+  repo: string;
   /**
    * Release tag to install. Defaults to the latest release.
    */
@@ -517,26 +549,30 @@ export interface IMacInstallSource {
   /**
    * Glob or regex pattern selecting the release asset.
    */
-  assetPattern?: string;
-  /**
-   * Pattern used to choose between assets when assetPattern matches several.
-   */
-  assetSelector?: string;
+  assetPattern?: string | RegExp;
 }
+
+/**
+ * Where the macOS `.dmg` / `.pkg` installers obtain their artifact.
+ */
+export type MacInstallSource = IMacUrlSource | IMacGithubReleaseSource;
 
 /**
  * Parameters for macOS PKG package installer.
  */
 export interface IPkgInstallParams extends ICommonInstallParams {
   /**
-   * Direct HTTP/HTTPS URL to the macOS `.pkg` package file. Provide this or
-   * `source`.
+   * Where to obtain the package.
    */
-  url?: string;
+  source: MacInstallSource;
   /**
-   * Where to obtain the package, when it is not a fixed URL.
+   * Target volume for `installer -target`. Defaults to "/".
    */
-  source?: IMacInstallSource;
+  target?: string;
+  /**
+   * GitHub API token used when the source is a GitHub release.
+   */
+  token?: string;
 }
 
 /**
@@ -544,18 +580,27 @@ export interface IPkgInstallParams extends ICommonInstallParams {
  */
 export interface IDmgInstallParams extends ICommonInstallParams {
   /**
-   * Direct HTTP/HTTPS URL to the macOS `.dmg` disk image. Provide this or
-   * `source`.
+   * Where to obtain the disk image.
    */
-  url?: string;
+  source: MacInstallSource;
   /**
-   * Where to obtain the disk image, when it is not a fixed URL.
+   * Name of the `.app` bundle inside the disk image (e.g. "MyApp.app"). Defaults to
+   * the first `.app` found, then to `<toolName>.app`.
    */
-  source?: IMacInstallSource;
+  appName?: string;
   /**
-   * Name of the `.app` bundle or binary inside the disk image to copy.
+   * Name of the executable inside `Contents/MacOS` of the bundle. Defaults to the tool name.
    */
-  appName: string;
+  binaryName?: string;
+  /**
+   * Path of the executable relative to the `.app` bundle, when it is not
+   * `Contents/MacOS/<binaryName>`.
+   */
+  binaryPath?: string;
+  /**
+   * GitHub API token used when the source is a GitHub release.
+   */
+  token?: string;
 }
 
 /**
@@ -567,10 +612,9 @@ export interface INpmInstallParams extends ICommonInstallParams {
    */
   package?: string;
   /**
-   * Package manager used to perform the install (e.g. "npm", "bun", "pnpm").
-   * Defaults to "npm".
+   * Package manager used to perform the install. Defaults to "npm".
    */
-  packageManager?: string;
+  packageManager?: "npm" | "bun";
   /**
    * Target package version. Defaults to the latest published version.
    */
@@ -586,7 +630,7 @@ export interface INpmInstallParams extends ICommonInstallParams {
  */
 export interface IZshPluginInstallParams extends ICommonInstallParams {
   /**
-   * GitHub or Gitea repository path (e.g. "zsh-users/zsh-autosuggestions").
+   * GitHub repository path (e.g. "zsh-users/zsh-autosuggestions").
    */
   repo?: string;
   /**
@@ -594,13 +638,14 @@ export interface IZshPluginInstallParams extends ICommonInstallParams {
    */
   url?: string;
   /**
-   * Name of the plugin directory/file.
+   * Name of the plugin directory. Defaults to the repository name.
    */
   pluginName?: string;
   /**
-   * Automatically clone and activate plugin during generation.
+   * File to source, relative to the plugin directory, when the plugin does not follow
+   * the standard `<pluginName>.plugin.zsh` naming.
    */
-  auto?: boolean;
+  source?: string;
 }
 
 /**
@@ -608,9 +653,9 @@ export interface IZshPluginInstallParams extends ICommonInstallParams {
  */
 export interface IGiteaReleaseInstallParams extends ICommonInstallParams {
   /**
-   * Gitea host or instance URL.
+   * Gitea instance base URL (e.g. "https://codeberg.org").
    */
-  host?: string;
+  instanceUrl: string;
   /**
    * Repository path (owner/repo).
    */
@@ -620,9 +665,9 @@ export interface IGiteaReleaseInstallParams extends ICommonInstallParams {
    */
   assetPattern?: string | RegExp;
   /**
-   * Gitea instance base URL.
+   * API token used to authenticate with the instance.
    */
-  instanceUrl: string;
+  token?: string;
 }
 
 /**
@@ -634,17 +679,17 @@ export interface ICurlTarInstallParams extends ICommonInstallParams {
    */
   url: string;
   /**
-   * Subdirectory path inside the archive containing binaries.
+   * Expected SHA-256 checksum of the downloaded archive.
    */
-  binDir?: string;
+  sha256?: string;
   /**
    * CLI flags passed to detect binary version (e.g. "--version").
    */
-  versionArgs?: string | string[];
+  versionArgs?: VersionArgs;
   /**
    * Regular expression pattern to extract version from output.
    */
-  versionRegex?: string | RegExp;
+  versionRegex?: VersionRegex;
 }
 
 /**
@@ -656,17 +701,26 @@ export interface ICurlScriptInstallParams extends ICommonInstallParams {
    */
   url: string;
   /**
-   * Interpreter command to execute the script (e.g. "bash", "sh", "zsh").
+   * Interpreter the script runs with. Defaults to "sh".
    */
-  shell?: string;
+  shell?: "bash" | "sh";
   /**
-   * Arguments passed to the installer script.
+   * Arguments passed to the installer script. `{stagingDir}` inside an argument is
+   * replaced with the staging directory.
    */
-  args?: string[] | Resolvable<IToolConfigContext, string[]>;
+  args?: Resolvable<IToolConfigContext, string[]>;
   /**
-   * Environment variables passed to the installer script execution.
+   * Environment variables set for the installer script.
    */
-  env?: Record<string, string>;
+  env?: Resolvable<IToolConfigContext, Record<string, string>>;
+  /**
+   * CLI flags passed to detect binary version (e.g. "--version").
+   */
+  versionArgs?: VersionArgs;
+  /**
+   * Regular expression pattern to extract version from output.
+   */
+  versionRegex?: VersionRegex;
 }
 
 /**
@@ -677,6 +731,18 @@ export interface ICurlBinaryInstallParams extends ICommonInstallParams {
    * Direct HTTP/HTTPS URL to the executable binary.
    */
   url: string;
+  /**
+   * Expected SHA-256 checksum of the downloaded binary.
+   */
+  sha256?: string;
+  /**
+   * CLI flags passed to detect binary version (e.g. "--version").
+   */
+  versionArgs?: VersionArgs;
+  /**
+   * Regular expression pattern to extract version from output.
+   */
+  versionRegex?: VersionRegex;
 }
 
 /**
@@ -696,19 +762,16 @@ export interface IGithubReleaseInstallParams extends ICommonInstallParams {
    */
   assetPattern?: string | RegExp;
   /**
-   * Enable `gh` CLI fallback on GitHub API rate limits.
+   * Fetch release metadata through the `gh` CLI instead of the GitHub API.
    */
   ghCli?: boolean;
   /**
-   * GitHub API token used to authenticate release and asset requests.
+   * GitHub API token used to authenticate release and asset requests. Defaults to
+   * `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment.
    */
   token?: string;
   /**
    * Include prerelease versions when resolving the latest release.
-   *
-   * NOTE: not yet honoured by the installer, which resolves "latest" through the
-   * GitHub `releases/latest` endpoint. That endpoint excludes prereleases, so a
-   * repository publishing only prereleases currently cannot be resolved.
    */
   prerelease?: boolean;
 }
@@ -769,10 +832,26 @@ export interface IPathModule {
   basename(p: string): string;
 }
 
-export interface ISystemInfo {
-  os: string;
-  arch: string;
-  libc: string;
+/**
+ * Where a shell completion file comes from. Completions are generated after the tool
+ * is installed, so `cmd` can run the installed binary.
+ */
+export interface ICompletionsConfig {
+  /**
+   * Command whose standard output is written as the completion file. Its first word is
+   * resolved against the tool's installed binaries, never against PATH.
+   */
+  cmd?: string;
+  /**
+   * Existing completion file, relative to the tool directory or absolute. Ignored when
+   * `cmd` is set.
+   */
+  source?: string;
+  /**
+   * Binary the completion is for, when it differs from the tool name. Names the
+   * generated file (`_<bin>` for zsh).
+   */
+  bin?: string;
 }
 
 export type ShellCallback = (shell: IShellConfigurator) => void;
@@ -823,14 +902,10 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
    */
   path(pathValue: Resolvable<void, string>): this;
   /**
-   * Configures shell completions from static files, URL downloads, or generated dynamically.
+   * Configures shell completions from a completion file or from a command's output. A
+   * string is a file path, relative to the tool directory or absolute.
    */
-  completions(
-    completions:
-      | string
-      | Resolvable<void, unknown>
-      | { bin?: string; value?: string; cmd?: string; source?: string; url?: string },
-  ): this;
+  completions(completions: string | ICompletionsConfig): this;
   /**
    * Sources a script file during shell initialization.
    */
@@ -846,13 +921,34 @@ export interface IShellConfigurator<KnownFunctions extends string = never> {
 }
 
 /**
- * Context provided to lifecycle hook handlers.
+ * Lifecycle events an installation emits, in the order it reaches them. Registering
+ * any other name is rejected when the configuration is read.
+ */
+export type HookEvent = "before-install" | "after-download" | "after-extract" | "after-install";
+
+/**
+ * Runs a shell command from a hook. Available only to hooks: configuration is evaluated
+ * on every CLI invocation, so a tool factory must not be able to execute anything.
+ */
+export type HookShell = (strings: ShellStrings, ...values: unknown[]) => IShellPromise;
+
+/**
+ * Context provided to lifecycle hook handlers. Every event receives the same type;
+ * the members an event does not provide are `undefined`.
  */
 export interface IHookContext extends IToolConfigContext {
   /**
    * Temporary installation directory the installer stages into.
    */
   stagingDir: string;
+  /**
+   * Path of the fetched asset. Only `after-download` provides it.
+   */
+  downloadPath?: string;
+  /**
+   * Directory the archive was unpacked into. Only `after-extract` provides it.
+   */
+  extractDir?: string;
   /**
    * Stable directory the installed tool now occupies. Only `after-install` provides
    * it; before the install completes there is nothing installed to point at.
@@ -868,15 +964,9 @@ export interface IHookContext extends IToolConfigContext {
    */
   version?: string;
   /**
-   * File operations. The same bindings as `fs` on the tool context, under the name
-   * hooks use.
+   * Runs a shell command from the directory holding the tool's `.tool.ts`.
    */
-  fileSystem: IFileSystem;
-  /**
-   * Runs a shell command. Available only to hooks: configuration is evaluated on every
-   * CLI invocation, so a tool factory must not be able to execute anything.
-   */
-  $: (strings: TemplateStringsArray | string[], ...values: unknown[]) => IShellPromise;
+  $: HookShell;
 }
 
 /**
@@ -885,7 +975,7 @@ export interface IHookContext extends IToolConfigContext {
  */
 export interface IShellPromise extends PromiseLike<IShellOutput> {
   /**
-   * Suppresses echoing the command before it runs.
+   * Suppresses echoing the command and its output.
    */
   quiet(): IShellPromise;
   /**
@@ -988,9 +1078,9 @@ export interface IToolConfigBuilder {
    */
   arch(arc: Architecture, cb: ArchCallback): this;
   /**
-   * Registers custom lifecycle hooks.
+   * Registers a lifecycle hook.
    */
-  hook(event: string, handler: HookHandler): this;
+  hook(event: HookEvent, handler: HookHandler): this;
 }
 
 /**
@@ -1056,9 +1146,9 @@ export interface IPlatformConfigBuilder {
    */
   powershell(cb: ShellCallback): this;
   /**
-   * Registers an async hook handler on this platform.
+   * Registers a lifecycle hook on this platform.
    */
-  hook(event: string, handler: HookHandler): this;
+  hook(event: HookEvent, handler: HookHandler): this;
 }
 
 /**

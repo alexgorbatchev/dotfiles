@@ -114,7 +114,7 @@ ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
 
 ## Common Mistakes
 
-```typescript
+```typescript builder
 // ❌ Hardcoded paths
 .symlink('./config', '/home/user/.config/tool')
 
@@ -122,17 +122,17 @@ ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
 .symlink('./config', '~/.config/tool')
 
 // ❌ Shell variable references
-.always(`source $DOTFILES/init.zsh`)
+.zsh((shell) => shell.always(`source $DOTFILES/init.zsh`))
 
 // ✅ Use context
-.always(`source "${ctx.currentDir}/init.zsh"`)
+.zsh((shell) => shell.always(`source "${ctx.currentDir}/init.zsh"`))
 ```
 
 ## Cross-Platform
 
 Always use forward slashes - context variables handle platform differences:
 
-```typescript
+```typescript builder
 // Works on all platforms
 .symlink('./config.toml', '~/.config/tool/config.toml')
 ```

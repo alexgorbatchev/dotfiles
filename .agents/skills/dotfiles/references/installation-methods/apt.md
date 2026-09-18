@@ -31,7 +31,7 @@ export default defineTool((install) =>
 
 ### Exact Version
 
-```typescript
+```typescript body
 install("apt", {
   package: "ripgrep",
   version: "13.0.0-1",
@@ -40,7 +40,7 @@ install("apt", {
 
 ### Refresh Package Lists First
 
-```typescript
+```typescript body
 install("apt", {
   package: "ripgrep",
   update: true,
