@@ -7,7 +7,6 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/scaffold"
-	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +27,7 @@ Existing files are left untouched unless --force is passed.`,
 		}
 		defer services.Close()
 
-		dirs := vm.ResolveToolConfigsDirs(services.FS, services.ProjectConfig, filepath.Dir(services.ConfigPath))
+		dirs := services.ProjectConfig.Paths.GetToolConfigsDirs()
 		if len(dirs) == 0 {
 			return fmt.Errorf("no tool configs directory is configured")
 		}

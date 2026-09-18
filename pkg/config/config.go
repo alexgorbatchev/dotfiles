@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -43,52 +41,41 @@ type PathsConfig struct {
 	BinariesDir     string      `json:"binariesDir" yaml:"binariesDir"`
 }
 
-// GetToolConfigsDirs returns all tool configuration directory paths.
-// Supports ToolConfigsDir configured as a string or []string / []interface{}.
+// GetToolConfigsDirs returns every configured tool configuration directory, whether the
+// setting was written as a string or as a list. On a configuration that has been through
+// ResolvePlaceholders these are absolute directories ready to scan, including the default
+// that ResolvePlaceholders fills in; on a raw one they are whatever the configuration
+// declared, which may be empty.
 func (p PathsConfig) GetToolConfigsDirs() []string {
-	if p.ToolConfigsDir == nil {
-		return []string{"{configFileDir}/tools"}
-	}
+	var entries []interface{}
 	switch v := p.ToolConfigsDir.(type) {
 	case string:
-		if v == "" {
-			return []string{"{configFileDir}/tools"}
-		}
-		return []string{v}
+		entries = []interface{}{v}
 	case []string:
-		var res []string
 		for _, s := range v {
-			if s != "" {
-				res = append(res, s)
-			}
+			entries = append(entries, s)
 		}
-		if len(res) == 0 {
-			return []string{"{configFileDir}/tools"}
-		}
-		return res
 	case []interface{}:
-		var res []string
-		for _, item := range v {
-			if s, ok := item.(string); ok && s != "" {
-				res = append(res, s)
-			}
-		}
-		if len(res) == 0 {
-			return []string{"{configFileDir}/tools"}
-		}
-		return res
-	default:
-		return []string{"{configFileDir}/tools"}
+		entries = v
 	}
+
+	var dirs []string
+	for _, entry := range entries {
+		if s, ok := entry.(string); ok && s != "" {
+			dirs = append(dirs, s)
+		}
+	}
+	return dirs
 }
 
-// GetPrimaryToolConfigsDir returns the primary tool configuration directory path as a string.
+// GetPrimaryToolConfigsDir returns the tool configuration directory the CLI writes to,
+// or "" when the configuration names none.
 func (p PathsConfig) GetPrimaryToolConfigsDir() string {
 	dirs := p.GetToolConfigsDirs()
-	if len(dirs) > 0 {
-		return dirs[0]
+	if len(dirs) == 0 {
+		return ""
 	}
-	return "{configFileDir}/tools"
+	return dirs[0]
 }
 
 // SystemConfig defines system elevation settings.
@@ -176,75 +163,6 @@ func (p *ProjectConfig) Validate() error {
 		return fmt.Errorf("paths.targetDir is required")
 	}
 	return nil
-}
-
-// ResolvePlaceholders fills in the default of every path setting that the
-// configuration left out and resolves the path template variables the remaining
-// ones use. configFileDir is the directory holding the configuration file, which
-// is what paths.dotfilesDir defaults to: a configuration that sets no paths keeps
-// everything the CLI writes beside the file that declares it instead of in
-// whatever directory the command happened to run from.
-func (p *ProjectConfig) ResolvePlaceholders(configFileDir string) {
-	if p == nil {
-		return
-	}
-	if p.Paths.HomeDir == "" {
-		if uHome, err := os.UserHomeDir(); err == nil {
-			p.Paths.HomeDir = uHome
-		}
-	}
-	if p.Paths.DotfilesDir == "" {
-		p.Paths.DotfilesDir = configFileDir
-	}
-	genDir := p.Paths.GeneratedDir
-	if genDir == "" {
-		genDir = filepath.Join(p.Paths.DotfilesDir, ".generated")
-		p.Paths.GeneratedDir = genDir
-	}
-
-	replaceGenDir := func(s string) string {
-		if strings.Contains(s, "{paths.generatedDir}") {
-			return strings.ReplaceAll(s, "{paths.generatedDir}", genDir)
-		}
-		return s
-	}
-
-	p.Paths.HomeDir = replaceGenDir(p.Paths.HomeDir)
-	p.Paths.DotfilesDir = replaceGenDir(p.Paths.DotfilesDir)
-	p.Paths.TargetDir = replaceGenDir(p.Paths.TargetDir)
-	p.Paths.BinariesDir = replaceGenDir(p.Paths.BinariesDir)
-	p.Paths.ShellScriptsDir = replaceGenDir(p.Paths.ShellScriptsDir)
-
-	switch v := p.Paths.ToolConfigsDir.(type) {
-	case string:
-		p.Paths.ToolConfigsDir = replaceGenDir(v)
-	case []string:
-		var norm []string
-		for _, s := range v {
-			norm = append(norm, replaceGenDir(s))
-		}
-		p.Paths.ToolConfigsDir = norm
-	case []interface{}:
-		var norm []interface{}
-		for _, s := range v {
-			if str, ok := s.(string); ok {
-				norm = append(norm, replaceGenDir(str))
-			} else {
-				norm = append(norm, s)
-			}
-		}
-		p.Paths.ToolConfigsDir = norm
-	}
-
-	if p.Paths.BinariesDir == "" {
-		p.Paths.BinariesDir = filepath.Join(p.Paths.GeneratedDir, "binaries")
-	}
-	if p.Paths.ShellScriptsDir == "" {
-		p.Paths.ShellScriptsDir = filepath.Join(p.Paths.GeneratedDir, "shell-scripts")
-	}
-	if p.Paths.TargetDir == "" {
-		p.Paths.TargetDir = filepath.Join(p.Paths.GeneratedDir, "bin")
-	}
 }
 
 // BinaryConfig defines settings for pattern-based binary execution detection.

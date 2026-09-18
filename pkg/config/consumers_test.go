@@ -78,7 +78,7 @@ var projectConfigConsumers = map[string]string{
 	"paths.dotfilesDir":     "ProjectConfig.ResolvePlaceholders, the root generatedDir hangs off",
 	"paths.targetDir":       "orchestrator shim generation",
 	"paths.generatedDir":    "every path the CLI writes, including the registry database",
-	"paths.toolConfigsDir":  "PathsConfig.GetToolConfigsDirs and vm.ResolveToolConfigsDirs",
+	"paths.toolConfigsDir":  "PathsConfig.GetToolConfigsDirs, resolved by ProjectConfig.ResolvePlaceholders",
 	"paths.shellScriptsDir": "shellinit script generation",
 	"paths.binariesDir":     "orchestrator install pipeline staging and promotion",
 

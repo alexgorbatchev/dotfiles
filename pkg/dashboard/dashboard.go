@@ -8,7 +8,6 @@ import (
 	iofs "io/fs"
 	"net"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -19,20 +18,20 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
-	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 //go:embed all:dist
 var assets embed.FS
 
-// toolConfigsDirs resolves the configured tool-config directories through the same helper the
-// config loader uses, so the dashboard agrees with the CLI on placeholders, tilde paths and
-// directories given relative to the config file.
+// toolConfigsDirs returns the tool-config directories of the loaded configuration. The
+// loader resolved placeholders, tilde paths and directories given relative to the config
+// file before handing the configuration over, so the dashboard reads the same absolute
+// directories the CLI scans.
 func (s *Server) toolConfigsDirs() []string {
 	if s.projectConfig == nil {
 		return nil
 	}
-	return vm.ResolveToolConfigsDirs(s.fsys, s.projectConfig, filepath.Dir(s.configPath))
+	return s.projectConfig.Paths.GetToolConfigsDirs()
 }
 
 // LogBroadcaster manages active log subscriptions.

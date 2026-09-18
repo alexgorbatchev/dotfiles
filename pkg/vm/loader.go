@@ -128,10 +128,12 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// Resolve path placeholders and defaults once, here, so tool discovery, the values
 	// handed to the JS VM, and the config the caller receives all agree instead of each
 	// re-deriving them from the raw config.
-	projCfg.ResolvePlaceholders(configFileDir)
+	if err := projCfg.ResolvePlaceholders(configFileDir); err != nil {
+		return nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+	}
 
-	// Step 2: Resolve the ToolConfigsDir(s) and scan for *.tool.ts files
-	resolvedDirs := ResolveToolConfigsDirs(fsys, projCfg, configFileDir)
+	// Step 2: Scan the resolved ToolConfigsDir(s) for *.tool.ts files
+	resolvedDirs := projCfg.Paths.GetToolConfigsDirs()
 
 	var toolFiles []string
 	seenFiles := make(map[string]bool)
@@ -181,35 +183,15 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// is the first point at which a required setting can be reported as missing rather
 	// than silently resolved against the working directory.
 	if fullConfig.ProjectConfig != nil {
-		fullConfig.ProjectConfig.ResolvePlaceholders(configFileDir)
+		if err := fullConfig.ProjectConfig.ResolvePlaceholders(configFileDir); err != nil {
+			return nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+		}
 		if err := fullConfig.ProjectConfig.Validate(); err != nil {
 			return nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
 		}
 	}
 
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil
-}
-
-// ResolveToolConfigsDirs returns every configured tool configurations directory as an
-// absolute path, expanding {configFileDir} and anchoring relative entries to it. The
-// first entry is the primary directory. Callers that need to agree with the loader on
-// where tool configurations live must use this rather than reading Paths.ToolConfigsDir
-// directly, which may hold placeholders, relative paths, a string or a list.
-func ResolveToolConfigsDirs(fsys fs.FS, projCfg *config.ProjectConfig, configFileDir string) []string {
-	rawDirs := projCfg.Paths.GetToolConfigsDirs()
-	resolved := make([]string, 0, len(rawDirs))
-	for _, rawDir := range rawDirs {
-		dir := strings.ReplaceAll(rawDir, "{configFileDir}", configFileDir)
-		if fsys.IsAbs(dir) {
-			if abs, err := fsys.Abs(dir); err == nil {
-				dir = abs
-			}
-		} else {
-			dir = filepath.Join(configFileDir, dir)
-		}
-		resolved = append(resolved, dir)
-	}
-	return resolved
 }
 
 func compileFile(entryPath string) (string, error) {

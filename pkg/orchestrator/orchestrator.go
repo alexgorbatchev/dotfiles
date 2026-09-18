@@ -637,7 +637,7 @@ func (o *Orchestrator) writeTypeCheckProgram(projCfg *config.ProjectConfig, decl
 
 	program := typecheck.Program{
 		Dir:             projCfg.Paths.GeneratedDir,
-		ToolConfigsDirs: vm.ResolveToolConfigsDirs(o.fs, projCfg, filepath.Dir(configFile)),
+		ToolConfigsDirs: projCfg.Paths.GetToolConfigsDirs(),
 		DeclarationsDir: declarationsDir,
 		RegistryFile:    registryFile,
 	}

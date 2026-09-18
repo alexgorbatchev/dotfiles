@@ -66,8 +66,13 @@ names the setting.
 
 ### paths
 
-Where everything the CLI manages lives. A `~` is expanded, and `{paths.generatedDir}`
-may be used inside the other values.
+Where everything the CLI manages lives. A value may be written in terms of another one
+with a `{paths.<setting>}` placeholder, of the directory holding the configuration file
+with `{configFileDir}`, or of the home directory with `{HOME}`; a placeholder nothing can
+fill aborts the load rather than becoming part of a directory name. A `~` is expanded
+afterwards, and a value that is still relative is resolved against the directory of the
+configuration file, so the same configuration describes the same layout whichever
+directory the command was run from.
 
 | Key               | Default                         | Effect                                                                     |
 | ----------------- | ------------------------------- | -------------------------------------------------------------------------- |

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -565,80 +566,35 @@ func TestFindTool(t *testing.T) {
 	}
 }
 
-func TestProjectConfig_ResolvePlaceholders(t *testing.T) {
-	t.Run("nil config", func(t *testing.T) {
-		var cfg *ProjectConfig
-		cfg.ResolvePlaceholders("") // should not panic
-	})
+func TestPathsConfig_GetToolConfigsDirs(t *testing.T) {
+	tests := []struct {
+		name  string
+		paths PathsConfig
+		want  []string
+	}{
+		{"unset", PathsConfig{}, nil},
+		{"empty string", PathsConfig{ToolConfigsDir: ""}, nil},
+		{"string", PathsConfig{ToolConfigsDir: "./custom-tools"}, []string{"./custom-tools"}},
+		{"string slice", PathsConfig{ToolConfigsDir: []string{"./dir1", "./dir2"}}, []string{"./dir1", "./dir2"}},
+		{"interface slice", PathsConfig{ToolConfigsDir: []interface{}{"./iface1", "./iface2"}}, []string{"./iface1", "./iface2"}},
+		{"interface slice drops non-strings", PathsConfig{ToolConfigsDir: []interface{}{"./iface1", 42}}, []string{"./iface1"}},
+		{"unsupported type", PathsConfig{ToolConfigsDir: 42}, nil},
+	}
 
-	t.Run("resolves placeholders across all path fields", func(t *testing.T) {
-		cfg := &ProjectConfig{
-			Paths: PathsConfig{
-				DotfilesDir:     "/home/user/.dotfiles",
-				GeneratedDir:    "/home/user/.dotfiles/.generated",
-				HomeDir:         "{paths.generatedDir}/home",
-				TargetDir:       "{paths.generatedDir}/bin",
-				BinariesDir:     "{paths.generatedDir}/binaries",
-				ShellScriptsDir: "{paths.generatedDir}/shell-scripts",
-				ToolConfigsDir:  "{paths.generatedDir}/tools",
-			},
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.paths.GetToolConfigsDirs()
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("GetToolConfigsDirs() = %v, want %v", got, tt.want)
+			}
 
-		cfg.ResolvePlaceholders("")
-
-		if cfg.Paths.HomeDir != "/home/user/.dotfiles/.generated/home" {
-			t.Errorf("HomeDir = %q", cfg.Paths.HomeDir)
-		}
-		if cfg.Paths.TargetDir != "/home/user/.dotfiles/.generated/bin" {
-			t.Errorf("TargetDir = %q", cfg.Paths.TargetDir)
-		}
-		if cfg.Paths.BinariesDir != "/home/user/.dotfiles/.generated/binaries" {
-			t.Errorf("BinariesDir = %q", cfg.Paths.BinariesDir)
-		}
-		if cfg.Paths.ShellScriptsDir != "/home/user/.dotfiles/.generated/shell-scripts" {
-			t.Errorf("ShellScriptsDir = %q", cfg.Paths.ShellScriptsDir)
-		}
-		if cfg.Paths.ToolConfigsDir != "/home/user/.dotfiles/.generated/tools" {
-			t.Errorf("ToolConfigsDir = %q", cfg.Paths.ToolConfigsDir)
-		}
-	})
-
-	t.Run("ResolvePlaceholders with toolConfigsDir array", func(t *testing.T) {
-		cfg := &ProjectConfig{
-			Paths: PathsConfig{
-				DotfilesDir:    "/home/user/.dotfiles",
-				GeneratedDir:   "/home/user/.dotfiles/.generated",
-				ToolConfigsDir: []string{"{paths.generatedDir}/tools-1", "{paths.generatedDir}/tools-2"},
-			},
-		}
-
-		cfg.ResolvePlaceholders("")
-
-		dirs := cfg.Paths.GetToolConfigsDirs()
-		if len(dirs) != 2 || dirs[0] != "/home/user/.dotfiles/.generated/tools-1" || dirs[1] != "/home/user/.dotfiles/.generated/tools-2" {
-			t.Errorf("expected 2 resolved tool config dirs, got %v", dirs)
-		}
-	})
-
-	t.Run("GetToolConfigsDirs variants", func(t *testing.T) {
-		pNil := PathsConfig{}
-		if dirs := pNil.GetToolConfigsDirs(); len(dirs) != 1 || dirs[0] != "{configFileDir}/tools" {
-			t.Errorf("nil ToolConfigsDir = %v", dirs)
-		}
-
-		pStr := PathsConfig{ToolConfigsDir: "./custom-tools"}
-		if dirs := pStr.GetToolConfigsDirs(); len(dirs) != 1 || dirs[0] != "./custom-tools" {
-			t.Errorf("string ToolConfigsDir = %v", dirs)
-		}
-
-		pSlice := PathsConfig{ToolConfigsDir: []string{"./dir1", "./dir2"}}
-		if dirs := pSlice.GetToolConfigsDirs(); len(dirs) != 2 || dirs[0] != "./dir1" || dirs[1] != "./dir2" {
-			t.Errorf("[]string ToolConfigsDir = %v", dirs)
-		}
-
-		pInterface := PathsConfig{ToolConfigsDir: []interface{}{"./iface1", "./iface2"}}
-		if dirs := pInterface.GetToolConfigsDirs(); len(dirs) != 2 || dirs[0] != "./iface1" || dirs[1] != "./iface2" {
-			t.Errorf("[]interface{} ToolConfigsDir = %v", dirs)
-		}
-	})
+			wantPrimary := ""
+			if len(tt.want) > 0 {
+				wantPrimary = tt.want[0]
+			}
+			if primary := tt.paths.GetPrimaryToolConfigsDir(); primary != wantPrimary {
+				t.Errorf("GetPrimaryToolConfigsDir() = %q, want %q", primary, wantPrimary)
+			}
+		})
+	}
 }

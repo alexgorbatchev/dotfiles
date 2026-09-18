@@ -216,11 +216,15 @@ func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
 		Entries []treeEntry `json:"entries"`
 	}
 
-	fetchRootsFrom := func(t *testing.T, configPath string, toolConfigsDir interface{}) []treeRoot {
+	// The dashboard is handed a loaded configuration, whose paths the loader has already
+	// resolved, so the fixture resolves its configuration the same way before serving it.
+	fetchRootsFrom := func(t *testing.T, configPath string, paths config.PathsConfig) []treeRoot {
 		t.Helper()
-		server := NewServer(log, "127.0.0.1", 0, nil, testFS(), configPath, &config.ProjectConfig{
-			Paths: config.PathsConfig{ToolConfigsDir: toolConfigsDir},
-		}, nil, nil)
+		projCfg := &config.ProjectConfig{Paths: paths}
+		if err := projCfg.ResolvePlaceholders(filepath.Dir(configPath)); err != nil {
+			t.Fatalf("resolving paths: %v", err)
+		}
+		server := NewServer(log, "127.0.0.1", 0, nil, testFS(), configPath, projCfg, nil, nil)
 
 		recorder := httptest.NewRecorder()
 		server.handleToolConfigsTree(recorder, httptest.NewRequest("GET", "/api/tool-configs-tree", nil))
@@ -242,7 +246,7 @@ func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
 
 	fetchRoots := func(t *testing.T, toolConfigsDir interface{}) []treeRoot {
 		t.Helper()
-		return fetchRootsFrom(t, "", toolConfigsDir)
+		return fetchRootsFrom(t, "", config.PathsConfig{ToolConfigsDir: toolConfigsDir})
 	}
 
 	t.Run("single root reports its own path and flat entries", func(t *testing.T) {
@@ -297,14 +301,15 @@ func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
 		}
 	})
 
-	// Resolution goes through vm.ResolveToolConfigsDirs, the same helper the config loader uses,
-	// so these placeholder and tilde forms have to behave here exactly as they do in the CLI.
+	// Resolution goes through ProjectConfig.ResolvePlaceholders, the same expansion the
+	// config loader runs, so these placeholder and tilde forms have to behave here
+	// exactly as they do in the CLI.
 	t.Run("resolves the configFileDir placeholder against the config file", func(t *testing.T) {
 		projectDir := t.TempDir()
 		writeTool(t, filepath.Join(projectDir, "tools"), "bat.tool.ts")
 		configPath := filepath.Join(projectDir, "dotfiles.config.ts")
 
-		roots := fetchRootsFrom(t, configPath, "{configFileDir}/tools")
+		roots := fetchRootsFrom(t, configPath, config.PathsConfig{ToolConfigsDir: "{configFileDir}/tools"})
 		if len(roots) != 1 {
 			t.Fatalf("expected one root, got %+v", roots)
 		}
@@ -318,7 +323,7 @@ func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
 		writeTool(t, filepath.Join(projectDir, "tools"), "bat.tool.ts")
 		configPath := filepath.Join(projectDir, "dotfiles.config.ts")
 
-		roots := fetchRootsFrom(t, configPath, "tools")
+		roots := fetchRootsFrom(t, configPath, config.PathsConfig{ToolConfigsDir: "tools"})
 		if len(roots) != 1 {
 			t.Fatalf("expected one root, got %+v", roots)
 		}
@@ -329,10 +334,12 @@ func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
 
 	t.Run("expands a tilde directory against the home directory", func(t *testing.T) {
 		home := t.TempDir()
-		t.Setenv("HOME", home)
 		writeTool(t, filepath.Join(home, ".dotfiles-tilde-tools"), "bat.tool.ts")
 
-		roots := fetchRootsFrom(t, filepath.Join(home, "dotfiles.config.ts"), "~/.dotfiles-tilde-tools")
+		roots := fetchRootsFrom(t, filepath.Join(home, "dotfiles.config.ts"), config.PathsConfig{
+			HomeDir:        home,
+			ToolConfigsDir: "~/.dotfiles-tilde-tools",
+		})
 		if len(roots) != 1 {
 			t.Fatalf("expected one root, got %+v", roots)
 		}

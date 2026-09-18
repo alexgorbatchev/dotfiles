@@ -66,7 +66,7 @@ var platformMatchKeys = []string{"os", "arch"}
 // than inline in validateProjectSection so that the accepted surface is one readable
 // table, and so that TestEveryAcceptedProjectKeyIsAccountedFor can walk it.
 var (
-	pathsKeys        = []string{"homeDir", "dotfilesDir", "targetDir", "generatedDir", "toolConfigsDir", "shellScriptsDir", "binariesDir"}
+	pathsKeys        = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir}
 	systemKeys       = []string{"sudoPrompt"}
 	loggingKeys      = []string{"debug"}
 	updatesKeys      = []string{"checkOnRun", "checkInterval"}
