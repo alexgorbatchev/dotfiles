@@ -49,6 +49,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Copy `defineConfig` patterns from `test-project/dotfiles.config.ts`.
 - Copy `.tool.ts` patterns from `test-project/tools/github-release--bat.tool.ts`.
 - Keep root `README.md` brief; point detailed documentation to the website or skills.
+- Document every public API in exactly one canonical page under `.agents/skills/dotfiles/references/`. Every other page that mentions it links to that page instead of restating parameters, tables, or option lists; a second copy of an API's surface is a defect, not redundancy.
 
 ## Shared boundaries
 
