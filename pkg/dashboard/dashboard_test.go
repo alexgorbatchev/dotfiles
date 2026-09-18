@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -457,9 +458,6 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 		if data["latestVersion"] != "1.1.0" {
 			t.Errorf("expected latestVersion '1.1.0', got %v", data["latestVersion"])
 		}
-		if data["supported"] != true {
-			t.Errorf("expected supported to be true, got %v", data["supported"])
-		}
 	})
 
 	t.Run("POST /api/tools/no-method-tool/check-update unsupported", func(t *testing.T) {
@@ -488,8 +486,8 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 			t.Fatalf("expected data to be a map, got %T", body["data"])
 		}
 
-		if data["supported"] != false {
-			t.Errorf("expected supported to be false, got %v", data["supported"])
+		if data["currentVersion"] != "unknown" || data["latestVersion"] != "unknown" {
+			t.Errorf("expected unknown versions for a tool without an installation method, got %v", data)
 		}
 	})
 }
@@ -601,13 +599,6 @@ func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
 		})
 	})
 
-	// Populate shell scripts for handleShellIntegration
-	shellDir := filepath.Join(tempDir, ".generated", "shell-scripts")
-	_ = os.MkdirAll(shellDir, 0755)
-	_ = os.WriteFile(filepath.Join(shellDir, "main.zsh"), []byte("# zsh init"), 0644)
-	_ = os.WriteFile(filepath.Join(shellDir, "main.bash"), []byte("# bash init"), 0644)
-	_ = os.WriteFile(filepath.Join(shellDir, "main.ps1"), []byte("# ps1 init"), 0644)
-
 	toolPath := filepath.Join(tempDir, "bat.tool.ts")
 	_ = os.WriteFile(toolPath, []byte("// TS Tool"), 0644)
 
@@ -643,11 +634,8 @@ func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
 	defer server.Stop()
 
 	endpoints := []string{
-		"/api/stats",
 		"/api/health",
-		"/api/activity",
 		"/api/recent-tools",
-		"/api/shell",
 		"/api/tool-configs-tree",
 		"/api/tools/bat",
 		"/api/tools/bat/history",
@@ -682,12 +670,9 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 
 	// Test endpoints with nil dependencies
 	endpoints := []string{
-		"/api/stats",
 		"/api/config",
 		"/api/health",
-		"/api/activity",
 		"/api/recent-tools",
-		"/api/shell",
 		"/api/tool-configs-tree",
 		"/api/tools",
 		"/api/tools/nonexistent",
@@ -1245,4 +1230,186 @@ func TestFetchRemoteReadme(t *testing.T) {
 	if _, err := sFail.fetchRemoteReadme(ctx, "owner/fail-repo"); err == nil {
 		t.Errorf("expected error when both endpoints fail")
 	}
+}
+
+// TestRemovedEndpointsAreNotRegistered checks RegisterRoutes on a bare mux, because
+// Start adds a catch-all that answers every unknown path with the SPA's index.html.
+func TestRemovedEndpointsAreNotRegistered(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil)
+	mux := http.NewServeMux()
+	server.RegisterRoutes(mux)
+
+	for _, path := range []string{"/api/stats", "/api/activity", "/api/shell"} {
+		t.Run(path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("%s: status = %d, want 404 because no client calls it", path, rec.Code)
+			}
+		})
+	}
+}
+
+// assertExactKeys fails unless got has exactly the keys the TypeScript interface in
+// packages/dashboard/src/shared/types.ts declares for this response.
+func assertExactKeys(t *testing.T, label string, got map[string]any, want ...string) {
+	t.Helper()
+	keys := make([]string, 0, len(got))
+	for k := range got {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	slices.Sort(want)
+	if !slices.Equal(keys, want) {
+		t.Fatalf("%s keys = %v, want %v", label, keys, want)
+	}
+}
+
+func getJSONData(t *testing.T, method, url string) any {
+	t.Helper()
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		t.Fatalf("building %s %s: %v", method, url, err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("%s %s: %v", method, url, err)
+	}
+	defer resp.Body.Close()
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decoding %s %s: %v", method, url, err)
+	}
+	if body["success"] != true {
+		t.Fatalf("%s %s: success = %v, error = %v", method, url, body["success"], body["error"])
+	}
+	return body["data"]
+}
+
+func firstObject(t *testing.T, label string, list any) map[string]any {
+	t.Helper()
+	items, ok := list.([]any)
+	if !ok || len(items) == 0 {
+		t.Fatalf("%s: expected a non-empty array, got %#v", label, list)
+	}
+	obj, ok := items[0].(map[string]any)
+	if !ok {
+		t.Fatalf("%s: expected an object, got %T", label, items[0])
+	}
+	return obj
+}
+
+// TestResponsesDeclareOnlyWhatTheClientReads pins each response to the fields the
+// dashboard client actually reads, so the Go server and the TypeScript interfaces
+// describe the same shape and no dead payload travels over the wire.
+func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("connecting to db: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+	tempDir := t.TempDir()
+
+	toolPath := filepath.Join(tempDir, "bat.tool.ts")
+	if err := os.WriteFile(toolPath, []byte("// tool"), 0644); err != nil {
+		t.Fatalf("writing tool file: %v", err)
+	}
+	target := "/opt/bat/bin/bat"
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		if err := reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "bat",
+			OperationType: "symlink",
+			FilePath:      filepath.Join(tempDir, "bin", "bat"),
+			TargetPath:    &target,
+			FileType:      "symlink",
+			CreatedAt:     time.Now().UnixMilli() - 1000,
+			OperationID:   "op-symlink",
+		}); err != nil {
+			return err
+		}
+		return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    "bat",
+			Version:     "1.0.0",
+			InstallPath: "/opt/bat",
+			InstalledAt: time.Now().UnixMilli(),
+			BinaryPaths: `["/opt/bat/bin/bat"]`,
+		})
+	}); err != nil {
+		t.Fatalf("seeding registry: %v", err)
+	}
+
+	ver := "1.0.0"
+	toolConfigs := []*config.ToolConfig{
+		{Name: "bat", Version: &ver, InstallationMethod: "github-release", ConfigFilePath: toolPath},
+		{Name: "no-method-tool"},
+	}
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
+	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
+
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	if err := server.Start(); err != nil {
+		t.Fatalf("starting server: %v", err)
+	}
+	defer server.Stop()
+	base := fmt.Sprintf("http://127.0.0.1:%d", server.Port())
+
+	t.Run("tool detail files match IFileState", func(t *testing.T) {
+		detail, ok := getJSONData(t, http.MethodGet, base+"/api/tools/bat").(map[string]any)
+		if !ok {
+			t.Fatal("expected tool detail object")
+		}
+		file := firstObject(t, "files", detail["files"])
+		assertExactKeys(t, "files[0]", file, "filePath", "toolName", "fileType")
+	})
+
+	t.Run("history entries match IToolHistoryEntry", func(t *testing.T) {
+		history, ok := getJSONData(t, http.MethodGet, base+"/api/tools/bat/history").(map[string]any)
+		if !ok {
+			t.Fatal("expected history object")
+		}
+		entry := firstObject(t, "entries", history["entries"])
+		assertExactKeys(t, "entries[0]", entry, "id", "operationType", "fileType", "filePath", "relativeTime")
+	})
+
+	t.Run("recent tools match IRecentToolFile", func(t *testing.T) {
+		recent, ok := getJSONData(t, http.MethodGet, base+"/api/recent-tools").(map[string]any)
+		if !ok {
+			t.Fatal("expected recent tools object")
+		}
+		item := firstObject(t, "tools", recent["tools"])
+		assertExactKeys(t, "tools[0]", item, "name", "configFilePath", "relativeTime", "timestampSource")
+	})
+
+	t.Run("check-update matches ICheckUpdateResponse", func(t *testing.T) {
+		for _, tool := range []string{"bat", "no-method-tool"} {
+			data, ok := getJSONData(t, http.MethodPost, base+"/api/tools/"+tool+"/check-update").(map[string]any)
+			if !ok {
+				t.Fatalf("%s: expected check-update object", tool)
+			}
+			assertExactKeys(t, tool+" check-update", data, "hasUpdate", "currentVersion", "latestVersion")
+		}
+	})
+
+	t.Run("update matches IUpdateToolResponse", func(t *testing.T) {
+		data, ok := getJSONData(t, http.MethodPost, base+"/api/tools/bat/update").(map[string]any)
+		if !ok {
+			t.Fatal("expected update object")
+		}
+		assertExactKeys(t, "update", data, "updated")
+	})
 }

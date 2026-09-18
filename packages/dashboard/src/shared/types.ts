@@ -1,56 +1,12 @@
-import type { Platform, Architecture } from "./platform.types";
-
 export interface IBinaryConfig {
   name: string;
   pattern: string;
 }
 
-export interface IFileOperation {
-  id: number;
-  toolName: string;
-  operationType: "writeFile" | "chmod" | "rm" | "mkdir" | "symlink" | "rename" | "cp";
-  filePath: string;
-  targetPath?: string;
-  fileType: "shim" | "binary" | "symlink" | "copy" | "config" | "completion" | "init" | "hook-generated" | "catalog";
-  metadata?: Record<string, unknown>;
-  sizeBytes?: number;
-  permissions?: number;
-  createdAt: number;
-  operationId: string;
-}
-
 export interface IFileState {
   filePath: string;
   toolName: string;
-  fileType: IFileOperation["fileType"];
-  lastOperation: IFileOperation["operationType"];
-  targetPath?: string;
-  lastModified: number;
-  metadata?: Record<string, unknown>;
-  sizeBytes?: number;
-  permissions?: number;
-}
-
-export interface IToolInstallationRecord {
-  id: number;
-  toolName: string;
-  version: string;
-  installPath: string;
-  timestamp: string;
-  installedAt: Date;
-  binaryPaths: string[];
-  downloadUrl?: string;
-  assetName?: string;
-  configuredVersion?: string;
-  originalTag?: string;
-  installMethod?: string;
-}
-
-export interface ISystemInfo {
-  platform: Platform;
-  arch: Architecture;
-  homeDir: string;
-  hostname: string;
+  fileType: "shim" | "binary" | "symlink" | "copy" | "config" | "completion" | "init" | "hook-generated" | "catalog";
 }
 
 /**
@@ -74,8 +30,6 @@ export type SerializableBinary = string | IBinaryConfig;
 export interface ISerializableInstallParams {
   /** GitHub repository (github-release, zsh-plugin) */
   repo?: string;
-  /** Asset pattern (github-release) */
-  assetPattern?: string;
   /** Use GitHub CLI for downloads (github-release) */
   ghCli?: boolean;
   /** Crate name (cargo) */
@@ -87,18 +41,6 @@ export interface ISerializableInstallParams {
 }
 
 /**
- * Serializable symlink configuration.
- */
-export interface ISerializableSymlink {
-  source: string;
-  target: string;
-}
-
-/**
- * Serializable platform configuration entry.
- * Represents platform-specific overrides in a JSON-safe format.
- */
-/**
  * JSON-serializable tool configuration from .tool.ts files.
  * Contains static configuration, not runtime state.
  */
@@ -109,11 +51,7 @@ export interface ISerializableToolConfig {
   installParams?: ISerializableInstallParams;
   binaries?: SerializableBinary[];
   dependencies?: string[];
-  symlinks?: ISerializableSymlink[];
-  disabled?: boolean;
   hostname?: string;
-  configFilePath?: string;
-  /** Platform-specific configuration overrides */
 }
 
 /**
@@ -209,18 +147,6 @@ export interface IToolConfigsTree {
 }
 
 /**
- * Dashboard statistics for overview page.
- */
-export interface IDashboardStats {
-  toolsInstalled: number;
-  updatesAvailable: number;
-  filesTracked: number;
-  totalOperations: number;
-  oldestOperation: string | null;
-  newestOperation: string | null;
-}
-
-/**
  * Health check result for a single check.
  */
 export interface IHealthCheckResult {
@@ -240,13 +166,6 @@ export interface IHealthStatus {
 }
 
 /**
- * File operation for timeline display.
- */
-export interface IFileOperationDisplay extends IFileOperation {
-  formattedTime: string;
-}
-
-/**
  * Path configuration value which may be a single path string or an array of path strings.
  */
 export type ConfigPathValue = string | string[] | undefined;
@@ -260,45 +179,6 @@ export interface IConfigSummary {
   binariesDir: string;
   targetDir: string;
   toolConfigsDir: string | string[];
-}
-
-/**
- * Shell file info for shell integration view.
- */
-export interface IShellFile {
-  toolName: string;
-  filePath: string;
-  fileType: "completion" | "init";
-  lastModified: string;
-}
-
-/**
- * Shell integration summary.
- */
-export interface IShellIntegration {
-  completions: IShellFile[];
-  initScripts: IShellFile[];
-  totalFiles: number;
-}
-
-/**
- * Activity item for activity feed.
- */
-export interface IActivityItem {
-  id: number;
-  toolName: string;
-  action: string;
-  description: string;
-  timestamp: string;
-  relativeTime: string;
-}
-
-/**
- * Activity feed response.
- */
-export interface IActivityFeed {
-  activities: IActivityItem[];
-  totalCount: number;
 }
 
 /**
@@ -338,7 +218,6 @@ export interface IToolHistoryEntry {
   operationType: string;
   fileType: string;
   filePath: string;
-  timestamp: string;
   relativeTime: string;
 }
 
@@ -363,7 +242,6 @@ export type TimestampSource = "git" | "mtime";
 export interface IRecentToolFile {
   name: string;
   configFilePath: string;
-  createdAt: string;
   relativeTime: string;
   timestampSource: TimestampSource;
 }
@@ -422,8 +300,6 @@ export interface ICheckUpdateResponse {
   currentVersion: string;
   /** Latest available version */
   latestVersion: string;
-  /** Whether the plugin supports update checking */
-  supported: boolean;
   /** Error message when check fails */
   error?: string;
 }
@@ -438,8 +314,6 @@ export interface IUpdateToolResponse {
   oldVersion?: string;
   /** The new version after update */
   newVersion?: string;
-  /** Whether the plugin supports updating */
-  supported: boolean;
   /** Error message when update fails */
   error?: string;
 }

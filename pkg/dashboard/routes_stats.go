@@ -9,49 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
-
-// GET /api/stats
-func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if s.registry == nil {
-		writeJSON(w, false, nil, "Registry is not initialized")
-		return
-	}
-	stats, err := s.registry.GetStats(ctx)
-	if err != nil {
-		writeJSON(w, false, nil, "Failed to get database stats: "+err.Error())
-		return
-	}
-	installations, err := s.registry.GetAllToolInstallations(ctx)
-	if err != nil {
-		writeJSON(w, false, nil, "Failed to get installations: "+err.Error())
-		return
-	}
-
-	var oldestPtr *string
-	if stats.OldestOperation > 0 {
-		val := time.UnixMilli(stats.OldestOperation).UTC().Format(time.RFC3339)
-		oldestPtr = &val
-	}
-	var newestPtr *string
-	if stats.NewestOperation > 0 {
-		val := time.UnixMilli(stats.NewestOperation).UTC().Format(time.RFC3339)
-		newestPtr = &val
-	}
-
-	data := map[string]any{
-		"toolsInstalled":   len(installations),
-		"updatesAvailable": 0,
-		"filesTracked":     stats.TotalFiles,
-		"totalOperations":  stats.TotalOperations,
-		"oldestOperation":  oldestPtr,
-		"newestOperation":  newestPtr,
-	}
-	writeJSON(w, true, data, "")
-}
 
 // GET /api/health
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -202,49 +160,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, true, data, "")
 }
 
-// GET /api/activity
-func (s *Server) handleActivity(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if s.registry == nil {
-		writeJSON(w, false, nil, "Registry is not initialized")
-		return
-	}
-
-	limit := 20
-	if lStr := r.URL.Query().Get("limit"); lStr != "" {
-		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
-			limit = l
-		}
-	}
-
-	ops, err := s.registry.GetFileOperations(ctx, registry.FileOperationFilter{})
-	if err != nil {
-		writeJSON(w, false, nil, "Failed to get operations: "+err.Error())
-		return
-	}
-
-	activities := []map[string]any{}
-	for i, op := range ops {
-		if i >= limit {
-			break
-		}
-		activities = append(activities, map[string]any{
-			"id":           op.ID,
-			"toolName":     op.ToolName,
-			"action":       op.OperationType,
-			"description":  fmt.Sprintf("%s %s: %s", op.OperationType, op.FileType, op.FilePath),
-			"timestamp":    time.UnixMilli(op.CreatedAt).UTC().Format(time.RFC3339),
-			"relativeTime": formatRelativeTime(op.CreatedAt),
-		})
-	}
-
-	data := map[string]any{
-		"activities": activities,
-		"totalCount": len(ops),
-	}
-	writeJSON(w, true, data, "")
-}
-
 // GET /api/recent-tools
 func (s *Server) handleRecentTools(w http.ResponseWriter, r *http.Request) {
 	if s.projectConfig == nil {
@@ -279,10 +194,9 @@ func (s *Server) handleRecentTools(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type recentItem struct {
-		name      string
-		path      string
-		mtime     int64
-		createdAt string
+		name  string
+		path  string
+		mtime int64
 	}
 	items := []recentItem{}
 	for _, fp := range toolFiles {
@@ -294,10 +208,9 @@ func (s *Server) handleRecentTools(w http.ResponseWriter, r *http.Request) {
 		name = strings.TrimSuffix(name, ".tool.ts")
 		mtime := stat.ModTime().UnixMilli()
 		items = append(items, recentItem{
-			name:      name,
-			path:      fp,
-			mtime:     mtime,
-			createdAt: stat.ModTime().UTC().Format(time.RFC3339),
+			name:  name,
+			path:  fp,
+			mtime: mtime,
 		})
 	}
 
@@ -313,7 +226,6 @@ func (s *Server) handleRecentTools(w http.ResponseWriter, r *http.Request) {
 		tools = append(tools, map[string]any{
 			"name":            item.name,
 			"configFilePath":  item.path,
-			"createdAt":       item.createdAt,
 			"relativeTime":    formatRelativeTime(item.mtime),
 			"timestampSource": "mtime",
 		})

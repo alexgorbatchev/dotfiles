@@ -21,7 +21,6 @@ interface IFileTreeNodeData {
   path: string;
   type: "file" | "directory";
   fileType?: string;
-  lastOperation?: string;
   children?: IFileTreeNodeData[];
 }
 

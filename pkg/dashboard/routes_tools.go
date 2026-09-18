@@ -118,12 +118,31 @@ func calculateDirSize(dir string) int64 {
 	return size
 }
 
+// toolFile is the tool-detail view of a tracked file. It mirrors IFileState in
+// packages/dashboard/src/shared/types.ts; the registry's own FileState carries
+// cleanup bookkeeping the client never reads, so it is not serialized directly.
+type toolFile struct {
+	FilePath string `json:"filePath"`
+	ToolName string `json:"toolName"`
+	FileType string `json:"fileType"`
+}
+
+func toolFilesFromStates(states []*registry.FileState) []toolFile {
+	files := make([]toolFile, 0, len(states))
+	for _, state := range states {
+		files = append(files, toolFile{
+			FilePath: state.FilePath,
+			ToolName: state.ToolName,
+			FileType: state.FileType,
+		})
+	}
+	return files
+}
+
 func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfig) (map[string]any, error) {
 	installRecord, _ := s.registry.GetToolInstallation(ctx, targetTool.Name)
-	files, _ := s.registry.GetFileStatesForTool(ctx, targetTool.Name)
-	if files == nil {
-		files = []*registry.FileState{}
-	}
+	fileStates, _ := s.registry.GetFileStatesForTool(ctx, targetTool.Name)
+	files := toolFilesFromStates(fileStates)
 	usages, _ := s.registry.GetToolUsagesForTool(ctx, targetTool.Name)
 
 	status := "not-installed"
@@ -265,7 +284,6 @@ func (s *Server) handleToolHistory(w http.ResponseWriter, r *http.Request, toolN
 			"operationType": op.OperationType,
 			"fileType":      op.FileType,
 			"filePath":      op.FilePath,
-			"timestamp":     time.UnixMilli(op.CreatedAt).UTC().Format(time.RFC3339),
 			"relativeTime":  formatRelativeTime(op.CreatedAt),
 		})
 	}
@@ -670,7 +688,6 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 			"hasUpdate":      false,
 			"currentVersion": "unknown",
 			"latestVersion":  "unknown",
-			"supported":      false,
 		}, "")
 		return
 	}
@@ -717,7 +734,6 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		"hasUpdate":      hasUpdate,
 		"currentVersion": currentVer,
 		"latestVersion":  latestVer,
-		"supported":      true,
 	}, "")
 }
 
@@ -769,7 +785,6 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Update completed successfully\n", toolName))
 
 	writeJSON(w, true, map[string]any{
-		"updated":   true,
-		"supported": true,
+		"updated": true,
 	}, "")
 }

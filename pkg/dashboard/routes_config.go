@@ -6,9 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
@@ -27,52 +25,6 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		"toolConfigsDir": paths.ToolConfigsDir,
 	}
 	writeJSON(w, true, data, "")
-}
-
-// GET /api/shell
-func (s *Server) handleShellIntegration(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if s.registry == nil {
-		writeJSON(w, false, nil, "Registry is not initialized")
-		return
-	}
-
-	completionOps, _ := s.registry.GetFileOperations(ctx, registry.FileOperationFilter{FileType: "completion"})
-	initOps, _ := s.registry.GetFileOperations(ctx, registry.FileOperationFilter{FileType: "init"})
-
-	completions := []map[string]any{}
-	completionMap := make(map[string]bool)
-	for _, op := range completionOps {
-		if op.OperationType != "rm" && !completionMap[op.FilePath] {
-			completionMap[op.FilePath] = true
-			completions = append(completions, map[string]any{
-				"toolName":     op.ToolName,
-				"filePath":     op.FilePath,
-				"fileType":     "completion",
-				"lastModified": time.UnixMilli(op.CreatedAt).UTC().Format(time.RFC3339),
-			})
-		}
-	}
-
-	initScripts := []map[string]any{}
-	initMap := make(map[string]bool)
-	for _, op := range initOps {
-		if op.OperationType != "rm" && !initMap[op.FilePath] {
-			initMap[op.FilePath] = true
-			initScripts = append(initScripts, map[string]any{
-				"toolName":     op.ToolName,
-				"filePath":     op.FilePath,
-				"fileType":     "init",
-				"lastModified": time.UnixMilli(op.CreatedAt).UTC().Format(time.RFC3339),
-			})
-		}
-	}
-
-	writeJSON(w, true, map[string]any{
-		"completions": completions,
-		"initScripts": initScripts,
-		"totalFiles":  len(completions) + len(initScripts),
-	}, "")
 }
 
 // GET /api/tool-configs-tree

@@ -220,12 +220,6 @@ func TestDashboardNotFoundAndEdgeRoutes(t *testing.T) {
 		resp.Body.Close()
 	}
 
-	// GET activity with limit
-	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/activity?limit=5", server.Port()))
-	if err == nil {
-		resp.Body.Close()
-	}
-
 	// GET recent-tools with limit
 	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/recent-tools?limit=5", server.Port()))
 	if err == nil {

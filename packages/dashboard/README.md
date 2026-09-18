@@ -76,10 +76,6 @@ Project configuration paths display.
 
 - `GET /api/tools` - List all tools with full details (name, version, status, install info, files, usage)
 
-### Stats API
-
-- `GET /api/stats` - Get aggregate statistics (tools count, files count, operations count)
-
 ### Health API
 
 - `GET /api/health` - Get health status
@@ -87,11 +83,3 @@ Project configuration paths display.
 ### Config API
 
 - `GET /api/config` - Get project configuration
-
-### Shell API
-
-- `GET /api/shell` - Get shell integration info (completions, init scripts)
-
-### Activity API
-
-- `GET /api/activity` - Get recent file operations with relative timestamps

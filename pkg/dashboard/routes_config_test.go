@@ -65,14 +65,11 @@ func TestDashboardAPIs(t *testing.T) {
 	defer server.Stop()
 
 	endpoints := []string{
-		"/api/stats",
 		"/api/config",
 		"/api/health",
-		"/api/activity",
 		"/api/recent-tools",
 		"/api/tools",
 		"/api/tool-configs-tree",
-		"/api/shell",
 	}
 
 	for _, endpoint := range endpoints {

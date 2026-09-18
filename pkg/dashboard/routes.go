@@ -65,13 +65,10 @@ func formatRelativeTime(timestamp int64) string {
 
 // RegisterRoutes sets up all API handlers inside Server.
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/stats", s.handleStats)
 	mux.HandleFunc("/api/config", s.handleConfig)
 	mux.HandleFunc("/api/health", s.handleHealth)
-	mux.HandleFunc("/api/activity", s.handleActivity)
 	mux.HandleFunc("/api/recent-tools", s.handleRecentTools)
 	mux.HandleFunc("/api/tools", s.handleToolsRouter)
 	mux.HandleFunc("/api/tools/", s.handleToolsRouter)
 	mux.HandleFunc("/api/tool-configs-tree", s.handleToolConfigsTree)
-	mux.HandleFunc("/api/shell", s.handleShellIntegration)
 }

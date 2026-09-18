@@ -1,15 +1,10 @@
-interface IFileData {
-  filePath: string;
-  fileType?: string;
-  lastOperation?: string;
-}
+import type { IFileState } from "../../shared/types";
 
 interface ITreeNodeData {
   name: string;
   path: string;
   type: "file" | "directory";
   fileType?: string;
-  lastOperation?: string;
   children?: ITreeNodeData[];
 }
 
@@ -23,7 +18,7 @@ function sortTreeNode(node: ITreeNodeData): void {
   }
 }
 
-export function buildTreeForTool(files: IFileData[]): ITreeNodeData[] {
+export function buildTreeForTool(files: IFileState[]): ITreeNodeData[] {
   if (!files.length) return [];
 
   const paths = files.map((file) => file.filePath);
@@ -97,7 +92,6 @@ export function buildTreeForTool(files: IFileData[]): ITreeNodeData[] {
         path: basePath + filePath,
         type: "file",
         fileType: file.fileType,
-        lastOperation: file.lastOperation,
       };
       tree.set(filePath, node);
       const parentNode = currentPath ? tree.get(currentPath) : undefined;
