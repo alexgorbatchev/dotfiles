@@ -140,7 +140,7 @@ func TestToolConfigValidation(t *testing.T) {
 		err := invalid.Validate()
 		if err == nil {
 			t.Error("expected validation error, got nil")
-		} else if !strings.Contains(err.Error(), "must be 'once' or 'always'") {
+		} else if !strings.Contains(err.Error(), "must be one of 'once', 'always', 'sourceFile', 'source' or 'sourceFunction'") {
 			t.Errorf("unexpected error message: %v", err)
 		}
 	})
@@ -249,20 +249,22 @@ func TestToolConfigMerge(t *testing.T) {
 		},
 		ShellConfigs: &ShellConfigs{
 			Zsh: &ShellTypeConfig{
-				Aliases:         map[string]string{"rga": "rga -i"},
-				Paths:           []interface{}{"/opt/bin"},
-				Scripts:         []ShellScript{{Kind: "always", Value: "echo zsh"}},
-				Env:             map[string]string{"RG_COLOR": "always"},
-				Completions:     "complete/_rg",
-				SourceFiles:     []string{"source1.zsh"},
-				Sources:         []string{"source2.zsh"},
-				SourceFunctions: []string{"fn.zsh"},
+				Aliases: map[string]string{"rga": "rga -i"},
+				Paths:   []interface{}{"/opt/bin"},
+				Scripts: []ShellScript{
+					{Kind: "always", Value: "echo zsh"},
+					{Kind: "sourceFile", Value: "source1.zsh"},
+					{Kind: "source", Value: "source2.zsh"},
+					{Kind: "sourceFunction", Value: "fn.zsh"},
+				},
+				Env:         map[string]string{"RG_COLOR": "always"},
+				Completions: "complete/_rg",
 			},
 			Bash: &ShellTypeConfig{
 				Functions: map[string]string{"f": "echo bash"},
 			},
 			Powershell: &ShellTypeConfig{
-				Sources: []string{"profile.ps1"},
+				Scripts: []ShellScript{{Kind: "source", Value: "profile.ps1"}},
 			},
 		},
 	}
@@ -304,8 +306,36 @@ func TestToolConfigMerge(t *testing.T) {
 	if base.ShellConfigs.Zsh.Completions != "complete/_rg" {
 		t.Errorf("expected Completions merged")
 	}
-	if len(base.ShellConfigs.Zsh.SourceFiles) != 1 || len(base.ShellConfigs.Zsh.Sources) != 1 || len(base.ShellConfigs.Zsh.SourceFunctions) != 1 {
-		t.Errorf("expected SourceFiles/Sources/SourceFunctions merged")
+	if got := base.ShellConfigs.Zsh.Scripts; len(got) != 4 {
+		t.Errorf("expected the 4 zsh scripts (always, sourceFile, source, sourceFunction) merged in order, got %+v", got)
+	}
+	if got := base.ShellConfigs.Powershell.Scripts; len(got) != 1 || got[0].Kind != "source" {
+		t.Errorf("expected the powershell source script merged, got %+v", got)
+	}
+}
+
+func TestShellScriptValidateKinds(t *testing.T) {
+	tests := []struct {
+		name    string
+		script  ShellScript
+		wantErr bool
+	}{
+		{"once", ShellScript{Kind: "once", Value: "echo"}, false},
+		{"always", ShellScript{Kind: "always", Value: "echo"}, false},
+		{"sourceFile", ShellScript{Kind: "sourceFile", Value: "init.zsh"}, false},
+		{"source", ShellScript{Kind: "source", Value: "echo inline"}, false},
+		{"sourceFunction", ShellScript{Kind: "sourceFunction", Value: "fn"}, false},
+		{"unknown kind", ShellScript{Kind: "raw", Value: "echo"}, true},
+		{"empty kind", ShellScript{Kind: "", Value: "echo"}, true},
+		{"empty value", ShellScript{Kind: "sourceFile", Value: ""}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.script.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Validate(%+v) error = %v, wantErr %v", tt.script, err, tt.wantErr)
+			}
+		})
 	}
 }
 

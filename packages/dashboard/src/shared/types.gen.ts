@@ -87,9 +87,6 @@ export interface ShellTypeConfig {
   functions?: { [key: string]: string };
   paths?: any[];
   completions?: any;
-  sourceFiles?: string[];
-  sources?: string[];
-  sourceFunctions?: string[];
 }
 export interface ShellConfigs {
   zsh?: ShellTypeConfig;

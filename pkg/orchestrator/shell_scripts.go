@@ -254,15 +254,43 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						}
 					}
 
-					// Scripts
-					for _, scr := range stc.Scripts {
-						valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
-						if err != nil {
-							return fmt.Errorf("resolving script: %w", err)
+					// Functions come before the scripts so that an always script or a
+					// sourceFunction can call a function declared on the same tool.
+					if len(stc.Functions) > 0 {
+						funcKeys := make([]string, 0, len(stc.Functions))
+						for name := range stc.Functions {
+							funcKeys = append(funcKeys, name)
 						}
-						if scr.Kind == "always" {
+						sort.Strings(funcKeys)
+						for _, name := range funcKeys {
+							body := stc.Functions[name]
+							formattedBody := formatFunctionBody(body)
+							if sh == "powershell" {
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("function %s {\n%s\n}", name, formattedBody))
+							} else {
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("%s() {\n%s\n}", name, formattedBody))
+							}
+						}
+					}
+
+					// Script-like calls are emitted in the order the tool author wrote them:
+					// always, once, sourceFile, source and sourceFunction share one list.
+					cleanToolName := strings.ReplaceAll(tool.Name, "-", "_")
+					inlineSourceCounter := 0
+					for _, scr := range stc.Scripts {
+						switch scr.Kind {
+						case config.ShellScriptAlways:
+							valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
+							if err != nil {
+								return fmt.Errorf("resolving script: %w", err)
+							}
 							toolBlockLines = append(toolBlockLines, unindentString(valResolved))
-						} else if scr.Kind == "once" {
+
+						case config.ShellScriptOnce:
+							valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
+							if err != nil {
+								return fmt.Errorf("resolving script: %w", err)
+							}
 							ext := sh
 							if sh == "powershell" {
 								ext = "ps1"
@@ -282,79 +310,39 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 								scriptContent = valResolved + "\nrm -f \"${BASH_SOURCE[0]}\"\n"
 							}
 
-							err := fsys.WriteFile(onceFilePath, []byte(scriptContent), 0777)
+							err = fsys.WriteFile(onceFilePath, []byte(scriptContent), 0777)
 							if err != nil {
 								return err
 							}
-						}
-					}
 
-					// Functions
-					if len(stc.Functions) > 0 {
-						funcKeys := make([]string, 0, len(stc.Functions))
-						for name := range stc.Functions {
-							funcKeys = append(funcKeys, name)
-						}
-						sort.Strings(funcKeys)
-						for _, name := range funcKeys {
-							body := stc.Functions[name]
-							formattedBody := formatFunctionBody(body)
+						case config.ShellScriptSourceFile:
+							resolvedPath := o.resolveSourceFilePath(scr.Value, tool)
 							if sh == "powershell" {
-								toolBlockLines = append(toolBlockLines, fmt.Sprintf("function %s {\n%s\n}", name, formattedBody))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("if (Test-Path %q) { . %q }", resolvedPath, resolvedPath))
 							} else {
-								toolBlockLines = append(toolBlockLines, fmt.Sprintf("%s() {\n%s\n}", name, formattedBody))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("[[ -f %q ]] && source %q", resolvedPath, resolvedPath))
 							}
-						}
-					}
 
-					cleanToolName := strings.ReplaceAll(tool.Name, "-", "_")
-
-					// SourceFiles
-					for _, relPath := range stc.SourceFiles {
-						var resolvedPath string
-						if o.fs.IsAbs(relPath) {
-							if abs, err := o.fs.Abs(relPath); err == nil {
-								resolvedPath = abs
+						case config.ShellScriptSource:
+							funcName := fmt.Sprintf("__dotfiles_source_inline_%s_%d", cleanToolName, inlineSourceCounter)
+							inlineSourceCounter++
+							formattedContent := formatFunctionBody(scr.Value)
+							if sh == "powershell" {
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("function %s {\n%s\n}", funcName, formattedContent))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf(". (%s)", funcName))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("Remove-Item Function:\\%s -ErrorAction SilentlyContinue", funcName))
 							} else {
-								resolvedPath = relPath
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("%s() {\n%s\n}", funcName, formattedContent))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("source <(%s)", funcName))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("unset -f %s", funcName))
 							}
-						} else {
-							toolConfigDir := filepath.Dir(tool.ConfigFilePath)
-							resolvedPath = filepath.Join(toolConfigDir, relPath)
-							if abs, err := o.fs.Abs(resolvedPath); err == nil {
-								resolvedPath = abs
+
+						case config.ShellScriptSourceFunction:
+							if sh == "powershell" {
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf(". (%s)", scr.Value))
+							} else {
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("source <(%s)", scr.Value))
 							}
-						}
-						resolvedPath = filepath.ToSlash(resolvedPath)
-
-						if sh == "powershell" {
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("if (Test-Path %q) { . %q }", resolvedPath, resolvedPath))
-						} else {
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("[[ -f %q ]] && source %q", resolvedPath, resolvedPath))
-						}
-					}
-
-					// Sources
-					for i, content := range stc.Sources {
-						funcName := fmt.Sprintf("__dotfiles_source_inline_%s_%d", cleanToolName, i)
-						formattedContent := formatFunctionBody(content)
-						if sh == "powershell" {
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("function %s {\n%s\n}", funcName, formattedContent))
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf(". (%s)", funcName))
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("Remove-Item Function:\\%s -ErrorAction SilentlyContinue", funcName))
-						} else {
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("%s() {\n%s\n}", funcName, formattedContent))
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("source <(%s)", funcName))
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("unset -f %s", funcName))
-						}
-					}
-
-					// SourceFunctions
-					for _, funcName := range stc.SourceFunctions {
-						if sh == "powershell" {
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf(". (%s)", funcName))
-						} else {
-							toolBlockLines = append(toolBlockLines, fmt.Sprintf("source <(%s)", funcName))
 						}
 					}
 				}
@@ -400,6 +388,20 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 		return nil
 	})
+}
+
+// resolveSourceFilePath turns a .sourceFile() argument into the absolute,
+// forward-slash path the generated script sources: relative paths are anchored at
+// the tool's configuration directory.
+func (o *Orchestrator) resolveSourceFilePath(path string, tool *config.ToolConfig) string {
+	resolved := path
+	if !o.fs.IsAbs(path) {
+		resolved = filepath.Join(filepath.Dir(tool.ConfigFilePath), path)
+	}
+	if abs, err := o.fs.Abs(resolved); err == nil {
+		resolved = abs
+	}
+	return filepath.ToSlash(resolved)
 }
 
 func getShellTypeConfig(tool *config.ToolConfig, sh string) *config.ShellTypeConfig {

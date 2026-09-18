@@ -428,6 +428,62 @@ func TestLoadTypeScriptConfigMultipleTools(t *testing.T) {
 	}
 }
 
+// TestLoaderShellScriptsKeepDeclarationOrder checks that sourceFile, source and
+// sourceFunction are recorded in the same ordered scripts list as once and always,
+// so the generator can emit them in the order the author called them.
+func TestLoaderShellScriptsKeepDeclarationOrder(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.ts")
+	configContent := `export default { paths: { generatedDir: "./.generated", toolConfigsDir: "./tools" } };`
+	_ = os.WriteFile(configPath, []byte(configContent), 0644)
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	_ = os.MkdirAll(toolsDir, 0755)
+	toolContent := `import { defineTool } from "@dotfiles/cli";
+export default defineTool((install) =>
+  install("manual")
+    .bin("order-tool")
+    .zsh((shell) =>
+      shell
+        .always("echo first")
+        .sourceFile("init.zsh")
+        .source("echo inline")
+        .functions({ initTool: "echo init" })
+        .sourceFunction("initTool")
+        .once("echo once")
+        .always("echo last"),
+    ),
+);`
+	_ = os.WriteFile(filepath.Join(toolsDir, "order-tool.tool.ts"), []byte(toolContent), 0644)
+
+	_, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	tool, ok := toolMap["order-tool"]
+	if !ok || tool.ShellConfigs == nil || tool.ShellConfigs.Zsh == nil {
+		t.Fatalf("expected order-tool with a zsh shell config, got %v", slices.Sorted(maps.Keys(toolMap)))
+	}
+
+	want := []config.ShellScript{
+		{Kind: "always", Value: "echo first"},
+		{Kind: "sourceFile", Value: "init.zsh"},
+		{Kind: "source", Value: "echo inline"},
+		{Kind: "sourceFunction", Value: "initTool"},
+		{Kind: "once", Value: "echo once"},
+		{Kind: "always", Value: "echo last"},
+	}
+	if got := tool.ShellConfigs.Zsh.Scripts; !slices.Equal(got, want) {
+		t.Errorf("zsh scripts = %+v, want %+v", got, want)
+	}
+	if got := tool.ShellConfigs.Zsh.Functions["initTool"]; got != "echo init" {
+		t.Errorf("functions[initTool] = %q, want %q", got, "echo init")
+	}
+}
+
 func TestLoadTypeScriptConfigToolWithoutName(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 	memFS := fs.NewMemFS()

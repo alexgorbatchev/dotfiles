@@ -269,16 +269,29 @@ func (cc *CopyConfig) Validate() error {
 	return nil
 }
 
-// ShellScript represents shell command script execution trigger settings.
+// Shell script kinds. Every script-like DSL call lands in one ordered list so the
+// generated shell block keeps the order the tool author wrote.
+const (
+	ShellScriptOnce           = "once"           // .once(): runs on the first shell start, then self-deletes
+	ShellScriptAlways         = "always"         // .always(): inline on every shell start
+	ShellScriptSourceFile     = "sourceFile"     // .sourceFile(): source a file when it exists
+	ShellScriptSource         = "source"         // .source(): source the output of inline shell code
+	ShellScriptSourceFunction = "sourceFunction" // .sourceFunction(): source the output of a declared function
+)
+
+// ShellScript is one script-like shell configuration call: its kind and its
+// argument (script body, file path or function name depending on the kind).
 type ShellScript struct {
-	Kind  string `json:"kind" yaml:"kind"` // "once" or "always"
+	Kind  string `json:"kind" yaml:"kind"`
 	Value string `json:"value" yaml:"value"`
 }
 
-// Validate checks if the shell script trigger kind is valid and populated.
+// Validate checks if the shell script kind is known and its value populated.
 func (ss *ShellScript) Validate() error {
-	if ss.Kind != "once" && ss.Kind != "always" {
-		return fmt.Errorf("shell script kind must be 'once' or 'always', got %q", ss.Kind)
+	switch ss.Kind {
+	case ShellScriptOnce, ShellScriptAlways, ShellScriptSourceFile, ShellScriptSource, ShellScriptSourceFunction:
+	default:
+		return fmt.Errorf("shell script kind must be one of 'once', 'always', 'sourceFile', 'source' or 'sourceFunction', got %q", ss.Kind)
 	}
 	if ss.Value == "" {
 		return fmt.Errorf("shell script value cannot be empty")
@@ -288,15 +301,12 @@ func (ss *ShellScript) Validate() error {
 
 // ShellTypeConfig structures scripts, aliases, environment fields, functions, PATH extensions, and completions.
 type ShellTypeConfig struct {
-	Scripts         []ShellScript     `json:"scripts,omitempty" yaml:"scripts,omitempty"`
-	Aliases         map[string]string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
-	Env             map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
-	Functions       map[string]string `json:"functions,omitempty" yaml:"functions,omitempty"`
-	Paths           []interface{}     `json:"paths,omitempty" yaml:"paths,omitempty"`
-	Completions     interface{}       `json:"completions,omitempty" yaml:"completions,omitempty"`
-	SourceFiles     []string          `json:"sourceFiles,omitempty" yaml:"sourceFiles,omitempty"`
-	Sources         []string          `json:"sources,omitempty" yaml:"sources,omitempty"`
-	SourceFunctions []string          `json:"sourceFunctions,omitempty" yaml:"sourceFunctions,omitempty"`
+	Scripts     []ShellScript     `json:"scripts,omitempty" yaml:"scripts,omitempty"`
+	Aliases     map[string]string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Env         map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
+	Functions   map[string]string `json:"functions,omitempty" yaml:"functions,omitempty"`
+	Paths       []interface{}     `json:"paths,omitempty" yaml:"paths,omitempty"`
+	Completions interface{}       `json:"completions,omitempty" yaml:"completions,omitempty"`
 }
 
 // Validate asserts nested elements of ShellTypeConfig.
@@ -486,15 +496,6 @@ func (stc *ShellTypeConfig) Merge(override *ShellTypeConfig) {
 	}
 	if override.Completions != nil {
 		stc.Completions = override.Completions
-	}
-	if len(override.SourceFiles) > 0 {
-		stc.SourceFiles = append(stc.SourceFiles, override.SourceFiles...)
-	}
-	if len(override.Sources) > 0 {
-		stc.Sources = append(stc.Sources, override.Sources...)
-	}
-	if len(override.SourceFunctions) > 0 {
-		stc.SourceFunctions = append(stc.SourceFunctions, override.SourceFunctions...)
 	}
 }
 

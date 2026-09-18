@@ -67,19 +67,15 @@ func TestSourceFilesDirectEmission(t *testing.T) {
 			ConfigFilePath: "/home/user/tools/test-tool.tool.ts",
 			ShellConfigs: &config.ShellConfigs{
 				Zsh: &config.ShellTypeConfig{
-					SourceFiles: []string{
-						"shell.zsh",
-					},
-					Sources: []string{
-						"echo inline-source-zsh",
+					Scripts: []config.ShellScript{
+						{Kind: "sourceFile", Value: "shell.zsh"},
+						{Kind: "source", Value: "echo inline-source-zsh"},
 					},
 				},
 				Bash: &config.ShellTypeConfig{
-					SourceFiles: []string{
-						"shell.sh",
-					},
-					Sources: []string{
-						"echo inline-source-bash",
+					Scripts: []config.ShellScript{
+						{Kind: "sourceFile", Value: "shell.sh"},
+						{Kind: "source", Value: "echo inline-source-bash"},
 					},
 				},
 			},
@@ -129,6 +125,93 @@ func TestSourceFilesDirectEmission(t *testing.T) {
 	}
 	if !strings.Contains(bashContent, "source <(__dotfiles_source_inline_test_tool_0)") {
 		t.Errorf("expected main.bash to contain process substitution for Sources block, got:\n%s", bashContent)
+	}
+}
+
+// TestGenerateShellScripts_ToolBlockEmissionOrder pins the order v1 emitted inside a
+// tool block: aliases, functions, then every script-like call in the order the tool
+// author wrote it. The always script here calls a function, so scripts before
+// functions or regrouped source calls would produce a block that fails at startup.
+func TestGenerateShellScripts_ToolBlockEmissionOrder(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			TargetDir:       "/home/user/.generated/user-bin",
+		},
+	}
+
+	shellConfig := func() *config.ShellTypeConfig {
+		return &config.ShellTypeConfig{
+			Env:     map[string]string{"ORDER_ENV": "1"},
+			Aliases: map[string]string{"zz": "echo zz", "aa": "echo aa"},
+			Functions: map[string]string{
+				"zeta-init":  "echo zeta",
+				"alpha-init": "echo alpha",
+			},
+			Paths:       []interface{}{"/home/user/order/bin"},
+			Completions: "completions/_order",
+			Scripts: []config.ShellScript{
+				{Kind: "always", Value: "alpha-init"},
+				{Kind: "sourceFile", Value: "init.sh"},
+				{Kind: "source", Value: "echo 'export INLINE=1'"},
+				{Kind: "once", Value: "echo once"},
+				{Kind: "sourceFunction", Value: "zeta-init"},
+				{Kind: "always", Value: "echo last"},
+			},
+		}
+	}
+	tools := []*config.ToolConfig{
+		{
+			Name:           "order-tool",
+			ConfigFilePath: "/home/user/tools/order-tool.tool.ts",
+			ShellConfigs: &config.ShellConfigs{
+				Zsh:  shellConfig(),
+				Bash: shellConfig(),
+			},
+		},
+	}
+
+	if err := orch.generateShellScripts(ctx, tools, projCfg); err != nil {
+		t.Fatalf("generateShellScripts: %v", err)
+	}
+
+	wantBlock := strings.Join([]string{
+		"# /home/user/tools/order-tool.tool.ts",
+		"# ==============================================================================",
+		"alias aa='echo aa'",
+		"alias zz='echo zz'",
+		"alpha-init() {",
+		"  echo alpha",
+		"}",
+		"zeta-init() {",
+		"  echo zeta",
+		"}",
+		"alpha-init",
+		`[[ -f "/home/user/tools/init.sh" ]] && source "/home/user/tools/init.sh"`,
+		"__dotfiles_source_inline_order_tool_0() {",
+		"  echo 'export INLINE=1'",
+		"}",
+		"source <(__dotfiles_source_inline_order_tool_0)",
+		"unset -f __dotfiles_source_inline_order_tool_0",
+		"source <(zeta-init)",
+		"echo last",
+		"",
+	}, "\n")
+
+	for _, sh := range []string{"zsh", "bash"} {
+		data, err := memFS.ReadFile("/home/user/.generated/shell-scripts/main." + sh)
+		if err != nil {
+			t.Fatalf("reading main.%s: %v", sh, err)
+		}
+		if !strings.Contains(string(data), wantBlock) {
+			t.Errorf("main.%s tool block is not in v1 order.\nwant:\n%s\ngot:\n%s", sh, wantBlock, data)
+		}
 	}
 }
 
@@ -410,16 +493,10 @@ func TestGenerateShellScripts_PowershellFullEmission(t *testing.T) {
 					Functions: map[string]string{
 						"greet": "Write-Host 'Hello'",
 					},
-					SourceFiles: []string{
-						"helpers.ps1",
-					},
-					Sources: []string{
-						"Write-Output 'inline'",
-					},
-					SourceFunctions: []string{
-						"greet",
-					},
 					Scripts: []config.ShellScript{
+						{Kind: "sourceFile", Value: "helpers.ps1"},
+						{Kind: "source", Value: "Write-Output 'inline'"},
+						{Kind: "sourceFunction", Value: "greet"},
 						{Kind: "always", Value: "Write-Host 'always'"},
 						{Kind: "once", Value: "Write-Host 'once'"},
 					},

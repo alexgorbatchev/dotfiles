@@ -809,14 +809,10 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 					Functions: map[string]string{
 						"my-func": "echo hello",
 					},
-					SourceFiles: []string{
-						"shell.zsh",
-					},
-					Sources: []string{
-						"echo inline-source",
-					},
-					SourceFunctions: []string{
-						"my-func",
+					Scripts: []config.ShellScript{
+						{Kind: "sourceFile", Value: "shell.zsh"},
+						{Kind: "source", Value: "echo inline-source"},
+						{Kind: "sourceFunction", Value: "my-func"},
 					},
 				},
 			},

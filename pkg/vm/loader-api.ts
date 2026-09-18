@@ -656,22 +656,18 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         shConfig["paths"] = paths;
         return this;
       },
+      // sourceFile, sourceFunction and source share the scripts list with once and
+      // always so that Go can emit them in the order the author called them.
       sourceFile(relativePath: string) {
-        const sourceFiles = (shConfig["sourceFiles"] || []) as string[];
-        sourceFiles.push(relativePath);
-        shConfig["sourceFiles"] = sourceFiles;
+        shScripts.push({ kind: "sourceFile", value: relativePath });
         return this;
       },
       sourceFunction(functionName: string) {
-        const sourceFunctions = (shConfig["sourceFunctions"] || []) as string[];
-        sourceFunctions.push(functionName);
-        shConfig["sourceFunctions"] = sourceFunctions;
+        shScripts.push({ kind: "sourceFunction", value: functionName });
         return this;
       },
       source(content: string) {
-        const sources = (shConfig["sources"] || []) as string[];
-        sources.push(dedentString(content));
-        shConfig["sources"] = sources;
+        shScripts.push({ kind: "source", value: dedentString(content) });
         return this;
       },
     };

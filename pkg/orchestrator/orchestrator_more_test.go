@@ -713,10 +713,10 @@ func TestGenerateShellScriptsFeaturesAndTypes(t *testing.T) {
 				Scripts: []config.ShellScript{
 					{Kind: "once", Value: "echo once_script"},
 					{Kind: "always", Value: "echo always_script"},
+					{Kind: "sourceFile", Value: "/home/test/source.zsh"},
+					{Kind: "source", Value: "source_func() { echo 1; }"},
+					{Kind: "sourceFunction", Value: "source_func"},
 				},
-				SourceFiles:     []string{"/home/test/source.zsh"},
-				Sources:         []string{"source_func() { echo 1; }"},
-				SourceFunctions: []string{"source_func"},
 			},
 			Bash: &config.ShellTypeConfig{
 				Env: map[string]string{"TEST_VAR": "val"},
@@ -1204,12 +1204,12 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 		},
 		ShellConfigs: &config.ShellConfigs{
 			Zsh: &config.ShellTypeConfig{
-				Aliases:         map[string]string{"g": "git"},
-				Functions:       map[string]string{"foo": "echo foo"},
-				SourceFiles:     []string{"extra.zsh"},
-				Sources:         []string{"echo inline"},
-				SourceFunctions: []string{"__func"},
+				Aliases:   map[string]string{"g": "git"},
+				Functions: map[string]string{"foo": "echo foo"},
 				Scripts: []config.ShellScript{
+					{Kind: "sourceFile", Value: "extra.zsh"},
+					{Kind: "source", Value: "echo inline"},
+					{Kind: "sourceFunction", Value: "__func"},
 					{Kind: "always", Value: "echo always"},
 					{Kind: "once", Value: "echo once"},
 				},
@@ -1219,20 +1219,20 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 				},
 			},
 			Bash: &config.ShellTypeConfig{
-				Aliases:     map[string]string{"b": "bash"},
-				Functions:   map[string]string{"bar": "echo bar"},
-				SourceFiles: []string{"extra.bash"},
-				Sources:     []string{"echo inline bash"},
+				Aliases:   map[string]string{"b": "bash"},
+				Functions: map[string]string{"bar": "echo bar"},
 				Scripts: []config.ShellScript{
+					{Kind: "sourceFile", Value: "extra.bash"},
+					{Kind: "source", Value: "echo inline bash"},
 					{Kind: "once", Value: "echo once bash"},
 				},
 			},
 			Powershell: &config.ShellTypeConfig{
-				Aliases:     map[string]string{"p": "powershell"},
-				Functions:   map[string]string{"baz": "echo baz"},
-				SourceFiles: []string{"extra.ps1"},
-				Sources:     []string{"echo inline ps1"},
+				Aliases:   map[string]string{"p": "powershell"},
+				Functions: map[string]string{"baz": "echo baz"},
 				Scripts: []config.ShellScript{
+					{Kind: "sourceFile", Value: "extra.ps1"},
+					{Kind: "source", Value: "echo inline ps1"},
 					{Kind: "once", Value: "echo once ps1"},
 				},
 			},

@@ -316,10 +316,7 @@ func validateToolMap(prefix string, m map[string]interface{}) error {
 				if err := checkKeys(path, sub, allowedShells); err != nil {
 					return err
 				}
-				allowedShellProps := []string{
-					"scripts", "aliases", "env", "functions", "paths",
-					"completions", "sourceFiles", "sources", "sourceFunctions",
-				}
+				allowedShellProps := []string{"scripts", "aliases", "env", "functions", "paths", "completions"}
 				for _, sh := range allowedShells {
 					if shMap, ok := sub[sh].(map[string]interface{}); ok {
 						if err := checkKeys(qualifyPath(path, sh), shMap, allowedShellProps); err != nil {
