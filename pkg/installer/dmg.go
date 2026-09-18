@@ -2,7 +2,6 @@ package installer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -82,6 +81,19 @@ func (d *DmgInstaller) SupportsSudo() bool {
 	return false
 }
 
+func (d *DmgInstaller) fetcher(toolName string) macPackageFetcher {
+	return macPackageFetcher{
+		fsys:       d.fsys,
+		dl:         d.dl,
+		extractor:  d.extractor,
+		runner:     d.runner,
+		httpClient: d.httpClient,
+		baseURL:    d.BaseURL,
+		sysCtx:     d.sysCtx,
+		log:        toolLogger(d.log, toolName),
+	}
+}
+
 func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
 	if err := ValidateSudo(d, tool); err != nil {
 		return nil, err
@@ -98,171 +110,41 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}, nil
 	}
 
-	var downloadURL string
-	var repo string
-	var version string
-	var assetPattern string
-	var assetSelector string
-
-	if tool.InstallParams != nil {
-		if sourceMap, ok := tool.InstallParams["source"].(map[string]interface{}); ok {
-			sourceType := getStringParam(sourceMap, "type", "")
-			if sourceType == "url" {
-				downloadURL = getStringParam(sourceMap, "url", "")
-			} else if sourceType == "github-release" {
-				repo = getStringParam(sourceMap, "repo", "")
-				version = getStringParam(sourceMap, "version", "")
-				assetPattern = getStringParam(sourceMap, "assetPattern", "")
-				assetSelector = getStringParam(sourceMap, "assetSelector", "")
-			} else {
-				downloadURL = getStringParam(sourceMap, "url", "")
-			}
-		} else if u, ok := tool.InstallParams["url"].(string); ok {
-			downloadURL = u
-		}
-	}
-
-	if downloadURL == "" && repo == "" {
-		return nil, fmt.Errorf("URL or GitHub release source not specified in installParams")
+	src, err := parseMacPackageSource(tool.InstallParams)
+	if err != nil {
+		return nil, err
 	}
 
 	destDir := d.BinDir
 	if destDir == "" {
 		destDir = os.TempDir()
 	}
-
 	if err := d.fsys.MkdirAll(destDir, 0755); err != nil {
 		return nil, fmt.Errorf("creating staging directory: %w", err)
 	}
 
-	var downloadName string
-
-	if repo != "" {
-		parts := strings.Split(repo, "/")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", repo)
-		}
-
-		if version == "" && tool.Version != nil {
-			version = *tool.Version
-		}
-		if version == "" {
-			version = "latest"
-		}
-
-		baseURL := d.BaseURL
-		if baseURL == "" {
-			baseURL = "https://api.github.com"
-		}
-		baseURL = strings.TrimSuffix(baseURL, "/")
-
-		apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", baseURL, repo)
-		if version != "latest" {
-			apiURL = fmt.Sprintf("%s/repos/%s/releases/tags/%s", baseURL, repo, version)
-		}
-
-		req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("creating GitHub API request: %w", err)
-		}
-		req.Header.Set("User-Agent", "dotfiles-installer/1.0")
-
-		token := getStringParam(tool.InstallParams, "token", "")
-		if token == "" {
-			token = os.Getenv("GITHUB_TOKEN")
-		}
-		if token != "" {
-			req.Header.Set("Authorization", "token "+token)
-		}
-
-		resp, err := d.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("executing GitHub API request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
-		}
-
-		var release githubRelease
-		if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-			return nil, fmt.Errorf("decoding GitHub release response: %w", err)
-		}
-
-		matched := d.matchAsset(release.Assets, assetPattern, assetSelector)
-		if matched == nil {
-			return nil, fmt.Errorf("no matching release asset found for OS %s and Arch %s", d.sysCtx.OS, d.sysCtx.Arch)
-		}
-
-		downloadURL = matched.BrowserDownloadURL
-		downloadName = matched.Name
-	} else {
-		downloadName = tool.Name + ".dmg"
-		if lastSlash := strings.LastIndex(downloadURL, "/"); lastSlash >= 0 {
-			nameFromURL := downloadURL[lastSlash+1:]
-			if nameFromURL != "" && !strings.Contains(nameFromURL, ":") && strings.Contains(nameFromURL, ".") {
-				downloadName = nameFromURL
-			}
-		}
+	payload, err := d.fetcher(tool.Name).fetch(ctx, tool, src, destDir, ".dmg")
+	if err != nil {
+		return nil, err
 	}
 
-	downloadPath := filepath.Join(destDir, downloadName)
-
-	var (
-		extractDir string
-		mountPoint string
-		mounted    bool
-	)
-
+	mountPoint := filepath.Join(destDir, tool.Name+"-mount")
+	mounted := false
 	defer func() {
 		if mounted {
 			detachCmd := d.runner.CommandContext(ctx, "hdiutil", "detach", mountPoint)
 			_ = detachCmd.Run()
 		}
-		if extractDir != "" {
-			_ = removeAll(d.fsys, extractDir)
-		}
-		if mountPoint != "" {
-			_ = removeAll(d.fsys, mountPoint)
-		}
-		if downloadPath != "" {
-			_ = removeAll(d.fsys, downloadPath)
-		}
+		_ = removeAll(d.fsys, mountPoint)
+		payload.cleanup(d.fsys)
 	}()
 
-	if err := d.dl.Download(ctx, downloadURL, downloadPath, ""); err != nil {
-		return nil, fmt.Errorf("downloading DMG/Archive: %w", err)
-	}
-
-	resolvedDmgPath := downloadPath
-	lowerName := strings.ToLower(downloadName)
-	isArchive := strings.HasSuffix(lowerName, ".zip") || strings.HasSuffix(lowerName, ".tar.gz") || strings.HasSuffix(lowerName, ".tgz")
-
-	if isArchive {
-		extractDir = filepath.Join(destDir, tool.Name+"-extracted")
-		if err := d.fsys.MkdirAll(extractDir, 0755); err != nil {
-			return nil, fmt.Errorf("creating extraction directory: %w", err)
-		}
-
-		if err := d.extractor.Extract(ctx, downloadPath, extractDir); err != nil {
-			return nil, fmt.Errorf("extracting archive: %w", err)
-		}
-
-		foundDmg, err := findFileWithExtension(d.fsys, extractDir, ".dmg")
-		if err != nil || foundDmg == "" {
-			return nil, fmt.Errorf("no .dmg file found in extracted archive: %w", err)
-		}
-		resolvedDmgPath = foundDmg
-	}
-
-	mountPoint = filepath.Join(destDir, tool.Name+"-mount")
 	if err := d.fsys.MkdirAll(mountPoint, 0755); err != nil {
 		return nil, fmt.Errorf("creating mountpoint directory: %w", err)
 	}
 
 	// Mount DMG
-	attachCmd := d.runner.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-noautoopen", "-mountpoint", mountPoint, resolvedDmgPath)
+	attachCmd := d.runner.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-noautoopen", "-mountpoint", mountPoint, payload.packagePath)
 	if err := attachCmd.Run(); err != nil {
 		return nil, fmt.Errorf("mounting DMG: %w", err)
 	}
@@ -303,6 +185,7 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	return &InstallResult{
 		Binaries: []string{finalBinPath},
+		Version:  macPackageVersion(ctx, d.runner, tool, finalBinPath, payload.releaseTag, src.version),
 	}, nil
 }
 
@@ -317,117 +200,7 @@ func (d *DmgInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) e
 }
 
 func (d *DmgInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	var repo string
-	if tool.InstallParams != nil {
-		if sourceMap, ok := tool.InstallParams["source"].(map[string]interface{}); ok {
-			repo = getStringParam(sourceMap, "repo", "")
-		}
-	}
-	if repo == "" {
-		return &UpdateCheckResult{HasUpdate: false}, nil
-	}
-	baseURL := d.BaseURL
-	if baseURL == "" {
-		baseURL = "https://api.github.com"
-	}
-	apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", baseURL, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "dotfiles-installer/1.0")
-	resp, err := d.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API status %d", resp.StatusCode)
-	}
-	var release githubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, err
-	}
-	return &UpdateCheckResult{
-		HasUpdate:     true,
-		LatestVersion: release.TagName,
-	}, nil
-}
-
-func (d *DmgInstaller) matchAsset(assets []githubAsset, assetPattern, assetSelector string) *githubAsset {
-	sysCtx := d.sysCtx
-	if sysCtx == nil {
-		sysCtx = NewDefaultSystemContext()
-	}
-
-	pattern := assetPattern
-	if pattern == "" {
-		pattern = assetSelector
-	}
-
-	var candidates []githubAsset
-	if pattern != "" {
-		for _, asset := range assets {
-			if matchPattern(asset.Name, pattern) {
-				candidates = append(candidates, asset)
-			}
-		}
-	} else {
-		candidates = assets
-	}
-
-	var bestCandidates []githubAsset
-	for _, asset := range candidates {
-		name := strings.ToLower(asset.Name)
-		isOS := strings.Contains(name, "darwin") || strings.Contains(name, "macos") || strings.Contains(name, "osx") || strings.Contains(name, "apple")
-		isArch := strings.Contains(name, sysCtx.Arch) ||
-			(sysCtx.Arch == "amd64" && (strings.Contains(name, "x86_64") || strings.Contains(name, "x64") || strings.Contains(name, "intel"))) ||
-			(sysCtx.Arch == "arm64" && (strings.Contains(name, "aarch64") || strings.Contains(name, "m1") || strings.Contains(name, "m2") || strings.Contains(name, "m3")))
-
-		if isOS && isArch {
-			bestCandidates = append(bestCandidates, asset)
-		}
-	}
-
-	if len(bestCandidates) > 0 {
-		for _, asset := range bestCandidates {
-			name := strings.ToLower(asset.Name)
-			if strings.HasSuffix(name, ".dmg") || strings.HasSuffix(name, ".zip") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz") {
-				return &asset
-			}
-		}
-		return &bestCandidates[0]
-	}
-
-	var osCandidates []githubAsset
-	for _, asset := range candidates {
-		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, "darwin") || strings.Contains(name, "macos") || strings.Contains(name, "osx") {
-			osCandidates = append(osCandidates, asset)
-		}
-	}
-	if len(osCandidates) > 0 {
-		for _, asset := range osCandidates {
-			name := strings.ToLower(asset.Name)
-			if strings.HasSuffix(name, ".dmg") || strings.HasSuffix(name, ".zip") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz") {
-				return &asset
-			}
-		}
-		return &osCandidates[0]
-	}
-
-	for _, asset := range candidates {
-		name := strings.ToLower(asset.Name)
-		if strings.HasSuffix(name, ".dmg") || strings.HasSuffix(name, ".zip") || strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".tgz") {
-			return &asset
-		}
-	}
-
-	if len(candidates) > 0 {
-		return &candidates[0]
-	}
-
-	return nil
+	return d.fetcher(tool.Name).checkUpdate(ctx, tool)
 }
 
 func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {

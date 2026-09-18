@@ -105,12 +105,12 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 		{Name: "other.txt"},
 	}
 
-	_ = dmg.matchAsset(assets, "*.dmg", "")
-	_ = dmg.matchAsset(assets, "", "*.zip")
-	_ = dmg.matchAsset(assets, "", "")
+	_ = matchMacOSAsset(assets, "*.dmg", "", "arm64", ".dmg")
+	_ = matchMacOSAsset(assets, "", "*.zip", "arm64", ".dmg")
+	_ = matchMacOSAsset(assets, "", "", "arm64", ".dmg")
 
-	_ = pkgInst.matchAsset(assets, "*.dmg", "")
-	_ = pkgInst.matchAsset(assets, "", "")
+	_ = matchMacOSAsset(assets, "*.dmg", "", "arm64", ".pkg")
+	_ = matchMacOSAsset(assets, "", "", "arm64", ".pkg")
 
 	giteaAssets := []giteaAsset{
 		{Name: "app-v1-linux-amd64.tar.gz"},

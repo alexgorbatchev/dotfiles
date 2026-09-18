@@ -71,6 +71,7 @@ func TestInstallersCheckUpdateAndMethods(t *testing.T) {
 		Name: "test-dmg",
 		InstallParams: map[string]interface{}{
 			"source": map[string]interface{}{
+				"type": "github-release",
 				"repo": "owner/repo",
 			},
 		},
