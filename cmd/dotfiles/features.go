@@ -17,6 +17,14 @@ var (
 // alternative spelling of --generate-readme.
 const generateReadmeArg = "generate-readme"
 
+// featuresReport is what `dotfiles features` reports: the feature flags the binary
+// acts on. features.catalog is still accepted and validated by the configuration
+// loader, but no code generates a catalog, so reporting it here would announce a
+// capability that does not exist.
+type featuresReport struct {
+	ShellInstall bool `json:"shellInstall"`
+}
+
 var featuresCmd = &cobra.Command{
 	Use:       "features [" + generateReadmeArg + "]",
 	Short:     "Feature flag management and readme generator",
@@ -69,17 +77,16 @@ var featuresCmd = &cobra.Command{
 			return nil
 		}
 
-		feat := services.ProjectConfig.Features
+		report := featuresReport{ShellInstall: services.ProjectConfig.Features.ShellInstall != nil}
 		if featuresJSON {
-			return cliout.RenderJSON(cmd.OutOrStdout(), feat)
+			return cliout.RenderJSON(cmd.OutOrStdout(), report)
 		}
 
 		log.Info(logger.Message("Configured feature flags:"))
 		if cliout.IsAgentMode() {
-			fmt.Fprintf(cmd.OutOrStdout(), "catalog.generate:%v shellInstall:%v\n", feat.Catalog.Generate, feat.ShellInstall != nil)
+			fmt.Fprintf(cmd.OutOrStdout(), "shellInstall:%v\n", report.ShellInstall)
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "Catalog Generate: %v\n", feat.Catalog.Generate)
-			fmt.Fprintf(cmd.OutOrStdout(), "ShellInstall: %v\n", feat.ShellInstall != nil)
+			fmt.Fprintf(cmd.OutOrStdout(), "ShellInstall: %v\n", report.ShellInstall)
 		}
 
 		return nil

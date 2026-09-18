@@ -238,7 +238,7 @@ func TestSubcommands(t *testing.T) {
 		{
 			name:           "features command default",
 			args:           []string{"features"},
-			expectedOutput: []string{"Catalog Generate:", "ShellInstall:"},
+			expectedOutput: []string{"ShellInstall:"},
 			expectedErr:    false,
 		},
 		{
@@ -981,7 +981,7 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 			t.Fatalf("features --json failed: %v", err)
 		}
 		jsonHuman := extractJSONPayload(outHuman)
-		if !strings.Contains(jsonHuman, "  \"catalog\":") {
+		if !strings.Contains(jsonHuman, "  \"shellInstall\":") {
 			t.Errorf("expected pretty JSON in human mode, got:\n%s", jsonHuman)
 		}
 
@@ -2470,7 +2470,7 @@ func TestFeaturesCommand_Output(t *testing.T) {
 		if err != nil {
 			t.Fatalf("features: %v\n%s", err, out.Combined)
 		}
-		if out.Stdout != "catalog.generate:false shellInstall:false\n" {
+		if out.Stdout != "shellInstall:false\n" {
 			t.Fatalf("stdout = %q, want the compact feature line", out.Stdout)
 		}
 	})
@@ -2480,8 +2480,30 @@ func TestFeaturesCommand_Output(t *testing.T) {
 		if err != nil {
 			t.Fatalf("features --json: %v\n%s", err, out.Combined)
 		}
-		if !json.Valid([]byte(out.Stdout)) {
-			t.Fatalf("stdout is not valid JSON:\n%s", out.Stdout)
+		var got map[string]any
+		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
+			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
+		}
+		if _, ok := got["shellInstall"]; !ok {
+			t.Errorf("shellInstall missing from %v", got)
+		}
+	})
+
+	// features.catalog is accepted by the configuration loader, but nothing in the
+	// binary generates a catalog, so reporting it as a feature flag claims a capability
+	// that does not exist.
+	t.Run("no output mode reports the unimplemented catalog feature", func(t *testing.T) {
+		for _, mode := range []string{"0", "1"} {
+			t.Setenv("AGENT", mode)
+			for _, args := range [][]string{{"features"}, {"features", "--json"}} {
+				out, err := p.run(args...)
+				if err != nil {
+					t.Fatalf("%v (AGENT=%s): %v\n%s", args, mode, err, out.Combined)
+				}
+				if strings.Contains(strings.ToLower(out.Stdout), "catalog") {
+					t.Errorf("%v (AGENT=%s) reports a catalog feature:\n%s", args, mode, out.Stdout)
+				}
+			}
 		}
 	})
 }

@@ -103,8 +103,8 @@ sourcing line to. A shell left out is skipped. Only a profile that already exist
 updated: `dotfiles generate` warns about a configured profile that is missing and leaves
 creating it to you.
 
-`catalog` (`generate`, `filePath`) is accepted and reported by `dotfiles features`, but
-no command writes a catalog file; both keys default to empty.
+`catalog` (`generate`, `filePath`) is accepted by the loader, but no command writes a
+catalog file and `dotfiles features` does not report it; both keys default to empty.
 
 ### github
 

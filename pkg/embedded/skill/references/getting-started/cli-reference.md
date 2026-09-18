@@ -175,8 +175,8 @@ project's shim directory first, for `eval`.
 
 ### `dotfiles features [generate-readme]`
 
-With no argument, prints the feature flags of the loaded configuration: whether a
-catalog is configured, and whether `features.shellInstall` is set.
+With no argument, prints the feature flags of the loaded configuration: whether
+`features.shellInstall` is set.
 
 With the `generate-readme` argument, prints a markdown table of every configured tool,
 its installation method and its binaries, to standard output.
