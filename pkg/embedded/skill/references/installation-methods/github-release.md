@@ -97,6 +97,16 @@ install("github-release", {
 }).bin("tool");
 ```
 
+## Asset Handling
+
+When several assets fit the platform, the selector takes an archive over a raw binary and skips cargo-dist's `<tool>-<target>-update` self-updater, so a release that ships `tool-aarch64-apple-darwin.tar.xz` next to `tool-aarch64-apple-darwin-update` installs the tarball without an `assetPattern`.
+
+The selected asset is then handled by its extension:
+
+- An archive in one of the formats listed under [curl-tar › Supported Formats](curl-tar.md#supported-formats) is extracted and the declared binaries are promoted from the extracted tree.
+- An asset with no archive extension (for example `tool-linux-amd64`) is installed as the binary itself.
+- Anything else fails the install: an archive format that cannot be extracted (`.rar`, `.7z`, `.tar.zst`, a bare `.xz` or `.bz2`) or a file that is not a program (checksums, signatures, `.deb`/`.rpm` packages). Use `assetPattern` to select a different asset.
+
 ## Asset Pattern Matching
 
 | Pattern                | Matches             |
@@ -104,6 +114,7 @@ install("github-release", {
 | `*linux*amd64*.tar.gz` | Linux x64 tarballs  |
 | `*darwin*arm64*.zip`   | macOS ARM64 zips    |
 | `*windows*.exe`        | Windows executables |
+| `*.{tar.xz,zip}`       | xz tarballs or zips |
 
 Glob syntax: `*` (any chars), `?` (single char), `[abc]` (char class), `{a,b}` (alternation)
 

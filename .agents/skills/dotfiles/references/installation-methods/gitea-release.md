@@ -82,6 +82,10 @@ install("gitea-release", {
 }).bin("tool");
 ```
 
+## Asset Handling
+
+Asset selection and the handling of the selected asset (archive extraction, raw binaries, and the extensions that fail the install) are the same as for `github-release`; see [github-release › Asset Handling](github-release.md#asset-handling).
+
 ## Asset Pattern Matching
 
 | Pattern                | Matches             |
@@ -89,6 +93,7 @@ install("gitea-release", {
 | `*linux*amd64*.tar.gz` | Linux x64 tarballs  |
 | `*darwin*arm64*.zip`   | macOS ARM64 zips    |
 | `*windows*.exe`        | Windows executables |
+| `*.{tar.xz,zip}`       | xz tarballs or zips |
 
 Glob syntax: `*` (any chars), `?` (single char), `[abc]` (char class), `{a,b}` (alternation)
 

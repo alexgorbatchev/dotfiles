@@ -55,7 +55,9 @@ install("curl-tar", {
 
 ## Supported Formats
 
-`.tar.gz`, `.tgz`, `.tar.bz2`, `.tbz2`, `.tar.xz`, `.txz`, `.tar`
+`.tar.gz`, `.tgz`, `.tar.bz2`, `.tbz2`, `.tbz`, `.tar.xz`, `.txz`, `.tar`, `.zip`, single-file `.gz`, `.dmg`, `.pkg`
+
+This is the full set the built-in extractor can unpack; `github-release` and `gitea-release` extract the same formats. For `.dmg` and `.pkg` prefer the dedicated [dmg](dmg.md) and [pkg](pkg.md) installers.
 
 ## When to Use
 
