@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -875,5 +876,77 @@ func TestGetFileStatesForTool_TildeNormalizing(t *testing.T) {
 	}
 	if len(states) != 0 {
 		t.Errorf("Expected 0 states after rm, got %d", len(states))
+	}
+}
+
+// TestGetFileStates covers the cross-tool current view: a path written, removed and
+// written again is one row carrying the latest write; a path whose last operation
+// is a removal is absent; rows come back sorted by path.
+func TestGetFileStates(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	record := func(tx *sql.Tx, tool, opType, path, fileType string, at int64) error {
+		return reg.RecordFileOperation(ctx, tx, &FileOperationRecord{
+			ToolName:      tool,
+			OperationType: opType,
+			FilePath:      path,
+			FileType:      fileType,
+			CreatedAt:     at,
+			OperationID:   fmt.Sprintf("op-%d", at),
+		})
+	}
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		steps := []struct {
+			tool, opType, path, fileType string
+			at                           int64
+		}{
+			{"bat", "write", "/bin/bat", "shim", 100},
+			{"fd", "write", "/bin/fd", "shim", 200},
+			{"bat", "rm", "/bin/bat", "shim", 300},
+			{"bat", "write", "/bin/bat", "shim", 400},
+			{"fd", "symlink", "/cfg/fd.toml", "symlink", 500},
+			{"fd", "rm", "/bin/fd", "shim", 600},
+			{"bat", "write", "/bin/bat", "shim", 700},
+		}
+		for _, s := range steps {
+			if err := record(tx, s.tool, s.opType, s.path, s.fileType, s.at); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("seeding operations: %v", err)
+	}
+
+	states, err := reg.GetFileStates(ctx)
+	if err != nil {
+		t.Fatalf("GetFileStates failed: %v", err)
+	}
+
+	got := make([]string, 0, len(states))
+	for _, s := range states {
+		got = append(got, s.FilePath)
+	}
+	want := []string{"/bin/bat", "/cfg/fd.toml"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("paths = %v, want %v (one row per live path, sorted, removed /bin/fd absent)", got, want)
+	}
+	bat := states[0]
+	if bat.ToolName != "bat" || bat.FileType != "shim" || bat.LastOperation != "write" || bat.LastModified != 700 {
+		t.Fatalf("/bin/bat state = %+v, want the latest write by bat at 700", bat)
+	}
+	fdToml := states[1]
+	if fdToml.ToolName != "fd" || fdToml.FileType != "symlink" || fdToml.LastOperation != "symlink" {
+		t.Fatalf("/cfg/fd.toml state = %+v, want fd's symlink", fdToml)
+	}
+}
+
+func TestGetFileStates_ClosedDB(t *testing.T) {
+	database, reg := setupTestDB(t)
+	database.Close()
+	if _, err := reg.GetFileStates(context.Background()); err == nil {
+		t.Fatal("expected error from GetFileStates with closed DB")
 	}
 }

@@ -97,19 +97,21 @@ var filesCmd = &cobra.Command{
 			return nil
 		}
 
-		ops, err := services.Registry.GetFileOperations(ctx, registry.FileOperationFilter{})
+		// The registry keeps an append-only operation log; the current view folds it
+		// down to one state per path and drops paths whose last operation removed them.
+		states, err := services.Registry.GetFileStates(ctx)
 		if err != nil {
 			return err
 		}
-		if ops == nil {
-			ops = []*registry.FileOperationRecord{}
+		if states == nil {
+			states = []*registry.FileState{}
 		}
 
 		if filesJSON {
-			return cliout.RenderJSON(cmd.OutOrStdout(), ops)
+			return cliout.RenderJSON(cmd.OutOrStdout(), states)
 		}
 
-		if len(ops) == 0 {
+		if len(states) == 0 {
 			if cliout.IsAgentMode() {
 				fmt.Fprintln(cmd.OutOrStdout(), "no files managed")
 			} else {
@@ -118,11 +120,11 @@ var filesCmd = &cobra.Command{
 			return nil
 		}
 
-		for _, op := range ops {
+		for _, state := range states {
 			if cliout.IsAgentMode() {
-				fmt.Fprintf(cmd.OutOrStdout(), "tool:%s type:%s path:%s\n", op.ToolName, op.FileType, op.FilePath)
+				fmt.Fprintf(cmd.OutOrStdout(), "tool:%s type:%s path:%s\n", state.ToolName, state.FileType, state.FilePath)
 			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "- %s (%s): %s\n", op.ToolName, op.FileType, op.FilePath)
+				fmt.Fprintf(cmd.OutOrStdout(), "- %s (%s): %s\n", state.ToolName, state.FileType, state.FilePath)
 			}
 		}
 		return nil

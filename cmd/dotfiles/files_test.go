@@ -205,12 +205,96 @@ func TestFilesCommand_ManagedFiles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("files --json: %v\n%s", err, out.Combined)
 		}
-		var ops []map[string]any
-		if err := json.Unmarshal([]byte(out.Stdout), &ops); err != nil {
+		var states []registry.FileState
+		if err := json.Unmarshal([]byte(out.Stdout), &states); err != nil {
 			t.Fatalf("stdout is not a JSON array: %v\n%s", err, out.Stdout)
 		}
-		if len(ops) != 1 || ops[0]["FilePath"] != managed {
-			t.Fatalf("operations = %v, want the one seeded shim at %s", ops, managed)
+		if len(states) != 1 || states[0].FilePath != managed || states[0].ToolName != "bat" || states[0].FileType != "shim" {
+			t.Fatalf("states = %+v, want the one seeded shim at %s", states, managed)
+		}
+	})
+}
+
+// TestFilesCommand_ListsCurrentFiles guards that the listing is the current set of
+// managed files, not the operation log: repeated generates must not repeat a path,
+// and a shim that generate removed as stale must disappear from the listing.
+func TestFilesCommand_ListsCurrentFiles(t *testing.T) {
+	const (
+		twoBinaries = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": ["alpha", "alpha-extra"]}`
+		oneBinary   = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": ["alpha"]}`
+	)
+	p := newE2EProject(t, twoBinaries)
+	alpha := filepath.Join(p.TargetDir, "alpha")
+	extra := filepath.Join(p.TargetDir, "alpha-extra")
+
+	generate := func(t *testing.T) commandOutput {
+		t.Helper()
+		out, err := p.run("generate")
+		if err != nil {
+			t.Fatalf("generate: %v\n%s", err, out.Combined)
+		}
+		return out
+	}
+	// rowsPerPath runs `files --json` and counts how many rows each path has.
+	rowsPerPath := func(t *testing.T) map[string]int {
+		t.Helper()
+		out, err := p.run("files", "--json")
+		if err != nil {
+			t.Fatalf("files --json: %v\n%s", err, out.Combined)
+		}
+		var states []registry.FileState
+		if err := json.Unmarshal([]byte(out.Stdout), &states); err != nil {
+			t.Fatalf("stdout is not a JSON array: %v\n%s", err, out.Stdout)
+		}
+		rows := make(map[string]int, len(states))
+		for _, s := range states {
+			rows[s.FilePath]++
+		}
+		return rows
+	}
+
+	generate(t)
+	generate(t)
+
+	t.Run("every path once after two generates", func(t *testing.T) {
+		rows := rowsPerPath(t)
+		for path, n := range rows {
+			if n != 1 {
+				t.Fatalf("%s is listed %d times, want once", path, n)
+			}
+		}
+		if rows[alpha] != 1 || rows[extra] != 1 {
+			t.Fatalf("rows = %v, want both shims %s and %s listed", rows, alpha, extra)
+		}
+	})
+
+	t.Run("human output has one line per path", func(t *testing.T) {
+		out, err := p.run("files")
+		if err != nil {
+			t.Fatalf("files: %v\n%s", err, out.Combined)
+		}
+		lines := strings.Split(strings.TrimSuffix(out.Stdout, "\n"), "\n")
+		seen := make(map[string]bool, len(lines))
+		for _, line := range lines {
+			if seen[line] {
+				t.Fatalf("line %q repeats:\n%s", line, out.Stdout)
+			}
+			seen[line] = true
+		}
+		mustContain(t, "stdout", out.Stdout, "- alpha (shim): "+alpha+"\n", "- alpha (shim): "+extra+"\n")
+	})
+
+	t.Run("removed shim leaves the listing", func(t *testing.T) {
+		p.writeConfig(t, oneBinary, "", "")
+		out := generate(t)
+		mustContain(t, "stderr", out.Stderr, "Removing stale shim: ", "alpha-extra")
+
+		rows := rowsPerPath(t)
+		if rows[extra] != 0 {
+			t.Fatalf("%s is still listed %d time(s) after generate removed it", extra, rows[extra])
+		}
+		if rows[alpha] != 1 {
+			t.Fatalf("rows = %v, want %s listed once", rows, alpha)
 		}
 	})
 }

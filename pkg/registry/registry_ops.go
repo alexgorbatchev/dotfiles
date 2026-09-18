@@ -87,7 +87,26 @@ func (r *Registry) GetFileStatesForTool(ctx context.Context, toolName string) ([
 	if err != nil {
 		return nil, err
 	}
+	return foldFileStates(ops), nil
+}
 
+// GetFileStates computes the active file state of every path the registry tracks,
+// across all tools, in stable alphabetical order. A path whose latest operation is
+// a removal is absent, so the result is the set of files currently managed rather
+// than the operation history.
+func (r *Registry) GetFileStates(ctx context.Context) ([]*FileState, error) {
+	ops, err := r.GetFileOperations(ctx, FileOperationFilter{})
+	if err != nil {
+		return nil, err
+	}
+	return foldFileStates(ops), nil
+}
+
+// foldFileStates replays ops, which GetFileOperations returns newest first, from
+// oldest to newest and keeps one state per path. A removal drops the path so a
+// later write starts a fresh state. A leading "~" is expanded so records written
+// with either spelling of a home path fold onto the same key.
+func foldFileStates(ops []*FileOperationRecord) []*FileState {
 	uHome, _ := os.UserHomeDir()
 
 	fileStates := make(map[string]*FileState)
@@ -101,33 +120,14 @@ func (r *Registry) GetFileStatesForTool(ctx context.Context, toolName string) ([
 		if op.OperationType == "rm" {
 			delete(fileStates, keyPath)
 			delete(fileStates, op.FilePath)
-		} else {
-			state, exists := fileStates[keyPath]
-			if !exists {
-				state = &FileState{FilePath: keyPath}
-				fileStates[keyPath] = state
-			}
-			state.LastOperation = op.OperationType
-			state.LastModified = op.CreatedAt
-			if op.ToolName != "" {
-				state.ToolName = op.ToolName
-			}
-			if op.FileType != "" {
-				state.FileType = op.FileType
-			}
-			if op.TargetPath != nil {
-				state.TargetPath = op.TargetPath
-			}
-			if op.Metadata != nil {
-				state.Metadata = op.Metadata
-			}
-			if op.SizeBytes != nil {
-				state.SizeBytes = op.SizeBytes
-			}
-			if op.Permissions != nil {
-				state.Permissions = op.Permissions
-			}
+			continue
 		}
+		state, exists := fileStates[keyPath]
+		if !exists {
+			state = &FileState{FilePath: keyPath}
+			fileStates[keyPath] = state
+		}
+		state.apply(op)
 	}
 
 	states := make([]*FileState, 0, len(fileStates))
@@ -139,7 +139,32 @@ func (r *Registry) GetFileStatesForTool(ctx context.Context, toolName string) ([
 		return states[i].FilePath < states[j].FilePath
 	})
 
-	return states, nil
+	return states
+}
+
+// apply folds one non-removal operation into the state. Attributes the operation
+// does not carry keep their previous value.
+func (s *FileState) apply(op *FileOperationRecord) {
+	s.LastOperation = op.OperationType
+	s.LastModified = op.CreatedAt
+	if op.ToolName != "" {
+		s.ToolName = op.ToolName
+	}
+	if op.FileType != "" {
+		s.FileType = op.FileType
+	}
+	if op.TargetPath != nil {
+		s.TargetPath = op.TargetPath
+	}
+	if op.Metadata != nil {
+		s.Metadata = op.Metadata
+	}
+	if op.SizeBytes != nil {
+		s.SizeBytes = op.SizeBytes
+	}
+	if op.Permissions != nil {
+		s.Permissions = op.Permissions
+	}
 }
 
 // GetFileState returns active file state for a specific file path.
@@ -162,31 +187,12 @@ func (r *Registry) GetFileState(ctx context.Context, filePath string) (*FileStat
 		op := ops[i]
 		if op.OperationType == "rm" {
 			state = nil
-		} else {
-			if state == nil {
-				state = &FileState{FilePath: filePath}
-			}
-			state.LastOperation = op.OperationType
-			state.LastModified = op.CreatedAt
-			if op.ToolName != "" {
-				state.ToolName = op.ToolName
-			}
-			if op.FileType != "" {
-				state.FileType = op.FileType
-			}
-			if op.TargetPath != nil {
-				state.TargetPath = op.TargetPath
-			}
-			if op.Metadata != nil {
-				state.Metadata = op.Metadata
-			}
-			if op.SizeBytes != nil {
-				state.SizeBytes = op.SizeBytes
-			}
-			if op.Permissions != nil {
-				state.Permissions = op.Permissions
-			}
+			continue
 		}
+		if state == nil {
+			state = &FileState{FilePath: filePath}
+		}
+		state.apply(op)
 	}
 
 	return state, nil
