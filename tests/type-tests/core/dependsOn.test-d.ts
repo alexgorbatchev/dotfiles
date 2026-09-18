@@ -1,8 +1,9 @@
 import { defineTool } from "@alexgorbatchev/dotfiles";
 import { expectError } from "tsd";
 
-// This test verifies that IKnownBinNameRegistry module augmentation works.
-// The tool-types.d.ts adds 'foo' and 'bar' to the registry, so only those should be valid.
+// This test verifies that IKnownBinNameRegistry module augmentation works: it is the
+// mechanism a project's generated tool-types.d.ts uses to list its configured binary
+// names. The augmentation below adds 'foo' and 'bar', so only those should be valid.
 
 // Augment the registry with test values
 declare module "@alexgorbatchev/dotfiles" {

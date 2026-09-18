@@ -226,25 +226,13 @@ func generateSchemaTypes(rootDir string) error {
 		`}`,
 	}, "\n")
 
+	// The authoring declarations ship under one name, the one package.json's "types"
+	// and "exports" point at. Extra copies under other names are imported by nothing
+	// and go stale unnoticed, and "tool-types.d.ts" is taken: it is what the CLI calls
+	// a project's generated bin-name registry, which has completely different contents.
 	for _, dir := range []string{distDir, embeddedDistDir} {
 		if err := os.WriteFile(filepath.Join(dir, "index.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
 			return fmt.Errorf("failed to write index.d.ts to %s: %w", dir, err)
-		}
-
-		if err := os.WriteFile(filepath.Join(dir, "schemas.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
-			return fmt.Errorf("failed to write schemas.d.ts to %s: %w", dir, err)
-		}
-
-		if err := os.WriteFile(filepath.Join(dir, "tool-types.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
-			return fmt.Errorf("failed to write tool-types.d.ts to %s: %w", dir, err)
-		}
-
-		if err := os.WriteFile(filepath.Join(dir, "authoring-types.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
-			return fmt.Errorf("failed to write authoring-types.d.ts to %s: %w", dir, err)
-		}
-
-		if err := os.WriteFile(filepath.Join(dir, "cli.d.ts"), []byte(authoringTypesDtsContent), 0644); err != nil {
-			return fmt.Errorf("failed to write cli.d.ts to %s: %w", dir, err)
 		}
 
 		// Runtime globals travel as their own file: see pkg/vm/globals.d.ts for why they
@@ -579,8 +567,8 @@ func runTypeTests(rootDir string) error {
 	if err := os.MkdirAll(genDir, 0755); err != nil {
 		return fmt.Errorf("failed to create .generated directory: %w", err)
 	}
-	if err := copyFile(filepath.Join(distDir, "tool-types.d.ts"), filepath.Join(genDir, "tool-types.d.ts")); err != nil {
-		return fmt.Errorf("failed to copy tool-types.d.ts to .generated: %w", err)
+	if err := copyFile(filepath.Join(distDir, "index.d.ts"), filepath.Join(genDir, "index.d.ts")); err != nil {
+		return fmt.Errorf("failed to copy index.d.ts to .generated: %w", err)
 	}
 
 	pkgDir := filepath.Join(tsdDir, "node_modules", "@alexgorbatchev", "dotfiles")
@@ -588,7 +576,7 @@ func runTypeTests(rootDir string) error {
 		return fmt.Errorf("failed to create node_modules/@alexgorbatchev/dotfiles: %w", err)
 	}
 
-	packageFiles := []string{"cli.js", "package.json", "index.d.ts", "schemas.d.ts", "authoring-types.d.ts", "cli.d.ts"}
+	packageFiles := []string{"cli.js", "package.json", "index.d.ts"}
 	for _, file := range packageFiles {
 		src := filepath.Join(distDir, file)
 		dst := filepath.Join(pkgDir, file)
@@ -639,7 +627,7 @@ func runTypeTests(rootDir string) error {
 			"skipLibCheck":     true,
 			"lib":              []string{"ES2022"},
 		},
-		"include": []string{"./**/*.d.ts", ".generated/tool-types.d.ts"},
+		"include": []string{"./**/*.d.ts", ".generated/index.d.ts"},
 	}
 	tsConfigBytes, err := json.MarshalIndent(tsConfig, "", "  ")
 	if err != nil {
