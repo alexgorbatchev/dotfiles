@@ -206,6 +206,10 @@ func TestSudoPreflightCheck(t *testing.T) {
 	runner := NewOSRunner()
 
 	t.Run("headless missing passwordless sudo", func(t *testing.T) {
+		// Which message the caller gets is chosen by CI, so each case sets it rather
+		// than inheriting whatever the surrounding environment happens to be: under a
+		// CI runner this subtest would otherwise exercise the branch below it.
+		t.Setenv("CI", "")
 		// Simulate headless environment (stdin is a buffer, not a terminal)
 		// and passwordless sudo missing (preflight command 'false' fails)
 		SudoPreflightCommand = []string{"false"}
@@ -223,7 +227,27 @@ func TestSudoPreflightCheck(t *testing.T) {
 		}
 	})
 
+	t.Run("non-interactive CI missing passwordless sudo", func(t *testing.T) {
+		// CI is checked before the terminal, so a runner that cannot sudo without a
+		// password is told so in its own terms even when stdin looks interactive.
+		t.Setenv("CI", "true")
+		SudoPreflightCommand = []string{"false"}
+
+		cmd := runner.Command("sudo", "echo", "hello")
+		var stdinBuf bytes.Buffer
+		cmd.SetStdin(&stdinBuf)
+
+		err := cmd.Run()
+		if err == nil {
+			t.Fatal("expected error in CI with failing sudo check, got nil")
+		}
+		if !strings.Contains(err.Error(), "non-interactive CI/CD environment requires passwordless sudo access") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+
 	t.Run("headless with active passwordless sudo", func(t *testing.T) {
+		t.Setenv("CI", "")
 		// Create a temporary directory and write a mock "sudo" script
 		tmpDir := t.TempDir()
 		mockSudoPath := filepath.Join(tmpDir, "sudo")
