@@ -298,33 +298,6 @@ func getStringParam(params map[string]interface{}, key string, defaultValue stri
 	return str
 }
 
-func removeAll(fsys fs.FS, path string) error {
-	if r, ok := fsys.(interface{ RemoveAll(string) error }); ok {
-		return r.RemoveAll(path)
-	}
-	exists, err := fsys.Exists(path)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil
-	}
-
-	entries, err := fsys.ReadDir(path)
-	if err != nil {
-		return fsys.Remove(path)
-	}
-
-	for _, entry := range entries {
-		entryPath := filepath.Join(path, entry)
-		if err := removeAll(fsys, entryPath); err != nil {
-			return err
-		}
-	}
-
-	return fsys.Remove(path)
-}
-
 func (o *Orchestrator) getCliCommand() string {
 	if cmd := os.Getenv("DOTFILES_CLI_COMMAND"); cmd != "" {
 		return cmd
@@ -520,7 +493,7 @@ func (o *Orchestrator) pruneSyncedPackage(pkgDir string, keep map[string][]byte)
 			continue
 		}
 		obsolete := filepath.Join(pkgDir, name)
-		if err := removeAll(o.fs, obsolete); err != nil {
+		if err := o.fs.RemoveAll(obsolete); err != nil {
 			return fmt.Errorf("removing obsolete %s: %w", obsolete, err)
 		}
 	}
@@ -578,7 +551,7 @@ func (o *Orchestrator) SyncTypeScriptTypes(ctx context.Context, tools []*config.
 		}
 
 		if needsSymlink {
-			_ = removeAll(o.fs, projPkgDir)
+			_ = o.fs.RemoveAll(projPkgDir)
 			if err := o.fs.Symlink(relTarget, projPkgDir); err != nil {
 				// The directory was just removed, so a copy of the embedded package is
 				// all it holds and there is nothing left over to prune.

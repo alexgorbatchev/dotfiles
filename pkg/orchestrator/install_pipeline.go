@@ -174,7 +174,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	if !isExternal {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
-			if err := removeAll(activeFSWithTx, stagingDir); err != nil {
+			if err := activeFSWithTx.RemoveAll(stagingDir); err != nil {
 				return fmt.Errorf("cleaning stale staging directory: %w", err)
 			}
 			return activeFSWithTx.MkdirAll(stagingDir, 0755)
@@ -275,7 +275,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	} else if !isExternal && !installer.IsDryRun() {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
-			if err := removeAll(activeFSWithTx, toolDestDir); err != nil {
+			if err := activeFSWithTx.RemoveAll(toolDestDir); err != nil {
 				return err
 			}
 			return activeFSWithTx.Rename(stagingDir, toolDestDir)
@@ -511,7 +511,7 @@ func (o *Orchestrator) discardStaging(ctx context.Context, toolName, stagingDir 
 	}
 	_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 		activeFSWithTx := o.getTrackedFS(ctx, tx, toolName, "binary")
-		_ = removeAll(activeFSWithTx, stagingDir)
+		_ = activeFSWithTx.RemoveAll(stagingDir)
 		toolDir := filepath.Dir(stagingDir)
 		if entries, err := activeFSWithTx.ReadDir(toolDir); err == nil && len(entries) == 0 {
 			_ = activeFSWithTx.Remove(toolDir)
@@ -554,7 +554,7 @@ func (o *Orchestrator) purgeToolState(ctx context.Context, toolName string, proj
 
 	if projCfg != nil && projCfg.Paths.BinariesDir != "" {
 		toolBinDir := filepath.Join(projCfg.Paths.BinariesDir, toolName)
-		_ = removeAll(o.fs, toolBinDir)
+		_ = o.fs.RemoveAll(toolBinDir)
 	}
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {

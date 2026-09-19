@@ -628,7 +628,7 @@ func TestRemoveAllAndHealthCheckEdgeCases(t *testing.T) {
 	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
 
 	// 1. removeAll non-existent
-	err = removeAll(memFS, "/nonexistent/path")
+	err = memFS.RemoveAll("/nonexistent/path")
 	if err != nil {
 		t.Errorf("removeAll non-existent returned error: %v", err)
 	}
@@ -636,7 +636,7 @@ func TestRemoveAllAndHealthCheckEdgeCases(t *testing.T) {
 	// 2. removeAll existing
 	_ = memFS.MkdirAll("/dir-to-rm", 0755)
 	_ = memFS.WriteFile("/dir-to-rm/f.txt", []byte("a"), 0644)
-	err = removeAll(memFS, "/dir-to-rm")
+	err = memFS.RemoveAll("/dir-to-rm")
 	if err != nil {
 		t.Errorf("removeAll existing failed: %v", err)
 	}
@@ -1623,12 +1623,12 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	}
 
 	// 8. getCliCommand with env & getTargetVersion with semver constraints
-	_ = removeAll(memFS, "/nonexistent-path-xyz")
+	_ = memFS.RemoveAll("/nonexistent-path-xyz")
 	_ = memFS.WriteFile("/remove-file.txt", []byte("data"), 0644)
-	_ = removeAll(memFS, "/remove-file.txt")
+	_ = memFS.RemoveAll("/remove-file.txt")
 	_ = memFS.MkdirAll("/dir-to-remove/subdir", 0755)
 	_ = memFS.WriteFile("/dir-to-remove/subdir/file.txt", []byte("f"), 0644)
-	_ = removeAll(memFS, "/dir-to-remove")
+	_ = memFS.RemoveAll("/dir-to-remove")
 	t.Setenv("DOTFILES_CLI_COMMAND", "/custom/dotfiles")
 	if orch.getCliCommand() != "/custom/dotfiles" {
 		t.Errorf("getCliCommand with env failed")
@@ -1843,7 +1843,7 @@ func TestRemoveAllNonEmptyDirectory(t *testing.T) {
 	_ = memFS.MkdirAll(nestedDir, 0755)
 	_ = memFS.WriteFile(filepath.Join(nestedDir, "file.txt"), []byte("data"), 0644)
 
-	err := removeAll(memFS, "/test/dir")
+	err := memFS.RemoveAll("/test/dir")
 	if err != nil {
 		t.Fatalf("removeAll failed on non-empty nested directory: %v", err)
 	}
@@ -1854,7 +1854,7 @@ func TestRemoveAllNonEmptyDirectory(t *testing.T) {
 	}
 
 	// Non-existent path returns nil
-	if err := removeAll(memFS, "/non/existent"); err != nil {
+	if err := memFS.RemoveAll("/non/existent"); err != nil {
 		t.Errorf("expected nil for non-existent path, got: %v", err)
 	}
 }
@@ -2190,7 +2190,7 @@ func TestRemoveAllCoverage(t *testing.T) {
 	_ = memFS.WriteFile("/nested/sub/dir/file.txt", []byte("hello"), 0644)
 	_ = memFS.WriteFile("/nested/sub/file2.txt", []byte("world"), 0644)
 
-	if err := removeAll(memFS, "/nested"); err != nil {
+	if err := memFS.RemoveAll("/nested"); err != nil {
 		t.Fatalf("removeAll failed: %v", err)
 	}
 	exists, _ := memFS.Exists("/nested")
@@ -2199,7 +2199,7 @@ func TestRemoveAllCoverage(t *testing.T) {
 	}
 
 	// Non-existent path returns nil
-	if err := removeAll(memFS, "/does-not-exist"); err != nil {
+	if err := memFS.RemoveAll("/does-not-exist"); err != nil {
 		t.Errorf("expected nil for non-existent path, got: %v", err)
 	}
 }

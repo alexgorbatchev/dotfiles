@@ -151,7 +151,7 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 			detachCmd := d.runner.CommandContext(ctx, "hdiutil", "detach", mountPoint)
 			_ = detachCmd.Run()
 		}
-		_ = removeAll(d.fsys, mountPoint)
+		_ = d.fsys.RemoveAll(mountPoint)
 		payload.cleanup(d.fsys)
 	}()
 

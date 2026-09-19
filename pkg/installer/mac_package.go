@@ -73,10 +73,10 @@ type macPackagePayload struct {
 // cleanup removes everything fetch left in the staging directory.
 func (p macPackagePayload) cleanup(fsys fs.FS) {
 	if p.extractDir != "" {
-		_ = removeAll(fsys, p.extractDir)
+		_ = fsys.RemoveAll(p.extractDir)
 	}
 	if p.downloadPath != "" {
-		_ = removeAll(fsys, p.downloadPath)
+		_ = fsys.RemoveAll(p.downloadPath)
 	}
 }
 

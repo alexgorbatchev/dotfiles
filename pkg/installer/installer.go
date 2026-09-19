@@ -388,34 +388,6 @@ func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
 	return names
 }
 
-// removeAll recursively removes files and directories from the fsys.
-func removeAll(fsys fs.FS, path string) error {
-	if r, ok := fsys.(interface{ RemoveAll(string) error }); ok {
-		return r.RemoveAll(path)
-	}
-	exists, err := fsys.Exists(path)
-	if err != nil || !exists {
-		return nil
-	}
-
-	entries, err := fsys.ReadDir(path)
-	if err != nil {
-		// It's a file, or not a directory. Remove it.
-		return fsys.Remove(path)
-	}
-
-	// It's a directory. Recursively remove all entries.
-	for _, entry := range entries {
-		entryPath := filepath.Join(path, entry)
-		if err := removeAll(fsys, entryPath); err != nil {
-			return err
-		}
-	}
-
-	// Finally, remove the directory itself.
-	return fsys.Remove(path)
-}
-
 type FSSetter interface {
 	SetFS(fs.FS)
 }

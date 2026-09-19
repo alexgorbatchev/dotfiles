@@ -327,7 +327,7 @@ func TestInstallerParamsAndUtilities(t *testing.T) {
 	memFS := fs.NewMemFS()
 	_ = memFS.MkdirAll("/tmp/dir/sub", 0755)
 	_ = memFS.WriteFile("/tmp/dir/sub/file.txt", []byte("data"), 0644)
-	if err := removeAll(memFS, "/tmp/dir"); err != nil {
+	if err := memFS.RemoveAll("/tmp/dir"); err != nil {
 		t.Fatalf("removeAll failed: %v", err)
 	}
 	if exists, _ := memFS.Exists("/tmp/dir"); exists {

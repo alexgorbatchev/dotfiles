@@ -645,7 +645,7 @@ func TestInstallerDeepCoverage(t *testing.T) {
 	}
 
 	// 6. removeAll non-existent path
-	_ = removeAll(memFS, "/nonexistent/path/here")
+	_ = memFS.RemoveAll("/nonexistent/path/here")
 
 	// 7. Apt & Dnf & Pacman exec failure paths
 	errRunner := exec.NewMockRunner()
