@@ -283,17 +283,6 @@ func TestBuildTarget(t *testing.T) {
 	}
 }
 
-func TestRunBuild(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping full build test in short mode")
-	}
-
-	err := runBuild()
-	if err != nil {
-		t.Fatalf("runBuild failed: %v", err)
-	}
-}
-
 func TestBuildErrorBranches(t *testing.T) {
 	tmpDir := t.TempDir()
 

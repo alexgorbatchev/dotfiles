@@ -29,6 +29,13 @@ test-e2e:
 test-ts:
     bun test
 
+# Run the full release build end to end. Kept out of `test-unit` and `check`
+# because it rewrites generated sources and .dist, which stops every package that
+# loads a TypeScript configuration from reusing a cached test result. CI runs it
+# as its own job.
+test-build:
+    go test -count=1 -tags buildtest -run TestRunBuild ./scripts/build/
+
 # Format and lint check
 lint:
     @unformatted="$(gofmt -l cmd pkg scripts tests)"; if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi

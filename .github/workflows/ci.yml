@@ -45,3 +45,12 @@ jobs:
 
       - name: Run checks
         run: bun run check:ci
+
+      # The full release build is deliberately not part of `just check`, which is
+      # the gate run locally on every iteration: it cross-compiles every target
+      # and rebuilds the dashboard bundle, and it rewrites generated sources and
+      # .dist, which stops every package that loads a TypeScript configuration
+      # from reusing a cached test result. It runs here, after the checks, so
+      # they see a tree it has not rewritten.
+      - name: Run the full release build
+        run: just test-build
