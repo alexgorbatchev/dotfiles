@@ -146,7 +146,7 @@ When run without arguments, checks all installed tools for updates and installs 
 
 				hasUpdate, targetVersion := resolveUpdate(targetTool, installed.Version, res)
 
-				toolLog := log.GetSubLogger("", targetTool.Name)
+				toolLog := log.WithTag(targetTool.Name)
 				if hasUpdate || force {
 					if hasUpdate {
 						toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
@@ -200,7 +200,7 @@ When run without arguments, checks all installed tools for updates and installs 
 		toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
 		configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
-		toolLog := log.GetSubLogger("", targetTool.Name)
+		toolLog := log.WithTag(targetTool.Name)
 
 		// 4. Check for update
 		toolLog.Info(logger.Message("Checking for updates..."))

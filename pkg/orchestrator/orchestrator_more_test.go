@@ -1712,7 +1712,7 @@ func TestInstallToolExternallyManaged(t *testing.T) {
 
 func TestBuildHookEnv(t *testing.T) {
 	ctx := context.Background()
-	log := logger.New(logger.Config{Name: "test-hooks", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
@@ -1840,7 +1840,7 @@ func TestRemoveAllNonEmptyDirectory(t *testing.T) {
 
 func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
 	ctx := context.Background()
-	log := logger.New(logger.Config{Name: "test-propagate-autoinstall", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
@@ -1918,7 +1918,7 @@ func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
 
 func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
 	ctx := context.Background()
-	log := logger.New(logger.Config{Name: "test-cascade-autoinstall", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
@@ -2020,7 +2020,7 @@ func (c *cacheSpyInstaller) CheckUpdate(ctx context.Context, tool *config.ToolCo
 
 func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 	ctx := context.Background()
-	log := logger.New(logger.Config{Name: "test-cache-spy", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))

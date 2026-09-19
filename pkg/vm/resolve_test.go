@@ -29,7 +29,7 @@ func resolveTestTool(t *testing.T, body string, params ...string) *config.ToolCo
 func resolveParam(t *testing.T, tool *config.ToolConfig, param string, extra map[string]any) json.RawMessage {
 	t.Helper()
 	value, err := ResolveInstallParam(context.Background(), ResolveRequest{
-		Log:     logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		Log:     logger.New(logger.Config{Writer: os.Stderr}),
 		FS:      fs.NewMemFS(),
 		Runner:  exec.NewMockRunner(),
 		Tool:    tool,
@@ -58,7 +58,7 @@ func TestResolveInstallParam_ReceivesInstallTimeContext(t *testing.T) {
 
 	projCfg := hookTestProjectConfig(t)
 	value, err := ResolveInstallParam(context.Background(), ResolveRequest{
-		Log:     logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		Log:     logger.New(logger.Config{Writer: os.Stderr}),
 		FS:      fs.NewMemFS(),
 		Runner:  exec.NewMockRunner(),
 		Tool:    tool,
@@ -124,7 +124,7 @@ func TestResolveInstallParam_FailureIsReported(t *testing.T) {
 	`, "args")
 
 	_, err := ResolveInstallParam(context.Background(), ResolveRequest{
-		Log:     logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		Log:     logger.New(logger.Config{Writer: os.Stderr}),
 		FS:      fs.NewMemFS(),
 		Runner:  exec.NewMockRunner(),
 		Tool:    tool,
@@ -188,7 +188,7 @@ func TestResolveInstallParam_RejectsWhatItCannotAnswer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ResolveInstallParam(context.Background(), ResolveRequest{
-				Log:     logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+				Log:     logger.New(logger.Config{Writer: os.Stderr}),
 				FS:      fs.NewMemFS(),
 				Runner:  exec.NewMockRunner(),
 				Tool:    tt.tool,

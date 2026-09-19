@@ -85,20 +85,20 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 	var writer *logger.LineWriter
 	if p.log != nil {
-		writer = logger.NewLineWriter(p.log.GetSubLogger("", tool.Name), "|")
+		writer = logger.NewLineWriter(p.log.WithTag(tool.Name), "|")
 	}
 
 	var cmd exec.Cmd
 	if tool.Sudo {
 		args := []string{"pacman", syncArgs, "--needed", "--noconfirm", packageSpec}
 		if p.log != nil {
-			p.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo %s", strings.Join(args, " "))))
+			p.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo %s", strings.Join(args, " "))))
 		}
 		cmd = p.runner.CommandContext(ctx, "sudo", args...)
 	} else {
 		args := []string{syncArgs, "--needed", "--noconfirm", packageSpec}
 		if p.log != nil {
-			p.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ pacman %s", strings.Join(args, " "))))
+			p.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ pacman %s", strings.Join(args, " "))))
 		}
 		cmd = p.runner.CommandContext(ctx, "pacman", args...)
 	}

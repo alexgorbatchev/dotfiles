@@ -223,22 +223,22 @@ func RegisterContextBindings(vm *goja.Runtime, log *logger.Logger, fsys fs.FS, h
 
 	_ = vm.Set("logInfo", func(toolName, msg string) {
 		if log != nil {
-			log.WithName(toolName).Info(logger.Message(msg))
+			log.WithTag(toolName).Info(logger.Message(msg))
 		}
 	})
 	_ = vm.Set("logWarn", func(toolName, msg string) {
 		if log != nil {
-			log.WithName(toolName).Warn(logger.Message(msg))
+			log.WithTag(toolName).Warn(logger.Message(msg))
 		}
 	})
 	_ = vm.Set("logError", func(toolName, msg string) {
 		if log != nil {
-			log.WithName(toolName).Error(logger.Message(msg))
+			log.WithTag(toolName).Error(logger.Message(msg))
 		}
 	})
 	_ = vm.Set("logDebug", func(toolName, msg string) {
 		if log != nil {
-			log.WithName(toolName).Debug(logger.Message(msg))
+			log.WithTag(toolName).Debug(logger.Message(msg))
 		}
 	})
 

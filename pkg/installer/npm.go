@@ -76,7 +76,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	var writer *logger.LineWriter
 	if n.log != nil {
-		writer = logger.NewLineWriter(n.log.GetSubLogger("", tool.Name), "|")
+		writer = logger.NewLineWriter(n.log.WithTag(tool.Name), "|")
 	}
 
 	var cmd exec.Cmd
@@ -87,7 +87,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 		args = append(args, packageSpec)
 		if n.log != nil {
-			n.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ bun %s", strings.Join(args, " "))))
+			n.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ bun %s", strings.Join(args, " "))))
 		}
 		cmd = n.runner.CommandContext(ctx, "bun", args...)
 	} else {
@@ -97,7 +97,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 		args = append(args, packageSpec)
 		if n.log != nil {
-			n.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ npm %s", strings.Join(args, " "))))
+			n.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ npm %s", strings.Join(args, " "))))
 		}
 		cmd = n.runner.CommandContext(ctx, "npm", args...)
 	}

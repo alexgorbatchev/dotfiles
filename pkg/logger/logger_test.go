@@ -68,7 +68,6 @@ func TestGetLogLevelFromFlags(t *testing.T) {
 func TestLoggerOutputAndLevels(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "test",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})
@@ -97,7 +96,6 @@ func TestLoggerAgentModeNoColor(t *testing.T) {
 	t.Setenv("AGENT", "1")
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "test",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})
@@ -115,7 +113,6 @@ func TestLoggerAgentModeNoColor(t *testing.T) {
 func TestLoggerTraceModeCaller(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "test",
 		Level:  LogLevelVerbose,
 		Trace:  true,
 		Writer: &buf,
@@ -136,17 +133,25 @@ func TestLoggerTraceModeCaller(t *testing.T) {
 func TestLoggerContextAndSubLoggers(t *testing.T) {
 	var buf bytes.Buffer
 	parent := New(Config{
-		Name:   "parent",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})
 
-	sub := parent.GetSubLogger("child", "tool-abc")
+	sub := parent.WithTag("tool-abc")
 	sub.Info("running child")
 
 	output := buf.String()
 	if !strings.Contains(output, "INFO\t[tool-abc] running child\n") {
 		t.Errorf("Expected context prefix, got: %q", output)
+	}
+
+	// Chaining WithTag
+	sub2 := sub.WithTag("sub-tag")
+	buf.Reset()
+	sub2.Info("running sub-tagged")
+	output = buf.String()
+	if !strings.Contains(output, "INFO\t[tool-abc] [sub-tag] running sub-tagged\n") {
+		t.Errorf("Expected chained context prefix, got: %q", output)
 	}
 
 	// Overwrite/SetPrefix
@@ -157,12 +162,20 @@ func TestLoggerContextAndSubLoggers(t *testing.T) {
 	if !strings.Contains(output, "INFO\t[new-prefix] running with new prefix\n") {
 		t.Errorf("Expected set prefix, got: %q", output)
 	}
+
+	// Empty SetPrefix clears contexts
+	sub.SetPrefix("")
+	buf.Reset()
+	sub.Info("running without prefix")
+	output = buf.String()
+	if strings.Contains(output, "[") || strings.Contains(output, "]") {
+		t.Errorf("Expected no prefix after SetPrefix(\"\"), got: %q", output)
+	}
 }
 
 func TestErrorFilteringNonTraceMode(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "test",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})
@@ -192,7 +205,6 @@ func TestErrorFilteringNonTraceMode(t *testing.T) {
 func TestErrorFilteringTraceMode(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "test",
 		Level:  LogLevelVerbose,
 		Trace:  true,
 		Writer: &buf,
@@ -211,7 +223,6 @@ func TestErrorFilteringTraceMode(t *testing.T) {
 func TestLoggerFatal(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "test",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})
@@ -277,7 +288,6 @@ func TestCoverageFillers(t *testing.T) {
 
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "test",
 		Level:  LogLevelVerbose,
 		Writer: &buf,
 	})
@@ -345,18 +355,14 @@ func TestCoverageFillers(t *testing.T) {
 	}
 }
 
-func TestLoggerGettersAndWithName(t *testing.T) {
+func TestLoggerGettersAndWithTag(t *testing.T) {
 	var buf bytes.Buffer
 	l := New(Config{
-		Name:   "my-logger",
 		Level:  LogLevelVerbose,
 		Trace:  true,
 		Writer: &buf,
 	})
 
-	if l.Name() != "my-logger" {
-		t.Errorf("Name() = %q, want %q", l.Name(), "my-logger")
-	}
 	if l.Level() != LogLevelVerbose {
 		t.Errorf("Level() = %v, want %v", l.Level(), LogLevelVerbose)
 	}
@@ -367,9 +373,27 @@ func TestLoggerGettersAndWithName(t *testing.T) {
 		t.Errorf("Writer() mismatch")
 	}
 
-	named := l.WithName("child")
-	if named.Name() != "child" {
-		t.Errorf("WithName().Name() = %q, want %q", named.Name(), "child")
+	tagged := l.WithTag("child")
+	if len(tagged.contexts) != 1 || tagged.contexts[0] != "child" {
+		t.Errorf("WithTag contexts = %v, want [child]", tagged.contexts)
+	}
+
+	// Nil receiver checks
+	var nilLogger *Logger
+	if nilLogger.WithTag("tag") != nil {
+		t.Errorf("nilLogger.WithTag() should return nil")
+	}
+	if nilLogger.Level() != LogLevelDefault {
+		t.Errorf("nilLogger.Level() should default to LogLevelDefault")
+	}
+	if nilLogger.TraceMode() != false {
+		t.Errorf("nilLogger.TraceMode() should return false")
+	}
+	if nilLogger.Writer() == nil {
+		t.Errorf("nilLogger.Writer() should default to os.Stderr, got nil")
+	}
+	if nilLogger.SetPrefix("tag") != nil {
+		t.Errorf("nilLogger.SetPrefix() should return nil")
 	}
 
 	// Nil writer check on Writer()

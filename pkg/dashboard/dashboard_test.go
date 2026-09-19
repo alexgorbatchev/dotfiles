@@ -32,7 +32,6 @@ import (
 
 func TestDashboardServer(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})
@@ -119,7 +118,6 @@ func (m *mockInstallerForTest) CheckUpdate(ctx context.Context, tool *config.Too
 
 func TestDashboard_ToolsSchemaAndConcurrency(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})
@@ -380,7 +378,7 @@ func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config
 // installer out of the request entirely, and a constraint bounds which upstream
 // release counts as an update.
 func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
-	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 
 	ctx := context.Background()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -477,7 +475,7 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 // newer than what is installed, and a package manager that answered the question itself
 // (brew's outdated flag, apt, dnf, pacman) overrides the version comparison.
 func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
-	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 
 	sqlDB, err := db.NewConnection(context.Background(), ":memory:")
 	if err != nil {
@@ -534,7 +532,6 @@ func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
 
 func TestDashboard_CheckUpdateRoute(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})
@@ -1107,7 +1104,6 @@ func TestDashboard_InstallErrorResponse(t *testing.T) {
 
 func TestDashboardServer_CustomHost(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})
@@ -1125,7 +1121,6 @@ func TestDashboardServer_CustomHost(t *testing.T) {
 
 func TestHandleToolReadme_RemoteAndLocal(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})
@@ -1580,7 +1575,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 // shims append to is folded into the registry before the first request is served,
 // so the tool detail's usage reflects invocations made while no dashboard ran.
 func TestServerStart_ImportsShimUsageLog(t *testing.T) {
-	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	ctx := context.Background()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1680,7 +1675,7 @@ func TestServerStart_ImportsShimUsageLog(t *testing.T) {
 // server still binds.
 func TestServerStart_ReportsFailedUsageImport(t *testing.T) {
 	var logs bytes.Buffer
-	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelDefault, Writer: &logs})
+	log := logger.New(logger.Config{Level: logger.LogLevelDefault, Writer: &logs})
 	ctx := context.Background()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")

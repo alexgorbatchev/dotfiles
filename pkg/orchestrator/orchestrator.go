@@ -45,9 +45,7 @@ type Orchestrator struct {
 // NewOrchestrator creates a new Orchestrator instance.
 func NewOrchestrator(log *logger.Logger, fsys fs.FS, runner exec.CommandRunner, reg *registry.Registry, instReg *installer.Registry) *Orchestrator {
 	if log == nil {
-		log = logger.New(logger.Config{Name: "Orchestrator"})
-	} else {
-		log = log.WithName("Orchestrator")
+		log = logger.New(logger.Config{})
 	}
 	if instReg == nil {
 		instReg = installer.DefaultRegistry()
@@ -64,7 +62,7 @@ func NewOrchestrator(log *logger.Logger, fsys fs.FS, runner exec.CommandRunner, 
 // SetLogger updates the Orchestrator's logger.
 func (o *Orchestrator) SetLogger(log *logger.Logger) {
 	if log != nil {
-		o.logger = log.WithName("Orchestrator")
+		o.logger = log
 	}
 }
 
@@ -208,7 +206,7 @@ func (o *Orchestrator) warnUndeclaredBinaries(tool *config.ToolConfig, reported 
 	}
 
 	sort.Strings(undeclared)
-	o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf(
+	o.logger.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf(
 		"Installer reported binaries the tool does not declare with .bin(): %s (no shim generated; add .bin() for each one that should be on PATH)",
 		strings.Join(undeclared, ", "),
 	)))
@@ -228,7 +226,7 @@ func (o *Orchestrator) warnUnshimmedBinaries(tool *config.ToolConfig) {
 	if !isManualWithoutPayload(tool) || len(getBinaryNames(tool.Binaries)) == 0 {
 		return
 	}
-	o.logger.GetSubLogger("", tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath: provide the command from shell functions instead)"))
+	o.logger.WithTag(tool.Name).Warn(logger.Message("Skipping shim generation (manual tool has .bin() but no binaryPath: provide the command from shell functions instead)"))
 }
 
 // wantsShim reports whether the binary named binName should get a shim in the target
@@ -375,14 +373,14 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 	if !isExternal {
 		exists, err := o.fs.Exists(existingInstallation.InstallPath)
 		if err != nil || !exists {
-			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Existing install path missing: %s", o.formatPath(projCfg, existingInstallation.InstallPath))))
+			o.logger.WithTag(toolName).Warn(logger.Message(fmt.Sprintf("Existing install path missing: %s", o.formatPath(projCfg, existingInstallation.InstallPath))))
 			return false
 		}
 
 		currentDir := filepath.Join(projCfg.Paths.BinariesDir, toolName, "current")
 		currentDirExists, err := o.fs.Exists(currentDir)
 		if err != nil || !currentDirExists {
-			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current directory missing: %s", o.formatPath(projCfg, currentDir))))
+			o.logger.WithTag(toolName).Warn(logger.Message(fmt.Sprintf("Current directory missing: %s", o.formatPath(projCfg, currentDir))))
 			return false
 		}
 
@@ -391,7 +389,7 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 			binaryPath := filepath.Join(currentDir, binName)
 			binExists, err := o.fs.Exists(binaryPath)
 			if err != nil || !binExists {
-				o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("Current binary missing: %s", o.formatPath(projCfg, binaryPath))))
+				o.logger.WithTag(toolName).Warn(logger.Message(fmt.Sprintf("Current binary missing: %s", o.formatPath(projCfg, binaryPath))))
 				return false
 			}
 		}
@@ -421,7 +419,7 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 			}
 		}
 		if !found {
-			o.logger.GetSubLogger("", toolName).Warn(logger.Message(fmt.Sprintf("External binary missing: %s", binName)))
+			o.logger.WithTag(toolName).Warn(logger.Message(fmt.Sprintf("External binary missing: %s", binName)))
 			return false
 		}
 	}
@@ -468,14 +466,14 @@ func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.
 	targetVersion := o.getTargetVersion(tool)
 	if targetVersion != "" {
 		if version.CleanVersion(existing.Version) == targetVersion {
-			o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Already installed at version %s", targetVersion)))
+			o.logger.WithTag(tool.Name).Debug(logger.Message(fmt.Sprintf("Already installed at version %s", targetVersion)))
 			return true, nil
 		}
-		o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Outdated version %s (target is %s)", existing.Version, targetVersion)))
+		o.logger.WithTag(tool.Name).Debug(logger.Message(fmt.Sprintf("Outdated version %s (target is %s)", existing.Version, targetVersion)))
 		return false, nil
 	}
 
-	o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Already installed (version: %s)", existing.Version)))
+	o.logger.WithTag(tool.Name).Debug(logger.Message(fmt.Sprintf("Already installed (version: %s)", existing.Version)))
 	return true, nil
 }
 
@@ -680,7 +678,7 @@ func (o *Orchestrator) writeTypeCheckProgram(projCfg *config.ProjectConfig, decl
 		if !scaffold.IsLegacyProjectTSConfig(existing) {
 			return nil
 		}
-		o.logger.GetSubLogger("", "system").Info(logger.Message(fmt.Sprintf("Updating generated %s to extend %s", o.formatPath(projCfg, projectTSConfig), o.formatPath(projCfg, generatedTSConfig))))
+		o.logger.WithTag("system").Info(logger.Message(fmt.Sprintf("Updating generated %s to extend %s", o.formatPath(projCfg, projectTSConfig), o.formatPath(projCfg, generatedTSConfig))))
 	}
 
 	extends := generatedTSConfig

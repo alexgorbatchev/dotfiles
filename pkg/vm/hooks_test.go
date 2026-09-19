@@ -54,7 +54,7 @@ func runHookCapturingFile(t *testing.T, tool *config.ToolConfig, projCfg *config
 	memFS := fs.NewMemFS()
 	err := RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		memFS,
 		exec.NewMockRunner(),
 		tool,
@@ -90,7 +90,7 @@ func TestRunHook_ReceivesEventContextAndRunsCommands(t *testing.T) {
 
 	err := RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		fs.NewMemFS(),
 		runner,
 		tool,
@@ -127,7 +127,7 @@ func TestRunHook_FileSystemIsUsable(t *testing.T) {
 	memFS := fs.NewMemFS()
 	err := RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		memFS,
 		exec.NewMockRunner(),
 		tool,
@@ -162,7 +162,7 @@ func TestRunHook_FailureIsReported(t *testing.T) {
 
 	err := RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		fs.NewMemFS(),
 		exec.NewMockRunner(),
 		tool,
@@ -199,7 +199,7 @@ func TestRunHook_RejectingAsyncFactoryFailsTheHook(t *testing.T) {
 	memFS := fs.NewMemFS()
 	err := RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		memFS,
 		exec.NewMockRunner(),
 		tool,
@@ -256,7 +256,7 @@ func TestRunHook_OnlyMatchingEventRuns(t *testing.T) {
 	memFS := fs.NewMemFS()
 	err := RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		memFS,
 		exec.NewMockRunner(),
 		tool,
@@ -298,7 +298,7 @@ func TestRunHook_BeforeInstallReceivesAbsoluteStagingDir(t *testing.T) {
 
 	err := RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		fs.NewMemFS(),
 		runner,
 		tool,
@@ -371,7 +371,7 @@ func TestRunHook_DirnameIsTheToolFilesDirectory(t *testing.T) {
 		t.Fatalf("writing the tool file: %v", err)
 	}
 
-	log := logger.New(logger.Config{Name: "test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	projCfg, tools, err := LoadTypeScriptConfig(log, fs.NewOSFS(), configPath)
 	if err != nil {
 		t.Fatalf("loading the configuration: %v", err)
@@ -531,7 +531,7 @@ func runHookOnFS(t *testing.T, memFS fs.FS, tool *config.ToolConfig, hookCtx Hoo
 	t.Helper()
 	return RunHook(
 		context.Background(),
-		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		logger.New(logger.Config{Writer: os.Stderr}),
 		memFS,
 		exec.NewMockRunner(),
 		tool,

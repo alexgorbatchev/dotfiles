@@ -778,7 +778,6 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -891,7 +890,7 @@ func TestOrchestrator_GetCliCommand(t *testing.T) {
 }
 
 func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
-	log := logger.New(logger.Config{Name: "test"})
+	log := logger.New(logger.Config{})
 	memFS := fs.NewMemFS()
 	trackedFS := fs.NewTrackedFileSystem(memFS, nil, log, "system")
 	runner := exec.NewMockRunner()
@@ -950,7 +949,7 @@ func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
 
 func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
 	ctx := context.Background()
-	log := logger.New(logger.Config{Name: "test-zsh-plugin", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 
@@ -1276,7 +1275,7 @@ func TestOrchestrator_CleanupStaleCopies(t *testing.T) {
 
 func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 	ctx := context.Background()
-	log := logger.New(logger.Config{Name: "test-completions", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	fsys := fs.NewMemFS()
 	runner := exec.NewOSRunner()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1338,7 +1337,7 @@ func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 
 func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 	ctx := context.Background()
-	log := logger.New(logger.Config{Name: "test-completions-cmd", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	runner.Register("mytool", []byte("# mytool zsh completion"), nil)
@@ -1425,7 +1424,7 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-completions-timeout", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	runner.Register("/home/user/.generated/binaries/stalledtool/current/stalledtool", nil, context.DeadlineExceeded)
@@ -1485,7 +1484,7 @@ func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) 
 func TestManualToolWithoutBinaryPath_NoShimAndWarning(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-manual", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 
@@ -1593,7 +1592,7 @@ func TestShimBinaries(t *testing.T) {
 func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-manual-tilde", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 	rfs := fs.NewResolvedFS(fs.NewMemFS(), "/home/user")
 	runner := exec.NewMockRunner()
 
@@ -1737,7 +1736,7 @@ func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
 			ctx := context.Background()
 			memFS := fs.NewMemFS()
 			runner := exec.NewMockRunner()
-			log := logger.New(logger.Config{Name: "test-external-shim", Level: logger.LogLevelQuiet, Writer: io.Discard})
+			log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 
 			sqlDB, err := db.NewConnection(ctx, ":memory:")
 			if err != nil {
@@ -1886,7 +1885,7 @@ func TestInstallTool_BeforeInstallHookStagesThePayload(t *testing.T) {
 
 			instReg := installer.NewRegistry()
 			_ = instReg.Register(installer.NewManualInstaller(runner, memFS, nil))
-			log := logger.New(logger.Config{Name: "test-hook-staging", Level: logger.LogLevelQuiet, Writer: io.Discard})
+			log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 			orch := NewOrchestrator(log, memFS, runner, reg, instReg)
 
 			projCfg := &config.ProjectConfig{
@@ -2448,7 +2447,7 @@ func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
 	})
 
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-logger", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 	orch := NewOrchestrator(log, fsys, runner, reg, instReg)
 	orch.SetSymlinkFS(fsys)
 
@@ -2538,7 +2537,7 @@ func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
 	defer sqlDB.Close()
 
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-logger", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 	orch := NewOrchestrator(log, fsys, runner, registry.NewRegistry(sqlDB), installer.NewRegistry())
 
 	projCfg := &config.ProjectConfig{
@@ -2588,7 +2587,7 @@ func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
 func TestInstallThenGenerate_SystemDirectoriesAreNotToolOwnedShims(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-system-dirs", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 
@@ -2727,7 +2726,7 @@ func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
 	staleShim := filepath.Join(projCfg.Paths.TargetDir, "gone")
 
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-cleanup", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 	removeErr := errors.New("permission denied")
 	orch := NewOrchestrator(log, &removeErrorFS{FS: fsys, err: removeErr}, runner, reg, installer.NewRegistry())
 
@@ -2879,7 +2878,7 @@ func TestManualBinaryPathRejectsUnresolvablePlaceholder(t *testing.T) {
 			if err := instReg.Register(&mockInstaller{name: "manual"}); err != nil {
 				t.Fatalf("registering the installer: %v", err)
 			}
-			log := logger.New(logger.Config{Name: "test-manual", Level: logger.LogLevelQuiet, Writer: io.Discard})
+			log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 			orch := NewOrchestrator(log, fsys, exec.NewMockRunner(), registry.NewRegistry(sqlDB), instReg)
 
 			projCfg := &config.ProjectConfig{
@@ -2950,7 +2949,7 @@ func TestGenerateCompletionsForToolRejectsUnresolvablePlaceholder(t *testing.T) 
 			}
 			defer sqlDB.Close()
 
-			log := logger.New(logger.Config{Name: "test-completions", Level: logger.LogLevelQuiet, Writer: io.Discard})
+			log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 			orch := NewOrchestrator(log, fsys, exec.NewMockRunner(), registry.NewRegistry(sqlDB), nil)
 
 			projCfg := &config.ProjectConfig{

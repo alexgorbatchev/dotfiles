@@ -24,7 +24,6 @@ import (
 
 func TestDashboardMutationRoutes(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})

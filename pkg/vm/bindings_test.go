@@ -131,7 +131,6 @@ func userHomeDir(t *testing.T) string {
 func TestRegisterContextBindingsWithLogger(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger-direct",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -154,7 +153,7 @@ func TestRegisterContextBindingsWithLogger(t *testing.T) {
 	}
 
 	out := logBuf.String()
-	if !strings.Contains(out, "info msg") || !strings.Contains(out, "warn msg") || !strings.Contains(out, "error msg") || !strings.Contains(out, "debug msg") {
-		t.Errorf("expected log output to contain all direct log messages, got %q", out)
+	if !strings.Contains(out, "[toolA] info msg") || !strings.Contains(out, "[toolA] warn msg") || !strings.Contains(out, "[toolA] error msg") || !strings.Contains(out, "[toolA] debug msg") {
+		t.Errorf("expected log output to contain all direct log messages with tool tag, got %q", out)
 	}
 }

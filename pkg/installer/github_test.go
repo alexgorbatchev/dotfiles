@@ -575,7 +575,7 @@ func TestGitHubInstaller_InstallExtractsArchiveFormats(t *testing.T) {
 			inst.httpClient = server.Client()
 			inst.BaseURL = server.URL
 			inst.BinDir = "/test/bin"
-			inst.SetLogger(logger.New(logger.Config{Name: "test", Level: logger.LogLevelVerbose, Writer: &logBuf}))
+			inst.SetLogger(logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf}))
 
 			tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}}
 			res, err := inst.Install(context.Background(), tool)
@@ -806,7 +806,7 @@ func TestGitHubInstaller_ProgressLogging(t *testing.T) {
 	defer server.Close()
 
 	var logBuf bytes.Buffer
-	log := logger.New(logger.Config{Name: "test-github-log", Level: logger.LogLevelVerbose, Writer: &logBuf})
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 
 	runner := exec.NewMockRunner()
 	fsys := fs.NewMemFS()

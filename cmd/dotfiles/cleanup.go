@@ -39,12 +39,12 @@ var cleanupCmd = &cobra.Command{
 			// Identify orphaned installed tools
 			for _, instTool := range installedTools {
 				if !activeMap[instTool.ToolName] {
-					log.GetSubLogger("", instTool.ToolName).Info(logger.Message("Removing orphaned tool..."))
+					log.WithTag(instTool.ToolName).Info(logger.Message("Removing orphaned tool..."))
 					err := services.Orchestrator.UninstallTool(ctx, &config.ToolConfig{
 						Name: instTool.ToolName,
 					}, services.ProjectConfig)
 					if err != nil {
-						log.GetSubLogger("", instTool.ToolName).Error("Failed uninstalling orphaned tool", err)
+						log.WithTag(instTool.ToolName).Error("Failed uninstalling orphaned tool", err)
 					}
 				}
 			}

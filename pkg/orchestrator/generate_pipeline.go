@@ -119,7 +119,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 
 			if hasFailedDep {
 				failedAutoInstalls[tool.Name] = true
-				o.logger.GetSubLogger("", tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: dependency %q failed to install", failedDepName)))
+				o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: dependency %q failed to install", failedDepName)))
 				if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
 					return fmt.Errorf("generating tool %q: %w", tool.Name, err)
 				}
@@ -131,10 +131,10 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 				return err
 			}
 			if !skip {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message("Installing..."))
+				o.logger.WithTag(tool.Name).Info(logger.Message("Installing..."))
 				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
 					failedAutoInstalls[tool.Name] = true
-					o.logger.GetSubLogger("", tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: %v", err)))
+					o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: %v", err)))
 					if genErr := o.GenerateTool(ctx, tool, projCfg); genErr != nil {
 						return fmt.Errorf("generating tool %q fallback: %w", tool.Name, genErr)
 					}
@@ -162,7 +162,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		o.logger.Error("Syncing TypeScript types warning", err)
 	}
 
-	o.logger.GetSubLogger("", "system").Info(logger.Message("DONE"))
+	o.logger.WithTag("system").Info(logger.Message("DONE"))
 	return nil
 }
 
@@ -296,7 +296,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			isShim, err := shimGen.IsGeneratedShim(shimPath)
 			if err == nil && !isShim {
 				if !shouldOverwrite(ctx) {
-					o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
+					o.logger.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
 					continue
 				}
 			}
@@ -324,7 +324,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	// 5. Generate completions
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
-		o.logger.GetSubLogger("", tool.Name).Error("Failed to generate completions", err)
+		o.logger.WithTag(tool.Name).Error("Failed to generate completions", err)
 	}
 
 	return nil
@@ -610,7 +610,7 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 			}
 
 			if !expectedShimPaths[absFilePath] && !expectedShimPaths[state.FilePath] {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", o.formatPath(projCfg, state.FilePath))))
+				o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", o.formatPath(projCfg, state.FilePath))))
 
 				stalePaths := []string{state.FilePath}
 				if absFilePath != state.FilePath {
@@ -618,7 +618,7 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 				}
 				for _, path := range stalePaths {
 					if err := o.fs.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-						o.logger.GetSubLogger("", tool.Name).Error(logger.Message(fmt.Sprintf("Failed to remove stale shim %s: %v", o.formatPath(projCfg, path), err)))
+						o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Failed to remove stale shim %s: %v", o.formatPath(projCfg, path), err)))
 					}
 				}
 
@@ -695,7 +695,7 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 			}
 
 			if !expectedSymlinks[absFilePath] && !expectedSymlinks[resolvedFilePath] && !expectedSymlinks[state.FilePath] {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, resolvedFilePath))))
+				o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, resolvedFilePath))))
 
 				_, _ = symEvaluator.RemoveSymlink(state.FilePath, "")
 				_ = o.fs.Remove(state.FilePath)
@@ -801,7 +801,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 			}
 
 			if !isExpected(absFilePath) && !isExpected(resolvedFilePath) && !isExpected(state.FilePath) {
-				o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", o.formatPath(projCfg, resolvedFilePath))))
+				o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", o.formatPath(projCfg, resolvedFilePath))))
 
 				_ = o.fs.Remove(resolvedFilePath)
 				_ = o.fs.Remove(absFilePath)
@@ -918,7 +918,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 						}
 
 						if execPath == "" {
-							o.logger.GetSubLogger("", tool.Name).Debug(logger.Message(fmt.Sprintf("Skipping %s completion: binary %q not installed at %s", sh, parts[0], filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))))
+							o.logger.WithTag(tool.Name).Debug(logger.Message(fmt.Sprintf("Skipping %s completion: binary %q not installed at %s", sh, parts[0], filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current"))))
 							return nil
 						}
 
@@ -927,7 +927,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 						}
 
 						cmdName = execPath
-						o.logger.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
+						o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Generating %s completion using: %s", sh, cmdValResolved)))
 						cmdCtx, cancel := context.WithTimeout(ctx, completionCommandTimeout)
 						cmdExec := o.runner.CommandContext(cmdCtx, cmdName, parts[1:]...)
 						cmdExec.SetProcessGroup(true)
@@ -938,7 +938,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 						timedOut := errors.Is(cmdCtx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded)
 						cancel()
 
-						toolLog := o.logger.GetSubLogger("", tool.Name)
+						toolLog := o.logger.WithTag(tool.Name)
 						switch {
 						case err != nil && timedOut:
 							toolLog.Warn(logger.Message(fmt.Sprintf("Completion command %q timed out after %s; no %s completion generated for %s", cmdValResolved, completionCommandTimeout, sh, tool.Name)))

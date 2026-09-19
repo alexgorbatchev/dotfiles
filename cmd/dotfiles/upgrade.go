@@ -67,7 +67,7 @@ Use --check to inspect available updates without downloading or modifying the ex
 			DryRun:          dryRun,
 		}
 
-		toolLog := log.GetSubLogger("", "dotfiles")
+		toolLog := log.WithTag("dotfiles")
 
 		if check {
 			toolLog.Info("Checking for updates...")

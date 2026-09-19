@@ -505,8 +505,8 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 
 	var writer *logger.LineWriter
 	if c.log != nil {
-		writer = logger.NewLineWriter(c.log.GetSubLogger("", tool.Name), "|")
-		c.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ cargo %s", strings.Join(args, " "))))
+		writer = logger.NewLineWriter(c.log.WithTag(tool.Name), "|")
+		c.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ cargo %s", strings.Join(args, " "))))
 	}
 	cmd := c.runner.CommandContext(ctx, "cargo", args...)
 	if writer != nil {

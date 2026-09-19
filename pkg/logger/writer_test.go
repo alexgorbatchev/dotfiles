@@ -11,7 +11,6 @@ import (
 func TestLineWriter(t *testing.T) {
 	var buf bytes.Buffer
 	log := New(Config{
-		Name:   "test",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})
@@ -40,7 +39,6 @@ func TestLineWriterPrintError(t *testing.T) {
 	t.Run("prints error when no output written", func(t *testing.T) {
 		var buf bytes.Buffer
 		log := New(Config{
-			Name:   "test",
 			Level:  LogLevelDefault,
 			Writer: &buf,
 		})
@@ -63,7 +61,6 @@ func TestLineWriterPrintError(t *testing.T) {
 	t.Run("does not duplicate error if output already written", func(t *testing.T) {
 		var buf bytes.Buffer
 		log := New(Config{
-			Name:   "test",
 			Level:  LogLevelDefault,
 			Writer: &buf,
 		})
@@ -85,7 +82,6 @@ func TestLineWriterPrintError(t *testing.T) {
 func TestLineWriterQuietMode(t *testing.T) {
 	var buf bytes.Buffer
 	log := New(Config{
-		Name:   "test",
 		Level:  LogLevelQuiet,
 		Writer: &buf,
 	})
@@ -121,7 +117,6 @@ func TestLineWriterNilLogger(t *testing.T) {
 func TestLineWriterReset(t *testing.T) {
 	var buf bytes.Buffer
 	log := New(Config{
-		Name:   "test",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})
@@ -147,7 +142,6 @@ func TestLineWriterReset(t *testing.T) {
 func TestLineWriterConcurrentWrites(t *testing.T) {
 	var buf bytes.Buffer
 	log := New(Config{
-		Name:   "test",
 		Level:  LogLevelDefault,
 		Writer: &buf,
 	})

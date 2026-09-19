@@ -140,8 +140,12 @@ func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry
 	if host == "" {
 		host = "127.0.0.1"
 	}
+	var dashboardLog *logger.Logger
+	if log != nil {
+		dashboardLog = log.WithTag("DashboardServer")
+	}
 	s := &Server{
-		logger:        log.GetSubLogger("DashboardServer"),
+		logger:        dashboardLog,
 		host:          host,
 		port:          port,
 		registry:      reg,
@@ -159,7 +163,6 @@ func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry
 	if orch != nil && log != nil {
 		mw := io.MultiWriter(log.Writer(), s.broadcaster)
 		orchLog := logger.New(logger.Config{
-			Name:   "orchestrator",
 			Level:  log.Level(),
 			Trace:  log.TraceMode(),
 			Writer: mw,

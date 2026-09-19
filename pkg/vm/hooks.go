@@ -400,7 +400,7 @@ func registerHookShell(ctx context.Context, vm *goja.Runtime, log *logger.Logger
 	return vm.Set("shellExec", func(toolName, command, cwd string, quiet, noThrow bool) goja.Value {
 		var toolLog *logger.Logger
 		if log != nil {
-			toolLog = log.GetSubLogger("", toolName)
+			toolLog = log.WithTag(toolName)
 		}
 		if toolLog != nil && !quiet {
 			toolLog.Info(logger.Message("$ " + command))

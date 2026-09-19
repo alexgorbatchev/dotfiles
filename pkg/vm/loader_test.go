@@ -20,7 +20,6 @@ import (
 func TestLoaderFileSystemWriteOperations(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -93,7 +92,6 @@ func TestLoaderFileSystemWriteOperations(t *testing.T) {
 func TestLoaderAPIFeatures(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -192,7 +190,6 @@ func TestTranspileTSError(t *testing.T) {
 func TestRegisterContextBindingsLogsAndFS(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -244,7 +241,6 @@ func TestRegisterContextBindingsLogsAndFS(t *testing.T) {
 func TestLoadTypeScriptConfigErrors(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger-err",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -758,7 +754,6 @@ func TestGenerateEntryLoaderDirect(t *testing.T) {
 func TestLoadTypeScriptConfigToolConfigsDirAndBinariesDir(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger-dir",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -856,7 +851,6 @@ export default defineTool((install) => install("manual", {}).bin("tool-two").ver
 func TestLoaderDefaultPathsConsistency(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger-paths",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
@@ -933,7 +927,6 @@ func TestLoaderDefaultPathsConsistency(t *testing.T) {
 func TestLoaderBrewAutoDependency(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-brew-auto-dep",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})

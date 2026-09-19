@@ -79,7 +79,7 @@ var generateCmd = &cobra.Command{
 // profile is touched: v1 updated profiles with onlyIfExists, and the file belongs to
 // the user, so a missing one is reported with what to do rather than created.
 func injectProfile(log *logger.Logger, inj *shellinit.Injector, opts shellinit.InjectOptions) {
-	plog := log.GetSubLogger("", opts.ProfilePath)
+	plog := log.WithTag(opts.ProfilePath)
 	_, err := inj.Inject(opts)
 	switch {
 	case errors.Is(err, shellinit.ErrProfileNotFound):

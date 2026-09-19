@@ -42,7 +42,6 @@ var (
 
 // Config represents the configuration for constructing a new Logger.
 type Config struct {
-	Name   string
 	Level  LogLevel
 	Trace  bool
 	Writer io.Writer // Defaults to os.Stderr
@@ -51,11 +50,9 @@ type Config struct {
 // Logger is a type-safe wrapper around slog.Logger.
 type Logger struct {
 	mu       sync.RWMutex
-	name     string
 	level    LogLevel
 	trace    bool
 	writer   io.Writer
-	path     []string
 	contexts []string
 	slog     *slog.Logger
 	onFatal  func()
@@ -183,11 +180,9 @@ func New(cfg Config) *Logger {
 	slogLogger := slog.New(handler)
 
 	return &Logger{
-		name:    cfg.Name,
 		level:   cfg.Level,
 		trace:   cfg.Trace,
 		writer:  cfg.Writer,
-		path:    []string{cfg.Name},
 		slog:    slogLogger,
 		onFatal: func() { os.Exit(1) },
 	}
@@ -229,41 +224,37 @@ func GetLogLevelFromFlags(log string, quiet bool, verbose bool) (LogLevel, error
 	return ParseLogLevel(log)
 }
 
-// GetSubLogger creates a sublogger.
-// Only named subloggers create a new level in the logger hierarchy path.
-func (l *Logger) GetSubLogger(name string, context ...string) *Logger {
+// WithTag returns a sublogger with the given bracketed context tag ([<tag>]) appended to contexts.
+func (l *Logger) WithTag(tag string) *Logger {
+	if l == nil {
+		return nil
+	}
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
-	subPath := append([]string{}, l.path...)
-	if name != "" {
-		subPath = append(subPath, name)
+	var subContexts []string
+	if len(l.contexts) > 0 {
+		subContexts = append([]string{}, l.contexts...)
+	}
+	if tag != "" {
+		subContexts = append(subContexts, tag)
 	}
 
-	subContexts := append([]string{}, l.contexts...)
-	subContexts = append(subContexts, context...)
-
 	return &Logger{
-		name:     name,
 		level:    l.level,
 		trace:    l.trace,
 		writer:   l.writer,
-		path:     subPath,
 		contexts: subContexts,
 		slog:     l.slog,
 		onFatal:  l.onFatal,
 	}
 }
 
-// Name returns the logger's name.
-func (l *Logger) Name() string {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-	return l.name
-}
-
 // Level returns the logger's level.
 func (l *Logger) Level() LogLevel {
+	if l == nil {
+		return LogLevelDefault
+	}
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return l.level
@@ -271,6 +262,9 @@ func (l *Logger) Level() LogLevel {
 
 // TraceMode returns the logger's trace setting.
 func (l *Logger) TraceMode() bool {
+	if l == nil {
+		return false
+	}
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return l.trace
@@ -278,6 +272,9 @@ func (l *Logger) TraceMode() bool {
 
 // Writer returns the logger's underlying writer.
 func (l *Logger) Writer() io.Writer {
+	if l == nil {
+		return os.Stderr
+	}
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	if l.writer == nil {
@@ -288,15 +285,17 @@ func (l *Logger) Writer() io.Writer {
 
 // SetPrefix overrides/sets the prefix for this logger wrapped inside brackets [context].
 func (l *Logger) SetPrefix(context string) *Logger {
+	if l == nil {
+		return nil
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.contexts = []string{context}
+	if context == "" {
+		l.contexts = nil
+	} else {
+		l.contexts = []string{context}
+	}
 	return l
-}
-
-// WithName returns a new Logger with the given name appended to the logger's name path.
-func (l *Logger) WithName(name string) *Logger {
-	return l.GetSubLogger(name)
 }
 
 func (l *Logger) Trace(msg Message, args ...any) {

@@ -26,7 +26,6 @@ import (
 
 func TestDashboardAPIs(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})
@@ -190,7 +189,6 @@ func TestDashboardMoreRoutes(t *testing.T) {
 
 func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})

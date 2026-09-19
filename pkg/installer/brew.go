@@ -145,13 +145,13 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 
 	var writer *logger.LineWriter
 	if b.log != nil {
-		writer = logger.NewLineWriter(b.log.GetSubLogger("", tool.Name), "|")
+		writer = logger.NewLineWriter(b.log.WithTag(tool.Name), "|")
 	}
 
 	// Trust targets if any
 	for _, trust := range trusts {
 		if b.log != nil {
-			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew trust %s", trust)))
+			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew trust %s", trust)))
 		}
 		cmd := b.brewCommand(ctx, "trust", trust)
 		if writer != nil {
@@ -172,7 +172,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	// Tap custom repositories if any
 	for _, tap := range taps {
 		if b.log != nil {
-			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew tap %s", tap)))
+			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew tap %s", tap)))
 		}
 		cmd := b.brewCommand(ctx, "tap", tap)
 		if writer != nil {
@@ -204,7 +204,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	args = append(args, formula)
 
 	if b.log != nil {
-		b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(args, " "))))
+		b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(args, " "))))
 	}
 	cmd := b.brewCommand(ctx, args...)
 	if writer != nil {
@@ -225,7 +225,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	if linkArgs := brewLinkArgs(tool.InstallParams["link"]); linkArgs != nil {
 		linkArgs = append(linkArgs, formula)
 		if b.log != nil {
-			b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(linkArgs, " "))))
+			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(linkArgs, " "))))
 		}
 		linkCmd := b.brewCommand(ctx, linkArgs...)
 		if writer != nil {
@@ -256,7 +256,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		}
 		if action != "" {
 			if b.log != nil {
-				b.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services %s %s", action, formula)))
+				b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services %s %s", action, formula)))
 			}
 			svcCmd := b.brewCommand(ctx, "services", action, formula)
 			if writer != nil {
