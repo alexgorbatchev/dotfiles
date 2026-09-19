@@ -64,6 +64,7 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 | `.copy(src, dest)`     | Copy a file or directory into place instead of linking it (see below)                   |
 | `.updateCheck(config)` | Record update-check settings on the tool (see below)                                    |
 | `.hook(event, fn)`     | Lifecycle hooks ([details](lifecycle-hooks.md))                                         |
+| `.shell(fn)`           | Shell configuration across all supported shells (Zsh, Bash, PowerShell)                 |
 | `.zsh(fn)`             | Zsh shell configuration                                                                 |
 | `.bash(fn)`            | Bash shell configuration                                                                |
 | `.powershell(fn)`      | PowerShell configuration                                                                |
@@ -171,7 +172,7 @@ Lifecycle hooks are registered with `.hook()` (see [lifecycle-hooks.md](lifecycl
 
 ### Shell Configuration
 
-The shell methods (`.zsh`, `.bash`, `.powershell`) receive a configurator:
+The shell methods (`.shell`, `.zsh`, `.bash`, `.powershell`) receive a configurator:
 
 ```typescript builder
 .zsh((shell) =>

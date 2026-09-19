@@ -30,3 +30,15 @@ expectError(
     ),
   ),
 );
+
+// Valid: cross-shell configuration via .shell()
+defineTool((install) =>
+  install().shell((shell) => {
+    shell.env({ NODE_ENV: "production" });
+    shell.alias({ p: "prod" });
+    shell.path("/usr/local/bin");
+  }),
+);
+
+// Invalid: PATH inside .shell().env() must be rejected
+expectError(defineTool((install) => install().shell((shell) => shell.env({ PATH: "/usr/bin" }))));

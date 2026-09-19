@@ -111,10 +111,20 @@ defineTool((install, ctx) => {
 
   const builder: IToolConfigBuilder = install();
 
+  builder.shell((shell) => {
+    shell.env({ FOO: "bar" });
+    shell.alias({ f: "foo" });
+    shell.path("/custom/path");
+  });
+
   return builder.platform(Platform.MacOS, (platformInstall) => {
     expectType<IPlatformInstallFunction>(platformInstall);
 
     const platformBuilder: IPlatformConfigBuilder = platformInstall();
+
+    platformBuilder.shell((shell) => {
+      shell.env({ PLATFORM_FOO: "bar" });
+    });
 
     return platformBuilder;
   });
