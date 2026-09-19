@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
 const declToolDir = "/home/user/dotfiles/tools/decl-tool"
@@ -592,5 +593,77 @@ func TestBlockKeepLocalPolicyPreservesDriftWhenUpstreamChanges(t *testing.T) {
 	}
 	if strings.Contains(got, "Include /repo/v2") {
 		t.Errorf("upstream content should not have overwritten keep-local block:\n%s", got)
+	}
+}
+
+// TestTemplateMergeAndOverwriteCoverage covers whole file 3-way merge, conflicts, and overwrite backup.
+func TestTemplateMergeAndOverwriteCoverage(t *testing.T) {
+	orch, memFS := declFixture(t)
+	ctx := context.Background()
+
+	// 1. Template merge conflict
+	tmplSource := declToolDir + "/config.tmpl"
+	writeDecl(t, memFS, tmplSource, "server = 127.0.0.1\nport = {port}\n")
+
+	tool := newDeclTool()
+	tool.Templates = []config.TemplateConfig{{
+		Source:    "./config.tmpl",
+		Target:    "~/app.conf",
+		Variables: map[string]any{"port": 8080},
+		Conflict:  "merge",
+	}}
+
+	if err := orch.GenerateTool(ctx, tool, declProjectConfig()); err != nil {
+		t.Fatalf("first generate: %v", err)
+	}
+
+	// User edits target on disk
+	writeDecl(t, memFS, "/home/user/app.conf", "server = 10.0.0.1\nport = 9000\n")
+
+	// Upstream template updates port to 8081
+	tool.Templates[0].Variables = map[string]any{"port": 8081}
+
+	if err := orch.GenerateTool(ctx, tool, declProjectConfig()); err != nil {
+		t.Fatalf("second generate with merge conflict: %v", err)
+	}
+
+	content := readDecl(t, memFS, "/home/user/app.conf")
+	if !strings.Contains(content, "<<<<<<< local") || !strings.Contains(content, ">>>>>>> dotfiles") {
+		t.Errorf("expected conflict markers in merged template, got:\n%s", content)
+	}
+
+	// 2. Template overwrite with backup when local drift exists
+	writeDecl(t, memFS, "/home/user/app.conf", "server = 192.168.1.1\nport = 7777\n")
+	toolOverwrite := newDeclTool()
+	toolOverwrite.Templates = []config.TemplateConfig{{
+		Source:    "./config.tmpl",
+		Target:    "~/app.conf",
+		Variables: map[string]any{"port": 8082},
+		Conflict:  "overwrite",
+	}}
+	if err := orch.GenerateTool(ctx, toolOverwrite, declProjectConfig()); err != nil {
+		t.Fatalf("generate overwrite: %v", err)
+	}
+	if !strings.Contains(readDecl(t, memFS, "/home/user/app.conf"), "port = 8082") {
+		t.Errorf("expected overwritten content in app.conf")
+	}
+	if exists, _ := memFS.Exists("/home/user/app.conf.bak"); !exists {
+		t.Errorf("expected backup file app.conf.bak to exist")
+	}
+
+	// 3. baseContentFor and recordedContent coverage with empty metadata
+	state := &registry.FileState{
+		FilePath: "/home/user/app.conf",
+	}
+	hash := fs.HashContent([]byte("port = 8082\nserver = 127.0.0.1\n"))
+	writeDecl(t, memFS, "/home/user/app.conf", "port = 8082\nserver = 127.0.0.1\n")
+	got := orch.recordedContent(ctx, state, hash)
+	if got != "port = 8082\nserver = 127.0.0.1\n" {
+		t.Errorf("baseContentFor failed to return file content matching base hash, got: %q", got)
+	}
+
+	// Non-matching hash returns empty
+	if empty := orch.recordedContent(ctx, state, "different-hash"); empty != "" {
+		t.Errorf("expected empty string for non-matching hash, got: %q", empty)
 	}
 }

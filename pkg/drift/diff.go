@@ -34,7 +34,11 @@ func UnifiedDiff(oldLabel, newLabel, oldText, newText string) string {
 	for _, res := range diffResults {
 		if res.Common != nil {
 			for _, line := range res.Common {
-				sb.WriteString(" " + line + "\n")
+				if line == "" {
+					sb.WriteString("\n")
+				} else {
+					sb.WriteString(" " + line + "\n")
+				}
 			}
 		} else {
 			hasChanges = true
