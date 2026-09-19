@@ -16,7 +16,6 @@ import (
 
 func TestDashboardFullHealthAndTools(t *testing.T) {
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelQuiet,
 		Writer: io.Discard,
 	})

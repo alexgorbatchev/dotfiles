@@ -45,13 +45,13 @@ var checkUpdatesCmd = &cobra.Command{
 			}
 
 			if !tool.UpdateCheckEnabled() {
-				log.GetSubLogger("", tool.Name).Debug(logger.Message("Update checks disabled by updateCheck.enabled"))
+				log.WithTag(tool.Name).Debug(logger.Message("Update checks disabled by updateCheck.enabled"))
 				continue
 			}
 
 			inst, err := instReg.Get(tool.InstallationMethod)
 			if err != nil {
-				log.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Installer %q not found", tool.InstallationMethod)))
+				log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("Installer %q not found", tool.InstallationMethod)))
 				continue
 			}
 
@@ -63,7 +63,7 @@ var checkUpdatesCmd = &cobra.Command{
 
 			res, err := inst.CheckUpdate(ctx, tool)
 			if err != nil {
-				log.GetSubLogger("", tool.Name).Error("Update check failed", err)
+				log.WithTag(tool.Name).Error("Update check failed", err)
 				continue
 			}
 
@@ -83,7 +83,7 @@ var checkUpdatesCmd = &cobra.Command{
 					Outdated:   res.Outdated,
 				})
 
-				toolLog := log.GetSubLogger("", tool.Name)
+				toolLog := log.WithTag(tool.Name)
 				if hasUpdate {
 					if localVersion != "" {
 						toolLog.Info(logger.Message(fmt.Sprintf("Update available: %s -> %s", localVersion, res.LatestVersion)))

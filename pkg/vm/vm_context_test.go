@@ -15,7 +15,6 @@ func TestVMContextAndFSBindings(t *testing.T) {
 	// Initialize in-memory filesystem and mock log output buffer
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})

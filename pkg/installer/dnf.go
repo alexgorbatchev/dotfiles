@@ -74,7 +74,7 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	var writer *logger.LineWriter
 	if d.log != nil {
-		writer = logger.NewLineWriter(d.log.GetSubLogger("", tool.Name), "|")
+		writer = logger.NewLineWriter(d.log.WithTag(tool.Name), "|")
 	}
 
 	// Step 1: Optional dnf makecache
@@ -84,13 +84,13 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		if tool.Sudo {
 			args = []string{"dnf", "makecache"}
 			if d.log != nil {
-				d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ sudo dnf makecache"))
+				d.log.WithTag(tool.Name).Info(logger.Message("$ sudo dnf makecache"))
 			}
 			cmd = d.runner.CommandContext(ctx, "sudo", args...)
 		} else {
 			args = []string{"makecache"}
 			if d.log != nil {
-				d.log.GetSubLogger("", tool.Name).Info(logger.Message("$ dnf makecache"))
+				d.log.WithTag(tool.Name).Info(logger.Message("$ dnf makecache"))
 			}
 			cmd = d.runner.CommandContext(ctx, "dnf", args...)
 		}
@@ -117,13 +117,13 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	if tool.Sudo {
 		args := []string{"dnf", "install", "-y", packageSpec}
 		if d.log != nil {
-			d.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo dnf install -y %s", packageSpec)))
+			d.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo dnf install -y %s", packageSpec)))
 		}
 		installCmd = d.runner.CommandContext(ctx, "sudo", args...)
 	} else {
 		args := []string{"install", "-y", packageSpec}
 		if d.log != nil {
-			d.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ dnf install -y %s", packageSpec)))
+			d.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ dnf install -y %s", packageSpec)))
 		}
 		installCmd = d.runner.CommandContext(ctx, "dnf", args...)
 	}

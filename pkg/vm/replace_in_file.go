@@ -155,7 +155,7 @@ func runReplaceInFile(vm *goja.Runtime, fsys fs.FS, log *logger.Logger, toolName
 
 	if total == 0 {
 		if req.ErrorMessage != "" && log != nil {
-			log.GetSubLogger("", toolName).Error(logger.Message(
+			log.WithTag(toolName).Error(logger.Message(
 				fmt.Sprintf("Could not find '%s' in %s: %s", req.PatternLabel, path, req.ErrorMessage),
 			))
 		}

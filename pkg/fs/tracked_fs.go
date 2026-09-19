@@ -133,7 +133,7 @@ func (t *TrackedFileSystem) ReadFile(path string) ([]byte, error) {
 func (t *TrackedFileSystem) getLogger() *logger.Logger {
 	if t.log != nil {
 		if t.toolName != "" {
-			return t.log.GetSubLogger("", t.toolName)
+			return t.log.WithTag(t.toolName)
 		}
 		return t.log
 	}

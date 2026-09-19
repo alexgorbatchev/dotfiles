@@ -203,8 +203,11 @@ type Server struct {
 func NewServer(log *logger.Logger, port int, cacheDir string, ttlMillis int64) *Server {
 	upstream := http.DefaultTransport.(*http.Transport).Clone()
 	upstream.ResponseHeaderTimeout = upstreamResponseHeaderTimeout
+	if log != nil {
+		log = log.WithTag("ProxyServer")
+	}
 	return &Server{
-		logger: log.GetSubLogger("ProxyServer"),
+		logger: log,
 		port:   port,
 		store:  NewCacheStore(cacheDir, ttlMillis),
 		client: &http.Client{Transport: upstream},

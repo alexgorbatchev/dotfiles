@@ -30,7 +30,7 @@ func runReplaceHook(t *testing.T, memFS fs.FS, logWriter *bytes.Buffer, hookBody
 	}
 	return RunHook(
 		t.Context(),
-		logger.New(logger.Config{Name: "test", Level: logger.LogLevelVerbose, Writer: writer}),
+		logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: writer}),
 		memFS,
 		exec.NewMockRunner(),
 		tool,
@@ -290,7 +290,7 @@ func TestReplaceInFile_TildeResolvesAgainstConfiguredHome(t *testing.T) {
 		);
 	`, HookAfterInstall)
 
-	if err := RunHook(t.Context(), logger.New(logger.Config{Name: "t", Writer: os.Stderr}), memFS,
+	if err := RunHook(t.Context(), logger.New(logger.Config{Writer: os.Stderr}), memFS,
 		exec.NewMockRunner(), tool, projCfg, HookAfterInstall, HookContext{}, Target{}); err != nil {
 		t.Fatalf("hook failed: %v", err)
 	}
@@ -321,7 +321,7 @@ func TestResolve_ExactlyOneMatch(t *testing.T) {
 		);
 	`, HookAfterInstall)
 
-	if err := RunHook(t.Context(), logger.New(logger.Config{Name: "t", Writer: os.Stderr}), memFS,
+	if err := RunHook(t.Context(), logger.New(logger.Config{Writer: os.Stderr}), memFS,
 		exec.NewMockRunner(), tool, hookTestProjectConfig(t), HookAfterInstall, HookContext{}, Target{}); err != nil {
 		t.Fatalf("hook failed: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestResolve_AmbiguousAndMissingPatternsFail(t *testing.T) {
 					install("manual").hook("after-install", async () => { ctx.resolve("`+tc.pattern+`"); }),
 				);
 			`, HookAfterInstall)
-			err := RunHook(t.Context(), logger.New(logger.Config{Name: "t", Writer: os.Stderr}), fs.NewMemFS(),
+			err := RunHook(t.Context(), logger.New(logger.Config{Writer: os.Stderr}), fs.NewMemFS(),
 				exec.NewMockRunner(), tool, hookTestProjectConfig(t), HookAfterInstall, HookContext{}, Target{})
 			if err == nil {
 				t.Fatalf("expected %s pattern to fail", tc.name)

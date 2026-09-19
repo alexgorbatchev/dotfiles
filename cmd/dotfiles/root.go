@@ -164,12 +164,15 @@ func GetLogger(name string, w io.Writer) *logger.Logger {
 	if err != nil {
 		lvl = logger.LogLevelDefault
 	}
-	return logger.New(logger.Config{
-		Name:   name,
+	l := logger.New(logger.Config{
 		Level:  lvl,
 		Trace:  trace,
 		Writer: w,
 	})
+	if name != "" {
+		return l.WithTag(name)
+	}
+	return l
 }
 
 // Execute parses command-line flags and runs the appropriate subcommand.

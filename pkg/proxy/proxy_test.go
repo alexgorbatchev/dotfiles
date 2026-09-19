@@ -22,7 +22,7 @@ const testTTLMillis = 5000
 
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
-	log := logger.New(logger.Config{Name: "test-proxy", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	srv := NewServer(log, 0, t.TempDir(), testTTLMillis)
 	if err := srv.Start(); err != nil {
 		t.Fatalf("starting proxy: %v", err)

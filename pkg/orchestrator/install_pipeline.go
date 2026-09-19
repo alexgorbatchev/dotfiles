@@ -154,7 +154,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	activeFS := o.getTrackedFS(ctx, nil, tool.Name, "binary")
 	installer.SetFS(inst, activeFS)
-	installer.SetLogger(inst, o.logger.WithName(inst.Name()))
+	installer.SetLogger(inst, o.logger.WithTag(inst.Name()))
 
 	// The asset an installer downloads has to be the one the configuration was
 	// resolved for, so the run's target reaches it the same way its file system and
@@ -405,7 +405,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			isShim, err := shimGen.IsGeneratedShim(shimPath)
 			if err == nil && !isShim {
 				if !shouldOverwrite(ctx) {
-					o.logger.GetSubLogger("", tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
+					o.logger.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("Cannot create shim for %q: conflicting file exists at %s. Use --overwrite to replace it.", binName, shimPath)))
 					continue
 				}
 			}
@@ -467,7 +467,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	// 6. Generate completions (matches TS reconcileToolArtifacts)
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
-		o.logger.GetSubLogger("", tool.Name).Error("Failed to generate completions", err)
+		o.logger.WithTag(tool.Name).Error("Failed to generate completions", err)
 	}
 
 	return nil
@@ -524,7 +524,7 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		return fmt.Errorf("project configuration is nil")
 	}
 
-	o.logger.GetSubLogger("", tool.Name).Info(logger.Message("Uninstalling..."))
+	o.logger.WithTag(tool.Name).Info(logger.Message("Uninstalling..."))
 
 	// 1. Invoke the native installer plugin's Uninstall method if it exists
 	if tool.InstallationMethod != "" && o.instRegistry != nil {
@@ -605,9 +605,9 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 	sort.Strings(orphanedTools)
 
 	for _, toolName := range orphanedTools {
-		o.logger.GetSubLogger("", toolName).Info(logger.Message("Cleaning up orphaned tool..."))
+		o.logger.WithTag(toolName).Info(logger.Message("Cleaning up orphaned tool..."))
 		if err := o.cleanupToolArtifacts(ctx, toolName, projCfg); err != nil {
-			o.logger.GetSubLogger("", toolName).Error("Failed to cleanup orphaned tool", err)
+			o.logger.WithTag(toolName).Error("Failed to cleanup orphaned tool", err)
 		}
 	}
 

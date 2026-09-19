@@ -23,7 +23,6 @@ func newTestOrchestrator(t *testing.T, memFS fs.FS, configFilePath string) *Orch
 	t.Helper()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test-logger",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})

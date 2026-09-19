@@ -65,7 +65,7 @@ func (c *osCmd) checkSudo() error {
 				return fmt.Errorf("headless environment requires passwordless sudo access for elevated configurations: %w", err)
 			}
 		} else {
-			logger.New(logger.Config{Name: "sudo", Writer: os.Stderr}).Warn("Executing elevated privilege (sudo) command.")
+			logger.New(logger.Config{Writer: os.Stderr}).WithTag("sudo").Warn("Executing elevated privilege (sudo) command.")
 		}
 	}
 	return nil

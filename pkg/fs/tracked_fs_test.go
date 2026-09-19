@@ -347,7 +347,6 @@ func TestTrackedFS_Logging(t *testing.T) {
 
 	var buf bytes.Buffer
 	testLog := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelDefault,
 		Writer: &buf,
 	})

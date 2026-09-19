@@ -66,11 +66,11 @@ func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) (active
 
 	if len(disabledTools) > 0 {
 		sort.Strings(disabledTools)
-		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping disabled tools: %s", strings.Join(disabledTools, ", "))))
+		o.logger.WithTag("system").Warn(logger.Message(fmt.Sprintf("Skipping disabled tools: %s", strings.Join(disabledTools, ", "))))
 	}
 	if len(hostnameMismatched) > 0 {
 		sort.Strings(hostnameMismatched)
-		o.logger.GetSubLogger("", "system").Warn(logger.Message(fmt.Sprintf("Skipping hostname-mismatched tools on %s: %s", hostname, strings.Join(hostnameMismatched, ", "))))
+		o.logger.WithTag("system").Warn(logger.Message(fmt.Sprintf("Skipping hostname-mismatched tools on %s: %s", hostname, strings.Join(hostnameMismatched, ", "))))
 	}
 
 	return active, skipped
@@ -81,7 +81,7 @@ func (o *Orchestrator) pruneToolsWithLogging(tools []*config.ToolConfig) (active
 // correctly instead of aborting the whole run.
 func (o *Orchestrator) sortActiveTools(active, skipped []*config.ToolConfig) ([]*config.ToolConfig, error) {
 	return topologicalSort(active, skipped, func(msg string) {
-		o.logger.GetSubLogger("", "system").Warn(logger.Message(msg))
+		o.logger.WithTag("system").Warn(logger.Message(msg))
 	})
 }
 

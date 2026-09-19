@@ -27,7 +27,7 @@ func writePathsConfig(t *testing.T, pathsBlock string) string {
 // loadPathsConfig loads the configuration written in dir the way the CLI does.
 func loadPathsConfig(t *testing.T, dir string) (*config.ProjectConfig, error) {
 	t.Helper()
-	log := logger.New(logger.Config{Name: "paths-test", Level: logger.LogLevelQuiet, Writer: io.Discard})
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	projCfg, _, err := LoadTypeScriptConfig(log, fs.NewOSFS(), filepath.Join(dir, "dotfiles.config.ts"))
 	return projCfg, err
 }

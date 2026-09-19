@@ -31,7 +31,7 @@ func TestGiteaInstaller_InstallExtractsTarXz(t *testing.T) {
 	inst := NewGiteaInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
 	inst.httpClient = server.Client()
 	inst.BinDir = "/test/bin"
-	inst.SetLogger(logger.New(logger.Config{Name: "test", Level: logger.LogLevelVerbose, Writer: &logBuf}))
+	inst.SetLogger(logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf}))
 
 	tool := &config.ToolConfig{
 		Name:          "mytool",

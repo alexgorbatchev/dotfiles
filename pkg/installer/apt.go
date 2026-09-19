@@ -74,7 +74,7 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	var writer *logger.LineWriter
 	if a.log != nil {
-		writer = logger.NewLineWriter(a.log.GetSubLogger("", tool.Name), "|")
+		writer = logger.NewLineWriter(a.log.WithTag(tool.Name), "|")
 	}
 
 	// Step 1: Optional apt-get update
@@ -84,13 +84,13 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		if tool.Sudo {
 			args = []string{"apt-get", "update"}
 			if a.log != nil {
-				a.log.GetSubLogger("", tool.Name).Info(logger.Message("$ sudo apt-get update"))
+				a.log.WithTag(tool.Name).Info(logger.Message("$ sudo apt-get update"))
 			}
 			cmd = a.runner.CommandContext(ctx, "sudo", args...)
 		} else {
 			args = []string{"update"}
 			if a.log != nil {
-				a.log.GetSubLogger("", tool.Name).Info(logger.Message("$ apt-get update"))
+				a.log.WithTag(tool.Name).Info(logger.Message("$ apt-get update"))
 			}
 			cmd = a.runner.CommandContext(ctx, "apt-get", args...)
 		}
@@ -117,13 +117,13 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	if tool.Sudo {
 		args := []string{"apt-get", "install", "-y", packageSpec}
 		if a.log != nil {
-			a.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo apt-get install -y %s", packageSpec)))
+			a.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo apt-get install -y %s", packageSpec)))
 		}
 		installCmd = a.runner.CommandContext(ctx, "sudo", args...)
 	} else {
 		args := []string{"install", "-y", packageSpec}
 		if a.log != nil {
-			a.log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("$ apt-get install -y %s", packageSpec)))
+			a.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ apt-get install -y %s", packageSpec)))
 		}
 		installCmd = a.runner.CommandContext(ctx, "apt-get", args...)
 	}

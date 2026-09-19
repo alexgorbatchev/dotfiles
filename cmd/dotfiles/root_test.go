@@ -269,7 +269,7 @@ func TestResolveTargetWarnsPerOverriddenFlag(t *testing.T) {
 			})
 
 			var out bytes.Buffer
-			got := resolveTarget(logger.New(logger.Config{Name: "test", Writer: &out}))
+			got := resolveTarget(logger.New(logger.Config{Writer: &out}))
 
 			if got != tt.wantTarget {
 				t.Errorf("resolveTarget() = %+v, want %+v", got, tt.wantTarget)

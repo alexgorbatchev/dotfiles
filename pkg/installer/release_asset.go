@@ -79,5 +79,5 @@ func toolLogger(log *logger.Logger, toolName string) *logger.Logger {
 	if log == nil {
 		return nil
 	}
-	return log.GetSubLogger("", toolName)
+	return log.WithTag(toolName)
 }
