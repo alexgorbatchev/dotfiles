@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -894,8 +895,15 @@ func compileAllBinaries(rootDir string) error {
 
 	wg.Wait()
 	close(errCh)
-	if err := <-errCh; err != nil {
-		return err
+	// Every target that failed is reported. Reading a single value off the channel
+	// would name one broken platform and leave the rest to be discovered one
+	// release at a time.
+	var buildErrs []error
+	for err := range errCh {
+		buildErrs = append(buildErrs, err)
+	}
+	if len(buildErrs) > 0 {
+		return errors.Join(buildErrs...)
 	}
 
 	if err := generateChecksums(distDir); err != nil {
