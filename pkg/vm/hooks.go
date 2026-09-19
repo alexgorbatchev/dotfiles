@@ -158,6 +158,10 @@ func RunHook(
 		return nil
 	}
 
+	if log != nil {
+		log.GetSubLogger("", tool.Name).Info(logger.Message(fmt.Sprintf("Running %s hook...", event)))
+	}
+
 	vm, err := evaluateToolFile(ctx, toolFileVM{
 		log:     log,
 		fsys:    fsys,

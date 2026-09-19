@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -744,5 +745,70 @@ func TestRunHook_FileSystemStatReportsMissingPath(t *testing.T) {
 	}
 	if !strings.Contains(string(captured), "/absent") {
 		t.Errorf("stat of a missing path reported %q, want it to name the path", captured)
+	}
+}
+
+func TestRunHook_EmitsInfoLogWhenHookRuns(t *testing.T) {
+	t.Parallel()
+
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("before-install", async ({ log }) => {
+				log.info("hook internal log");
+			}),
+		);
+	`, HookBeforeInstall)
+
+	var buf bytes.Buffer
+	testLogger := logger.New(logger.Config{
+		Name:   "test",
+		Writer: &buf,
+		Level:  logger.LogLevelDefault,
+	})
+
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	err := RunHook(
+		t.Context(),
+		testLogger,
+		memFS,
+		runner,
+		tool,
+		hookTestProjectConfig(t),
+		HookBeforeInstall,
+		HookContext{StagingDir: "/staging"},
+		Target{},
+	)
+	if err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+
+	output := buf.String()
+	expectedPrefix := "[sample] Running before-install hook..."
+	if !strings.Contains(output, expectedPrefix) {
+		t.Errorf("expected output to contain %q, but got:\n%s", expectedPrefix, output)
+	}
+
+	// Now test an event that the tool has NOT registered: no log should be emitted
+	buf.Reset()
+	err = RunHook(
+		t.Context(),
+		testLogger,
+		memFS,
+		runner,
+		tool,
+		hookTestProjectConfig(t),
+		HookAfterInstall,
+		HookContext{InstalledDir: "/installed"},
+		Target{},
+	)
+	if err != nil {
+		t.Fatalf("RunHook returned error: %v", err)
+	}
+
+	if buf.Len() > 0 {
+		t.Errorf("expected no log output for unregistered hook event, but got:\n%s", buf.String())
 	}
 }
