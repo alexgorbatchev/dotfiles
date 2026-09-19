@@ -3,6 +3,7 @@ package vm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -745,4 +746,72 @@ func TestRunHook_FileSystemStatReportsMissingPath(t *testing.T) {
 	if !strings.Contains(string(captured), "/absent") {
 		t.Errorf("stat of a missing path reported %q, want it to name the path", captured)
 	}
+}
+
+func TestRunHook_CommandFailureWithStderrOutput(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-install", async ({ $ }) => {
+				await $`+"`"+`failing-command`+"`"+`;
+			}),
+		);
+	`, HookAfterInstall)
+
+	runner := exec.NewMockRunner()
+	runner.RegisterFunc("bash", func(cmd *exec.MockCmd) error {
+		if cmd.Stderr() != nil {
+			_, _ = cmd.Stderr().Write([]byte("custom failure message\n"))
+		}
+		return errors.New("command failed with exit code 1")
+	})
+
+	err := RunHook(
+		context.Background(),
+		logger.New(logger.Config{Name: "test", Writer: os.Stderr}),
+		fs.NewMemFS(),
+		runner,
+		tool,
+		hookTestProjectConfig(t),
+		HookAfterInstall,
+		HookContext{InstalledDir: "/opt/sample/1.2.3"},
+		Target{},
+	)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "custom failure message") {
+		t.Errorf("expected error to include stderr message, got: %v", err)
+	}
+}
+
+func TestHookWorkingDir(t *testing.T) {
+	t.Run("nil tool and nil projCfg", func(t *testing.T) {
+		if got := hookWorkingDir(nil, nil); got != "" {
+			t.Errorf("expected empty string, got %q", got)
+		}
+	})
+	t.Run("nil tool with projCfg", func(t *testing.T) {
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.DotfilesDir = "/path/to/dotfiles"
+		if got := hookWorkingDir(nil, projCfg); got != "/path/to/dotfiles" {
+			t.Errorf("expected dotfilesDir, got %q", got)
+		}
+	})
+	t.Run("tool with empty ConfigFilePath falls back to projCfg", func(t *testing.T) {
+		tool := &config.ToolConfig{}
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.DotfilesDir = "/path/to/dotfiles"
+		if got := hookWorkingDir(tool, projCfg); got != "/path/to/dotfiles" {
+			t.Errorf("expected dotfilesDir, got %q", got)
+		}
+	})
+	t.Run("tool with ConfigFilePath wins", func(t *testing.T) {
+		tool := &config.ToolConfig{ConfigFilePath: "/path/to/tools/mytool.tool.ts"}
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.DotfilesDir = "/path/to/dotfiles"
+		if got := hookWorkingDir(tool, projCfg); got != "/path/to/tools" {
+			t.Errorf("expected /path/to/tools, got %q", got)
+		}
+	})
 }

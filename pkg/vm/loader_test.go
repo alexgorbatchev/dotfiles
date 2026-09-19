@@ -1872,3 +1872,123 @@ export default defineTool((install, ctx) => {
 		})
 	}
 }
+
+func TestLoadTypeScriptConfigPointerUnmarshal(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	tests := []struct {
+		name        string
+		toolContent string
+		check       func(t *testing.T, tool *config.ToolConfig)
+	}{
+		{
+			name: "Version pointer populated",
+			toolContent: `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual").bin("tool").version("1.4.2"));`,
+			check: func(t *testing.T, tool *config.ToolConfig) {
+				if tool.Version == nil {
+					t.Fatal("expected non-nil Version pointer")
+				}
+				if *tool.Version != "1.4.2" {
+					t.Errorf("expected Version %q, got %q", "1.4.2", *tool.Version)
+				}
+			},
+		},
+		{
+			name: "Version default latest",
+			toolContent: `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual").bin("tool"));`,
+			check: func(t *testing.T, tool *config.ToolConfig) {
+				if tool.Version == nil {
+					t.Fatal("expected non-nil default Version pointer")
+				}
+				if *tool.Version != "latest" {
+					t.Errorf("expected default Version 'latest', got: %q", *tool.Version)
+				}
+			},
+		},
+		{
+			name: "UpdateCheck populated true with constraint",
+			toolContent: `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+	install("manual").bin("tool").updateCheck({ enabled: true, constraint: ">=1.0.0" })
+);`,
+			check: func(t *testing.T, tool *config.ToolConfig) {
+				if tool.UpdateCheck == nil {
+					t.Fatal("expected non-nil updateCheck")
+				}
+				if tool.UpdateCheck.Enabled == nil || *tool.UpdateCheck.Enabled != true {
+					t.Errorf("expected Enabled pointer to be true")
+				}
+				if tool.UpdateCheck.Constraint == nil || *tool.UpdateCheck.Constraint != ">=1.0.0" {
+					t.Errorf("expected Constraint pointer to be '>=1.0.0'")
+				}
+			},
+		},
+		{
+			name: "UpdateCheck populated false",
+			toolContent: `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+	install("manual").bin("tool").updateCheck({ enabled: false })
+);`,
+			check: func(t *testing.T, tool *config.ToolConfig) {
+				if tool.UpdateCheck == nil {
+					t.Fatal("expected non-nil updateCheck")
+				}
+				if tool.UpdateCheck.Enabled == nil || *tool.UpdateCheck.Enabled != false {
+					t.Errorf("expected Enabled pointer to be false")
+				}
+			},
+		},
+		{
+			name: "UpdateCheck empty object",
+			toolContent: `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+	install("manual").bin("tool").updateCheck({})
+);`,
+			check: func(t *testing.T, tool *config.ToolConfig) {
+				if tool.UpdateCheck == nil {
+					t.Fatal("expected non-nil updateCheck")
+				}
+				if tool.UpdateCheck.Enabled != nil {
+					t.Errorf("expected nil Enabled pointer, got %v", *tool.UpdateCheck.Enabled)
+				}
+				if tool.UpdateCheck.Constraint != nil {
+					t.Errorf("expected nil Constraint pointer, got %s", *tool.UpdateCheck.Constraint)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			toolsDir := filepath.Join(tmpDir, "tools")
+			if err := os.MkdirAll(toolsDir, 0755); err != nil {
+				t.Fatalf("creating tools dir: %v", err)
+			}
+
+			if err := os.WriteFile(filepath.Join(toolsDir, "tool.tool.ts"), []byte(tt.toolContent), 0644); err != nil {
+				t.Fatalf("writing tool file: %v", err)
+			}
+
+			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+			configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)
+			if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+				t.Fatalf("writing config file: %v", err)
+			}
+
+			_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+			if err != nil {
+				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+			}
+
+			tool, ok := toolConfigs["tool"]
+			if !ok {
+				t.Fatalf("expected tool 'tool', got %v", slices.Sorted(maps.Keys(toolConfigs)))
+			}
+			tt.check(t, tool)
+		})
+	}
+}
