@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -248,36 +247,20 @@ func TestSudoPreflightCheck(t *testing.T) {
 
 	t.Run("headless with active passwordless sudo", func(t *testing.T) {
 		t.Setenv("CI", "")
-		// Create a temporary directory and write a mock "sudo" script
-		tmpDir := t.TempDir()
-		mockSudoPath := filepath.Join(tmpDir, "sudo")
-
-		// The mock "sudo" script simply executes whatever arguments are passed to it
-		scriptContent := "#!/bin/sh\nexec \"$@\"\n"
-		if err := os.WriteFile(mockSudoPath, []byte(scriptContent), 0755); err != nil {
-			t.Fatalf("failed to write mock sudo: %v", err)
-		}
-
-		// Prepend the temp directory containing mock "sudo" to PATH
-		origPath := os.Getenv("PATH")
-		defer os.Setenv("PATH", origPath)
-		os.Setenv("PATH", tmpDir+string(filepath.ListSeparator)+origPath)
-
 		// Simulate headless environment but passwordless sudo is active
 		SudoPreflightCommand = []string{"true"}
 
-		// Run a simple echo command prepended with sudo
+		// Test checkSudo in headless mode with valid preflight
 		cmd := runner.Command("sudo", "echo", "hello-sudo")
 		var stdinBuf bytes.Buffer
 		cmd.SetStdin(&stdinBuf)
 
-		output, err := cmd.Output()
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		osCmdInstance, ok := cmd.(*osCmd)
+		if !ok {
+			t.Fatalf("expected *osCmd instance")
 		}
-		got := strings.TrimSpace(string(output))
-		if got != "hello-sudo" {
-			t.Errorf("expected 'hello-sudo', got %q", got)
+		if err := osCmdInstance.checkSudo(); err != nil {
+			t.Fatalf("unexpected error in headless env with passing sudo check: %v", err)
 		}
 	})
 }

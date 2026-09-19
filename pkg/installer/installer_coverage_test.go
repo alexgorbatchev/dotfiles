@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
@@ -735,6 +736,7 @@ func TestMoreInstallerEdgeCases(t *testing.T) {
 	runner := exec.NewMockRunner()
 	memFS := fs.NewMemFS()
 	dl := downloader.NewDownloader(memFS, nil)
+	dl.RetryDelay = time.Millisecond
 	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
 
 	// 1. GitHub Uninstall & CheckUpdate edge cases

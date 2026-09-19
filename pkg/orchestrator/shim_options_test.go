@@ -9,6 +9,7 @@ import (
 )
 
 func TestWantsShim(t *testing.T) {
+	t.Parallel()
 	no := false
 	yes := true
 	binaries := []interface{}{
@@ -43,6 +44,7 @@ func TestWantsShim(t *testing.T) {
 // A binary declared with `shim: false` is left out of the generated bin directory while
 // the tool's other binaries get their shims.
 func TestGenerateToolSkipsShimlessBinaries(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.ts")
 	projCfg := &config.ProjectConfig{

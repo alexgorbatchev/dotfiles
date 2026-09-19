@@ -128,12 +128,12 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 	// 4. updateCmd coverage
 	t.Run("updateCmd check and perform update", func(t *testing.T) {
 		_, _ = executeCommand("update", "--check")
-		_, _ = executeCommand("update", "bat")
+		_, _ = executeCommand("update", "--dry-run", "bat")
 	})
 
 	// 5. cleanupCmd coverage
 	t.Run("cleanupCmd orphan cleanup", func(t *testing.T) {
-		_, _ = executeCommand("cleanup")
+		_, _ = executeCommand("cleanup", "--dry-run")
 	})
 
 	// 6. featuresCmd coverage

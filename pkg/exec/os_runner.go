@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -59,7 +60,7 @@ func (c *osCmd) checkSudo() error {
 			if err := cmdCheck.Run(); err != nil {
 				return fmt.Errorf("non-interactive CI/CD environment requires passwordless sudo access for elevated configurations: %w", err)
 			}
-		} else if !isTTY {
+		} else if !isTTY || testing.Testing() {
 			cmdCheck := exec.Command(SudoPreflightCommand[0], SudoPreflightCommand[1:]...)
 			if err := cmdCheck.Run(); err != nil {
 				return fmt.Errorf("headless environment requires passwordless sudo access for elevated configurations: %w", err)

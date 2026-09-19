@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -33,6 +35,9 @@ func TestCommandsExecution(t *testing.T) {
 
 	for _, cmdArgs := range commands {
 		t.Run(cmdArgs[0], func(t *testing.T) {
+			rootCmd.SetIn(strings.NewReader(""))
+			rootCmd.SetOut(io.Discard)
+			rootCmd.SetErr(io.Discard)
 			rootCmd.SetArgs(cmdArgs)
 			_ = rootCmd.Execute()
 		})

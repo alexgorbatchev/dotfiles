@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -514,7 +515,9 @@ func newCargoGithubServer(t *testing.T, tarData []byte) *recordingServer {
 
 func newCargoGithubInstaller(server *recordingServer, runner exec.CommandRunner) (*CargoInstaller, fs.FS) {
 	fsys := fs.NewMemFS()
-	inst := NewCargoInstaller(runner, fsys, downloader.NewDownloader(fsys, server.Client()), &SystemContext{OS: "linux", Arch: "amd64"})
+	dl := downloader.NewDownloader(fsys, server.Client())
+	dl.RetryDelay = time.Millisecond
+	inst := NewCargoInstaller(runner, fsys, dl, &SystemContext{OS: "linux", Arch: "amd64"})
 	inst.httpClient = server.Client()
 	inst.BaseURL = server.URL
 	inst.GitHubAPIURL = server.URL
@@ -736,6 +739,7 @@ func TestCargoGithubReleases(t *testing.T) {
 		log := logger.New(logger.Config{Writer: io.Discard})
 		errDLFS := fs.NewMemFS()
 		errDL := downloader.NewDownloader(errDLFS, nil)
+		errDL.RetryDelay = time.Millisecond
 		cInst := NewCargoInstaller(runner, errDLFS, errDL, &SystemContext{OS: "linux", Arch: "amd64"})
 		cInst.SetLogger(log)
 		cInst.BinDir = "/test/errbin"

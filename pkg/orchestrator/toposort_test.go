@@ -9,6 +9,7 @@ import (
 )
 
 func TestTopologicalSort(t *testing.T) {
+	t.Parallel()
 	tools := []*config.ToolConfig{
 		{Name: "A", Dependencies: []string{"B"}},
 		{Name: "B", Dependencies: []string{"C"}},
@@ -59,6 +60,7 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestTopologicalSort_BinaryDependencies(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		tools       []*config.ToolConfig
@@ -163,6 +165,7 @@ func TestTopologicalSort_BinaryDependencies(t *testing.T) {
 }
 
 func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
+	t.Parallel()
 	t.Run("multiple tools providing same binary without dependency does not cause error", func(t *testing.T) {
 		tools := []*config.ToolConfig{
 			{
@@ -270,6 +273,7 @@ func TestTopologicalSort_RobustnessAndDeterminism(t *testing.T) {
 // The binary names below are deliberately nonsensical so that isSystemBinary cannot
 // find them on any platform and the skipped-provider path is the one under test.
 func TestTopologicalSort_SkippedProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		skipped     *config.ToolConfig

@@ -24,6 +24,7 @@ import (
 )
 
 func TestOrchestratorSettersAndHelpers(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -90,6 +91,7 @@ func TestOrchestratorSettersAndHelpers(t *testing.T) {
 }
 
 func TestCleanupStaleArtifactsAndCopies(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -141,6 +143,7 @@ func TestCleanupStaleArtifactsAndCopies(t *testing.T) {
 }
 
 func TestLineLogWriter(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Writer: &logBuf})
 
@@ -158,6 +161,7 @@ func TestLineLogWriter(t *testing.T) {
 }
 
 func TestShouldSkipInstallationAndHealth(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -246,6 +250,7 @@ func TestShouldSkipInstallationAndHealth(t *testing.T) {
 }
 
 func TestGetTargetVersion(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	orch := NewOrchestrator(logger.New(logger.Config{Writer: io.Discard}), memFS, runner, nil, nil)
@@ -285,6 +290,7 @@ func TestGetTargetVersion(t *testing.T) {
 }
 
 func TestGenerateCompletionsForTool(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -341,6 +347,7 @@ func TestGenerateCompletionsForTool(t *testing.T) {
 }
 
 func TestCleanupStaleArtifactsWithStaleFiles(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -451,6 +458,7 @@ func TestAutoInstallAndCliCommandHelpers(t *testing.T) {
 }
 
 func TestGenerateToolFilteringAndCopies(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -523,6 +531,7 @@ func TestGenerateToolFilteringAndCopies(t *testing.T) {
 }
 
 func TestInstallToolErrorBranches(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -591,6 +600,7 @@ func TestInstallToolErrorBranches(t *testing.T) {
 }
 
 func TestRemoveAllAndHealthCheckEdgeCases(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -669,6 +679,7 @@ func TestRemoveAllAndHealthCheckEdgeCases(t *testing.T) {
 }
 
 func TestGenerateShellScriptsFeaturesAndTypes(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -739,6 +750,7 @@ func TestGenerateShellScriptsFeaturesAndTypes(t *testing.T) {
 }
 
 func TestGenerateToolsFullWorkflow(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -793,6 +805,7 @@ func TestGenerateToolsFullWorkflow(t *testing.T) {
 }
 
 func TestInstallToolsWorkflow(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -843,6 +856,7 @@ func TestInstallToolsWorkflow(t *testing.T) {
 }
 
 func TestInstallToolNonExternalSuccessAndError(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -913,6 +927,7 @@ func TestInstallToolNonExternalSuccessAndError(t *testing.T) {
 }
 
 func TestInstallToolConflictingShimWarning(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -963,6 +978,7 @@ func TestInstallToolConflictingShimWarning(t *testing.T) {
 }
 
 func TestInstallToolsAndCleanupErrors(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -1012,6 +1028,7 @@ func TestInstallToolsAndCleanupErrors(t *testing.T) {
 }
 
 func TestGenerateToolsAutoInstallAndDisabled(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -1075,6 +1092,7 @@ func TestGenerateToolsAutoInstallAndDisabled(t *testing.T) {
 }
 
 func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -1292,6 +1310,7 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 }
 
 func TestGenerateToolsAndInstallToolsAllPaths(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -1711,6 +1730,7 @@ func TestInstallToolExternallyManaged(t *testing.T) {
 }
 
 func TestBuildHookEnv(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
@@ -1817,6 +1837,7 @@ func TestBuildHookEnv(t *testing.T) {
 }
 
 func TestRemoveAllNonEmptyDirectory(t *testing.T) {
+	t.Parallel()
 	memFS := fs.NewMemFS()
 	nestedDir := "/test/dir/sub/nested"
 	_ = memFS.MkdirAll(nestedDir, 0755)
@@ -1839,6 +1860,7 @@ func TestRemoveAllNonEmptyDirectory(t *testing.T) {
 }
 
 func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
@@ -1917,6 +1939,7 @@ func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
 }
 
 func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
@@ -2019,6 +2042,7 @@ func (c *cacheSpyInstaller) CheckUpdate(ctx context.Context, tool *config.ToolCo
 }
 
 func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
@@ -2091,6 +2115,7 @@ func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 // project configuration becomes the policy installers download under, including the
 // values a configuration that says nothing gets.
 func TestDownloadSettingsFromProjectConfig(t *testing.T) {
+	t.Parallel()
 	disabled := false
 
 	tests := []struct {

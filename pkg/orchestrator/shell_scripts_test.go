@@ -49,6 +49,7 @@ func newTestOrchestrator(t *testing.T, memFS fs.FS, configFilePath string) *Orch
 }
 
 func TestSourceFilesDirectEmission(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -133,6 +134,7 @@ func TestSourceFilesDirectEmission(t *testing.T) {
 // author wrote it. The always script here calls a function, so scripts before
 // functions or regrouped source calls would produce a block that fails at startup.
 func TestGenerateShellScripts_ToolBlockEmissionOrder(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -216,6 +218,7 @@ func TestGenerateShellScripts_ToolBlockEmissionOrder(t *testing.T) {
 }
 
 func TestGenerateShellScripts_DeterministicOrder(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -281,6 +284,7 @@ func TestGenerateShellScripts_DeterministicOrder(t *testing.T) {
 }
 
 func TestGenerateShellScripts_PathModifications(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -365,6 +369,7 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 }
 
 func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -465,6 +470,7 @@ func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
 }
 
 func TestGenerateShellScripts_PowershellFullEmission(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -563,6 +569,7 @@ func TestGenerateShellScripts_PowershellFullEmission(t *testing.T) {
 }
 
 func TestGenerateShellScripts_DisabledAndHostnameFiltering(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -646,6 +653,7 @@ func TestGenerateShellScripts_DisabledAndHostnameFiltering(t *testing.T) {
 }
 
 func TestGetShellTypeConfig(t *testing.T) {
+	t.Parallel()
 	if got := getShellTypeConfig(nil, "zsh"); got != nil {
 		t.Errorf("expected nil for nil tool, got %v", got)
 	}
@@ -674,6 +682,7 @@ func TestGetShellTypeConfig(t *testing.T) {
 }
 
 func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	projCfg := &config.ProjectConfig{
@@ -787,6 +796,7 @@ func countPathEntries(pathValue, dir string) int {
 }
 
 func TestGenerateShellScripts_BashPathPrependIsGuarded(t *testing.T) {
+	t.Parallel()
 	p := newBashRuntimeProject(t)
 	toolBin := filepath.Join(p.homeDir, "tool", "bin")
 	tools := []*config.ToolConfig{
@@ -837,6 +847,7 @@ func generateBashOnceProject(t *testing.T) (bashRuntimeProject, string) {
 }
 
 func TestGenerateShellScripts_BashOnceScriptsAffectCurrentShell(t *testing.T) {
+	t.Parallel()
 	p, onceScript := generateBashOnceProject(t)
 	if _, err := os.Stat(onceScript); err != nil {
 		t.Fatalf("expected %s to be generated: %v", onceScript, err)
@@ -850,6 +861,7 @@ func TestGenerateShellScripts_BashOnceScriptsAffectCurrentShell(t *testing.T) {
 }
 
 func TestGenerateShellScripts_BashOnceLoopPreservesNullglob(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		preset string
@@ -874,6 +886,7 @@ func TestGenerateShellScripts_BashOnceLoopPreservesNullglob(t *testing.T) {
 // session that sourced main.bash, an empty directory must not be an error, and the
 // user's nullglob setting must survive.
 func TestGenerateShellScripts_BashCompletionsAreSourced(t *testing.T) {
+	t.Parallel()
 	newProject := func(t *testing.T) (bashRuntimeProject, string) {
 		t.Helper()
 		p := newBashRuntimeProject(t)
@@ -920,6 +933,7 @@ func TestGenerateShellScripts_BashCompletionsAreSourced(t *testing.T) {
 // script references is the bug this covers; zsh worked, bash was written and never
 // sourced, and PowerShell was never written at all.
 func TestCompletionsAreWrittenAndLoadedPerShell(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")

@@ -22,6 +22,7 @@ func cliCompletionProjectConfig() *config.ProjectConfig {
 }
 
 func TestGenerateCLICompletion_WritesAndTracksUnderSystem(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -60,6 +61,7 @@ func TestGenerateCLICompletion_WritesAndTracksUnderSystem(t *testing.T) {
 }
 
 func TestGenerateCLICompletion_FallsBackToGeneratedDir(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -89,6 +91,7 @@ func TestGenerateCLICompletion_DryRunWritesNothing(t *testing.T) {
 }
 
 func TestGenerateCLICompletion_NilProjectConfig(t *testing.T) {
+	t.Parallel()
 	orch := newTestOrchestrator(t, fs.NewMemFS(), "")
 	if err := orch.GenerateCLICompletion(context.Background(), nil, []byte("x")); err == nil {
 		t.Fatal("expected an error for a nil project configuration")

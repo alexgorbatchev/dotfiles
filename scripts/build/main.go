@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type RootPackageJson struct {
@@ -828,10 +829,6 @@ func compileAllBinaries(rootDir string) error {
 	}
 	version := rootPkg.Version
 
-	if err := buildNative(rootDir, version); err != nil {
-		return err
-	}
-
 	distDir := filepath.Join(rootDir, ".dist")
 	tmpBinDir := filepath.Join(rootDir, ".tmp", "release-bins")
 	_ = os.RemoveAll(tmpBinDir)
@@ -850,30 +847,55 @@ func compileAllBinaries(rootDir string) error {
 		{goos: "linux", goarch: "arm64"},
 	}
 
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(targets))
+
 	for _, target := range targets {
-		binName := "dotfiles"
-		tmpBinPath := filepath.Join(tmpBinDir, fmt.Sprintf("dotfiles_%s_%s", target.goos, target.goarch))
-		if err := buildTarget(rootDir, version, target.goos, target.goarch, tmpBinPath); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(t struct{ goos, goarch string }) {
+			defer wg.Done()
+			binName := "dotfiles"
+			tmpBinPath := filepath.Join(tmpBinDir, fmt.Sprintf("dotfiles_%s_%s", t.goos, t.goarch))
+			if err := buildTarget(rootDir, version, t.goos, t.goarch, tmpBinPath); err != nil {
+				errCh <- err
+				return
+			}
 
-		tarName := fmt.Sprintf("dotfiles_%s_%s_%s.tar.gz", version, target.goos, target.goarch)
-		tarPath := filepath.Join(distDir, tarName)
+			// If target matches current platform, copy to dist root binary
+			if t.goos == runtime.GOOS && t.goarch == runtime.GOARCH {
+				nativeDistBin := filepath.Join(distDir, binName)
+				if err := copyFile(tmpBinPath, nativeDistBin); err != nil {
+					errCh <- fmt.Errorf("failed to copy native binary to dist: %w", err)
+					return
+				}
+				_ = os.Chmod(nativeDistBin, 0755)
+			}
 
-		archiveFiles := map[string]string{
-			binName: tmpBinPath,
-		}
-		if _, err := os.Stat(filepath.Join(rootDir, "README.md")); err == nil {
-			archiveFiles["README.md"] = filepath.Join(rootDir, "README.md")
-		}
-		if _, err := os.Stat(filepath.Join(rootDir, "LICENSE")); err == nil {
-			archiveFiles["LICENSE"] = filepath.Join(rootDir, "LICENSE")
-		}
+			tarName := fmt.Sprintf("dotfiles_%s_%s_%s.tar.gz", version, t.goos, t.goarch)
+			tarPath := filepath.Join(distDir, tarName)
 
-		fmt.Printf("📦 Packaging release archive -> %s\n", tarPath)
-		if err := createTarGz(tarPath, archiveFiles); err != nil {
-			return fmt.Errorf("failed to package archive %s: %w", tarName, err)
-		}
+			archiveFiles := map[string]string{
+				binName: tmpBinPath,
+			}
+			if _, err := os.Stat(filepath.Join(rootDir, "README.md")); err == nil {
+				archiveFiles["README.md"] = filepath.Join(rootDir, "README.md")
+			}
+			if _, err := os.Stat(filepath.Join(rootDir, "LICENSE")); err == nil {
+				archiveFiles["LICENSE"] = filepath.Join(rootDir, "LICENSE")
+			}
+
+			fmt.Printf("📦 Packaging release archive -> %s\n", tarPath)
+			if err := createTarGz(tarPath, archiveFiles); err != nil {
+				errCh <- fmt.Errorf("failed to package archive %s: %w", tarName, err)
+				return
+			}
+		}(target)
+	}
+
+	wg.Wait()
+	close(errCh)
+	if err := <-errCh; err != nil {
+		return err
 	}
 
 	if err := generateChecksums(distDir); err != nil {

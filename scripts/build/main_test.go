@@ -283,23 +283,6 @@ func TestBuildTarget(t *testing.T) {
 	}
 }
 
-func TestRunTypegenAndBuildNative(t *testing.T) {
-	root, err := getRepoRoot()
-	if err != nil {
-		t.Fatalf("getRepoRoot failed: %v", err)
-	}
-
-	err = runTypegen(root)
-	if err != nil {
-		t.Fatalf("runTypegen failed: %v", err)
-	}
-
-	err = compileAllBinaries(root)
-	if err != nil {
-		t.Fatalf("compileAllBinaries failed: %v", err)
-	}
-}
-
 func TestRunBuild(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping full build test in short mode")

@@ -75,6 +75,10 @@ func runCommand(args ...string) (commandOutput, error) {
 	resetFlags(rootCmd)
 
 	var stdout, stderr, combined bytes.Buffer
+	if rootCmd.InOrStdin() == os.Stdin {
+		rootCmd.SetIn(strings.NewReader(""))
+		defer rootCmd.SetIn(nil)
+	}
 	rootCmd.SetOut(io.MultiWriter(&stdout, &combined))
 	rootCmd.SetErr(io.MultiWriter(&stderr, &combined))
 	rootCmd.SetArgs(args)
@@ -556,14 +560,14 @@ func TestUpdateCommand_ForceFlag(t *testing.T) {
 	repoRoot := findRepoRoot()
 	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 
-	// Test update with --force for all tools
-	outForceAll, err := executeCommand("-c", absConfig, "update", "--force")
+	// Test update with --force for all tools in dry-run mode
+	outForceAll, err := executeCommand("-c", absConfig, "--dry-run", "update", "--force")
 	if err != nil {
 		t.Errorf("update --force failed: %v, out: %s", err, outForceAll)
 	}
 
 	// Test update with -f for a non-existent tool returns error
-	_, err = executeCommand("-c", absConfig, "update", "-f", "non-existent-tool")
+	_, err = executeCommand("-c", absConfig, "--dry-run", "update", "-f", "non-existent-tool")
 	if err == nil {
 		t.Errorf("expected update -f non-existent-tool to return an error")
 	}
@@ -693,16 +697,16 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 	_, _ = executeCommand("-c", absConfig, "generate")
 
 	// install command single & all
-	_, _ = executeCommand("-c", absConfig, "install", "bat")
-	_, _ = executeCommand("-c", absConfig, "install")
+	_, _ = executeCommand("-c", absConfig, "--dry-run", "install", "bat")
+	_, _ = executeCommand("-c", absConfig, "--dry-run", "install")
 
 	// uninstall command single & all
-	_, _ = executeCommand("-c", absConfig, "uninstall", "bat")
-	_, _ = executeCommand("-c", absConfig, "uninstall")
+	_, _ = executeCommand("-c", absConfig, "--dry-run", "uninstall", "bat")
+	_, _ = executeCommand("-c", absConfig, "--dry-run", "uninstall")
 
 	// update command
-	_, _ = executeCommand("-c", absConfig, "update", "bat")
-	_, _ = executeCommand("-c", absConfig, "update")
+	_, _ = executeCommand("-c", absConfig, "--dry-run", "update", "bat")
+	_, _ = executeCommand("-c", absConfig, "--dry-run", "update")
 
 	// log command
 	_, _ = executeCommand("-c", absConfig, "log")

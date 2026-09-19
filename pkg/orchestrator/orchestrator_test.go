@@ -62,6 +62,7 @@ func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig
 }
 
 func TestMatchesHostname(t *testing.T) {
+	t.Parallel()
 	if !matchesHostname("") {
 		t.Error("expected empty hostname pattern to match")
 	}
@@ -103,6 +104,7 @@ func TestMatchesHostname(t *testing.T) {
 }
 
 func TestGetBinaryNames(t *testing.T) {
+	t.Parallel()
 	// A bare string is not a shape .bin() records, so it names no binary; the map is
 	// what a loaded configuration holds and the typed forms are what Go code builds.
 	binaries := []interface{}{
@@ -126,6 +128,7 @@ func TestGetBinaryNames(t *testing.T) {
 }
 
 func TestOrchestrator_Install(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -229,6 +232,7 @@ func TestOrchestrator_Install(t *testing.T) {
 }
 
 func TestOrchestrator_Install_UnversionedToolTimestamp(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -295,6 +299,7 @@ func TestOrchestrator_Install_UnversionedToolTimestamp(t *testing.T) {
 }
 
 func TestOrchestrator_Generate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -417,6 +422,7 @@ func TestOrchestrator_Generate(t *testing.T) {
 }
 
 func TestOrchestrator_Errors(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -486,6 +492,7 @@ func TestOrchestrator_Errors(t *testing.T) {
 }
 
 func TestOrchestrator_AdditionalBranches(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -552,6 +559,7 @@ func TestOrchestrator_AdditionalBranches(t *testing.T) {
 }
 
 func TestOrchestrator_UninstallTool(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -633,6 +641,7 @@ func TestOrchestrator_UninstallTool(t *testing.T) {
 }
 
 func TestOrchestrator_InstallSudoMismatch(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -679,6 +688,7 @@ func TestOrchestrator_InstallSudoMismatch(t *testing.T) {
 }
 
 func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -775,6 +785,7 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 }
 
 func TestOrchestratorNativeShellGeneration(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{
@@ -890,6 +901,7 @@ func TestOrchestrator_GetCliCommand(t *testing.T) {
 }
 
 func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
+	t.Parallel()
 	log := logger.New(logger.Config{})
 	memFS := fs.NewMemFS()
 	trackedFS := fs.NewTrackedFileSystem(memFS, nil, log, "system")
@@ -948,6 +960,7 @@ func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
 }
 
 func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	memFS := fs.NewMemFS()
@@ -1005,6 +1018,7 @@ func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
 }
 
 func TestUnindentString(t *testing.T) {
+	t.Parallel()
 	input := `
           # Initialize Hermit shell hooks
           eval "$(test -x $HERMIT_ROOT_BIN && $HERMIT_ROOT_BIN shell-hooks --print --zsh)"
@@ -1017,6 +1031,7 @@ func TestUnindentString(t *testing.T) {
 }
 
 func TestFormatFunctionBody(t *testing.T) {
+	t.Parallel()
 	input := `
             if (( CURRENT == 2 )) && [[ "${words[CURRENT]}" != -* ]]; then
               local -a recipes
@@ -1034,6 +1049,7 @@ func TestFormatFunctionBody(t *testing.T) {
 }
 
 func TestOrchestrator_CleanupOrphanedTools(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -1091,6 +1107,7 @@ func TestOrchestrator_CleanupOrphanedTools(t *testing.T) {
 }
 
 func TestOrchestrator_CleanupStaleShims(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -1152,6 +1169,7 @@ func TestOrchestrator_CleanupStaleShims(t *testing.T) {
 }
 
 func TestOrchestrator_CleanupStaleSymlinks(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -1221,6 +1239,7 @@ func TestOrchestrator_CleanupStaleSymlinks(t *testing.T) {
 }
 
 func TestOrchestrator_CleanupStaleCopies(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -1274,6 +1293,7 @@ func TestOrchestrator_CleanupStaleCopies(t *testing.T) {
 }
 
 func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	fsys := fs.NewMemFS()
@@ -1336,6 +1356,7 @@ func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 }
 
 func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	fsys := fs.NewMemFS()
@@ -1422,6 +1443,7 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 // timeout rather than as a generic failure, because the two call for different fixes:
 // a timeout means the binary was too slow to respond, not that the command is wrong.
 func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
@@ -1482,6 +1504,7 @@ func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) 
 // same rule, so a second generate has nothing to remove and nothing to regenerate,
 // and an installer result cannot smuggle a shim in either.
 func TestManualToolWithoutBinaryPath_NoShimAndWarning(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
@@ -1545,6 +1568,7 @@ func TestManualToolWithoutBinaryPath_NoShimAndWarning(t *testing.T) {
 // shimBinaries is the one place that decides which binaries a tool gets shims for,
 // shared by generation and the stale cleanup.
 func TestShimBinaries(t *testing.T) {
+	t.Parallel()
 	bins := testutil.DeclaredBinaries("foo", "bar")
 	tests := []struct {
 		name string
@@ -1590,6 +1614,7 @@ func TestShimBinaries(t *testing.T) {
 }
 
 func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
@@ -1674,10 +1699,12 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 const bootstrapTestBinName = "dotfiles-bootstrap-shim-bin-7c3e"
 
 func TestGenerateTool_ExternalToolBootstrapShimTargetsCurrentEntrypoint(t *testing.T) {
+	t.Parallel()
 	methods := []string{"brew", "apt", "dnf", "pacman", "npm", "pkg", "dmg"}
 
 	for _, method := range methods {
 		t.Run(method, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			memFS := fs.NewMemFS()
 			orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles.config.ts")
@@ -1720,6 +1747,7 @@ func TestGenerateTool_ExternalToolBootstrapShimTargetsCurrentEntrypoint(t *testi
 }
 
 func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		// binaryExists controls whether the path the installer reports is present
@@ -1850,6 +1878,7 @@ func writeHookedManualTool(t *testing.T, toolName, beforeInstallBody string) *co
 // after-install runs; when it leaves the directory empty the install fails outright
 // instead of promoting an empty directory, and after-install never runs.
 func TestInstallTool_BeforeInstallHookStagesThePayload(t *testing.T) {
+	t.Parallel()
 	const toolName = "tmux-plugin"
 	stagingDir := "/home/user/.generated/binaries/" + toolName + "/.staging"
 	currentDir := "/home/user/.generated/binaries/" + toolName + "/current"
@@ -2007,6 +2036,7 @@ func recordedCopy(t *testing.T, orch *Orchestrator, toolName, path string) *regi
 // for it, and a target that already matches the source is left untouched so a repeated
 // generate does not displace the backup it made the first time.
 func TestGenerateTool_AppliesCopies(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		existing   map[string]string
@@ -2074,6 +2104,7 @@ func TestGenerateTool_AppliesCopies(t *testing.T) {
 // so the stale-copy cleanup keeps them while the declaration stands and removes them
 // once it is gone.
 func TestGenerateTool_CopiesDirectoryTree(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -2123,6 +2154,7 @@ func TestGenerateTool_CopiesDirectoryTree(t *testing.T) {
 }
 
 func TestGenerateTool_CopyMissingSourceFails(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -2143,6 +2175,7 @@ func TestGenerateTool_CopyMissingSourceFails(t *testing.T) {
 // The install pipeline applies copies too, so a tool installed for the first time
 // gets its configuration files without a separate generate.
 func TestInstallTool_AppliesCopies(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
@@ -2170,6 +2203,7 @@ func TestInstallTool_AppliesCopies(t *testing.T) {
 // alone on a repeated generate, and any other content at the target, whether a
 // diverged tree, a plain file or a symlink, is moved aside to <target>.bak first.
 func TestGenerateTool_CopyDirectoryPolicy(t *testing.T) {
+	t.Parallel()
 	const themesTarget = "/home/user/.config/copy-tool/themes"
 
 	tests := []struct {
@@ -2286,6 +2320,7 @@ func TestGenerateTool_CopyDirectoryPolicy(t *testing.T) {
 }
 
 func TestIsWithin(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		dir, path string
 		want      bool
@@ -2309,6 +2344,7 @@ func TestIsWithin(t *testing.T) {
 // older backup makes way for the displaced content, and a repeated run leaves the
 // backup alone because the link is already correct.
 func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		pipeline   string
@@ -2427,6 +2463,7 @@ func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
 // get a shim on install and lose it to the next generate's stale-shim cleanup, which
 // an install would then put back.
 func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -2526,6 +2563,7 @@ func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
 // so the reference type-checks and has to load. "dotfilesnosuchbin" is deliberately
 // nonsensical so no platform has it on PATH.
 func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -2585,6 +2623,7 @@ func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
 // generated, and the cleanup deletes them, taking the usage log with them as soon as
 // the directory is empty enough for Remove to succeed.
 func TestInstallThenGenerate_SystemDirectoriesAreNotToolOwnedShims(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
@@ -2701,6 +2740,7 @@ func (r *removeErrorFS) Remove(path string) error { return r.err }
 // alone rather than rely on Remove refusing to empty it, and must report a Remove it
 // could not carry out instead of discarding the error.
 func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	fsys := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -2769,6 +2809,7 @@ func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
 // know, so it survives substitution; joined by fs.Abs it lands under the working
 // directory, and whatever sits there is what the cleanup then removes.
 func TestGenerateToolsRejectsUnresolvablePlaceholderInRecordedPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		fileType string
@@ -2855,6 +2896,7 @@ func TestGenerateToolsRejectsUnresolvablePlaceholderInRecordedPath(t *testing.T)
 // makes binaryPath relative, and both pipelines would shim whatever the directory the
 // command was run from happens to hold.
 func TestManualBinaryPathRejectsUnresolvablePlaceholder(t *testing.T) {
+	t.Parallel()
 	run := map[string]func(*Orchestrator, context.Context, *config.ToolConfig, *config.ProjectConfig) error{
 		"generate": func(o *Orchestrator, ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 			return o.GenerateTool(ctx, tool, projCfg)
@@ -2917,6 +2959,7 @@ func TestManualBinaryPathRejectsUnresolvablePlaceholder(t *testing.T) {
 // producing no completion. The generate pipeline decides how loud that is; what matters
 // here is that the resolver's answer reaches it.
 func TestGenerateCompletionsForToolRejectsUnresolvablePlaceholder(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		completions interface{}
@@ -2994,6 +3037,7 @@ func TestGenerateCompletionsForToolRejectsUnresolvablePlaceholder(t *testing.T) 
 // resolve path placeholders (such as {paths.homeDir}) in target paths rather than
 // treating them as literal relative paths under the cwd, and expands leading ~.
 func TestSymlinkAndCopyPlaceholdersResolved(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		pipeline string
@@ -3124,6 +3168,7 @@ func TestSymlinkAndCopyPlaceholdersResolved(t *testing.T) {
 // TestSymlinkAndCopyRejectsUnresolvablePlaceholder pins that an unresolvable placeholder
 // in .symlink() or .copy() target fails the pipeline naming the tool, target, and token.
 func TestSymlinkAndCopyRejectsUnresolvablePlaceholder(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		pipeline string

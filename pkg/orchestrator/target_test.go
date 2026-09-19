@@ -75,6 +75,7 @@ func (r *targetRecordingInstaller) CheckUpdate(ctx context.Context, tool *config
 // context from the host and downloaded the host's asset into a configuration that had
 // been resolved for another machine.
 func TestInstallToolGivesTheInstallerTheRunsTarget(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	memFS := fs.NewMemFS()
 
@@ -132,6 +133,7 @@ func TestInstallToolGivesTheInstallerTheRunsTarget(t *testing.T) {
 // Both targets are exercised so that the assertion is about the target the orchestrator
 // was given rather than about the host the test happens to run on.
 func TestRunHooksUsesTheRunsTarget(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		target vm.Target

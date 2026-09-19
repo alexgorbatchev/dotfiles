@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -31,8 +32,39 @@ func init() {
 	}
 }
 
+var (
+	sharedBinDir  string
+	sharedBinPath string
+	sharedBinErr  error
+	buildOnce     sync.Once
+)
+
+func getSharedBinary(projectRoot string) (string, error) {
+	buildOnce.Do(func() {
+		tmpRoot := filepath.Join(projectRoot, ".tmp")
+		_ = os.MkdirAll(tmpRoot, 0755)
+		dir, err := os.MkdirTemp(tmpRoot, "e2e-bin-*")
+		if err != nil {
+			sharedBinErr = fmt.Errorf("creating temp dir for shared binary: %w", err)
+			return
+		}
+		sharedBinDir = dir
+		binPath := filepath.Join(dir, "dotfiles")
+		cmd := exec.Command("go", "build", "-buildvcs=false", "-o", binPath, filepath.Join(projectRoot, "cmd", "dotfiles"))
+		if output, err := cmd.CombinedOutput(); err != nil {
+			sharedBinErr = fmt.Errorf("failed to dynamically compile dotfiles: %w\noutput: %s", err, string(output))
+			return
+		}
+		sharedBinPath = binPath
+	})
+	return sharedBinPath, sharedBinErr
+}
+
 func TestMain(m *testing.M) {
 	code := m.Run()
+	if sharedBinDir != "" {
+		_ = os.RemoveAll(sharedBinDir)
+	}
 	cleanTestTmp()
 	os.Exit(code)
 }
@@ -117,19 +149,18 @@ func NewTestHarness(t *testing.T, options HarnessOptions) *TestHarness {
 		}
 	}
 
-	// Dynamic compiled binary discovery
+	// Dynamic compiled binary discovery (built once per test run)
 	projectRoot := h.findProjectRoot()
-	binPath := filepath.Join(tempDir, "dotfiles")
-	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", binPath, filepath.Join(projectRoot, "cmd", "dotfiles"))
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to dynamically compile dotfiles: %v\noutput: %s", err, string(output))
+	binPath, err := getSharedBinary(projectRoot)
+	if err != nil {
+		t.Fatalf("failed to dynamically compile dotfiles: %v", err)
 	}
 	h.BinPath = binPath
 
 	// Ensure HOME and XDG_CONFIG_HOME directories are created inside sandbox
 	sandboxHome := filepath.Join(tempDir, "home")
 	sandboxConfig := filepath.Join(tempDir, "home", ".config")
-	err := os.MkdirAll(sandboxHome, 0755)
+	err = os.MkdirAll(sandboxHome, 0755)
 	if err != nil {
 		t.Fatalf("failed to create sandbox home directory: %v", err)
 	}
