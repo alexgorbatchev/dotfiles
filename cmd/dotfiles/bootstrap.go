@@ -38,6 +38,10 @@ type Services struct {
 	// in the package-level default registry, so that tests, which are given mock
 	// installers, never reach the real installers' network endpoints.
 	Installers *installer.Registry
+	// Runner is the command runner the Orchestrator executes through, including the
+	// shell of every lifecycle hook. It is exposed for the same reason Installers is:
+	// tests are given a mock, and nothing may quietly fall back to the real one.
+	Runner execRunner.CommandRunner
 	// HTTPClient is set only when DEV_PROXY is active. It routes through the
 	// development proxy, and every installer in Installers already uses it; a
 	// command with its own outbound HTTP must use it too when it is non-nil.
@@ -228,9 +232,14 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	reg := registry.NewRegistry(sqlDB)
 	trackedFS := fs.NewTrackedFileSystem(fsys, reg, nil, "system").WithFileType("shim")
 
-	runner := execRunner.NewOSRunner()
+	var runner execRunner.CommandRunner = execRunner.NewOSRunner()
 	instReg := installer.DefaultRegistry()
 	if isDevTest() && os.Getenv("DOTFILES_E2E_USE_REAL_INSTALLERS") != "true" {
+		// Lifecycle hooks run arbitrary shell through this runner, so a test that
+		// installs anything would otherwise execute it for real: the fixture's
+		// Homebrew hook is a `curl | bash` that prompts for a password and blocks.
+		// The installers below are substituted for the same reason.
+		runner = execRunner.NewMockRunner()
 		instReg = installer.NewRegistry()
 		_ = instReg.Register(&mockInstaller{name: "github-release", fsys: fsys, projCfg: projCfg})
 		_ = instReg.Register(&mockInstaller{name: "cargo", fsys: fsys, projCfg: projCfg})
@@ -329,6 +338,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		Registry:      reg,
 		Orchestrator:  orch,
 		Installers:    instReg,
+		Runner:        runner,
 		HTTPClient:    httpClient,
 		InMemory:      inMemory,
 		devProxy:      devProxy,
