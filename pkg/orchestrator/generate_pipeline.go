@@ -46,6 +46,16 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		return err
 	}
 
+	// Start shadow checking asynchronously across active tools
+	shadowChecker := NewShadowChecker(o.fs, o.reg)
+	if o.customPathEnv != nil {
+		shadowChecker.SetPath(*o.customPathEnv)
+	}
+	shadowWarningsChan := make(chan []ShadowWarning, 1)
+	go func() {
+		shadowWarningsChan <- shadowChecker.CheckTools(ctx, sorted, projCfg)
+	}()
+
 	// Build binaryProviders and toolMap to trace dependencies
 	toolMap := make(map[string]*config.ToolConfig)
 	binaryProviders := make(map[string]string)
@@ -163,6 +173,12 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	}
 
 	o.WarnConflicts(sorted, projCfg)
+
+	// Flush shadow warnings before final DONE log
+	shadowWarnings := <-shadowWarningsChan
+	for _, w := range shadowWarnings {
+		o.logger.WithTag(w.ToolName).Warn(logger.Message(w.Message))
+	}
 
 	o.logger.WithTag("system").Info(logger.Message("DONE"))
 	return nil

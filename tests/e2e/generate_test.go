@@ -3,6 +3,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -108,4 +109,50 @@ export default defineTool((install) => install("manual", { binaryPath: "./extra-
 
 	h.AssertShimExistsAndExecutable("core-bin")
 	h.AssertShimExistsAndExecutable("extra-bin")
+}
+
+func TestE2EGenerate_ShadowWarnings(t *testing.T) {
+	t.Parallel()
+
+	h := NewTestHarness(t, HarnessOptions{
+		ConfigPath: "config.ts",
+	})
+
+	toolsDir := filepath.Join(h.TempDir, "tools")
+	_ = os.MkdirAll(toolsDir, 0755)
+
+	toolContent := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+  install("manual")
+    .zsh((sh) => sh.aliases({ ls: "eza" }).functions({ cd: "zoxide_cd $@" }))
+    .bash((sh) => sh.aliases({ echo: "echo -e" }))
+);`
+	_ = os.WriteFile(filepath.Join(toolsDir, "my-tool.tool.ts"), []byte(toolContent), 0644)
+
+	configContent := `export default {
+		paths: {
+			generatedDir: "./.generated",
+			homeDir: "{paths.generatedDir}/user-home",
+			targetDir: "{paths.generatedDir}/user-bin",
+			toolConfigsDir: "./tools"
+		}
+	};`
+	_ = os.WriteFile(filepath.Join(h.TempDir, "config.ts"), []byte(configContent), 0644)
+
+	stdout, stderr, exitCode, err := h.Generate()
+	if err != nil || exitCode != 0 {
+		t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+
+	combinedOutput := stdout + "\n" + stderr
+	expectedWarnings := []string{
+		`WARN	[my-tool] [zsh] Function "cd" shadows zsh builtin "cd"`,
+		`WARN	[my-tool] [bash] Alias "echo" shadows bash builtin "echo"`,
+	}
+
+	for _, expected := range expectedWarnings {
+		if !strings.Contains(combinedOutput, expected) {
+			t.Errorf("expected generate output to contain %q, got:\n%s", expected, combinedOutput)
+		}
+	}
 }

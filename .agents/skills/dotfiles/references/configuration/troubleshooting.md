@@ -78,6 +78,20 @@ Shim usage tracking is enabled by default: every run of a shim appends a line to
 2. Reload completions: `autoload -U compinit && compinit`
 3. Check the configuration against [Shell Completions](../api-reference/shell-completions.md)
 
+### Shadow Warnings During Generate
+
+**Messages**:
+
+- `WARN   [tool]         Binary "name" shadows /usr/bin/name`
+- `WARN   [tool]         [zsh] Alias "ls" shadows /bin/ls`
+- `WARN   [tool]         [zsh] Function "cd" shadows zsh builtin "cd"`
+
+`dotfiles generate` inspects active tool configurations for potential shadowing against external commands found on system `PATH` and standard shell builtins for `zsh`, `bash`, and `powershell`.
+
+- **Intentional Binary Delegation**: If a tool's binary targets or delegates directly to the host system binary (e.g., via `install("manual", { binaryPath: "/usr/bin/..." })`), the warning is automatically suppressed.
+- **Shimless Binaries**: If a binary is configured with `.bin("name", { shim: false })`, it is not placed on PATH and will not trigger a binary shadow warning.
+- **Resolving Conflicts**: If the shadowing is unintentional, consider renaming the conflicting alias or function, or scoping it appropriately.
+
 ### Hook Not Executing
 
 ```typescript builder

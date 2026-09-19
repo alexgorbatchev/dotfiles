@@ -2137,3 +2137,63 @@ func TestDownloadSettingsFromProjectConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestGetPatternForBinaryCoverage(t *testing.T) {
+	ptrBin := &config.BinaryConfig{Name: "ptr-bin", Pattern: "ptr-pat"}
+	valBin := config.BinaryConfig{Name: "val-bin", Pattern: "val-pat"}
+	mapBin := map[string]interface{}{"name": "map-bin", "pattern": "map-pat"}
+
+	binaries := []interface{}{ptrBin, valBin, mapBin}
+
+	if pat := getPatternForBinary(binaries, "ptr-bin"); pat != "ptr-pat" {
+		t.Errorf("expected ptr-pat, got %q", pat)
+	}
+	if pat := getPatternForBinary(binaries, "val-bin"); pat != "val-pat" {
+		t.Errorf("expected val-pat, got %q", pat)
+	}
+	if pat := getPatternForBinary(binaries, "map-bin"); pat != "map-pat" {
+		t.Errorf("expected map-pat, got %q", pat)
+	}
+	if pat := getPatternForBinary(binaries, "unknown"); pat != "" {
+		t.Errorf("expected empty string for unknown, got %q", pat)
+	}
+}
+
+func TestRemoveAllCoverage(t *testing.T) {
+	memFS := fs.NewMemFS()
+	_ = memFS.MkdirAll("/nested/sub/dir", 0755)
+	_ = memFS.WriteFile("/nested/sub/dir/file.txt", []byte("hello"), 0644)
+	_ = memFS.WriteFile("/nested/sub/file2.txt", []byte("world"), 0644)
+
+	if err := removeAll(memFS, "/nested"); err != nil {
+		t.Fatalf("removeAll failed: %v", err)
+	}
+	exists, _ := memFS.Exists("/nested")
+	if exists {
+		t.Errorf("expected /nested to be removed")
+	}
+
+	// Non-existent path returns nil
+	if err := removeAll(memFS, "/does-not-exist"); err != nil {
+		t.Errorf("expected nil for non-existent path, got: %v", err)
+	}
+}
+
+func TestCleanupStaleArtifacts_FullPipeline(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			GeneratedDir: "/home/user/.generated",
+			TargetDir:    "/home/user/bin",
+			HomeDir:      "/home/user",
+		},
+	}
+
+	err := orch.CleanupStaleArtifacts(ctx, nil, projCfg)
+	if err != nil {
+		t.Fatalf("CleanupStaleArtifacts failed: %v", err)
+	}
+}
