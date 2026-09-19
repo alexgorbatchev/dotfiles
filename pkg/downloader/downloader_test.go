@@ -722,6 +722,10 @@ func TestDownloaderCacheExpirationAndOpenFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	osFS := fs.NewOSFS()
 	dlOS := NewDownloader(osFS, nil)
+	// The default CacheDir is relative, so leaving it alone writes cache blobs into
+	// this package's own directory. Go then sees a freshly written file as a test
+	// input that is too new to trust and stops caching the package's result entirely.
+	dlOS.CacheDir = filepath.Join(tmpDir, "cache")
 
 	osFile := filepath.Join(tmpDir, "partial.txt")
 	_ = os.WriteFile(osFile, []byte("part1-"), 0644)
