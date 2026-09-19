@@ -65,8 +65,6 @@ func runCommand(args ...string) (commandOutput, error) {
 	// Reset subcommand flags
 	host = "127.0.0.1"
 	port = 8080
-	inputFile = "dotfiles.config.ts"
-	outputFile = "dotfiles.config.json"
 	listBins = false
 	generateReadme = false
 	logTailLines = 50
@@ -213,18 +211,6 @@ func TestSubcommands(t *testing.T) {
 			name:           "files command default",
 			args:           []string{"files"},
 			expectedOutput: []string{"No files currently managed"},
-			expectedErr:    false,
-		},
-		{
-			name:           "config convert default",
-			args:           []string{"config", "convert"},
-			expectedOutput: []string{"Converting configuration", "dotfiles.config.ts", "dotfiles.config.json", "Configuration migration completed successfully"},
-			expectedErr:    false,
-		},
-		{
-			name:           "config convert custom values",
-			args:           []string{"config", "convert", "-i", "my.config.ts", "-o", "my.config.json"},
-			expectedOutput: []string{"Converting configuration", "my.config.ts", "my.config.json", "Configuration migration completed successfully"},
 			expectedErr:    false,
 		},
 		{
@@ -1089,7 +1075,6 @@ func TestPositionalArgumentValidation(t *testing.T) {
 		{"version takes no arguments", []string{"version", "bat"}, `unknown command "bat" for "dotfiles version"`},
 		{"scaffold takes no arguments", []string{"scaffold", "bat"}, `unknown command "bat" for "dotfiles scaffold"`},
 		{"env takes no arguments", []string{"env", "bat"}, `unknown command "bat" for "dotfiles env"`},
-		{"config convert takes no arguments", []string{"config", "convert", "bat"}, `unknown command "bat" for "dotfiles config convert"`},
 	}
 
 	for _, tt := range tests {

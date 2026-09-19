@@ -202,13 +202,6 @@ discarding local edits.
 
 - `--force`: Overwrite tool configurations that already exist.
 
-### `dotfiles config convert`
-
-Converts a TypeScript configuration file (`dotfiles.config.ts`) to JSON format (`dotfiles.config.json`).
-
-- `-i, --input <file>`: Input TypeScript config file (default: `dotfiles.config.ts`).
-- `-o, --output <file>`: Output JSON config file (default: `dotfiles.config.json`).
-
 ### `dotfiles skill [path]`
 
 Lists installed AI skills or extracts the embedded `dotfiles` skill folder into the target directory.

@@ -28,7 +28,6 @@ func TestCommandsExecution(t *testing.T) {
 		{"--config", cfgPath, "skill", targetSkill},
 		{"--config", cfgPath, "check-updates"},
 		{"--config", cfgPath, "bin"},
-		{"--config", cfgPath, "convert"},
 		{"--config", cfgPath, "log"},
 		{"--config", cfgPath, "validate"},
 	}
