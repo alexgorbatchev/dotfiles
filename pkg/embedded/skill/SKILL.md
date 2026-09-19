@@ -3,7 +3,7 @@ name: dotfiles
 description: >-
   .tool.ts configuration files, defineTool, install(), dotfiles.config.ts, defineConfig,
   installation methods (github-release, gitea-release, brew, cargo, npm, curl-script, curl-tar, curl-binary, dmg, pkg, manual, zsh-plugin),
-  shell integration (aliases, functions, completions, env, symlinks, sourceFile),
+  declarative file management (blocks, templates, ensureDir, symlinks, copies), shell integration (aliases, functions, completions, env, sourceFile),
   hooks (before-install, after-download, after-extract, after-install),
   platform overrides, virtual environments, shim generation, dotfiles management.
 ---

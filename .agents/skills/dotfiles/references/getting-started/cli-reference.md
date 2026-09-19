@@ -35,6 +35,11 @@ dotfiles dashboard --port 8080
 # View file operation logs
 dotfiles log fzf --tail 50
 
+# Inspect drift and 3-way differences across declared files and blocks
+dotfiles diff
+dotfiles diff fzf
+dotfiles diff --json
+
 # Display tree of installed tool files
 dotfiles files fzf
 
@@ -126,6 +131,17 @@ The type-check runs the TypeScript compiler over the CLI-owned `.generated/tscon
 ### `dotfiles why <tool>`
 
 Finds and prints the path to the `.tool.ts` file responsible for configuring a tool or binary name.
+
+### `dotfiles diff [toolName]`
+
+Inspects 3-way differences and drift status between the repository declarations,
+the files currently on disk, and the recorded base state in SQLite.
+
+Reports state across all symlinks, copies, templates, and managed blocks:
+`in-sync`, `local-drift`, `upstream-update`, `conflict`, `missing`, or `unmanaged`.
+When differences exist, prints a unified line diff.
+
+- `--json`: Output drift evaluation and diffs in JSON format.
 
 ### `dotfiles files [toolName]`
 
