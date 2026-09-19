@@ -293,7 +293,6 @@ func TestDetectConflicts_FallbackToolOrigin(t *testing.T) {
 func TestWarnConflicts(t *testing.T) {
 	var buf bytes.Buffer
 	log := logger.New(logger.Config{
-		Name:   "test",
 		Level:  logger.LogLevelDefault,
 		Writer: &buf,
 	})

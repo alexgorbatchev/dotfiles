@@ -146,8 +146,8 @@ export default defineTool((install) =>
 
 	combinedOutput := stdout + "\n" + stderr
 	expectedWarnings := []string{
-		`WARN	[my-tool] [zsh] Function "cd" shadows zsh builtin "cd"`,
-		`WARN	[my-tool] [bash] Alias "echo" shadows bash builtin "echo"`,
+		`[my-tool] [zsh] Function "cd" shadows zsh builtin "cd"`,
+		`[my-tool] [bash] Alias "echo" shadows bash builtin "echo"`,
 	}
 
 	for _, expected := range expectedWarnings {

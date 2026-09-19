@@ -880,4 +880,3 @@ func TestRunHook_EmitsInfoLogWhenHookRuns(t *testing.T) {
 		t.Errorf("expected no log output for unregistered hook event, but got:\n%s", buf.String())
 	}
 }
-}

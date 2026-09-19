@@ -435,7 +435,6 @@ func TestGenerateTools_EmitsShadowWarnings(t *testing.T) {
 
 	var logBuf bytes.Buffer
 	testLog := logger.New(logger.Config{
-		Name:   "test-logger",
 		Level:  logger.LogLevelVerbose,
 		Writer: &logBuf,
 	})
