@@ -57,6 +57,7 @@ func TestE2EHook(t *testing.T) {
 
 	// Verify combinedOutput has correct prefix/logs for hook executions
 	expectedLines := []string{
+		"[hook-test-tool] Running after-install hook...",
 		"[hook-test-tool] $ echo \"shell-output-for-hook-test-tool\"",
 		"[hook-test-tool] | shell-output-for-hook-test-tool",
 		"[hook-test-tool] $ ./scripts/test-output.sh",
