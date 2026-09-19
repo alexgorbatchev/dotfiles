@@ -141,7 +141,9 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 
 	var fsys fs.FS
 	if inMemory {
-		fsys = fs.NewMemFS()
+		// A dry run must see the machine it would install onto, so that "already
+		// installed" and "this path is taken" are answered against reality.
+		fsys = fs.NewMemFSWithHostFallback()
 	} else {
 		fsys = fs.NewOSFS()
 	}

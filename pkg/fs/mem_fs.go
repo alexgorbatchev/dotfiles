@@ -24,14 +24,36 @@ type fileNode struct {
 // MemFS implements the FS interface fully in memory, utilizing sync.RWMutex
 // for concurrent, safe execution. Perfect for dry-run modes and sandboxed tests.
 type MemFS struct {
-	mu    sync.RWMutex
-	files map[string]*fileNode
+	mu sync.RWMutex
+	// hostFallback lets the metadata calls -- Exists, Stat, Lstat and Readlink --
+	// answer from the real filesystem for a path this one does not hold. A dry run
+	// needs it, because deciding whether a tool is already installed means looking
+	// at the machine. A test must not have it: a filesystem that reports whatever
+	// happens to be installed on the developer's machine makes the result of the
+	// test depend on which machine ran it.
+	//
+	// Reads never fall through. Only the existence and shape of a host path are
+	// visible, never its contents.
+	hostFallback bool
+	files        map[string]*fileNode
 }
 
-// NewMemFS creates and returns an empty in-memory filesystem.
+// NewMemFS creates and returns an empty in-memory filesystem, isolated from the
+// real one.
 func NewMemFS() *MemFS {
 	return &MemFS{
 		files: make(map[string]*fileNode),
+	}
+}
+
+// NewMemFSWithHostFallback returns an in-memory filesystem that additionally
+// reports what the real one holds, for the metadata calls listed on MemFS. It is
+// what a dry run runs against, so that a simulated installation sees the machine
+// it would really install onto. Tests want NewMemFS instead.
+func NewMemFSWithHostFallback() *MemFS {
+	return &MemFS{
+		files:        make(map[string]*fileNode),
+		hostFallback: true,
 	}
 }
 
@@ -153,8 +175,10 @@ func (m *MemFS) Exists(path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if _, osErr := os.Stat(path); osErr == nil {
-		return true, nil
+	if m.hostFallback {
+		if _, osErr := os.Stat(path); osErr == nil {
+			return true, nil
+		}
 	}
 	if os.IsNotExist(err) {
 		return false, nil
@@ -488,8 +512,10 @@ func (m *MemFS) Readlink(path string) (string, error) {
 	cleanPath := filepath.Clean(path)
 	node, ok := m.files[cleanPath]
 	if !ok {
-		if linkTarget, osErr := os.Readlink(path); osErr == nil {
-			return linkTarget, nil
+		if m.hostFallback {
+			if linkTarget, osErr := os.Readlink(path); osErr == nil {
+				return linkTarget, nil
+			}
 		}
 		return "", &os.PathError{Op: "readlink", Path: path, Err: os.ErrNotExist}
 	}
@@ -506,8 +532,10 @@ func (m *MemFS) Lstat(path string) (os.FileInfo, error) {
 	cleanPath := filepath.Clean(path)
 	node, ok := m.files[cleanPath]
 	if !ok {
-		if osInfo, osErr := os.Lstat(path); osErr == nil {
-			return osInfo, nil
+		if m.hostFallback {
+			if osInfo, osErr := os.Lstat(path); osErr == nil {
+				return osInfo, nil
+			}
 		}
 		return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrNotExist}
 	}
@@ -535,8 +563,10 @@ func (m *MemFS) Stat(path string) (os.FileInfo, error) {
 
 	currPath, currNode, err := m.resolveNodeLocked(path)
 	if err != nil {
-		if osInfo, osErr := os.Stat(path); osErr == nil {
-			return osInfo, nil
+		if m.hostFallback {
+			if osInfo, osErr := os.Stat(path); osErr == nil {
+				return osInfo, nil
+			}
 		}
 		return nil, err
 	}

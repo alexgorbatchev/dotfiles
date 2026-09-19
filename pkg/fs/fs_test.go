@@ -403,7 +403,7 @@ func TestMemFS_CopyFileSymlinkDereference(t *testing.T) {
 }
 
 func TestMemFS_HostFallback(t *testing.T) {
-	memFS := NewMemFS()
+	memFS := NewMemFSWithHostFallback()
 
 	// Create a real temporary file on the host OS
 	tempFile, err := os.CreateTemp("", "test-memfs-fallback-*.txt")
@@ -490,5 +490,39 @@ func TestMemFS_OpenFile_PreservesPermission(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0755 {
 		t.Errorf("expected permissions 0755, got %#o", info.Mode().Perm())
+	}
+}
+
+// An in-memory filesystem is what tests and dry runs are given so that neither
+// touches the real one. Reporting that a host path exists makes the result of a
+// test depend on what happens to be installed on the machine running it, so the
+// host is only visible to a MemFS that explicitly asked to see it.
+func TestMemFS_IsIsolatedFromTheHostByDefault(t *testing.T) {
+	hostFile := filepath.Join(t.TempDir(), "present-on-the-host.txt")
+	if err := os.WriteFile(hostFile, []byte("host content"), 0644); err != nil {
+		t.Fatalf("writing host file: %v", err)
+	}
+
+	memFS := NewMemFS()
+
+	if exists, err := memFS.Exists(hostFile); err != nil || exists {
+		t.Errorf("Exists(%s) = %v (err %v), want false: the host is visible", hostFile, exists, err)
+	}
+	if _, err := memFS.Stat(hostFile); err == nil {
+		t.Error("Stat succeeded on a host path")
+	}
+	if _, err := memFS.Lstat(hostFile); err == nil {
+		t.Error("Lstat succeeded on a host path")
+	}
+
+	// The opt-in filesystem does see it, which is what a dry run needs.
+	hostVisible := NewMemFSWithHostFallback()
+	if exists, err := hostVisible.Exists(hostFile); err != nil || !exists {
+		t.Errorf("the host-visible filesystem reported Exists = %v (err %v), want true", exists, err)
+	}
+
+	// Even there, only the shape of a host path is visible, never its contents.
+	if _, err := hostVisible.ReadFile(hostFile); err == nil {
+		t.Error("ReadFile returned host contents; the fallback must expose metadata only")
 	}
 }

@@ -1597,7 +1597,10 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	}
 
 	t.Run("findSystemBinary test", func(t *testing.T) {
-		orch := NewOrchestrator(log, memFS, runner, reg, nil)
+		// findSystemBinary asks what the machine already has, so this is one of the
+		// few places that genuinely needs the in-memory filesystem to see the real
+		// one. Everywhere else an isolated MemFS keeps the result off the host.
+		orch := NewOrchestrator(log, fs.NewMemFSWithHostFallback(), runner, reg, nil)
 		_, err := orch.findSystemBinary("non-existent-binary-1234567", projCfg)
 		if err == nil {
 			t.Errorf("expected error for non-existent binary")
