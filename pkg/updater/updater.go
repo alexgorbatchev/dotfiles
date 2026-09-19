@@ -115,6 +115,12 @@ func New(cfg Config) *Updater {
 	}
 
 	dl := downloader.NewDownloader(fsys, client)
+	// A self-update fetches one hash-verified release archive into a temporary
+	// directory it then deletes, so there is nothing for a cache to serve: a hit
+	// would only mean upgrading to a stale artifact. Leaving the cache on also
+	// left its default relative directory, .generated/cache/downloads, to be
+	// created in whatever directory the person happened to run the upgrade from.
+	dl.CacheEnabled = false
 
 	return &Updater{
 		baseURL:    strings.TrimSuffix(cfg.BaseURL, "/"),
