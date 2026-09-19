@@ -9,9 +9,9 @@ import (
 )
 
 // copyPath puts a declared file or directory in place, and protects whatever was
-// already there: a target whose contents differ is moved aside to <path>.bak
-// before being overwritten, and a target that already holds the source content is
-// registered without being rewritten.
+// already there: a target whose contents differ is moved aside to a free backup
+// name before being overwritten, and a target that already holds the source content
+// is registered without being rewritten.
 func TestCopyPath(t *testing.T) {
 	newFixture := func(t *testing.T) (*Orchestrator, fs.FS) {
 		t.Helper()
@@ -74,7 +74,10 @@ func TestCopyPath(t *testing.T) {
 		}
 	})
 
-	t.Run("an older backup is replaced", func(t *testing.T) {
+	// The first backup holds the file as it was before dotfiles ever took it over,
+	// and nothing can reproduce that. An older backup is therefore kept and the new
+	// one goes beside it.
+	t.Run("an older backup is kept", func(t *testing.T) {
 		orch, memFS := newFixture(t)
 		writeFile(t, memFS, "/home/user/src/config.toml", "new")
 		writeFile(t, memFS, "/home/user/dst/config.toml", "existing")
@@ -83,8 +86,11 @@ func TestCopyPath(t *testing.T) {
 		if err := orch.copyPath(context.Background(), "tool", "/home/user/src/config.toml", "/home/user/dst/config.toml"); err != nil {
 			t.Fatalf("copyPath returned error: %v", err)
 		}
-		if got := readFile(t, memFS, "/home/user/dst/config.toml.bak"); got != "existing" {
-			t.Errorf("backup contents = %q, want the target it just displaced", got)
+		if got := readFile(t, memFS, "/home/user/dst/config.toml.bak"); got != "older backup" {
+			t.Errorf("the oldest backup = %q, want it undisturbed", got)
+		}
+		if got := readFile(t, memFS, "/home/user/dst/config.toml.bak.2"); got != "existing" {
+			t.Errorf("the new backup = %q, want the target it just displaced", got)
 		}
 	})
 

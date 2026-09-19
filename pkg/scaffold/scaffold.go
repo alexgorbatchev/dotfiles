@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/backup"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
@@ -235,7 +236,13 @@ func Run(fsys fs.FS, opts Options) ([]Result, error) {
 			// Only the user's own edits are worth preserving; a copy this project
 			// generated can be reproduced from the template.
 			if !isLegacyContent(t.name, existing) {
-				result.BackupPath = path + ".bak"
+				// A free name rather than a fixed one, so scaffolding twice does not
+				// overwrite the copy of the file the user actually wrote.
+				reserved, err := backup.Reserve(fsys, path)
+				if err != nil {
+					return nil, fmt.Errorf("backing up %q: %w", path, err)
+				}
+				result.BackupPath = reserved
 				if err := fsys.WriteFile(result.BackupPath, existing, 0644); err != nil {
 					return nil, fmt.Errorf("backing up %q: %w", path, err)
 				}

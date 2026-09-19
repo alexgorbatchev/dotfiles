@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/backup"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -460,21 +461,16 @@ func (o *Orchestrator) copyPath(ctx context.Context, toolName, source, target st
 	})
 }
 
-// backupPath moves whatever sits at path to <path>.bak, removing an older backup
-// first, as v1 did before overwriting a symlink or copy target. The rename runs on
-// the plain filesystem on purpose: recorded under the tool, the backup would itself
-// be judged stale and removed on the next run.
+// backupPath moves whatever sits at path aside before a copy overwrites it.
+//
+// Every backup is kept. v1 deleted an older <path>.bak before renaming over it,
+// which meant the second run destroyed the copy of the file as it was before
+// dotfiles ever touched it. The rename runs on the plain filesystem on purpose:
+// recorded under the tool, the backup would itself be judged stale and removed on
+// the next run.
 func (o *Orchestrator) backupPath(path string) error {
-	backup := path + ".bak"
-	if _, err := o.fs.Lstat(backup); err == nil {
-		if err := o.fs.RemoveAll(backup); err != nil {
-			return fmt.Errorf("removing previous backup %s: %w", backup, err)
-		}
-	}
-	if err := o.fs.Rename(path, backup); err != nil {
-		return fmt.Errorf("backing up %s: %w", path, err)
-	}
-	return nil
+	_, err := backup.Move(o.fs, path)
+	return err
 }
 
 // copyTree copies a file, or a directory recursively, into place. Files go through

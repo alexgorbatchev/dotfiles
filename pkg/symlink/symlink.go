@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/backup"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
@@ -91,12 +92,10 @@ func (e *Evaluator) CreateSymlink(source, target string, opts Options) (bool, er
 			}
 		} else {
 			if opts.Backup {
-				backupPath := absTarget + ".bak"
-				// If backup path already exists, remove it first
-				if _, err := e.fs.Stat(backupPath); err == nil {
-					_ = e.fs.RemoveAll(backupPath)
-				}
-				if err := e.fs.Rename(absTarget, backupPath); err != nil {
+				// Every backup is kept rather than the previous one being deleted:
+				// the copy made the first time dotfiles took the file over is the
+				// only version that cannot be reproduced from the repository.
+				if _, err := backup.Move(e.fs, absTarget); err != nil {
 					return false, fmt.Errorf("backing up target file: %w", err)
 				}
 			} else if opts.Overwrite {

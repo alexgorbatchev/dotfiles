@@ -6,6 +6,7 @@ require (
 	github.com/dlclark/regexp2/v2 v2.2.1
 	github.com/dop251/goja v0.0.0-20260618133527-c9b2ea77db59
 	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14
+	github.com/epiclabs-io/diff3 v0.0.0-20260520111523-3b1669897fb1
 	github.com/evanw/esbuild v0.28.1
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-isatty v0.0.20

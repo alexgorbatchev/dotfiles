@@ -2032,15 +2032,17 @@ func recordedCopy(t *testing.T, orch *Orchestrator, toolName, path string) *regi
 }
 
 // .copy(src, dst) places the source at the target on generate, as v1 did. A target
-// that already holds something else is kept as <target>.bak, an older .bak making way
-// for it, and a target that already matches the source is left untouched so a repeated
-// generate does not displace the backup it made the first time.
+// that already holds something else is moved aside to a backup, an older backup being
+// kept rather than replaced, and a target that already matches the source is left
+// untouched so a repeated generate makes no new backup at all.
 func TestGenerateTool_AppliesCopies(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
 		existing   map[string]string
 		wantBackup string
+		// wantSecond is the numbered backup made when the plain name was taken.
+		wantSecond string
 	}{
 		{name: "target absent"},
 		{
@@ -2049,9 +2051,10 @@ func TestGenerateTool_AppliesCopies(t *testing.T) {
 			wantBackup: "user",
 		},
 		{
-			name:       "a previous backup is replaced",
+			name:       "a previous backup is kept and the new one goes beside it",
 			existing:   map[string]string{copyToolTarget: "user", copyToolTarget + ".bak": "older"},
-			wantBackup: "user",
+			wantBackup: "older",
+			wantSecond: "user",
 		},
 		{
 			name:       "an identical target is left alone",
@@ -2091,6 +2094,16 @@ func TestGenerateTool_AppliesCopies(t *testing.T) {
 				t.Errorf("expected backup %q: %v", tt.wantBackup, err)
 			case tt.wantBackup != "" && string(backup) != tt.wantBackup:
 				t.Errorf("backup = %q, want %q", string(backup), tt.wantBackup)
+			}
+
+			second, secondErr := memFS.ReadFile(copyToolTarget + ".bak.2")
+			switch {
+			case tt.wantSecond == "" && secondErr == nil:
+				t.Errorf("unexpected second backup %q", string(second))
+			case tt.wantSecond != "" && secondErr != nil:
+				t.Errorf("expected second backup %q: %v", tt.wantSecond, secondErr)
+			case tt.wantSecond != "" && string(second) != tt.wantSecond:
+				t.Errorf("second backup = %q, want %q", string(second), tt.wantSecond)
 			}
 
 			if recordedCopy(t, orch, "copy-tool", copyToolTarget) == nil {
@@ -2339,9 +2352,9 @@ func TestIsWithin(t *testing.T) {
 	}
 }
 
-// Symlink targets already holding a regular file or directory are kept as
-// <target>.bak before the link is created, as v1 did, instead of being deleted. An
-// older backup makes way for the displaced content, and a repeated run leaves the
+// Symlink targets already holding a regular file or directory are moved aside to a
+// backup before the link is created, instead of being deleted. An older backup is
+// kept and the displaced content goes beside it, and a repeated run leaves the
 // backup alone because the link is already correct.
 func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
 	t.Parallel()
@@ -2360,11 +2373,11 @@ func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
 			wantBackup: map[string]string{"config.yml.bak": "user"},
 		},
 		{
-			name:       "an older backup makes way for the displaced file",
+			name:       "an older backup is kept and the displaced file goes beside it",
 			pipeline:   "generate",
 			existing:   map[string]string{"config.yml": "user", "config.yml.bak": "older"},
 			runs:       1,
-			wantBackup: map[string]string{"config.yml.bak": "user"},
+			wantBackup: map[string]string{"config.yml.bak": "older", "config.yml.bak.2": "user"},
 		},
 		{
 			name:       "a directory at the target is kept whole",
