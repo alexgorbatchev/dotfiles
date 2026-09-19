@@ -350,19 +350,6 @@ func ResolveBinaryPaths(ctx context.Context, fsys fs.FS, binNames []string, fall
 	return resolved
 }
 
-// IsDryRun checks if the dry-run flag is present in the command-line arguments or set via environment.
-func IsDryRun() bool {
-	if os.Getenv("DOTFILES_DRY_RUN") == "true" {
-		return true
-	}
-	for _, arg := range os.Args {
-		if arg == "--dry-run" || arg == "-d" {
-			return true
-		}
-	}
-	return false
-}
-
 // GetBinaryNames returns the binary names declared in a tool config's Binaries slice.
 // `.bin()` records one object per call (`{name, pattern?, shim?}`), so an entry is a map;
 // the typed forms are what Go code builds directly.

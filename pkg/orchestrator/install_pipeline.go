@@ -243,13 +243,13 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return err
 	}
 
-	if !isExternal && !installer.IsDryRun() {
+	if !isExternal && !config.IsDryRunEnabled(ctx) {
 		if err := o.requireStagedPayload(ctx, tool, activeFS, stagingDir); err != nil {
 			return err
 		}
 	}
 
-	if isExternal && !installer.IsDryRun() {
+	if isExternal && !config.IsDryRunEnabled(ctx) {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
 			toolDir := filepath.Join(projCfg.Paths.BinariesDir, tool.Name)
@@ -272,7 +272,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		if err != nil {
 			return fmt.Errorf("creating external symlink: %w", err)
 		}
-	} else if !isExternal && !installer.IsDryRun() {
+	} else if !isExternal && !config.IsDryRunEnabled(ctx) {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
 			if err := activeFSWithTx.RemoveAll(toolDestDir); err != nil {
@@ -434,7 +434,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// 6. Insert Database Entry for Tool Installation
-	if !installer.IsDryRun() {
+	if !config.IsDryRunEnabled(ctx) {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			now := time.Now().UnixMilli()
 			binariesJSON, _ := json.Marshal(recordedBinaryPaths)
@@ -737,7 +737,7 @@ func (o *Orchestrator) buildHookEnv(tool *config.ToolConfig, projCfg *config.Pro
 }
 
 func (o *Orchestrator) runHooks(ctx context.Context, event string, tool *config.ToolConfig, projCfg *config.ProjectConfig, hookCtx vm.HookContext) error {
-	if installer.IsDryRun() || tool == nil {
+	if config.IsDryRunEnabled(ctx) || tool == nil {
 		return nil
 	}
 	return vm.RunHook(ctx, o.logger, o.fs, o.runner, tool, projCfg, event, hookCtx, o.target)

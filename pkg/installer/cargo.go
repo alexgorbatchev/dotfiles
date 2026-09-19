@@ -471,7 +471,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	if err := ValidateSudo(c, tool); err != nil {
 		return nil, err
 	}
-	if IsDryRun() {
+	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil

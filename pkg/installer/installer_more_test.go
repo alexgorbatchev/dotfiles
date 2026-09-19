@@ -126,12 +126,7 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	_ = gh.matchAsset(assets, "*.tar.gz")
 	_ = gh.matchAsset(assets, "")
 
-	// 6. Test IsDryRun, GetBinaryNames, PromoteBinaries
-	t.Setenv("DOTFILES_DRY_RUN", "true")
-	if !IsDryRun() {
-		t.Errorf("expected IsDryRun() to be true")
-	}
-
+	// 6. Test GetBinaryNames, PromoteBinaries
 	namesEmpty := GetBinaryNames("default-tool", nil)
 	if len(namesEmpty) != 1 || namesEmpty[0] != "default-tool" {
 		t.Errorf("expected ['default-tool'], got %v", namesEmpty)
@@ -301,10 +296,6 @@ func TestInstallerParamsAndUtilities(t *testing.T) {
 	s2 := getStringSliceParam(params, "ss")
 	if len(s2) != 2 || s2[0] != "c" || s2[1] != "d" {
 		t.Errorf("getStringSliceParam ss failed: %v", s2)
-	}
-
-	if IsDryRun() {
-		t.Errorf("expected IsDryRun false by default")
 	}
 
 	tool := &config.ToolConfig{

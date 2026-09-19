@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	hostarch "github.com/alexgorbatchev/dotfiles/pkg/arch"
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
@@ -137,6 +138,12 @@ var rootCmd = &cobra.Command{
 	Version:       Version,
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	// The pipelines read dry-run from the context, the same way they read force and
+	// overwrite, so the flag is put there once for whichever subcommand is running.
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SetContext(config.WithDryRun(cmd.Context(), dryRun))
+		return nil
+	},
 }
 
 func init() {

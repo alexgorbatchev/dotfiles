@@ -81,7 +81,7 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	if err := ValidateSudo(c, tool); err != nil {
 		return nil, err
 	}
-	if IsDryRun() {
+	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil

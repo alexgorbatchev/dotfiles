@@ -55,7 +55,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	if err := ValidateSudo(n, tool); err != nil {
 		return nil, err
 	}
-	if IsDryRun() {
+	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil

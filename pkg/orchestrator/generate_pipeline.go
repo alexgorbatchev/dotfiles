@@ -860,7 +860,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 		return fmt.Errorf("project configuration is nil")
 	}
 
-	if installer.IsDryRun() {
+	if config.IsDryRunEnabled(ctx) {
 		return nil
 	}
 

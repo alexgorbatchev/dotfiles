@@ -8,6 +8,7 @@ import (
 type contextKey string
 
 const (
+	dryRunKey        contextKey = "DOTFILES_DRY_RUN"
 	forceKey         contextKey = "DOTFILES_FORCE"
 	overwriteKey     contextKey = "DOTFILES_OVERWRITE"
 	projectConfigKey contextKey = "DOTFILES_PROJECT_CONFIG"
@@ -26,6 +27,21 @@ func GetProjectConfig(ctx context.Context) *ProjectConfig {
 		}
 	}
 	return nil
+}
+
+// WithDryRun returns a new context with the dry-run flag set.
+func WithDryRun(ctx context.Context, dryRun bool) context.Context {
+	return context.WithValue(ctx, dryRunKey, dryRun)
+}
+
+// IsDryRunEnabled checks if dry-run is enabled in the context or fallback environment variable.
+func IsDryRunEnabled(ctx context.Context) bool {
+	if ctx != nil {
+		if val, ok := ctx.Value(dryRunKey).(bool); ok {
+			return val
+		}
+	}
+	return os.Getenv("DOTFILES_DRY_RUN") == "true"
 }
 
 // WithForce returns a new context with the force flag set.

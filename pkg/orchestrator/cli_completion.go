@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 )
 
 // cliCompletionFileName is the zsh completion file for the dotfiles binary itself.
@@ -40,7 +39,7 @@ func (o *Orchestrator) GenerateCLICompletion(ctx context.Context, projCfg *confi
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
 	}
-	if installer.IsDryRun() {
+	if config.IsDryRunEnabled(ctx) {
 		return nil
 	}
 

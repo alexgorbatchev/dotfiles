@@ -57,7 +57,7 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	if err := ValidateSudo(z, tool); err != nil {
 		return nil, err
 	}
-	if IsDryRun() {
+	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
 			Binaries: []string{},
 		}, nil
