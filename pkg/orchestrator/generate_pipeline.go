@@ -341,7 +341,12 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		return err
 	}
 
-	// 5. Generate completions
+	// 5. Apply declarative files (directories, templates, blocks)
+	if err := o.applyDeclarativeFiles(ctx, tool, projCfg); err != nil {
+		return err
+	}
+
+	// 6. Generate completions
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
 		o.logger.WithTag(tool.Name).Error("Failed to generate completions", err)
 	}
@@ -377,11 +382,25 @@ func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConf
 		if err != nil {
 			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, target, err)
 		}
+		if sym.Mode != "" {
+			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+				tracked := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
+				return o.enforceMode(tracked, src, sym.Mode)
+			})
+			if err != nil {
+				return fmt.Errorf("enforcing mode on symlink source %q: %w", src, err)
+			}
+		}
 		if !wasCreated {
 			continue
 		}
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
+			if sym.Mode != "" {
+				if m, err := config.ParseMode(sym.Mode); err == nil {
+					activeFS = activeFS.WithTargetMode(m)
+				}
+			}
 			return activeFS.RecordExistingSymlink(src, target)
 		})
 		if err != nil {
@@ -410,7 +429,7 @@ func (o *Orchestrator) applyCopies(ctx context.Context, tool *config.ToolConfig,
 		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
-		if err := o.copyPath(ctx, tool.Name, src, target); err != nil {
+		if err := o.copyPathWithMode(ctx, tool.Name, src, target, cp.Mode); err != nil {
 			return fmt.Errorf("copying %q to %q: %w", cp.Source, target, err)
 		}
 	}
@@ -422,6 +441,10 @@ func (o *Orchestrator) applyCopies(ctx context.Context, tool *config.ToolConfig,
 // A target that already matches the source is only re-registered, so a repeated
 // generate neither rewrites the copy nor displaces the backup made the first time.
 func (o *Orchestrator) copyPath(ctx context.Context, toolName, source, target string) error {
+	return o.copyPathWithMode(ctx, toolName, source, target, "")
+}
+
+func (o *Orchestrator) copyPathWithMode(ctx context.Context, toolName, source, target, declaredMode string) error {
 	absSource, err := o.fs.Abs(source)
 	if err != nil {
 		return fmt.Errorf("getting absolute source path: %w", err)
@@ -457,7 +480,16 @@ func (o *Orchestrator) copyPath(ctx context.Context, toolName, source, target st
 	}
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		return copyTree(o.fs, o.getTrackedFS(ctx, tx, toolName, "copy"), absSource, absTarget)
+		tracked := o.getTrackedFS(ctx, tx, toolName, "copy")
+		if declaredMode != "" {
+			if m, err := config.ParseMode(declaredMode); err == nil {
+				tracked = tracked.WithTargetMode(m)
+			}
+		}
+		if err := copyTree(o.fs, tracked, absSource, absTarget); err != nil {
+			return err
+		}
+		return o.enforceMode(tracked, absTarget, declaredMode)
 	})
 }
 
@@ -762,6 +794,22 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 				copyTargets[absTarget] = true
 			}
 		}
+		for _, tmpl := range tool.Templates {
+			resolvedTarget, err := config.ResolvePathPlaceholders(tmpl.Target, tool.Name, projCfg)
+			if err != nil {
+				return fmt.Errorf("%s: template target %q: %w", tool.Name, tmpl.Target, err)
+			}
+			expandedTarget := resolvedTarget
+			if strings.HasPrefix(expandedTarget, "~") {
+				expandedTarget = utils.ExpandHomePath(projCfg.Paths.HomeDir, expandedTarget)
+			}
+			copyTargets[tmpl.Target] = true
+			copyTargets[resolvedTarget] = true
+			copyTargets[expandedTarget] = true
+			if absTarget, err := o.fs.Abs(expandedTarget); err == nil {
+				copyTargets[absTarget] = true
+			}
+		}
 		isExpected := func(path string) bool {
 			if expectedFiles[path] || copyTargets[path] {
 				return true
@@ -801,7 +849,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 		}
 
 		for _, state := range fileStates {
-			if (state.FileType != "copy" && state.FileType != "written" && state.FileType != "completion") || state.LastOperation == "rm" {
+			if (state.FileType != "copy" && state.FileType != "written" && state.FileType != "completion" && state.FileType != "template") || state.LastOperation == "rm" {
 				continue
 			}
 

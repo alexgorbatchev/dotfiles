@@ -120,6 +120,7 @@ func (t *TrackedFileSystem) RecordExistingFile(path string) error {
 	}
 	if data, err := t.fs.ReadFile(path); err == nil {
 		details.contentHash = ptrTo(HashContent(data))
+		details.metadata = ptrTo(string(data))
 	}
 	return t.recordOperation(details)
 }
@@ -130,6 +131,7 @@ type operationDetails struct {
 	opType      string
 	path        string
 	targetPath  *string
+	metadata    *string
 	sizeBytes   *int64
 	permissions *registry.Permission
 	contentHash *string
@@ -157,6 +159,7 @@ func (t *TrackedFileSystem) recordOperation(details operationDetails) error {
 		FilePath:      details.path,
 		TargetPath:    details.targetPath,
 		FileType:      t.fileType,
+		Metadata:      details.metadata,
 		SizeBytes:     details.sizeBytes,
 		Permissions:   details.permissions,
 		CreatedAt:     time.Now().UnixMilli(),
@@ -211,6 +214,7 @@ func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode
 	return t.recordOperation(operationDetails{
 		opType:      "writeFile",
 		path:        path,
+		metadata:    ptrTo(string(data)),
 		sizeBytes:   &sizeBytes,
 		permissions: &permVal,
 		contentHash: ptrTo(HashContent(data)),
@@ -489,15 +493,28 @@ func (t *TrackedFileSystem) CopyFile(src, dest string) error {
 	// Hashed from what actually landed at the destination rather than from the
 	// source, so the recorded base is the bytes a later run will be comparing.
 	var contentHash *string
+	var metadata *string
 	if data, err := t.fs.ReadFile(dest); err == nil {
 		contentHash = ptrTo(HashContent(data))
+		metadata = ptrTo(string(data))
 	}
 	return t.recordOperation(operationDetails{
 		opType:      "writeFile",
 		path:        dest,
 		targetPath:  &src,
+		metadata:    metadata,
 		sizeBytes:   sizeBytes,
 		permissions: permVal,
 		contentHash: contentHash,
 	})
+}
+
+// OperationID returns the current operation ID.
+func (t *TrackedFileSystem) OperationID() string {
+	return t.operationID
+}
+
+// CreatedAt returns the current millisecond timestamp.
+func (t *TrackedFileSystem) CreatedAt() int64 {
+	return time.Now().UnixMilli()
 }
