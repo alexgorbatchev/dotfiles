@@ -508,3 +508,89 @@ func TestPoliciesAndEdgeCases(t *testing.T) {
 		t.Error("expected error for missing template source")
 	}
 }
+
+// TestBlockMergesAnUpstreamChangeWithALocalOne tests that 3-way merge inside managed blocks
+// preserves local edits within the block while applying upstream changes.
+func TestBlockMergesAnUpstreamChangeWithALocalOne(t *testing.T) {
+	orch, memFS := declFixture(t)
+	target := "/home/user/.ssh/config"
+	writeDecl(t, memFS, target, "Host personal\n")
+
+	tool := newDeclTool()
+	tool.Blocks = []config.BlockConfig{{
+		Target:   "~/.ssh/config",
+		ID:       "includes",
+		Content:  "Include /repo/tools/ssh/config\nInclude /repo/tools/ssh/config.base",
+		Conflict: "merge",
+	}}
+
+	ctx := context.Background()
+	if err := orch.GenerateTool(ctx, tool, declProjectConfig()); err != nil {
+		t.Fatalf("first GenerateTool: %v", err)
+	}
+
+	// 1. User locally edits inside the block (e.g. adds custom include in the middle/top)
+	current := readDecl(t, memFS, target)
+	locallyEdited := strings.Replace(current, "Include /repo/tools/ssh/config\n", "Include /repo/tools/ssh/config\nInclude /custom/local/config\n", 1)
+	writeDecl(t, memFS, target, locallyEdited)
+
+	// 2. Upstream repository adds a new include at the bottom
+	tool.Blocks[0].Content = "Include /repo/tools/ssh/config\nInclude /repo/tools/ssh/config.base\nInclude /repo/tools/ssh/config.macos"
+
+	if err := orch.GenerateTool(ctx, tool, declProjectConfig()); err != nil {
+		t.Fatalf("second GenerateTool: %v", err)
+	}
+
+	got := readDecl(t, memFS, target)
+	if !strings.Contains(got, "Include /custom/local/config") {
+		t.Errorf("local edit inside block was silently discarded during 3-way merge:\n%s", got)
+	}
+	if !strings.Contains(got, "Include /repo/tools/ssh/config.macos") {
+		t.Errorf("upstream addition to block was not applied:\n%s", got)
+	}
+	if strings.Contains(got, "<<<<<<<") {
+		t.Errorf("expected clean 3-way merge inside block, got conflict markers:\n%s", got)
+	}
+}
+
+// TestBlockKeepLocalPolicyPreservesDriftWhenUpstreamChanges verifies that conflict: "keep-local"
+// preserves local edits even when the upstream block declaration has moved forward, without
+// overwriting the file or advancing the base hash in SQLite.
+func TestBlockKeepLocalPolicyPreservesDriftWhenUpstreamChanges(t *testing.T) {
+	orch, memFS := declFixture(t)
+	target := "/home/user/.ssh/config"
+	writeDecl(t, memFS, target, "Host personal\n")
+
+	tool := newDeclTool()
+	tool.Blocks = []config.BlockConfig{{
+		Target:   "~/.ssh/config",
+		ID:       "includes",
+		Content:  "Include /repo/v1",
+		Conflict: "keep-local",
+	}}
+
+	ctx := context.Background()
+	if err := orch.GenerateTool(ctx, tool, declProjectConfig()); err != nil {
+		t.Fatalf("first GenerateTool: %v", err)
+	}
+
+	// User locally edited the block
+	current := readDecl(t, memFS, target)
+	locallyEdited := strings.Replace(current, "Include /repo/v1", "Include /local/custom", 1)
+	writeDecl(t, memFS, target, locallyEdited)
+
+	// Upstream changed
+	tool.Blocks[0].Content = "Include /repo/v2"
+
+	if err := orch.GenerateTool(ctx, tool, declProjectConfig()); err != nil {
+		t.Fatalf("second GenerateTool: %v", err)
+	}
+
+	got := readDecl(t, memFS, target)
+	if !strings.Contains(got, "Include /local/custom") {
+		t.Errorf("expected local edit to be kept with keep-local, got:\n%s", got)
+	}
+	if strings.Contains(got, "Include /repo/v2") {
+		t.Errorf("upstream content should not have overwritten keep-local block:\n%s", got)
+	}
+}

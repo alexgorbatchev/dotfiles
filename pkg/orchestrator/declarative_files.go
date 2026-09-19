@@ -432,11 +432,13 @@ func (o *Orchestrator) applyBlocks(ctx context.Context, tool *config.ToolConfig,
 		})
 		action := drift.Decide(state, drift.Policy(blk.Conflict))
 
+		baseContent := o.recordedContent(ctx, recorded, baseHash)
+
 		bodyToWrite, shouldWrite, err := o.contentForAction(actionRequest{
 			action:  action,
 			state:   state,
 			path:    target,
-			base:    currentBlockBody, // if baseHash matches currentHash, this is the base
+			base:    baseContent,
 			current: currentBlockBody,
 			desired: desiredBody,
 			label:   fmt.Sprintf("%s (block %s)", target, blk.ID),
@@ -446,8 +448,9 @@ func (o *Orchestrator) applyBlocks(ctx context.Context, tool *config.ToolConfig,
 			return err
 		}
 
-		if !shouldWrite && found && state == drift.StateInSync {
-			// Ensure mode if specified
+		if !shouldWrite {
+			// User opted to keep local changes or file is already in-sync:
+			// do not rewrite file or advance base hash, only enforce mode if requested.
 			if blk.Mode != "" {
 				err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 					tracked := o.getTrackedFS(ctx, tx, tool.Name, "block").WithBlock(blk.ID)
@@ -480,13 +483,13 @@ func (o *Orchestrator) applyBlocks(ctx context.Context, tool *config.ToolConfig,
 				tracked = tracked.WithTargetMode(mode)
 			}
 
-			if err := tracked.MkdirAll(filepath.Dir(target), defaultDirMode); err != nil {
+			if err := o.fs.MkdirAll(filepath.Dir(target), defaultDirMode); err != nil {
 				return fmt.Errorf("creating %s: %w", filepath.Dir(target), err)
 			}
-			if err := tracked.WriteFile(target, []byte(newFileContent), mode); err != nil {
+			if err := o.fs.WriteFile(target, []byte(newFileContent), mode); err != nil {
 				return fmt.Errorf("writing %s: %w", target, err)
 			}
-			// Update operation record hash to be the block's body hash, not the whole file hash
+
 			record := &registry.FileOperationRecord{
 				ToolName:      tool.Name,
 				OperationType: "block",
@@ -534,48 +537,57 @@ func (o *Orchestrator) cleanupStaleBlocks(ctx context.Context, tool *config.Tool
 		}
 	}
 
+	seenBlocks := make(map[string]bool)
 	for _, op := range ops {
 		if op.BlockID == nil || *op.BlockID == "" {
 			continue
 		}
 		key := op.FilePath + "::" + *op.BlockID
-		if activeBlocks[key] {
+		if activeBlocks[key] || seenBlocks[key] {
+			continue
+		}
+		seenBlocks[key] = true
+
+		// Check if the block is already deleted in registry
+		existingBlockState, err := o.reg.GetBlockState(ctx, op.FilePath, *op.BlockID)
+		if err != nil || existingBlockState == nil {
 			continue
 		}
 
-		// This recorded block is no longer declared for this tool; remove it from the file
 		content, exists, err := o.readIfPresent(op.FilePath)
 		if err != nil {
 			return err
 		}
-		if !exists {
-			continue
+
+		cleaned := content
+		if exists {
+			cleaned, err = block.Remove(content, *op.BlockID)
+			if err != nil {
+				return fmt.Errorf("removing stale block %q from %q: %w", *op.BlockID, op.FilePath, err)
+			}
 		}
 
-		cleaned, err := block.Remove(content, *op.BlockID)
-		if err != nil {
-			return fmt.Errorf("removing stale block %q from %q: %w", *op.BlockID, op.FilePath, err)
-		}
-
-		if cleaned != content {
-			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				tracked := o.getTrackedFS(ctx, tx, tool.Name, "block").WithBlock(*op.BlockID)
-				if err := tracked.WriteFile(op.FilePath, []byte(cleaned), defaultFileMode); err != nil {
+		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+			tracked := o.getTrackedFS(ctx, tx, tool.Name, "block").WithBlock(*op.BlockID)
+			if exists && cleaned != content {
+				if err := o.fs.WriteFile(op.FilePath, []byte(cleaned), defaultFileMode); err != nil {
 					return err
 				}
-				return o.reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
-					ToolName:      tool.Name,
-					OperationType: "rm",
-					FilePath:      op.FilePath,
-					FileType:      "block",
-					CreatedAt:     tracked.CreatedAt(),
-					OperationID:   tracked.OperationID(),
-					BlockID:       op.BlockID,
-				})
-			})
-			if err != nil {
-				return fmt.Errorf("cleaning stale block %q in %q: %w", *op.BlockID, op.FilePath, err)
 			}
+			return o.reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+				ToolName:      tool.Name,
+				OperationType: "rm",
+				FilePath:      op.FilePath,
+				FileType:      "block",
+				CreatedAt:     tracked.CreatedAt(),
+				OperationID:   tracked.OperationID(),
+				BlockID:       op.BlockID,
+			})
+		})
+		if err != nil {
+			return fmt.Errorf("cleaning stale block %q in %q: %w", *op.BlockID, op.FilePath, err)
+		}
+		if exists && cleaned != content {
 			o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf(
 				"Removed stale block %q from %s", *op.BlockID, o.contract(op.FilePath),
 			)))
