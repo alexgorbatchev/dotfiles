@@ -246,3 +246,50 @@ func TestDashboardNotFoundAndEdgeRoutes(t *testing.T) {
 		t.Errorf("getRepoFromToolConfig returned %q, want 'owner/repo'", repo)
 	}
 }
+
+func TestHandleDriftEndpoints(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+	database, _ := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	toolA := &config.ToolConfig{Name: "tool-a"}
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{}, []*config.ToolConfig{toolA}, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("start server: %v", err)
+	}
+	defer server.Stop()
+
+	baseURL := fmt.Sprintf("http://127.0.0.1:%d", server.Port())
+
+	// 1. GET /api/drift
+	resp, err := http.Get(baseURL + "/api/drift")
+	if err != nil {
+		t.Fatalf("GET /api/drift failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	// 2. GET /api/tools/tool-a/drift
+	respTool, err := http.Get(baseURL + "/api/tools/tool-a/drift")
+	if err != nil {
+		t.Fatalf("GET /api/tools/tool-a/drift failed: %v", err)
+	}
+	defer respTool.Body.Close()
+	if respTool.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", respTool.StatusCode)
+	}
+
+	// 3. GET /api/tools/nonexistent/drift
+	respNotFound, err := http.Get(baseURL + "/api/tools/nonexistent/drift")
+	if err != nil {
+		t.Fatalf("GET /api/tools/nonexistent/drift failed: %v", err)
+	}
+	defer respNotFound.Body.Close()
+	if respNotFound.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200 with error response, got %d", respNotFound.StatusCode)
+	}
+}

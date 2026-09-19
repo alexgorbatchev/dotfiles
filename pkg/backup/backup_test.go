@@ -1,6 +1,8 @@
 package backup
 
 import (
+	"errors"
+	"os"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -123,5 +125,45 @@ func TestMoveHandlesADirectory(t *testing.T) {
 	}
 	if read(t, mem, got+"/theme.toml") != "dark" {
 		t.Error("the directory's contents did not come with it")
+	}
+}
+
+type failingFS struct {
+	fs.FS
+	lstatErr  error
+	renameErr error
+}
+
+func (f *failingFS) Lstat(path string) (os.FileInfo, error) {
+	if f.lstatErr != nil {
+		return nil, f.lstatErr
+	}
+	return f.FS.Lstat(path)
+}
+
+func (f *failingFS) Rename(oldPath, newPath string) error {
+	if f.renameErr != nil {
+		return f.renameErr
+	}
+	return f.FS.Rename(oldPath, newPath)
+}
+
+func TestErrors(t *testing.T) {
+	mem := newMemFS(t)
+	write(t, mem, "/home/user/file.txt", "content")
+
+	// Lstat error in occupied
+	fErr := &failingFS{FS: mem, lstatErr: errors.New("lstat error")}
+	if _, err := Move(fErr, "/home/user/file.txt"); err == nil {
+		t.Error("expected error from Move on lstat failure")
+	}
+	if _, err := Reserve(fErr, "/home/user/file.txt"); err == nil {
+		t.Error("expected error from Reserve on lstat failure")
+	}
+
+	// Rename error in Move
+	rErr := &failingFS{FS: mem, renameErr: errors.New("rename error")}
+	if _, err := Move(rErr, "/home/user/file.txt"); err == nil {
+		t.Error("expected error from Move on rename failure")
 	}
 }

@@ -373,3 +373,47 @@ export default defineTool((install) =>
 // ❌ Hardcoded path
 .symlink('./config.toml', '/home/user/.config/tool/config.toml')
 ```
+
+## Directories
+
+Ensure directories exist with explicit permissions using `.ensureDir()`. Useful for sensitive directories such as `~/.ssh` or `~/.gnupg`.
+
+```typescript builder
+.ensureDir('~/.ssh', { mode: '0700' })
+```
+
+## Copies
+
+Copy static files or directory trees into place using `.copy()`.
+
+```typescript builder
+.copy('config', '~/.config/tool/config', { mode: '0644', conflict: 'keep-local' })
+```
+
+## Managed Blocks
+
+Own a delimited section of a shared configuration file (e.g. `~/.ssh/config`, `~/.bashrc`, `~/.gitconfig`) with `.block()`. Changes made by the user or external tools outside the marker lines are never touched or conflicted.
+
+```typescript builder
+.block('~/.ssh/config', {
+  id: 'includes',
+  mode: '0600',
+  position: 'top',
+  conflict: 'merge',
+  content: ({ toolDir }) => `Include ${toolDir}/config`,
+})
+```
+
+## Templates
+
+Render dynamic configuration templates using `.template()`. Variables support project placeholders (e.g. `{paths.homeDir}`, `{toolName}`) and author-defined values, resolved with 3-way drift detection.
+
+```typescript builder
+.template('./gitconfig.template', '~/.gitconfig', {
+  mode: '0644',
+  conflict: 'merge',
+  variables: {
+    email: 'alex@example.com',
+  },
+})
+```

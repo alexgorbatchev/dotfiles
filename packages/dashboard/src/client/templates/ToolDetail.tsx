@@ -9,6 +9,7 @@ import { ToolActionButtons } from "../components/ToolActionButtons";
 import { ReadmeCard } from "../components/ReadmeCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { ToolHistory } from "../components/ToolHistory";
+import { ToolDriftCard } from "../components/ToolDriftCard";
 import { ToolSourceCard } from "../components/ToolSourceCard";
 import { FileTree } from "../components/FileTree";
 import { Button } from "../components/ui/Button";
@@ -241,6 +242,12 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       <section id="source">
         <ToolSourceCard toolName={tool.config.name} />
       </section>
+
+      {(tool.drift?.length || 0) > 0 && (
+        <section id="drift">
+          <ToolDriftCard driftItems={tool.drift} />
+        </section>
+      )}
 
       {tool.runtime.status === "installed" && (
         <section id="files">

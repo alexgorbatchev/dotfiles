@@ -210,3 +210,47 @@ func TestGetFileStatesForBlock(t *testing.T) {
 		t.Errorf("expected nil for a block nothing recorded, got %+v", missing)
 	}
 }
+
+func TestRenameFileOperationPrefix(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	recordOps(t, reg,
+		&FileOperationRecord{
+			ToolName:      "test",
+			OperationType: "writeFile",
+			FilePath:      "/old/prefix/file1.txt",
+			FileType:      "file",
+			CreatedAt:     100,
+			OperationID:   "op1",
+		},
+		&FileOperationRecord{
+			ToolName:      "test",
+			OperationType: "writeFile",
+			FilePath:      "/old/prefix/sub/file2.txt",
+			FileType:      "file",
+			CreatedAt:     101,
+			OperationID:   "op2",
+		},
+	)
+
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RenameFileOperationPrefix(ctx, tx, "/old/prefix", "/new/prefix")
+	})
+	if err != nil {
+		t.Fatalf("RenameFileOperationPrefix failed: %v", err)
+	}
+
+	ops, err := reg.GetFileOperations(ctx, FileOperationFilter{})
+	if err != nil {
+		t.Fatalf("reading ops: %v", err)
+	}
+	if len(ops) != 2 {
+		t.Fatalf("expected 2 ops, got %d", len(ops))
+	}
+	for _, op := range ops {
+		if op.FilePath[:11] != "/new/prefix" {
+			t.Errorf("expected new prefix /new/prefix, got %s", op.FilePath)
+		}
+	}
+}

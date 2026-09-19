@@ -84,14 +84,10 @@ expectError(
     install("manual").block("~/.ssh/config", { id: "includes", content: "x", position: "middle" }),
   ),
 );
-expectError(
-  defineTool((install) => install("manual").copy("config", "~/.config/tool/config", { conflict: "rebase" })),
-);
+expectError(defineTool((install) => install("manual").copy("config", "~/.config/tool/config", { conflict: "rebase" })));
 
 // An unknown option is a typo, not a value to ignore.
 expectError(defineTool((install) => install("manual").ensureDir("~/.ssh", { permissions: "0700" })));
 expectError(
-  defineTool((install) =>
-    install("manual").block("~/.ssh/config", { id: "includes", content: "x", comment: "#" }),
-  ),
+  defineTool((install) => install("manual").block("~/.ssh/config", { id: "includes", content: "x", comment: "#" })),
 );

@@ -447,3 +447,64 @@ func TestBlockRefusesToGuessAtAMalformedFile(t *testing.T) {
 		t.Errorf("error = %q, want it to say the block is unterminated", err)
 	}
 }
+
+// TestPoliciesAndEdgeCases covers prompt policy, unmanaged files, and errors.
+func TestPoliciesAndEdgeCases(t *testing.T) {
+	orch, memFS := declFixture(t)
+	ctx := context.Background()
+
+	// 1. PolicyPrompt on template
+	writeDecl(t, memFS, declToolDir+"/prompt.tmpl", "desired content")
+	writeDecl(t, memFS, "/home/user/prompt.txt", "local edited content")
+	toolPrompt := newDeclTool()
+	toolPrompt.Templates = []config.TemplateConfig{{
+		Source:   "./prompt.tmpl",
+		Target:   "~/prompt.txt",
+		Conflict: "prompt",
+	}}
+	if err := orch.GenerateTool(ctx, toolPrompt, declProjectConfig()); err != nil {
+		t.Fatalf("GenerateTool prompt: %v", err)
+	}
+	if readDecl(t, memFS, "/home/user/prompt.txt") != "local edited content" {
+		t.Error("prompt policy should keep local content when unattended")
+	}
+
+	// 2. PolicyKeepLocal on unmanaged block
+	writeDecl(t, memFS, "/home/user/.bashrc", "# >>> dotfiles:sh\nold\n# <<< dotfiles:sh\n")
+	toolBlock := newDeclTool()
+	toolBlock.Blocks = []config.BlockConfig{{
+		Target:   "~/.bashrc",
+		ID:       "sh",
+		Content:  "new",
+		Conflict: "keep-local",
+		Position: "top",
+	}}
+	if err := orch.GenerateTool(ctx, toolBlock, declProjectConfig()); err != nil {
+		t.Fatalf("GenerateTool block keep-local: %v", err)
+	}
+	if !strings.Contains(readDecl(t, memFS, "/home/user/.bashrc"), "old") {
+		t.Error("keep-local on block should preserve existing content")
+	}
+
+	// 3. Bad mode error in ensureDir
+	toolBadDir := newDeclTool()
+	toolBadDir.Directories = []config.DirectoryConfig{{Path: "~/bad", Mode: "invalid-mode"}}
+	if err := orch.GenerateTool(ctx, toolBadDir, declProjectConfig()); err == nil {
+		t.Error("expected error for invalid dir mode")
+	}
+
+	// 4. Bad mode error in template
+	toolBadTmpl := newDeclTool()
+	writeDecl(t, memFS, declToolDir+"/bad.tmpl", "content")
+	toolBadTmpl.Templates = []config.TemplateConfig{{Source: "./bad.tmpl", Target: "~/bad.txt", Mode: "invalid-mode"}}
+	if err := orch.GenerateTool(ctx, toolBadTmpl, declProjectConfig()); err == nil {
+		t.Error("expected error for invalid template mode")
+	}
+
+	// 5. Template read error (missing source)
+	toolMissingTmpl := newDeclTool()
+	toolMissingTmpl.Templates = []config.TemplateConfig{{Source: "./missing.tmpl", Target: "~/missing.txt"}}
+	if err := orch.GenerateTool(ctx, toolMissingTmpl, declProjectConfig()); err == nil {
+		t.Error("expected error for missing template source")
+	}
+}

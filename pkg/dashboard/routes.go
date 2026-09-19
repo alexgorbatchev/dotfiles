@@ -71,4 +71,5 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/tools", s.handleToolsRouter)
 	mux.HandleFunc("/api/tools/", s.handleToolsRouter)
 	mux.HandleFunc("/api/tool-configs-tree", s.handleToolConfigsTree)
+	mux.HandleFunc("/api/drift", s.handleDrift)
 }

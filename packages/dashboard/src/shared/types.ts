@@ -74,7 +74,29 @@ export interface IToolRuntimeState {
 /**
  * Complete tool detail combining static config and runtime state.
  */
+
+/**
+ * Drift state representing comparison between base, current disk state, and repo.
+ */
+export type DriftState = "new" | "in-sync" | "unmanaged" | "missing" | "upstream-update" | "local-drift" | "conflict";
+
+/**
+ * Single drifted or managed file/block artifact.
+ */
+export interface IDriftItem {
+  toolName: string;
+  filePath: string;
+  blockId?: string;
+  type: "symlink" | "copy" | "template" | "block";
+  state: DriftState;
+  diff?: string;
+  currentContent?: string;
+  desiredContent?: string;
+}
+
 export interface IToolDetail {
+  /** Drift status and diffs */
+  drift?: IDriftItem[];
   /** Static configuration from .tool.ts */
   config: ISerializableToolConfig;
   /** Runtime state from registry */

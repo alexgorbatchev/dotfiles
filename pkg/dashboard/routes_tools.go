@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/drift"
 	"github.com/alexgorbatchev/dotfiles/pkg/features"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/github"
@@ -50,6 +51,8 @@ func (s *Server) handleToolsRouter(w http.ResponseWriter, r *http.Request) {
 		s.handleToolLogsStream(w, r, toolName)
 	case "source":
 		s.handleToolSource(w, r, toolName)
+	case "drift":
+		s.handleToolDrift(w, r, toolName)
 	case "install":
 		if r.Method != "POST" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -191,10 +194,17 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 		"hasUpdate":        false,
 	}
 
+	inspector := drift.NewInspector(s.fsys, s.registry, s.projectConfig)
+	driftItems, _ := inspector.InspectTool(ctx, targetTool)
+	if driftItems == nil {
+		driftItems = []drift.Item{}
+	}
+
 	return map[string]any{
 		"config":         formatToolConfigForDashboard(targetTool),
 		"runtime":        runtimeState,
 		"files":          files,
+		"drift":          driftItems,
 		"binaryDiskSize": diskSize,
 		"usage": map[string]any{
 			"totalCount": totalUsage,
@@ -781,4 +791,59 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	writeJSON(w, true, map[string]any{
 		"updated": true,
 	}, "")
+}
+
+// GET /api/drift
+func (s *Server) handleDrift(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.registry == nil {
+		writeJSON(w, false, nil, "Registry is not initialized")
+		return
+	}
+
+	inspector := drift.NewInspector(s.fsys, s.registry, s.projectConfig)
+	items, err := inspector.InspectAll(ctx, s.toolConfigs)
+	if err != nil {
+		writeJSON(w, false, nil, "Failed to inspect drift: "+err.Error())
+		return
+	}
+	if items == nil {
+		items = []drift.Item{}
+	}
+
+	writeJSON(w, true, items, "")
+}
+
+// GET /api/tools/:name/drift
+func (s *Server) handleToolDrift(w http.ResponseWriter, r *http.Request, toolName string) {
+	ctx := r.Context()
+	if s.registry == nil {
+		writeJSON(w, false, nil, "Registry is not initialized")
+		return
+	}
+
+	var targetTool *config.ToolConfig
+	for _, tc := range s.toolConfigs {
+		if tc.Name == toolName {
+			targetTool = tc
+			break
+		}
+	}
+
+	if targetTool == nil {
+		writeJSON(w, false, nil, "Tool not found")
+		return
+	}
+
+	inspector := drift.NewInspector(s.fsys, s.registry, s.projectConfig)
+	items, err := inspector.InspectTool(ctx, targetTool)
+	if err != nil {
+		writeJSON(w, false, nil, "Failed to inspect tool drift: "+err.Error())
+		return
+	}
+	if items == nil {
+		items = []drift.Item{}
+	}
+
+	writeJSON(w, true, items, "")
 }

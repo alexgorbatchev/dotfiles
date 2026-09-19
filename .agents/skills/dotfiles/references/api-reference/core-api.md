@@ -54,26 +54,29 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 
 ### Builder Methods
 
-| Method                 | Description                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------- |
-| `.bin(name, pattern?)` | Define one binary, with an optional match pattern (`string \| RegExp`)                  |
-| `.bin(name, options)`  | Same, with `{ pattern?, shim? }`; `shim: false` installs the binary without a PATH shim |
-| `.version(v)`          | Set version (`'latest'` or specific)                                                    |
-| `.dependsOn(...bins)`  | Declare binary dependencies                                                             |
-| `.symlink(src, dest)`  | Link a file or directory into place ([details](shell-integration.md#symbolic-links))    |
-| `.copy(src, dest)`     | Copy a file or directory into place instead of linking it (see below)                   |
-| `.updateCheck(config)` | Record update-check settings on the tool (see below)                                    |
-| `.hook(event, fn)`     | Lifecycle hooks ([details](lifecycle-hooks.md))                                         |
-| `.shell(fn)`           | Shell configuration across all supported shells (Zsh, Bash, PowerShell)                 |
-| `.zsh(fn)`             | Zsh shell configuration                                                                 |
-| `.bash(fn)`            | Bash shell configuration                                                                |
-| `.powershell(fn)`      | PowerShell configuration                                                                |
-| `.platform(p, fn)`     | Platform-specific overrides                                                             |
-| `.platform(p, a, fn)`  | Overrides for one platform and architecture                                             |
-| `.arch(a, fn)`         | Architecture-specific overrides, on any platform                                        |
-| `.sudo()`              | Require an interactive sudo step during install                                         |
-| `.disable()`           | Skip tool during generation (logs warning)                                              |
-| `.hostname(pattern)`   | Restrict tool to specific hostname(s) (`string \| RegExp`)                              |
+| Method                        | Description                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `.bin(name, pattern?)`        | Define one binary, with an optional match pattern (`string \| RegExp`)                                |
+| `.bin(name, options)`         | Same, with `{ pattern?, shim? }`; `shim: false` installs the binary without a PATH shim               |
+| `.version(v)`                 | Set version (`'latest'` or specific)                                                                  |
+| `.dependsOn(...bins)`         | Declare binary dependencies                                                                           |
+| `.symlink(src, dest, opts?)`  | Link a file or directory into place ([details](shell-integration.md#symbolic-links))                  |
+| `.copy(src, dest, opts?)`     | Copy a file or directory into place instead of linking it ([details](shell-integration.md#copies))    |
+| `.ensureDir(path, opts?)`     | Ensure a directory exists with the declared permissions ([details](shell-integration.md#directories)) |
+| `.block(target, opts)`        | Own a managed block region within a shared file ([details](shell-integration.md#managed-blocks))      |
+| `.template(src, dest, opts?)` | Render a template file with 3-way drift resolution ([details](shell-integration.md#templates))        |
+| `.updateCheck(config)`        | Record update-check settings on the tool (see below)                                                  |
+| `.hook(event, fn)`            | Lifecycle hooks ([details](lifecycle-hooks.md))                                                       |
+| `.shell(fn)`                  | Shell configuration across all supported shells (Zsh, Bash, PowerShell)                               |
+| `.zsh(fn)`                    | Zsh shell configuration                                                                               |
+| `.bash(fn)`                   | Bash shell configuration                                                                              |
+| `.powershell(fn)`             | PowerShell configuration                                                                              |
+| `.platform(p, fn)`            | Platform-specific overrides                                                                           |
+| `.platform(p, a, fn)`         | Overrides for one platform and architecture                                                           |
+| `.arch(a, fn)`                | Architecture-specific overrides, on any platform                                                      |
+| `.sudo()`                     | Require an interactive sudo step during install                                                       |
+| `.disable()`                  | Skip tool during generation (logs warning)                                                            |
+| `.hostname(pattern)`          | Restrict tool to specific hostname(s) (`string \| RegExp`)                                            |
 
 Every method above is also available inside a `.platform()` or `.arch()` callback, on
 the `IPlatformConfigBuilder`, except `.platform()` and `.arch()` themselves: the blocks
