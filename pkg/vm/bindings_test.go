@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/dop251/goja"
 )
@@ -156,5 +157,46 @@ func TestRegisterContextBindingsWithLogger(t *testing.T) {
 	out := logBuf.String()
 	if !strings.Contains(out, "info msg") || !strings.Contains(out, "warn msg") || !strings.Contains(out, "error msg") || !strings.Contains(out, "debug msg") {
 		t.Errorf("expected log output to contain all direct log messages, got %q", out)
+	}
+}
+
+func TestContextBindingsFileSystemOperations(t *testing.T) {
+	memFS := fs.NewMemFS()
+	vm := goja.New()
+	if err := RegisterContextBindings(vm, nil, memFS, ""); err != nil {
+		t.Fatalf("RegisterContextBindings failed: %v", err)
+	}
+
+	script := `
+		fsWriteFile("/src.txt", "content");
+		fsCopyFile("/src.txt", "/dst.txt");
+		fsRename("/dst.txt", "/renamed.txt");
+		fsSymlink("/src.txt", "/link.txt");
+		fsMkdir("/dir");
+		fsRmdir("/dir");
+	`
+	if _, err := vm.RunString(script); err != nil {
+		t.Fatalf("executing FS bindings failed: %v", err)
+	}
+
+	if exists, _ := memFS.Exists("/renamed.txt"); !exists {
+		t.Errorf("expected /renamed.txt to exist")
+	}
+
+	if _, err := vm.RunString(`fsRmdir("/src.txt")`); err == nil {
+		t.Errorf("expected fsRmdir on a file to fail")
+	}
+}
+
+func TestBitmaskValueErrors(t *testing.T) {
+	vm := goja.New()
+	if _, err := bitmaskValue(nil, "test", 10); err == nil {
+		t.Errorf("expected error for nil bitmaskValue")
+	}
+	if _, err := bitmaskValue(vm.ToValue(-1), "test", 10); err == nil {
+		t.Errorf("expected error for negative bitmaskValue")
+	}
+	if _, err := bitmaskValue(vm.ToValue(100), "test", 10); err == nil {
+		t.Errorf("expected error for exceeding max bitmaskValue")
 	}
 }
