@@ -63,10 +63,13 @@ export interface BinaryConfig {
 export interface SymlinkConfig {
   source: string;
   target: string;
+  mode?: string;
 }
 export interface CopyConfig {
   source: string;
   target: string;
+  mode?: string;
+  conflict?: string;
 }
 export interface ShellScript {
   kind: string;
@@ -89,6 +92,25 @@ export interface ToolConfigUpdateCheck {
   enabled?: boolean;
   constraint?: string;
 }
+export interface TemplateConfig {
+  source: string;
+  target: string;
+  variables?: { [key: string]: any };
+  mode?: string;
+  conflict?: string;
+}
+export interface BlockConfig {
+  target: string;
+  id: string;
+  content?: string;
+  mode?: string;
+  position?: string;
+  conflict?: string;
+}
+export interface DirectoryConfig {
+  path: string;
+  mode?: string;
+}
 export interface ToolConfig {
   name: string;
   version?: string;
@@ -101,6 +123,9 @@ export interface ToolConfig {
   shellConfigs?: ShellConfigs;
   symlinks?: SymlinkConfig[];
   copies?: CopyConfig[];
+  directories?: DirectoryConfig[];
+  blocks?: BlockConfig[];
+  templates?: TemplateConfig[];
   updateCheck?: ToolConfigUpdateCheck;
   installationMethod?: string;
   installParams?: { [key: string]: any };

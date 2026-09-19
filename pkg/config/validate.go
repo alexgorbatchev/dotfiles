@@ -270,6 +270,7 @@ func validateToolMap(prefix string, m map[string]interface{}) error {
 		"disabled", "hostname", "sudo",
 		"shellConfigs", "symlinks", "copies", "updateCheck",
 		"installationMethod", "installParams",
+		"directories", "blocks", "templates",
 	}
 
 	for k, v := range m {
@@ -286,24 +287,24 @@ func validateToolMap(prefix string, m map[string]interface{}) error {
 				}
 			}
 		case "symlinks":
-			if list, ok := v.([]interface{}); ok {
-				for i, item := range list {
-					if sub, ok := item.(map[string]interface{}); ok {
-						if err := checkKeys(fmt.Sprintf("%s[%d]", path, i), sub, []string{"source", "target"}); err != nil {
-							return err
-						}
-					}
-				}
+			if err := checkListEntryKeys(path, v, []string{"source", "target", "mode"}); err != nil {
+				return err
 			}
 		case "copies":
-			if list, ok := v.([]interface{}); ok {
-				for i, item := range list {
-					if sub, ok := item.(map[string]interface{}); ok {
-						if err := checkKeys(fmt.Sprintf("%s[%d]", path, i), sub, []string{"source", "target"}); err != nil {
-							return err
-						}
-					}
-				}
+			if err := checkListEntryKeys(path, v, []string{"source", "target", "mode", "conflict"}); err != nil {
+				return err
+			}
+		case "directories":
+			if err := checkListEntryKeys(path, v, []string{"path", "mode"}); err != nil {
+				return err
+			}
+		case "blocks":
+			if err := checkListEntryKeys(path, v, []string{"target", "id", "content", "mode", "position", "conflict"}); err != nil {
+				return err
+			}
+		case "templates":
+			if err := checkListEntryKeys(path, v, []string{"source", "target", "variables", "mode", "conflict"}); err != nil {
+				return err
 			}
 		case "shellConfigs":
 			if sub, ok := v.(map[string]interface{}); ok {
@@ -320,6 +321,25 @@ func validateToolMap(prefix string, m map[string]interface{}) error {
 					}
 				}
 			}
+		}
+	}
+	return nil
+}
+
+// checkListEntryKeys rejects an unknown property on any entry of a declaration list,
+// naming the entry by its index so the author can find it.
+func checkListEntryKeys(path string, value interface{}, allowed []string) error {
+	list, ok := value.([]interface{})
+	if !ok {
+		return nil
+	}
+	for i, item := range list {
+		sub, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if err := checkKeys(fmt.Sprintf("%s[%d]", path, i), sub, allowed); err != nil {
+			return err
 		}
 	}
 	return nil

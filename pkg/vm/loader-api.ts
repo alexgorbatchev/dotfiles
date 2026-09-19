@@ -521,6 +521,72 @@ function invokeHook(toolName: string, event: string, eventContext: Record<string
 }
 
 /**
+ * Computes a declared value from the context the configuration is being read in.
+ */
+export type DeclarationResolverFn = (context: Record<string, unknown>) => unknown;
+
+/**
+ * A declared value still being computed, with a description of where it came from so
+ * that a rejection can name the declaration rather than only the tool.
+ */
+interface IPendingResolution {
+  describe: string;
+  promise: PromiseLike<unknown>;
+}
+
+/**
+ * Stores a declared value on its declaration, calling it first when it is a function.
+ *
+ * A function cannot cross the JSON boundary the configuration takes to reach Go, and
+ * the values these functions produce -- a block's body, a template's variables -- are
+ * needed while the configuration is being read rather than during an installation. So
+ * the function is called here, and the promise it may have returned is recorded for Go
+ * to settle before the configuration is serialised. Leaving it unsettled would send Go
+ * a block whose content is the string "[object Promise]".
+ */
+function resolveDeclaration(
+  target: Record<string, unknown>,
+  key: string,
+  value: unknown,
+  context: Record<string, unknown>,
+  describe: string,
+): void {
+  if (typeof value !== "function") {
+    if (value !== undefined) {
+      target[key] = value;
+    }
+    return;
+  }
+
+  const produced = (value as DeclarationResolverFn)(context);
+  if (!produced || typeof (produced as Record<string, unknown>)["then"] !== "function") {
+    target[key] = produced;
+    return;
+  }
+
+  const globals = getGlobals();
+  const pending = (globals["__pendingResolutions"] || (globals["__pendingResolutions"] = [])) as IPendingResolution[];
+  pending.push({
+    describe: describe,
+    promise: Promise.resolve(produced).then((settled) => {
+      target[key] = settled;
+    }),
+  });
+}
+
+/**
+ * Copies the options a declaration accepts onto it, leaving out the ones the author did
+ * not write so Go can tell "not mentioned" from "explicitly empty".
+ */
+function copyDeclaredOptions(target: Record<string, unknown>, options: Record<string, unknown>, keys: string[]): void {
+  for (const key of keys) {
+    if (options[key] !== undefined) {
+      target[key] = options[key];
+    }
+  }
+}
+
+/**
  * The promise an asynchronous tool factory returned, with the file it came from, so that
  * a failure can name that file.
  */
@@ -580,6 +646,9 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     dependencies: [] as unknown[],
     symlinks: [] as unknown[],
     copies: [] as unknown[],
+    directories: [] as unknown[],
+    blocks: [] as unknown[],
+    templates: [] as unknown[],
     shellConfigs: {} as Record<string, unknown>,
 
     // `extra` exists only to reject a call that passed more than the two declared
@@ -652,9 +721,11 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       return this;
     },
 
-    copy(src: unknown, dst: unknown) {
+    copy(src: unknown, dst: unknown, options?: unknown) {
       const c = (this["copies"] || []) as unknown[];
-      c.push({ source: src, target: dst });
+      const entry: Record<string, unknown> = { source: src, target: dst };
+      copyDeclaredOptions(entry, (options || {}) as Record<string, unknown>, ["mode", "conflict"]);
+      c.push(entry);
       this["copies"] = c;
       return this;
     },
@@ -676,10 +747,62 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       return (this["dependsOn"] as DependsOnFn)(...deps);
     },
 
-    symlink(src: unknown, dst: unknown) {
+    symlink(src: unknown, dst: unknown, options?: unknown) {
       const s = (this["symlinks"] || []) as unknown[];
-      s.push({ source: src, target: dst });
+      const entry: Record<string, unknown> = { source: src, target: dst };
+      copyDeclaredOptions(entry, (options || {}) as Record<string, unknown>, ["mode"]);
+      s.push(entry);
       this["symlinks"] = s;
+      return this;
+    },
+
+    ensureDir(dirPath: unknown, options?: unknown) {
+      const dirs = (this["directories"] || []) as unknown[];
+      const entry: Record<string, unknown> = { path: dirPath };
+      copyDeclaredOptions(entry, (options || {}) as Record<string, unknown>, ["mode"]);
+      dirs.push(entry);
+      this["directories"] = dirs;
+      return this;
+    },
+
+    block(target: unknown, options: unknown) {
+      const opts = (options || {}) as Record<string, unknown>;
+      if (typeof opts["id"] !== "string" || opts["id"] === "") {
+        throw new Error(
+          ".block() needs an id: it is what names the region of the file this tool owns, " +
+            "and without it the block could not be found again on the next run.",
+        );
+      }
+
+      const blocks = (this["blocks"] || []) as unknown[];
+      const entry: Record<string, unknown> = { target: target, id: opts["id"] };
+      copyDeclaredOptions(entry, opts, ["mode", "position", "conflict"]);
+      resolveDeclaration(
+        entry,
+        "content",
+        opts["content"],
+        toolCtx,
+        "the content of block " + JSON.stringify(opts["id"]),
+      );
+      blocks.push(entry);
+      this["blocks"] = blocks;
+      return this;
+    },
+
+    template(source: unknown, target: unknown, options?: unknown) {
+      const opts = (options || {}) as Record<string, unknown>;
+      const templates = (this["templates"] || []) as unknown[];
+      const entry: Record<string, unknown> = { source: source, target: target };
+      copyDeclaredOptions(entry, opts, ["mode", "conflict"]);
+      resolveDeclaration(
+        entry,
+        "variables",
+        opts["variables"],
+        toolCtx,
+        "the variables of template " + JSON.stringify(target),
+      );
+      templates.push(entry);
+      this["templates"] = templates;
       return this;
     },
 

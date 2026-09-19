@@ -415,6 +415,129 @@ export interface IToolConfigContext {
 }
 
 /**
+ * A POSIX permission, written the way it is written everywhere else: `"0600"`,
+ * `"600"` and `"0o600"` all mean the same thing. Anything that is not an octal
+ * permission between `"0000"` and `"0777"` is rejected when the configuration loads,
+ * rather than guessed at.
+ */
+export type Mode = string;
+
+/**
+ * What to do when both the file on disk and the source in the repository have changed
+ * since dotfiles last wrote the file.
+ *
+ * Only that case is decided here. A file only the repository changed is updated, and
+ * a file only the user changed is left alone, whatever this says.
+ */
+export type ConflictPolicy =
+  /** Combine both changes, marking any lines that cannot be combined. The default. */
+  | "merge"
+  /** Leave the file on disk as it is. */
+  | "keep-local"
+  /** Replace the file, keeping what was there as a backup. */
+  | "overwrite"
+  /** Ask. */
+  | "prompt";
+
+/**
+ * Where a managed block is inserted the first time it is written. It has no effect
+ * once the block is in the file: a block that has been placed stays where it is.
+ */
+export type BlockPosition = "top" | "bottom";
+
+/**
+ * Options for a directory a tool needs to exist.
+ */
+export interface IEnsureDirOptions {
+  /**
+   * The permission the directory must have. `~/.ssh` is the reason this exists: ssh
+   * refuses to use a key whose directory other users can read.
+   */
+  mode?: Mode;
+}
+
+/**
+ * Options for a symbolic link.
+ */
+export interface ISymlinkOptions {
+  /**
+   * The permission enforced on what the link points at. A symlink carries no
+   * permission of its own, so this applies to the source file, which is how a private
+   * key ends up at `0600` without an imperative `chmod` in a hook.
+   */
+  mode?: Mode;
+}
+
+/**
+ * Options for a copied file or directory.
+ */
+export interface ICopyOptions {
+  /**
+   * The permission the copy must have.
+   */
+  mode?: Mode;
+  /**
+   * What to do when the copy and its source have both changed. Defaults to `merge`.
+   */
+  conflict?: ConflictPolicy;
+}
+
+/**
+ * Options for a managed block: the region of a shared file that this tool owns.
+ */
+export interface IBlockOptions {
+  /**
+   * Names the region within the file. It is written into the markers and is how the
+   * block is found again on the next run, so it must be unique within the file and
+   * may contain only letters, digits, dots, dashes and underscores.
+   */
+  id: string;
+  /**
+   * What goes between the markers. Everything outside them is left exactly as it was,
+   * which is what makes a block impossible to conflict with an edit made elsewhere in
+   * the file.
+   */
+  content: Resolvable<IToolConfigContext, string>;
+  /**
+   * The permission the whole file must have. The file is shared, so this is the
+   * permission of a file this tool does not own outright -- `~/.ssh/config` at `0600`.
+   */
+  mode?: Mode;
+  /**
+   * Where to put the block the first time it is written. Defaults to `bottom`.
+   */
+  position?: BlockPosition;
+  /**
+   * What to do when the block's own content has been edited on disk and in the
+   * repository. Defaults to `merge`. Only the block is considered: an edit made
+   * outside the markers is never a conflict.
+   */
+  conflict?: ConflictPolicy;
+}
+
+/**
+ * Options for a file rendered from a template.
+ */
+export interface ITemplateOptions {
+  /**
+   * The values the template's `{tokens}` are filled with. Project placeholders such as
+   * `{paths.homeDir}` and `{toolName}` work without being declared here; a name
+   * declared here wins over a project one. A `{token}` nothing fills is an error, not
+   * an empty string.
+   */
+  variables?: Resolvable<IToolConfigContext, Record<string, string | number | boolean>>;
+  /**
+   * The permission the rendered file must have.
+   */
+  mode?: Mode;
+  /**
+   * What to do when the rendered file and the template have both changed. Defaults to
+   * `merge`.
+   */
+  conflict?: ConflictPolicy;
+}
+
+/**
  * Parameters accepted by every installer. These are handled by the orchestrator
  * rather than by an individual installer, so they apply regardless of the
  * installation method chosen.
@@ -1312,7 +1435,24 @@ export interface IToolConfigBuilder {
   /**
    * Copies a file or directory from source to target.
    */
-  copy(src: string, dst: string): this;
+  copy(src: string, dst: string, options?: ICopyOptions): this;
+  /**
+   * Ensures a directory exists, with the permission it needs to have.
+   */
+  ensureDir(dirPath: string, options?: IEnsureDirOptions): this;
+  /**
+   * Owns one marker-delimited region of a shared file, leaving every other byte
+   * of it exactly as it was.
+   *
+   * This is what files such as `~/.ssh/config`, `~/.bashrc` and `/etc/hosts` need:
+   * they are shared with the user and with other tools, so owning one outright
+   * overwrites their work and appending to one grows a duplicate on every run.
+   */
+  block(target: string, options: IBlockOptions): this;
+  /**
+   * Renders a template from the repository to a target path.
+   */
+  template(source: string, target: string, options?: ITemplateOptions): this;
   /**
    * Declares package dependencies.
    */
@@ -1324,7 +1464,7 @@ export interface IToolConfigBuilder {
   /**
    * Creates a symbolic link.
    */
-  symlink(src: string, dst: string): this;
+  symlink(src: string, dst: string, options?: ISymlinkOptions): this;
   /**
    * Configures shell settings across all supported shells (zsh, bash, powershell).
    */
@@ -1394,7 +1534,24 @@ export interface IPlatformConfigBuilder {
   /**
    * Copies a file or directory from source to target on this platform.
    */
-  copy(src: string, dst: string): this;
+  copy(src: string, dst: string, options?: ICopyOptions): this;
+  /**
+   * Ensures a directory exists on this platform, with the permission it needs to have.
+   */
+  ensureDir(dirPath: string, options?: IEnsureDirOptions): this;
+  /**
+   * Owns one marker-delimited region of a shared file on this platform, leaving every other byte
+   * of it exactly as it was.
+   *
+   * This is what files such as `~/.ssh/config`, `~/.bashrc` and `/etc/hosts` need:
+   * they are shared with the user and with other tools, so owning one outright
+   * overwrites their work and appending to one grows a duplicate on every run.
+   */
+  block(target: string, options: IBlockOptions): this;
+  /**
+   * Renders a template from the repository to a target path on this platform.
+   */
+  template(source: string, target: string, options?: ITemplateOptions): this;
   /**
    * Declares binary dependencies on this platform.
    */
@@ -1406,7 +1563,7 @@ export interface IPlatformConfigBuilder {
   /**
    * Creates a symbolic link on this platform.
    */
-  symlink(src: string, dst: string): this;
+  symlink(src: string, dst: string, options?: ISymlinkOptions): this;
   /**
    * Configures shell settings across all supported shells (zsh, bash, powershell) on this platform.
    */

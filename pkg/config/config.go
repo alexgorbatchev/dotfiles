@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -192,6 +193,10 @@ func (bc *BinaryConfig) Validate() error {
 type SymlinkConfig struct {
 	Source string `json:"source" yaml:"source"`
 	Target string `json:"target" yaml:"target"`
+	// Mode is the permission enforced on what the link points at. A symlink has no
+	// permission of its own, so this is applied to the source file: it is how a
+	// private key declared here ends up at 0600 without an imperative chmod hook.
+	Mode string `json:"mode,omitempty" yaml:"mode,omitempty"`
 }
 
 // Validate ensures symlink configurations are populated.
@@ -202,13 +207,17 @@ func (sc *SymlinkConfig) Validate() error {
 	if sc.Target == "" {
 		return fmt.Errorf("symlink target path cannot be empty")
 	}
-	return nil
+	return validateOptionalMode(sc.Mode)
 }
 
 // CopyConfig represents standard file/directory copy operations.
 type CopyConfig struct {
 	Source string `json:"source" yaml:"source"`
 	Target string `json:"target" yaml:"target"`
+	Mode   string `json:"mode,omitempty" yaml:"mode,omitempty"`
+	// Conflict is what to do when both the copied file and its source have changed
+	// since dotfiles last wrote it. An empty value means the default, "merge".
+	Conflict string `json:"conflict,omitempty" yaml:"conflict,omitempty"`
 }
 
 // Validate ensures copy configurations are populated.
@@ -219,7 +228,10 @@ func (cc *CopyConfig) Validate() error {
 	if cc.Target == "" {
 		return fmt.Errorf("copy target path cannot be empty")
 	}
-	return nil
+	if err := validateOptionalMode(cc.Mode); err != nil {
+		return err
+	}
+	return validateOneOf("conflict", cc.Conflict, validConflicts)
 }
 
 // Shell script kinds. Every script-like DSL call lands in one ordered list so the
@@ -333,6 +345,9 @@ type ToolConfig struct {
 	ShellConfigs       *ShellConfigs          `json:"shellConfigs,omitempty" yaml:"shellConfigs,omitempty"`
 	Symlinks           []SymlinkConfig        `json:"symlinks,omitempty" yaml:"symlinks,omitempty"`
 	Copies             []CopyConfig           `json:"copies,omitempty" yaml:"copies,omitempty"`
+	Directories        []DirectoryConfig      `json:"directories,omitempty" yaml:"directories,omitempty"`
+	Blocks             []BlockConfig          `json:"blocks,omitempty" yaml:"blocks,omitempty"`
+	Templates          []TemplateConfig       `json:"templates,omitempty" yaml:"templates,omitempty"`
 	UpdateCheck        *ToolConfigUpdateCheck `json:"updateCheck,omitempty" yaml:"updateCheck,omitempty"`
 	InstallationMethod string                 `json:"installationMethod,omitempty" yaml:"installationMethod,omitempty"`
 	InstallParams      map[string]interface{} `json:"installParams,omitempty" yaml:"installParams,omitempty"`
@@ -396,6 +411,28 @@ func (tc *ToolConfig) Validate() error {
 		if err := cp.Validate(); err != nil {
 			return fmt.Errorf("invalid copy in tool %q: %w", tc.Name, err)
 		}
+	}
+
+	for _, dir := range tc.Directories {
+		if err := dir.Validate(); err != nil {
+			return fmt.Errorf("invalid directory in tool %q: %w", tc.Name, err)
+		}
+	}
+
+	for _, blk := range tc.Blocks {
+		if err := blk.Validate(); err != nil {
+			return fmt.Errorf("invalid block in tool %q: %w", tc.Name, err)
+		}
+	}
+
+	for _, tmpl := range tc.Templates {
+		if err := tmpl.Validate(); err != nil {
+			return fmt.Errorf("invalid template in tool %q: %w", tc.Name, err)
+		}
+	}
+
+	if err := tc.validateUniqueBlocks(); err != nil {
+		return err
 	}
 
 	if tc.ShellConfigs != nil {
@@ -618,6 +655,33 @@ func (tc *ToolConfig) Merge(override *ToolConfig, rawOverride map[string]interfa
 			if !exists {
 				tc.Copies = append(tc.Copies, cp)
 			}
+		}
+	}
+	// The declarative file lists merge the same way: a .platform() block contributes
+	// what it declares rather than replacing what was declared outside it, and a
+	// declaration repeated in both places is kept once. Identity is the thing being
+	// written -- a directory's path, a block's id within its file, a template's
+	// target -- not the whole declaration, so restating one with a different mode
+	// inside a platform block does not produce two of it.
+	for _, dir := range override.Directories {
+		if !slices.ContainsFunc(tc.Directories, func(existing DirectoryConfig) bool {
+			return existing.Path == dir.Path
+		}) {
+			tc.Directories = append(tc.Directories, dir)
+		}
+	}
+	for _, blk := range override.Blocks {
+		if !slices.ContainsFunc(tc.Blocks, func(existing BlockConfig) bool {
+			return existing.Target == blk.Target && existing.ID == blk.ID
+		}) {
+			tc.Blocks = append(tc.Blocks, blk)
+		}
+	}
+	for _, tmpl := range override.Templates {
+		if !slices.ContainsFunc(tc.Templates, func(existing TemplateConfig) bool {
+			return existing.Target == tmpl.Target
+		}) {
+			tc.Templates = append(tc.Templates, tmpl)
 		}
 	}
 	if override.UpdateCheck != nil {

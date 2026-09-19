@@ -521,6 +521,10 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 		return nil, err
 	}
 
+	if err := settleDeclarationResolutions(vm); err != nil {
+		return nil, err
+	}
+
 	// Retrieve dynamic loader results
 	loaderResultVal := vm.Get("__loaderResult")
 	if loaderResultVal == nil || goja.IsUndefined(loaderResultVal) || goja.IsNull(loaderResultVal) {
@@ -569,6 +573,32 @@ func settleToolFactories(vm *goja.Runtime) error {
 		toolPath := factories.Get(strconv.FormatInt(i, 10)).ToObject(vm).Get("path").String()
 		what := fmt.Sprintf("executing tool file %q", toolPath)
 		if _, err := settleInVM(vm, fmt.Sprintf("__toolFactories[%d].promise", i), what); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// settleDeclarationResolutions waits for every declared value that was given as a
+// function rather than as a literal -- a block's content, a template's variables.
+//
+// The function is called while the tool file runs, but an asynchronous one only
+// returns a promise, and a promise serialises to an empty object. Left unsettled, the
+// tool would reach Go with a block whose content is nothing at all and no error to
+// say so. They are settled after the tool factories, because a factory that awaits
+// before declaring a block has not declared it yet when its own promise settles.
+func settleDeclarationResolutions(vm *goja.Runtime) error {
+	registry := vm.Get("__pendingResolutions")
+	if registry == nil || goja.IsUndefined(registry) || goja.IsNull(registry) {
+		return nil
+	}
+
+	pending := registry.ToObject(vm)
+	count := pending.Get("length").ToInteger()
+	for i := range count {
+		entry := pending.Get(strconv.FormatInt(i, 10)).ToObject(vm)
+		what := fmt.Sprintf("resolving %s", entry.Get("describe").String())
+		if _, err := settleInVM(vm, fmt.Sprintf("__pendingResolutions[%d].promise", i), what); err != nil {
 			return err
 		}
 	}
