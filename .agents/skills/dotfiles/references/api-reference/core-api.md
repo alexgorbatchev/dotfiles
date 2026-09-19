@@ -96,6 +96,7 @@ Externally-managed installers (`apt`, `brew`, `dnf`, `dmg`, `npm`, `pacman`, `pk
 - Shim executions append usage events to a local log for dashboard analytics
 - Removing a `.bin(name)` declaration and rerunning `dotfiles generate` cleans up the stale shim automatically
 - `.bin(name, { shim: false })` declares the binary without a shim: it is installed under the tool's `current` directory and remains a `dependsOn()` target, but nothing is written to `paths.targetDir` (this is how the scaffolded `typescript.tool.ts` keeps `tsc` off PATH)
+- During `dotfiles generate`, declared binaries, aliases, and functions are checked for shadowing against external system commands on PATH and shell builtins; see [Troubleshooting](../configuration/troubleshooting.md#shadow-warnings-during-generate)
 
 Usage tracking is enabled by default. The dashboard imports and compacts the local usage log into SQLite on startup. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
 

@@ -37,6 +37,7 @@ type Orchestrator struct {
 	instRegistry   *installer.Registry
 	symlinkFS      fs.FS
 	configFilePath string
+	customPathEnv  *string
 	// target is what the run was invoked for. The zero value means the host, which is
 	// what an installation started without --platform/--arch/--libc targets.
 	target vm.Target
@@ -90,6 +91,11 @@ func (o *Orchestrator) SetSymlinkFS(sfs fs.FS) {
 // SetConfigFilePath updates the Orchestrator's main configuration file path.
 func (o *Orchestrator) SetConfigFilePath(path string) {
 	o.configFilePath = path
+}
+
+// SetCustomPathEnv sets a custom PATH environment string (used primarily for tests).
+func (o *Orchestrator) SetCustomPathEnv(path string) {
+	o.customPathEnv = &path
 }
 
 func (o *Orchestrator) getConfigFilePath() string {
