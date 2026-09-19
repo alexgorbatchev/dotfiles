@@ -7,10 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+// maxOpenConns bounds the registry connection pool.
+const maxOpenConns = 10
 
 // NewConnection opens a database connection using modernc.org/sqlite,
 // configures a connection pool, runs WAL & busy timeout PRAGMAs,
@@ -35,15 +39,29 @@ func NewConnection(ctx context.Context, dsn string) (*sql.DB, error) {
 		}
 	}
 
+	inMemory := isInMemoryDSN(dsn, cleanPath)
+	if inMemory {
+		dsn = newSharedMemoryDSN()
+	}
+
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
 	// Configure connection pool with reasonable connection limits
-	db.SetMaxOpenConns(10)
+	db.SetMaxOpenConns(maxOpenConns)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(30 * time.Minute)
+
+	if inMemory {
+		// A shared-cache in-memory database lives only as long as a connection to it
+		// is open, so the pool must not be allowed to retire the last one and take
+		// the schema and every row with it.
+		db.SetConnMaxLifetime(0)
+		db.SetConnMaxIdleTime(0)
+		db.SetMaxIdleConns(maxOpenConns)
+	}
 
 	// Run performance PRAGMAs
 	pragmas := []string{
@@ -187,4 +205,23 @@ func migrateAddInstallMethod(ctx context.Context, db *sql.DB) error {
 	}
 
 	return nil
+}
+
+// isInMemoryDSN reports whether a DSN names a database that lives only in the
+// process's memory, in either of the two spellings SQLite accepts for one.
+func isInMemoryDSN(dsn, cleanPath string) bool {
+	return cleanPath == ":memory:" || strings.Contains(dsn, "mode=memory")
+}
+
+// memoryDBSequence names each in-memory database opened by this process.
+var memoryDBSequence atomic.Uint64
+
+// newSharedMemoryDSN returns a DSN for an in-memory database that every
+// connection in one pool opens the same copy of, which is what makes it behave
+// like the file-backed database it stands in for. Bare ":memory:" does the
+// opposite: it gives each connection a private, empty database. The name is
+// unique per call so that two databases opened in the same process, such as two
+// commands run by one test binary, stay isolated from each other.
+func newSharedMemoryDSN() string {
+	return fmt.Sprintf("file:dotfiles-memory-%d-%d?mode=memory&cache=shared", os.Getpid(), memoryDBSequence.Add(1))
 }

@@ -392,3 +392,77 @@ func TestInitializeSchemaErrors(t *testing.T) {
 		t.Error("expected InitializeSchema to fail on tool_usage table creation")
 	}
 }
+
+// Every connection SQLite opens to a plain ":memory:" DSN gets its own private,
+// empty database. Pooled, that means the schema exists only on whichever
+// connection created it, and a statement served by any other fails with "no such
+// table" — which is how `generate` came to fail on a dry run depending on how the
+// pool happened to hand out connections. An in-memory database has to be one
+// database shared by the pool, the way a file-backed one is.
+func TestInMemoryDatabaseIsSharedAcrossPooledConnections(t *testing.T) {
+	ctx := context.Background()
+
+	sqlDB, err := NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("opening in-memory database: %v", err)
+	}
+	defer func() { _ = sqlDB.Close() }()
+
+	// Two distinct pooled connections, neither holding a transaction.
+	first, err := sqlDB.Conn(ctx)
+	if err != nil {
+		t.Fatalf("taking first connection: %v", err)
+	}
+	defer func() { _ = first.Close() }()
+	second, err := sqlDB.Conn(ctx)
+	if err != nil {
+		t.Fatalf("taking second connection: %v", err)
+	}
+	defer func() { _ = second.Close() }()
+
+	insert := `INSERT INTO file_operations (tool_name, operation_type, file_path, file_type, created_at, operation_id) VALUES (?, ?, ?, ?, ?, ?)`
+	if _, err := first.ExecContext(ctx, insert, "tool-a", "create", "/a", "shim", 1, "op-a"); err != nil {
+		t.Fatalf("insert on the first connection: %v", err)
+	}
+	if _, err := second.ExecContext(ctx, insert, "tool-b", "create", "/b", "shim", 1, "op-b"); err != nil {
+		t.Fatalf("insert on a second pooled connection: %v", err)
+	}
+
+	// Both writes landed in the same database.
+	var count int
+	if err := sqlDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM file_operations`).Scan(&count); err != nil {
+		t.Fatalf("counting rows: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("file_operations has %d rows, want 2: the connections wrote to different databases", count)
+	}
+}
+
+// Separate in-memory databases must not see each other's data, or two commands in
+// one process would share a registry.
+func TestInMemoryDatabasesAreIsolatedFromEachOther(t *testing.T) {
+	ctx := context.Background()
+
+	one, err := NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("opening first in-memory database: %v", err)
+	}
+	defer func() { _ = one.Close() }()
+	two, err := NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("opening second in-memory database: %v", err)
+	}
+	defer func() { _ = two.Close() }()
+
+	if _, err := one.ExecContext(ctx, `INSERT INTO file_operations (tool_name, operation_type, file_path, file_type, created_at, operation_id) VALUES (?, ?, ?, ?, ?, ?)`, "tool-a", "create", "/a", "shim", 1, "op-a"); err != nil {
+		t.Fatalf("insert into the first database: %v", err)
+	}
+
+	var count int
+	if err := two.QueryRowContext(ctx, `SELECT COUNT(*) FROM file_operations`).Scan(&count); err != nil {
+		t.Fatalf("counting rows in the second database: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("the second in-memory database sees %d rows from the first", count)
+	}
+}
