@@ -666,71 +666,77 @@ func TestWhyCommand(t *testing.T) {
 	})
 }
 
+// TestAdditionalCmdCoverage exercises each subcommand against the verification
+// fixture and asserts what it produced. It previously discarded every result
+// (`_, _ = executeCommand(...)`), which meant it could only fail by hanging: it
+// was driving two flags that do not exist (`files --tree` and `log --lines`) and
+// silently swallowing a `generate` that failed outright.
 func TestAdditionalCmdCoverage(t *testing.T) {
 	repoRoot := findRepoRoot()
 	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 	tmpDir := createTempConfigDir(t)
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
-
-	// files command
-	_, _ = executeCommand("-c", absConfig, "files")
-	_, _ = executeCommand("-c", absConfig, "files", "--tree")
-	_, _ = executeCommand("-c", absConfig, "files", "--json")
-	_, _ = executeCommand("-c", configPath, "files")
-
-	// generate with --overwrite
-	_, _ = executeCommand("-c", absConfig, "generate", "--overwrite")
-	_, _ = executeCommand("-c", absConfig, "generate")
-
-	// install command single & all
-	_, _ = executeCommand("-c", absConfig, "--dry-run", "install", "bat")
-	_, _ = executeCommand("-c", absConfig, "--dry-run", "install")
-
-	// uninstall command single & all
-	_, _ = executeCommand("-c", absConfig, "--dry-run", "uninstall", "bat")
-	_, _ = executeCommand("-c", absConfig, "--dry-run", "uninstall")
-
-	// update command
-	_, _ = executeCommand("-c", absConfig, "--dry-run", "update", "bat")
-	_, _ = executeCommand("-c", absConfig, "--dry-run", "update")
-
-	// log command
-	_, _ = executeCommand("-c", absConfig, "log")
-	_, _ = executeCommand("-c", absConfig, "log", "--lines", "10")
-	_, _ = executeCommand("-c", absConfig, "log", "--json")
-
-	// convert command
+	jsonConfig := filepath.Join(tmpDir, "dotfiles.config.json")
 	tsPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	_ = os.WriteFile(tsPath, []byte("export default {};"), 0644)
-	_, _ = executeCommand("-c", tsPath, "convert", "-i", tsPath, "-o", filepath.Join(tmpDir, "out.json"))
+	if err := os.WriteFile(tsPath, []byte("export default {};"), 0644); err != nil {
+		t.Fatalf("writing minimal TypeScript config: %v", err)
+	}
 
-	// bin command
-	_, _ = executeCommand("-c", absConfig, "bin")
-	_, _ = executeCommand("-c", absConfig, "bin", "--list")
+	// The cases run in order: generate has to precede the commands that read what
+	// it produced.
+	tests := []struct {
+		name     string
+		args     []string
+		wantErr  string
+		contains []string
+	}{
+		{name: "files", args: []string{"-c", absConfig, "files"}, contains: []string{"files currently managed"}},
+		{name: "files json", args: []string{"-c", absConfig, "files", "--json"}, contains: []string{"["}},
+		{name: "files from json config", args: []string{"-c", jsonConfig, "files"}, contains: []string{"files currently managed"}},
+		{name: "generate overwrite", args: []string{"-c", absConfig, "generate", "--overwrite"}},
+		{name: "generate", args: []string{"-c", absConfig, "generate"}},
+		{name: "install one", args: []string{"-c", absConfig, "--dry-run", "install", "bat"}},
+		{name: "install all", args: []string{"-c", absConfig, "--dry-run", "install"}},
+		{name: "uninstall one", args: []string{"-c", absConfig, "--dry-run", "uninstall", "bat"}},
+		{name: "uninstall all", args: []string{"-c", absConfig, "--dry-run", "uninstall"}},
+		{name: "update uninstalled tool", args: []string{"-c", absConfig, "--dry-run", "update", "bat"}, wantErr: `tool "bat" is not installed`},
+		{name: "update all", args: []string{"-c", absConfig, "--dry-run", "update"}},
+		{name: "log", args: []string{"-c", absConfig, "log"}},
+		{name: "log tail", args: []string{"-c", absConfig, "log", "--tail", "10"}},
+		{name: "log json", args: []string{"-c", absConfig, "log", "--json"}},
+		{name: "bin", args: []string{"-c", absConfig, "bin"}},
+		{name: "bin list", args: []string{"-c", absConfig, "bin", "--list"}, contains: []string{"brew"}},
+		{name: "check-updates", args: []string{"-c", absConfig, "check-updates"}, contains: []string{"up to date"}},
+		{name: "features", args: []string{"-c", absConfig, "features"}, contains: []string{"ShellInstall"}},
+		{name: "detect-conflicts", args: []string{"-c", absConfig, "detect-conflicts"}, contains: []string{"conflicts"}},
+		{name: "env", args: []string{"-c", absConfig, "env"}, contains: []string{"export PATH="}},
+		{name: "cleanup", args: []string{"-c", absConfig, "cleanup"}},
+		{name: "validate", args: []string{"-c", absConfig, "validate"}},
+		{name: "skill", args: []string{"-c", absConfig, "skill", "--dir", filepath.Join(repoRoot, ".agents/skills")}, contains: []string{"dotfiles"}},
+		{name: "dashboard help", args: []string{"dashboard", "--help"}, contains: []string{"Usage:"}},
+	}
 
-	// check-updates command
-	_, _ = executeCommand("-c", absConfig, "check-updates")
-
-	// features command
-	_, _ = executeCommand("-c", absConfig, "features")
-
-	// detect-conflicts command
-	_, _ = executeCommand("-c", absConfig, "detect-conflicts")
-
-	// env command
-	_, _ = executeCommand("-c", absConfig, "env")
-
-	// cleanup command
-	_, _ = executeCommand("-c", absConfig, "cleanup")
-
-	// validate command
-	_, _ = executeCommand("-c", absConfig, "validate")
-
-	// skill command
-	_, _ = executeCommand("-c", absConfig, "skill", "--dir", filepath.Join(repoRoot, ".agents/skills"))
-
-	// dashboard command help
-	_, _ = executeCommand("dashboard", "--help")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := runCommand(tt.args...)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q, got none (output %q)", tt.wantErr, out.Combined)
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %v, want it to contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v\noutput: %s", err, out.Combined)
+			}
+			for _, want := range tt.contains {
+				if !strings.Contains(out.Stdout, want) {
+					t.Errorf("stdout does not contain %q:\n%s", want, out.Stdout)
+				}
+			}
+		})
+	}
 }
 
 func TestDetectConflictsCommand_ErrorReturn(t *testing.T) {
