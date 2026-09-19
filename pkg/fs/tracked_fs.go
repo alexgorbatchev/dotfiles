@@ -3,7 +3,9 @@ package fs
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -27,6 +29,12 @@ type TrackedFileSystem struct {
 	fileType    string // e.g., "file", "shim", "symlink"
 	operationID string
 	log         *logger.Logger
+	// blockID names the managed block the writes made through this filesystem own,
+	// and is empty when they own the whole file.
+	blockID string
+	// targetMode is the permission the tool declared for what it writes, which the
+	// drift engine later measures the file on disk against.
+	targetMode *registry.Permission
 }
 
 // NewTrackedFileSystem instantiates a new TrackedFileSystem wrapper.
@@ -42,84 +50,122 @@ func NewTrackedFileSystem(fsys FS, reg *registry.Registry, log *logger.Logger, t
 	}
 }
 
+// clone yields a copy every With* configurator then adjusts one field of. Copying
+// rather than mutating is what keeps a mode or a block scoped to the writes the
+// caller configured it for.
+func (t *TrackedFileSystem) clone() *TrackedFileSystem {
+	copied := *t
+	return &copied
+}
+
 // WithTx yields a copy of the TrackedFileSystem bound to a transaction and context.
 func (t *TrackedFileSystem) WithTx(ctx context.Context, tx *sql.Tx) *TrackedFileSystem {
-	return &TrackedFileSystem{
-		fs:          t.fs,
-		reg:         t.reg,
-		tx:          tx,
-		ctx:         ctx,
-		toolName:    t.toolName,
-		fileType:    t.fileType,
-		operationID: t.operationID,
-		log:         t.log,
-	}
+	next := t.clone()
+	next.ctx = ctx
+	next.tx = tx
+	return next
 }
 
 // WithFileType yields a copy of the TrackedFileSystem with a specific fileType.
 func (t *TrackedFileSystem) WithFileType(fileType string) *TrackedFileSystem {
-	return &TrackedFileSystem{
-		fs:          t.fs,
-		reg:         t.reg,
-		tx:          t.tx,
-		ctx:         t.ctx,
-		toolName:    t.toolName,
-		fileType:    fileType,
-		operationID: t.operationID,
-		log:         t.log,
-	}
+	next := t.clone()
+	next.fileType = fileType
+	return next
 }
 
 // WithToolName yields a copy of the TrackedFileSystem with a specific toolName.
 func (t *TrackedFileSystem) WithToolName(toolName string) *TrackedFileSystem {
-	return &TrackedFileSystem{
-		fs:          t.fs,
-		reg:         t.reg,
-		tx:          t.tx,
-		ctx:         t.ctx,
-		toolName:    toolName,
-		fileType:    t.fileType,
-		operationID: t.operationID,
-		log:         t.log,
-	}
+	next := t.clone()
+	next.toolName = toolName
+	return next
+}
+
+// WithBlock yields a copy whose operations are recorded as owning one managed block
+// of the file they write, rather than the whole file.
+func (t *TrackedFileSystem) WithBlock(blockID string) *TrackedFileSystem {
+	next := t.clone()
+	next.blockID = blockID
+	return next
+}
+
+// WithTargetMode yields a copy that records the permission the tool declared
+// alongside every operation, so a mode drifting away from its declaration can be
+// noticed later.
+func (t *TrackedFileSystem) WithTargetMode(mode os.FileMode) *TrackedFileSystem {
+	next := t.clone()
+	perm := registry.Permission(fmt.Sprintf("0%o", mode&os.ModePerm))
+	next.targetMode = &perm
+	return next
 }
 
 // RecordExistingSymlink logs an already correct symlink to the registry.
 func (t *TrackedFileSystem) RecordExistingSymlink(target string, linkPath string) error {
-	return t.recordOperation("symlink", linkPath, &target, nil, nil)
+	return t.recordOperation(operationDetails{opType: "symlink", path: linkPath, targetPath: &target})
 }
 
 // RecordExistingFile logs a file that already holds the wanted content to the registry
 // as if it had just been written, without touching it. It is the file counterpart of
 // RecordExistingSymlink: the tool owns the file either way, and an unrecorded one would
 // escape the stale cleanup once its declaration disappears.
+//
+// The hash is read back off the disk rather than assumed, because this is the path a
+// repeated generate takes and the file still has to carry a base version.
 func (t *TrackedFileSystem) RecordExistingFile(path string) error {
-	var sizeBytes *int64
-	var permVal *registry.Permission
+	details := operationDetails{opType: "writeFile", path: path}
 	if info, err := t.fs.Lstat(path); err == nil {
-		sz := info.Size()
-		sizeBytes = &sz
-		p := registry.Permission(fmt.Sprintf("0%o", info.Mode().Perm()))
-		permVal = &p
+		size := info.Size()
+		details.sizeBytes = &size
+		perm := registry.Permission(fmt.Sprintf("0%o", info.Mode().Perm()))
+		details.permissions = &perm
 	}
-	return t.recordOperation("writeFile", path, nil, sizeBytes, permVal)
+	if data, err := t.fs.ReadFile(path); err == nil {
+		details.contentHash = ptrTo(HashContent(data))
+	}
+	return t.recordOperation(details)
 }
 
-func (t *TrackedFileSystem) recordOperation(opType string, path string, targetPath *string, sizeBytes *int64, permissions *registry.Permission) error {
+// operationDetails is what one recorded operation says about itself beyond the tool
+// and transaction the filesystem already carries.
+type operationDetails struct {
+	opType      string
+	path        string
+	targetPath  *string
+	sizeBytes   *int64
+	permissions *registry.Permission
+	contentHash *string
+}
+
+// HashContent returns the hex-encoded SHA-256 of what was written. It is the base
+// version the drift engine measures a file against on a later run.
+func HashContent(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// ptrTo is the address-of helper the optional record fields need.
+func ptrTo[T any](value T) *T {
+	return &value
+}
+
+func (t *TrackedFileSystem) recordOperation(details operationDetails) error {
 	if t.tx == nil || t.reg == nil {
 		return nil
 	}
-	now := time.Now().UnixMilli()
 	record := &registry.FileOperationRecord{
 		ToolName:      t.toolName,
-		OperationType: opType,
-		FilePath:      path,
-		TargetPath:    targetPath,
+		OperationType: details.opType,
+		FilePath:      details.path,
+		TargetPath:    details.targetPath,
 		FileType:      t.fileType,
-		SizeBytes:     sizeBytes,
-		Permissions:   permissions,
-		CreatedAt:     now,
+		SizeBytes:     details.sizeBytes,
+		Permissions:   details.permissions,
+		CreatedAt:     time.Now().UnixMilli(),
 		OperationID:   t.operationID,
+		ContentHash:   details.contentHash,
+		TargetMode:    t.targetMode,
+	}
+	if t.blockID != "" {
+		record.BlockID = &t.blockID
 	}
 	return t.reg.RecordFileOperation(t.ctx, t.tx, record)
 }
@@ -162,7 +208,13 @@ func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode
 	}
 	sizeBytes := int64(len(data))
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
-	return t.recordOperation("writeFile", path, nil, &sizeBytes, &permVal)
+	return t.recordOperation(operationDetails{
+		opType:      "writeFile",
+		path:        path,
+		sizeBytes:   &sizeBytes,
+		permissions: &permVal,
+		contentHash: ptrTo(HashContent(data)),
+	})
 }
 
 // HomeDir returns the home directory path associated with the underlying filesystem, or from the OS.
@@ -220,7 +272,7 @@ func (t *TrackedFileSystem) OpenFile(path string, flag int, perm os.FileMode) (i
 		return nil, err
 	}
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
-	_ = t.recordOperation("writeFile", path, nil, nil, &permVal)
+	_ = t.recordOperation(operationDetails{opType: "writeFile", path: path, permissions: &permVal})
 	return writer, nil
 }
 
@@ -238,13 +290,13 @@ func (t *TrackedFileSystem) Remove(path string) error {
 		if l != nil {
 			l.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
 		}
-		return t.recordOperation("rm", path, nil, nil, nil)
+		return t.recordOperation(operationDetails{opType: "rm", path: path})
 	}
 	return nil
 }
 
 func (t *TrackedFileSystem) RecordRemoved(path string) error {
-	return t.recordOperation("rm", path, nil, nil, nil)
+	return t.recordOperation(operationDetails{opType: "rm", path: path})
 }
 
 func (t *TrackedFileSystem) Exists(path string) (bool, error) {
@@ -261,7 +313,7 @@ func (t *TrackedFileSystem) MkdirAll(path string, perm os.FileMode) error {
 		return err
 	}
 	if !existed {
-		return t.recordOperation("mkdir", path, nil, nil, nil)
+		return t.recordOperation(operationDetails{opType: "mkdir", path: path})
 	}
 	return nil
 }
@@ -286,7 +338,7 @@ func (w *trackedFileWriter) Close() error {
 	}
 	size := w.size
 	permVal := registry.Permission("0644")
-	return w.t.recordOperation("writeFile", w.path, nil, &size, &permVal)
+	return w.t.recordOperation(operationDetails{opType: "writeFile", path: w.path, sizeBytes: &size, permissions: &permVal})
 }
 
 func (t *TrackedFileSystem) Create(path string) (io.WriteCloser, error) {
@@ -320,7 +372,7 @@ func (t *TrackedFileSystem) Chmod(path string, perm os.FileMode) error {
 		l.Info(logger.Message(fmt.Sprintf("chmod %s %s", permStr, t.ContractHomePath(path))))
 	}
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
-	return t.recordOperation("chmod", path, nil, nil, &permVal)
+	return t.recordOperation(operationDetails{opType: "chmod", path: path, permissions: &permVal})
 }
 
 func (t *TrackedFileSystem) Rename(oldname, newname string) error {
@@ -331,7 +383,7 @@ func (t *TrackedFileSystem) Rename(oldname, newname string) error {
 	if t.tx != nil && t.reg != nil {
 		_ = t.reg.RenameFileOperationPrefix(t.ctx, t.tx, oldname, newname)
 	}
-	return t.recordOperation("rename", newname, &oldname, nil, nil)
+	return t.recordOperation(operationDetails{opType: "rename", path: newname, targetPath: &oldname})
 }
 
 func (t *TrackedFileSystem) Symlink(oldname, newname string) error {
@@ -343,7 +395,7 @@ func (t *TrackedFileSystem) Symlink(oldname, newname string) error {
 	if l != nil {
 		l.Info(logger.Message(fmt.Sprintf("ln -s %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
 	}
-	return t.recordOperation("symlink", newname, &oldname, nil, nil)
+	return t.recordOperation(operationDetails{opType: "symlink", path: newname, targetPath: &oldname})
 }
 
 func (t *TrackedFileSystem) Readlink(path string) (string, error) {
@@ -403,7 +455,7 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 			if t.log != nil {
 				t.log.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(p))))
 			}
-			if err := t.recordOperation("rm", p, nil, nil, nil); err != nil {
+			if err := t.recordOperation(operationDetails{opType: "rm", path: p}); err != nil {
 				return err
 			}
 		}
@@ -434,5 +486,18 @@ func (t *TrackedFileSystem) CopyFile(src, dest string) error {
 		p := registry.Permission(fmt.Sprintf("0%o", info.Mode().Perm()))
 		permVal = &p
 	}
-	return t.recordOperation("writeFile", dest, &src, sizeBytes, permVal)
+	// Hashed from what actually landed at the destination rather than from the
+	// source, so the recorded base is the bytes a later run will be comparing.
+	var contentHash *string
+	if data, err := t.fs.ReadFile(dest); err == nil {
+		contentHash = ptrTo(HashContent(data))
+	}
+	return t.recordOperation(operationDetails{
+		opType:      "writeFile",
+		path:        dest,
+		targetPath:  &src,
+		sizeBytes:   sizeBytes,
+		permissions: permVal,
+		contentHash: contentHash,
+	})
 }

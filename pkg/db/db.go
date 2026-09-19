@@ -100,11 +100,21 @@ func InitializeSchema(ctx context.Context, db *sql.DB) error {
 		size_bytes INTEGER,
 		permissions TEXT,
 		created_at INTEGER NOT NULL,
-		operation_id TEXT NOT NULL
+		operation_id TEXT NOT NULL,
+		content_hash TEXT,
+		block_id TEXT,
+		target_mode TEXT
 	);`
 
 	if _, err := db.ExecContext(ctx, fileOpsSchema); err != nil {
 		return fmt.Errorf("failed to create file_operations table: %w", err)
+	}
+
+	// A database written before drift tracking existed already has the table, so
+	// CREATE TABLE IF NOT EXISTS leaves it at the old shape and the columns have to
+	// be added separately.
+	if err := ensureColumns(ctx, db, "file_operations", driftColumns); err != nil {
+		return fmt.Errorf("failed to migrate file_operations drift columns: %w", err)
 	}
 
 	// Create indices for file_operations
@@ -144,7 +154,7 @@ func InitializeSchema(ctx context.Context, db *sql.DB) error {
 	}
 
 	// Run migration to add install_method if not present
-	if err := migrateAddInstallMethod(ctx, db); err != nil {
+	if err := ensureColumns(ctx, db, "tool_installations", installMethodColumns); err != nil {
 		return fmt.Errorf("failed to migrate install_method column: %w", err)
 	}
 
@@ -169,38 +179,69 @@ func InitializeSchema(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// migrateAddInstallMethod checks if install_method column exists, and if not, adds it.
-func migrateAddInstallMethod(ctx context.Context, db *sql.DB) error {
-	rows, err := db.QueryContext(ctx, "PRAGMA table_info(tool_installations)")
+// column is one column a table is expected to have. SQLite can only add a column to
+// an existing table, never change or drop one, so a column listed here must be
+// nullable or carry a default: rows written before it existed keep whatever the
+// declaration gives them.
+type column struct {
+	name       string
+	definition string
+}
+
+// driftColumns are what file_operations gained when drift tracking arrived.
+//
+// content_hash is the SHA-256 of exactly what dotfiles wrote, which is the base
+// version a later run compares the file on disk against. block_id names the managed
+// block a partial-file operation owns, and is empty for an operation that owns the
+// whole file. target_mode is the permission the author declared, which is not the
+// same thing as the existing permissions column: that one records the mode a file was
+// actually written with, so comparing the two is how a mode drifting away from its
+// declaration is noticed.
+var driftColumns = []column{
+	{name: "content_hash", definition: "TEXT"},
+	{name: "block_id", definition: "TEXT"},
+	{name: "target_mode", definition: "TEXT"},
+}
+
+// installMethodColumns is the older migration, kept in the same form as the rest.
+var installMethodColumns = []column{
+	{name: "install_method", definition: "TEXT"},
+}
+
+// ensureColumns adds every column the table is missing, and leaves the ones it
+// already has alone so that opening an up-to-date database is a no-op.
+func ensureColumns(ctx context.Context, db *sql.DB, table string, columns []column) error {
+	rows, err := db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
 	if err != nil {
-		return fmt.Errorf("querying table_info for tool_installations: %w", err)
+		return fmt.Errorf("querying table_info for %s: %w", table, err)
 	}
-	defer rows.Close()
 
-	hasInstallMethod := false
+	existing := make(map[string]bool)
 	for rows.Next() {
-		var cid int
-		var name string
-		var ctype string
-		var notnull int
+		var cid, notnull, pk int
+		var name, ctype string
 		var dfltValue any
-		var pk int
 		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
-			return fmt.Errorf("scanning table_info row: %w", err)
+			rows.Close()
+			return fmt.Errorf("scanning table_info row for %s: %w", table, err)
 		}
-		if name == "install_method" {
-			hasInstallMethod = true
-			break
-		}
+		existing[name] = true
 	}
-
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterating table_info rows: %w", err)
+		rows.Close()
+		return fmt.Errorf("iterating table_info rows for %s: %w", table, err)
 	}
+	// Closed before the ALTERs rather than deferred: SQLite will not change a table
+	// while a statement is still reading it.
+	rows.Close()
 
-	if !hasInstallMethod {
-		if _, err := db.ExecContext(ctx, "ALTER TABLE tool_installations ADD COLUMN install_method TEXT"); err != nil {
-			return fmt.Errorf("adding install_method column to tool_installations: %w", err)
+	for _, col := range columns {
+		if existing[col.name] {
+			continue
+		}
+		alter := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col.name, col.definition)
+		if _, err := db.ExecContext(ctx, alter); err != nil {
+			return fmt.Errorf("adding %s column to %s: %w", col.name, table, err)
 		}
 	}
 

@@ -17,6 +17,17 @@ type FileOperationRecord struct {
 	Permissions   *Permission `db:"permissions" json:"permissions"`
 	CreatedAt     int64       `db:"created_at"` // Unix millisecond epoch
 	OperationID   string      `db:"operation_id"`
+	// ContentHash is the SHA-256 of exactly what dotfiles wrote, and is the base
+	// version a later run measures the file on disk against. It is nil for an
+	// operation that writes no content of its own, such as a symlink or a chmod.
+	ContentHash *string `db:"content_hash" json:"contentHash,omitempty"`
+	// BlockID names the managed block this operation owns within a shared file. It
+	// is nil when the operation owns the whole file.
+	BlockID *string `db:"block_id" json:"blockId,omitempty"`
+	// TargetMode is the permission the tool declared, as opposed to Permissions,
+	// which is the mode the file was actually written with. Comparing the two is how
+	// a mode that has drifted away from its declaration is noticed.
+	TargetMode *Permission `db:"target_mode" json:"targetMode,omitempty"`
 }
 
 type ToolInstallationRecord struct {
@@ -51,6 +62,9 @@ type FileState struct {
 	Metadata      *string     `json:"metadata"`
 	SizeBytes     *int64      `json:"sizeBytes"`
 	Permissions   *Permission `json:"permissions" db:"permissions"`
+	ContentHash   *string     `json:"contentHash"`
+	BlockID       *string     `json:"blockId"`
+	TargetMode    *Permission `json:"targetMode"`
 }
 
 type FileOperationFilter struct {
@@ -61,4 +75,8 @@ type FileOperationFilter struct {
 	CreatedAfter  int64
 	CreatedBefore int64
 	OperationID   string
+	// BlockID restricts the result to operations owning one managed block. A file
+	// can hold blocks belonging to several tools, so filtering by path alone would
+	// mix their histories together.
+	BlockID string
 }

@@ -79,93 +79,6 @@ func TestInitializeSchemaIdempotency(t *testing.T) {
 	}
 }
 
-func TestMigrateAddInstallMethod(t *testing.T) {
-	ctx := context.Background()
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		t.Fatalf("Failed to open connection: %v", err)
-	}
-	defer db.Close()
-
-	// Create tool_installations without the install_method column first to simulate legacy schema
-	_, err = db.ExecContext(ctx, `
-	CREATE TABLE tool_installations (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		tool_name TEXT NOT NULL UNIQUE,
-		version TEXT NOT NULL,
-		install_path TEXT NOT NULL,
-		timestamp TEXT NOT NULL,
-		installed_at INTEGER NOT NULL,
-		binary_paths TEXT NOT NULL
-	);`)
-	if err != nil {
-		t.Fatalf("Failed to create legacy table: %v", err)
-	}
-
-	// Verify column install_method is not yet present
-	rows, err := db.QueryContext(ctx, "PRAGMA table_info(tool_installations)")
-	if err != nil {
-		t.Fatalf("Failed to query table info: %v", err)
-	}
-	hasCol := false
-	for rows.Next() {
-		var cid int
-		var name string
-		var ctype string
-		var notnull int
-		var dfltValue any
-		var pk int
-		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
-			rows.Close()
-			t.Fatal(err)
-		}
-		if name == "install_method" {
-			hasCol = true
-		}
-	}
-	rows.Close()
-	if hasCol {
-		t.Fatal("Legacy table already has install_method column")
-	}
-
-	// Run migration
-	if err := migrateAddInstallMethod(ctx, db); err != nil {
-		t.Fatalf("Migration failed: %v", err)
-	}
-
-	// Verify column is now present
-	rows2, err := db.QueryContext(ctx, "PRAGMA table_info(tool_installations)")
-	if err != nil {
-		t.Fatalf("Failed to query table info: %v", err)
-	}
-	hasCol2 := false
-	for rows2.Next() {
-		var cid int
-		var name string
-		var ctype string
-		var notnull int
-		var dfltValue any
-		var pk int
-		if err := rows2.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
-			rows2.Close()
-			t.Fatal(err)
-		}
-		if name == "install_method" {
-			hasCol2 = true
-		}
-	}
-	rows2.Close()
-	if !hasCol2 {
-		t.Fatal("Migration failed to add install_method column")
-	}
-
-	// Running migration again should be safe and do nothing
-	if err := migrateAddInstallMethod(ctx, db); err != nil {
-		t.Fatalf("Subsequent migration call failed: %v", err)
-	}
-}
-
 func TestNewConnectionPragmasAndConcurrency(t *testing.T) {
 	ctx := context.Background()
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
@@ -270,38 +183,6 @@ func TestNewConnectionMkdirAllError(t *testing.T) {
 	}
 }
 
-func TestMigrateAddInstallMethodErrors(t *testing.T) {
-	ctx := context.Background()
-
-	// 1. QueryContext fails on closed DB
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		t.Fatalf("failed to open raw sqlite: %v", err)
-	}
-	db.Close() // Close immediately
-
-	if err := migrateAddInstallMethod(ctx, db); err == nil {
-		t.Error("expected migrateAddInstallMethod to fail on closed db")
-	}
-
-	// 2. ALTER TABLE fails on view
-	db2, err := sql.Open("sqlite", fmt.Sprintf("file:%s_view?mode=memory&cache=shared", t.Name()))
-	if err != nil {
-		t.Fatalf("failed to open sqlite: %v", err)
-	}
-	defer db2.Close()
-
-	_, err = db2.ExecContext(ctx, "CREATE TABLE base (id INT); CREATE VIEW tool_installations AS SELECT id FROM base;")
-	if err != nil {
-		t.Fatalf("failed to create view: %v", err)
-	}
-
-	if err := migrateAddInstallMethod(ctx, db2); err == nil {
-		t.Error("expected migrateAddInstallMethod to fail ALTER TABLE on view")
-	}
-}
-
 func TestInitializeSchemaErrors(t *testing.T) {
 	ctx := context.Background()
 
@@ -338,7 +219,7 @@ func TestInitializeSchemaErrors(t *testing.T) {
 	}
 
 	if err := InitializeSchema(ctx, db2); err == nil {
-		t.Error("expected InitializeSchema to fail migrateAddInstallMethod on view")
+		t.Error("expected InitializeSchema to fail the tool_installations migration on a view")
 	}
 
 	// 3. tool_usage created as invalid table

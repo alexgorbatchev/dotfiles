@@ -12,7 +12,7 @@ import (
 
 // GetFileOperations queries file operations filtering by provided parameters.
 func (r *Registry) GetFileOperations(ctx context.Context, filter FileOperationFilter) ([]*FileOperationRecord, error) {
-	query := "SELECT id, tool_name, operation_type, file_path, target_path, file_type, metadata, size_bytes, permissions, created_at, operation_id FROM file_operations WHERE 1=1"
+	query := "SELECT id, tool_name, operation_type, file_path, target_path, file_type, metadata, size_bytes, permissions, created_at, operation_id, content_hash, block_id, target_mode FROM file_operations WHERE 1=1"
 	var args []any
 
 	if filter.ToolName != "" {
@@ -43,6 +43,10 @@ func (r *Registry) GetFileOperations(ctx context.Context, filter FileOperationFi
 		query += " AND operation_id = ?"
 		args = append(args, filter.OperationID)
 	}
+	if filter.BlockID != "" {
+		query += " AND block_id = ?"
+		args = append(args, filter.BlockID)
+	}
 
 	query += " ORDER BY created_at DESC, id DESC"
 
@@ -67,6 +71,9 @@ func (r *Registry) GetFileOperations(ctx context.Context, filter FileOperationFi
 			&rec.Permissions,
 			&rec.CreatedAt,
 			&rec.OperationID,
+			&rec.ContentHash,
+			&rec.BlockID,
+			&rec.TargetMode,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning file operation record: %w", err)
@@ -165,6 +172,37 @@ func (s *FileState) apply(op *FileOperationRecord) {
 	if op.Permissions != nil {
 		s.Permissions = op.Permissions
 	}
+	if op.ContentHash != nil {
+		s.ContentHash = op.ContentHash
+	}
+	if op.BlockID != nil {
+		s.BlockID = op.BlockID
+	}
+	if op.TargetMode != nil {
+		s.TargetMode = op.TargetMode
+	}
+}
+
+// GetBlockState returns the recorded state of one managed block within a file.
+//
+// A shared file such as ~/.ssh/config can hold blocks belonging to several tools, so
+// the drift engine asks for a block by its own identity rather than folding every
+// operation on the path into a single state. Nil means nothing has ever written that
+// block, which is how a first run tells itself apart from a later one.
+func (r *Registry) GetBlockState(ctx context.Context, filePath, blockID string) (*FileState, error) {
+	ops, err := r.GetFileOperations(ctx, FileOperationFilter{FilePath: filePath, BlockID: blockID})
+	if err != nil {
+		return nil, err
+	}
+	if len(ops) == 0 || ops[0].OperationType == "rm" {
+		return nil, nil
+	}
+
+	state := &FileState{FilePath: filePath}
+	for i := len(ops) - 1; i >= 0; i-- {
+		state.apply(ops[i])
+	}
+	return state, nil
 }
 
 // GetFileState returns active file state for a specific file path.
@@ -314,8 +352,9 @@ func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *
 
 	query := `
 	INSERT INTO file_operations (
-		tool_name, operation_type, file_path, target_path, file_type, metadata, size_bytes, permissions, created_at, operation_id
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+		tool_name, operation_type, file_path, target_path, file_type, metadata, size_bytes, permissions, created_at, operation_id,
+		content_hash, block_id, target_mode
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
 
 	res, err := tx.ExecContext(ctx, query,
 		record.ToolName,
@@ -328,6 +367,9 @@ func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *
 		record.Permissions,
 		record.CreatedAt,
 		record.OperationID,
+		record.ContentHash,
+		record.BlockID,
+		record.TargetMode,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting file operation record: %w", err)
