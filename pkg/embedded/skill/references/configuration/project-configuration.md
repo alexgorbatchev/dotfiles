@@ -53,7 +53,7 @@ export default defineConfig(({ configFileDir, systemInfo }) => ({
 
 ## Configuration Reference
 
-A configuration may set nine top-level keys: the eight sections below and the
+A configuration may set seven top-level keys: the six sections below and the
 [`platform`](#platform-overrides) override list. Any other key aborts the load with an
 "unknown property" error that lists the ones that are accepted, so a misspelling is
 never silently ignored.
@@ -155,11 +155,10 @@ and never sends a token written for your `host`.
 A download renders a progress line on stderr while it runs, and only when stderr is a
 terminal.
 
-### logging, updates and cargo
+### cargo
 
-`logging.debug`, `updates.checkOnRun`, `updates.checkInterval` and every key under
-`cargo` are accepted by the loader and read by nothing. Set the log level with the
-`--log` flag or `-v`/`-q` (see the [CLI reference](../getting-started/cli-reference.md)).
+Every key under `cargo` is accepted by the loader and read by nothing. Set the log level
+with the `--log` flag or `-v`/`-q` (see the [CLI reference](../getting-started/cli-reference.md)).
 
 ## Platform Overrides
 
@@ -185,7 +184,7 @@ export default defineConfig(() => ({
 - `match` is a non-empty array of matchers. A matcher sets `os` (`"macos"`, `"linux"`,
   `"windows"`) and/or `arch` (`"x86_64"`, `"arm64"`); at least one is required, and a
   field left out matches any value. An entry applies when any of its matchers matches.
-- `config` may set any of the sections above (`paths`, `system`, `logging`, `updates`,
+- `config` may set any of the sections above (`paths`, `system`,
   `github`, `cargo`, `downloader`, `features`). Objects merge into the base
   configuration recursively; every other value, including arrays such as
   `toolConfigsDir`, replaces the base value.

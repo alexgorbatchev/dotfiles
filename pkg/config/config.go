@@ -83,17 +83,6 @@ type SystemConfig struct {
 	SudoPrompt string `json:"sudoPrompt" yaml:"sudoPrompt"`
 }
 
-// LoggingConfig defines logging and trace settings.
-type LoggingConfig struct {
-	Debug string `json:"debug" yaml:"debug"`
-}
-
-// UpdatesConfig defines orchestration update check parameters.
-type UpdatesConfig struct {
-	CheckOnRun    bool  `json:"checkOnRun" yaml:"checkOnRun"`
-	CheckInterval int64 `json:"checkInterval" yaml:"checkInterval"`
-}
-
 // CargoConfig defines Cargo registry and repository hosts.
 type CargoConfig struct {
 	CratesIo      HostConfig `json:"cratesIo" yaml:"cratesIo"`
@@ -139,8 +128,6 @@ type FeaturesConfig struct {
 type ProjectConfig struct {
 	Paths      PathsConfig      `json:"paths" yaml:"paths"`
 	System     SystemConfig     `json:"system" yaml:"system"`
-	Logging    LoggingConfig    `json:"logging" yaml:"logging"`
-	Updates    UpdatesConfig    `json:"updates" yaml:"updates"`
 	Github     HostConfig       `json:"github" yaml:"github"`
 	Cargo      CargoConfig      `json:"cargo" yaml:"cargo"`
 	Downloader DownloaderConfig `json:"downloader" yaml:"downloader"`

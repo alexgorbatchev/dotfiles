@@ -54,7 +54,7 @@ func ValidateLoaderResultRawJSON(data []byte) error {
 
 // projectSectionKeys are the sections of a project configuration. A platform override's
 // config may set any of them, which is why the "platform" list itself is not among them.
-var projectSectionKeys = []string{"paths", "system", "logging", "updates", "github", "cargo", "downloader", "features"}
+var projectSectionKeys = []string{"paths", "system", "github", "cargo", "downloader", "features"}
 
 // platformOverrideKeys are the properties of one entry in the "platform" list.
 var platformOverrideKeys = []string{"match", "config"}
@@ -68,8 +68,6 @@ var platformMatchKeys = []string{"os", "arch"}
 var (
 	pathsKeys        = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir}
 	systemKeys       = []string{"sudoPrompt"}
-	loggingKeys      = []string{"debug"}
-	updatesKeys      = []string{"checkOnRun", "checkInterval"}
 	cargoKeys        = []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
 	cargoHostKeys    = []string{"cratesIo", "githubRaw", "githubRelease"}
 	downloaderKeys   = []string{"timeout", "retryCount", "retryDelay", "cache"}
@@ -213,18 +211,6 @@ func validateProjectSection(path, key string, v interface{}) error {
 	case "system":
 		if sub, ok := v.(map[string]interface{}); ok {
 			if err := checkKeys(path, sub, systemKeys); err != nil {
-				return err
-			}
-		}
-	case "logging":
-		if sub, ok := v.(map[string]interface{}); ok {
-			if err := checkKeys(path, sub, loggingKeys); err != nil {
-				return err
-			}
-		}
-	case "updates":
-		if sub, ok := v.(map[string]interface{}); ok {
-			if err := checkKeys(path, sub, updatesKeys); err != nil {
 				return err
 			}
 		}

@@ -25,13 +25,6 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 			"system": {
 				"sudoPrompt": "[sudo] password: "
 			},
-			"logging": {
-				"debug": "verbose"
-			},
-			"updates": {
-				"checkOnRun": true,
-				"checkInterval": 86400
-			},
 			"github": {
 				"host": "https://api.github.com",
 				"cache": {
@@ -125,7 +118,7 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 		if !strings.Contains(err.Error(), `unknown top-level property "completelyUnknownProperty"`) {
 			t.Errorf("unexpected error message: %v", err)
 		}
-		if !strings.Contains(err.Error(), "valid properties: cargo, downloader, features, github, logging, paths, platform, system, updates") {
+		if !strings.Contains(err.Error(), "valid properties: cargo, downloader, features, github, paths, platform, system") {
 			t.Errorf("unexpected allowed list: %v", err)
 		}
 	})
@@ -147,14 +140,14 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 				expected: `unknown property "system.badProp" (valid properties under 'system': sudoPrompt)`,
 			},
 			{
-				name:     "logging.badProp error",
+				name:     "logging.badProp error (rejected top-level property)",
 				json:     `{ "logging": { "badProp": true } }`,
-				expected: `unknown property "logging.badProp" (valid properties under 'logging': debug)`,
+				expected: `unknown top-level property "logging" (valid properties: cargo, downloader, features, github, paths, platform, system)`,
 			},
 			{
-				name:     "updates.badProp error",
+				name:     "updates.badProp error (rejected top-level property)",
 				json:     `{ "updates": { "badProp": true } }`,
-				expected: `unknown property "updates.badProp" (valid properties under 'updates': checkInterval, checkOnRun)`,
+				expected: `unknown top-level property "updates" (valid properties: cargo, downloader, features, github, paths, platform, system)`,
 			},
 			{
 				name:     "github.badProp error",
@@ -236,8 +229,6 @@ func TestValidateProjectConfigPlatformOverrides(t *testing.T) {
 					"config": {
 						"paths": { "dotfilesDir": "/dots" },
 						"system": { "sudoPrompt": "sudo:" },
-						"logging": { "debug": "*" },
-						"updates": { "checkOnRun": false },
 						"github": { "cache": { "enabled": false } },
 						"cargo": { "cratesIo": { "host": "https://crates.io" } },
 						"downloader": { "cache": { "ttl": 1 } },
@@ -338,7 +329,7 @@ func TestValidateProjectConfigPlatformOverrides(t *testing.T) {
 		{
 			name:     "config cannot nest another platform list",
 			json:     `{ "platform": [{ "match": [{ "os": "macos" }], "config": { "platform": [] } }] }`,
-			expected: `unknown property "platform[0].config.platform" (valid properties under 'platform[0].config': cargo, downloader, features, github, logging, paths, system, updates)`,
+			expected: `unknown property "platform[0].config.platform" (valid properties under 'platform[0].config': cargo, downloader, features, github, paths, system)`,
 		},
 		{
 			name:     "second override is reported with its index",

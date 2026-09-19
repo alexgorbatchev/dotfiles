@@ -22,13 +22,6 @@ export interface PathsConfig {
 export interface SystemConfig {
   sudoPrompt: string;
 }
-export interface LoggingConfig {
-  debug: string;
-}
-export interface UpdatesConfig {
-  checkOnRun: boolean;
-  checkInterval: number;
-}
 export interface CargoConfig {
   cratesIo: HostConfig;
   githubRaw: HostConfig;
@@ -57,8 +50,6 @@ export interface FeaturesConfig {
 export interface ProjectConfig {
   paths: PathsConfig;
   system: SystemConfig;
-  logging: LoggingConfig;
-  updates: UpdatesConfig;
   github: HostConfig;
   cargo: CargoConfig;
   downloader: DownloaderConfig;

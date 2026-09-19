@@ -4,13 +4,11 @@ import type {
   DownloaderConfig,
   FeaturesConfig,
   HostConfig,
-  LoggingConfig,
   PathsConfig,
   ProjectConfig,
   ShellInstallConfig,
   SystemConfig,
   ToolConfig,
-  UpdatesConfig,
 } from "../../packages/dashboard/src/shared/types.gen.ts";
 
 export type Resolvable<TParams, TReturn> =
@@ -203,16 +201,6 @@ export interface IDownloaderConfig extends DeepPartial<DownloaderConfig> {}
  * System privilege elevation configuration.
  */
 export interface ISystemConfig extends DeepPartial<SystemConfig> {}
-
-/**
- * Logging and debug output configuration.
- */
-export interface ILoggingConfig extends DeepPartial<LoggingConfig> {}
-
-/**
- * Update check intervals and behaviors configuration.
- */
-export interface IUpdatesConfig extends DeepPartial<UpdatesConfig> {}
 
 /**
  * Operating systems a project-level platform override can target.

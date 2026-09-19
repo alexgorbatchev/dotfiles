@@ -34,12 +34,6 @@ func acceptedProjectKeys() []string {
 	for _, k := range systemKeys {
 		keys = append(keys, "system."+k)
 	}
-	for _, k := range loggingKeys {
-		keys = append(keys, "logging."+k)
-	}
-	for _, k := range updatesKeys {
-		keys = append(keys, "updates."+k)
-	}
 	keys = append(keys, host("github")...)
 	for _, k := range cargoKeys {
 		if slices.Contains(cargoHostKeys, k) {
@@ -104,11 +98,6 @@ var projectConfigConsumers = map[string]string{
 	"features.catalog.generate": "",
 	"features.catalog.filePath": "",
 
-	// Carried over from the v1 schema, where they had no consumer either. The
-	// log level is set with --log, -v and -q instead.
-	"logging.debug":                     "",
-	"updates.checkOnRun":                "",
-	"updates.checkInterval":             "",
 	"cargo.userAgent":                   "",
 	"cargo.cratesIo.host":               "",
 	"cargo.cratesIo.token":              "",
@@ -151,9 +140,6 @@ var keysAwaitingRemoval = []string{
 	"cargo.userAgent",
 	"features.catalog.filePath",
 	"features.catalog.generate",
-	"logging.debug",
-	"updates.checkInterval",
-	"updates.checkOnRun",
 }
 
 // TestEveryAcceptedProjectKeyIsAccountedFor fails when the validator accepts a key
