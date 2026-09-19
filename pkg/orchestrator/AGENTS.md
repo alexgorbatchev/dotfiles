@@ -16,6 +16,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - Log `INFO [system] DONE` at the end of generation workflows.
 - Use deterministic `.staging` directory during non-external tool installations and configure persistent download caching on all installer plugins.
 - `ensureShimDirs` is the only place either pipeline creates `paths.targetDir` and the usage-log directory, under the `"system"` owner. Recorded against a tool they become that tool's stale shims on the next `generate`; `CleanupStaleShims` therefore also skips any recorded path that is a directory.
+- Detect cross-tool conflicts (aliases shadowing binaries, functions shadowing binaries, alias/function/binary collisions) and warn during generation (`WarnConflicts`) and validation (`DetectConflicts`).
 - The synced package directory (`.generated/node_modules/@alexgorbatchev/dotfiles/`) holds exactly what `pkg/embedded`'s `dist` contains: `SyncTypeScriptTypes` removes anything else, so a declaration an older release emitted cannot linger. The bin-name registry and the CLI-owned tsconfig live in `.generated/` itself and are outside that prune.
 - `SyncTypeScriptTypes` receives every configured tool, not the pruned list: the bin-name registry it writes describes the configuration, so disabled and hostname-scoped tools stay in it. It also owns `.generated/tsconfig.json` (via `pkg/typecheck.Program`); the project's own `tsconfig.json` is only written when absent or byte-identical to the one an earlier version generated (`pkg/scaffold.IsLegacyProjectTSConfig`).
 

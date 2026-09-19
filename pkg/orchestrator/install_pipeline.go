@@ -84,6 +84,8 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 		o.logger.Error("Syncing TypeScript types warning", err)
 	}
 
+	o.WarnConflicts(sorted, projCfg)
+
 	return nil
 }
 

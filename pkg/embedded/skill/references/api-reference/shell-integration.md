@@ -298,6 +298,7 @@ export default defineTool((install, ctx) =>
 - Use `.always()` for fast runtime setup only
 - Use `.once()` for expensive one-off work such as cache building, never for completions
 - Use context variables for all paths - never hardcode
+- Avoid shadowing binaries with shell aliases or functions across different tools (the system detects and warns on alias/function/binary collisions during `dotfiles generate` and `dotfiles validate`)
 
 ## Symbolic Links
 
