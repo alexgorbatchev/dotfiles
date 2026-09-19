@@ -712,6 +712,17 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       return this;
     },
 
+    shell(cb: Function) {
+      const sc = (this["shellConfigs"] || {}) as Record<string, unknown>;
+      this["shellConfigs"] = sc;
+      const builders = ["zsh", "bash", "powershell"].map((sh) => {
+        sc[sh] ??= { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
+        return createShellBuilder(sc[sh] as Record<string, unknown>, sh);
+      });
+      cb(createMultiShellBuilder(builders));
+      return this;
+    },
+
     zsh(cb: Function) {
       const sc = (this["shellConfigs"] || {}) as Record<string, unknown>;
       sc["zsh"] ??= { env: {}, aliases: {}, scripts: [], completions: null, functions: {} };
@@ -852,6 +863,61 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
       },
       source(content: string) {
         shScripts.push({ kind: "source", value: dedentString(content) });
+        return this;
+      },
+    };
+  }
+
+  type ShellBuilder = ReturnType<typeof createShellBuilder>;
+
+  function createMultiShellBuilder(builders: ShellBuilder[]) {
+    return {
+      env(map: Record<string, string>) {
+        for (const b of builders) b.env(map);
+        return this;
+      },
+      alias(map: Record<string, string>) {
+        for (const b of builders) b.alias(map);
+        return this;
+      },
+      aliases(map: Record<string, string>) {
+        for (const b of builders) b.aliases(map);
+        return this;
+      },
+      script(type: string, val?: string) {
+        for (const b of builders) b.script(type, val);
+        return this;
+      },
+      once(val: string) {
+        for (const b of builders) b.once(val);
+        return this;
+      },
+      always(val: string) {
+        for (const b of builders) b.always(val);
+        return this;
+      },
+      completions(val: unknown) {
+        for (const b of builders) b.completions(val);
+        return this;
+      },
+      functions(values: Record<string, string>) {
+        for (const b of builders) b.functions(values);
+        return this;
+      },
+      path(val: string) {
+        for (const b of builders) b.path(val);
+        return this;
+      },
+      sourceFile(relativePath: string) {
+        for (const b of builders) b.sourceFile(relativePath);
+        return this;
+      },
+      sourceFunction(functionName: string) {
+        for (const b of builders) b.sourceFunction(functionName);
+        return this;
+      },
+      source(content: string) {
+        for (const b of builders) b.source(content);
         return this;
       },
     };

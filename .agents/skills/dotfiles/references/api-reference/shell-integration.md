@@ -4,11 +4,12 @@ Configure shell environments, aliases, completions, and functions.
 
 ## Shell Methods
 
-| Method                  | Shell      |
-| ----------------------- | ---------- |
-| `.zsh(callback)`        | Zsh        |
-| `.bash(callback)`       | Bash       |
-| `.powershell(callback)` | PowerShell |
+| Method                  | Shell                                        |
+| ----------------------- | -------------------------------------------- |
+| `.shell(callback)`      | All supported shells (Zsh, Bash, PowerShell) |
+| `.zsh(callback)`        | Zsh                                          |
+| `.bash(callback)`       | Bash                                         |
+| `.powershell(callback)` | PowerShell                                   |
 
 Each callback receives:
 
@@ -256,16 +257,19 @@ next shell start, after the point where the completion had to exist. See
 
 ## Cross-Shell Configuration
 
-Share configuration across shells using the outer `ctx` from `defineTool`:
+Configure environment variables, PATH modifications, aliases, functions, and scripts across all supported shells (`zsh`, `bash`, `powershell`) using `.shell()`:
 
 ```typescript
-import { defineTool, type IShellConfigurator } from "@alexgorbatchev/dotfiles";
-
-export default defineTool((install, ctx) => {
-  const configureShell = (shell: IShellConfigurator) => shell.env({ TOOL_HOME: ctx.currentDir }).aliases({ t: "tool" });
-
-  return install("github-release", { repo: "owner/tool" }).bin("tool").zsh(configureShell).bash(configureShell);
-});
+export default defineTool((install, ctx) =>
+  install("github-release", { repo: "owner/tool" })
+    .bin("tool")
+    .shell((shell) => {
+      shell.env({ TOOL_HOME: ctx.currentDir }).aliases({ t: "tool" }).path(`${ctx.currentDir}/bin`);
+    })
+    .zsh((shell) => {
+      shell.completions("completions/_tool");
+    }),
+);
 ```
 
 ## Path References

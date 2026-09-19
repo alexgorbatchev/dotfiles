@@ -605,6 +605,103 @@ export default defineTool((install) =>
 	}
 }
 
+func TestLoaderCrossShellConfigurator(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.ts")
+	configContent := `export default { paths: { generatedDir: "./.generated", toolConfigsDir: "./tools" } };`
+	_ = os.WriteFile(configPath, []byte(configContent), 0644)
+
+	toolsDir := filepath.Join(tmpDir, "tools")
+	_ = os.MkdirAll(toolsDir, 0755)
+	toolContent := `import { defineTool, Platform } from "@dotfiles/cli";
+export default defineTool((install) =>
+  install("manual")
+    .bin("cross-tool")
+    .shell((shell) =>
+      shell
+        .env({ CROSS_VAR: "cross_val" })
+        .alias({ cross_alias: "cross_cmd" })
+        .path("/custom/cross/path")
+        .always("echo cross always")
+        .functions({ crossFn: "echo cross fn" }),
+    )
+    .zsh((shell) =>
+      shell
+        .env({ ZSH_ONLY: "zsh_val" })
+        .completions("completions/_cross"),
+    )
+    .platform(Platform.All, (platformInstall) =>
+      platformInstall().shell((shell) =>
+        shell.env({ PLATFORM_CROSS_VAR: "platform_cross_val" }),
+      ),
+    ),
+);`
+	_ = os.WriteFile(filepath.Join(toolsDir, "cross-tool.tool.ts"), []byte(toolContent), 0644)
+
+	_, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	tool, ok := toolMap["cross-tool"]
+	if !ok || tool.ShellConfigs == nil {
+		t.Fatalf("expected cross-tool with shell configs, got %v", slices.Sorted(maps.Keys(toolMap)))
+	}
+
+	for _, shName := range []string{"zsh", "bash", "powershell"} {
+		var cfg *config.ShellTypeConfig
+		switch shName {
+		case "zsh":
+			cfg = tool.ShellConfigs.Zsh
+		case "bash":
+			cfg = tool.ShellConfigs.Bash
+		case "powershell":
+			cfg = tool.ShellConfigs.Powershell
+		}
+
+		if cfg == nil {
+			t.Fatalf("expected shell config for %s to be non-nil", shName)
+		}
+
+		if got := cfg.Env["CROSS_VAR"]; got != "cross_val" {
+			t.Errorf("[%s] Env[CROSS_VAR] = %q, want 'cross_val'", shName, got)
+		}
+		if got := cfg.Env["PLATFORM_CROSS_VAR"]; got != "platform_cross_val" {
+			t.Errorf("[%s] Env[PLATFORM_CROSS_VAR] = %q, want 'platform_cross_val'", shName, got)
+		}
+		if got := cfg.Aliases["cross_alias"]; got != "cross_cmd" {
+			t.Errorf("[%s] Aliases[cross_alias] = %q, want 'cross_cmd'", shName, got)
+		}
+		if len(cfg.Paths) != 1 || cfg.Paths[0] != "/custom/cross/path" {
+			t.Errorf("[%s] Paths = %v, want ['/custom/cross/path']", shName, cfg.Paths)
+		}
+		if len(cfg.Scripts) != 1 || cfg.Scripts[0].Kind != "always" || cfg.Scripts[0].Value != "echo cross always" {
+			t.Errorf("[%s] Scripts = %+v, want [{Kind: always, Value: echo cross always}]", shName, cfg.Scripts)
+		}
+		if got := cfg.Functions["crossFn"]; got != "echo cross fn" {
+			t.Errorf("[%s] Functions[crossFn] = %q, want 'echo cross fn'", shName, got)
+		}
+	}
+
+	// Verify zsh-only additions
+	if got := tool.ShellConfigs.Zsh.Env["ZSH_ONLY"]; got != "zsh_val" {
+		t.Errorf("[zsh] Env[ZSH_ONLY] = %q, want 'zsh_val'", got)
+	}
+	if got := tool.ShellConfigs.Zsh.Completions; got != "completions/_cross" {
+		t.Errorf("[zsh] Completions = %v, want 'completions/_cross'", got)
+	}
+
+	// Verify bash and powershell did not get zsh-only additions
+	if got := tool.ShellConfigs.Bash.Env["ZSH_ONLY"]; got != "" {
+		t.Errorf("[bash] Env[ZSH_ONLY] = %q, want empty", got)
+	}
+	if got := tool.ShellConfigs.Powershell.Env["ZSH_ONLY"]; got != "" {
+		t.Errorf("[powershell] Env[ZSH_ONLY] = %q, want empty", got)
+	}
+}
+
 func TestLoadTypeScriptConfigToolWithoutName(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 	memFS := fs.NewMemFS()

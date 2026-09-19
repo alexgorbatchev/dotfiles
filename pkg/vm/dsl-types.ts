@@ -1338,6 +1338,10 @@ export interface IToolConfigBuilder {
    */
   symlink(src: string, dst: string): this;
   /**
+   * Configures shell settings across all supported shells (zsh, bash, powershell).
+   */
+  shell(cb: ShellCallback): this;
+  /**
    * Configures zsh specific settings.
    */
   zsh(cb: ShellCallback): this;
@@ -1415,6 +1419,10 @@ export interface IPlatformConfigBuilder {
    * Creates a symbolic link on this platform.
    */
   symlink(src: string, dst: string): this;
+  /**
+   * Configures shell settings across all supported shells (zsh, bash, powershell) on this platform.
+   */
+  shell(cb: ShellCallback): this;
   /**
    * Configures Zsh shell initialization on this platform.
    */
