@@ -8,6 +8,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/spf13/cobra"
 )
 
@@ -194,6 +195,32 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 					})
 				}
 			}
+		}
+
+		// Cross-tool configuration conflict detection
+		dotfilesDir := ""
+		if services.ProjectConfig != nil {
+			dotfilesDir = services.ProjectConfig.Paths.DotfilesDir
+		}
+		conflicts := orchestrator.DetectConflicts(services.ToolConfigs, dotfilesDir)
+		for _, c := range conflicts {
+			if len(targetTools) > 0 {
+				matched := false
+				for _, t := range targetTools {
+					if t.Name == c.ToolName {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					continue
+				}
+			}
+			warnings = append(warnings, ValidationWarning{
+				ToolName: c.ToolName,
+				Config:   c.ConfigPath,
+				Message:  c.Message,
+			})
 		}
 
 		var only *config.ToolConfig

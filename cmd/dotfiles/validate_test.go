@@ -253,3 +253,49 @@ func TestValidateCommand_JSON_HumanAndAgent(t *testing.T) {
 		}
 	})
 }
+
+func TestValidateCommand_CrossToolConflicts(t *testing.T) {
+	conflictsJSON := `"flutter": {
+		"name": "flutter",
+		"installationMethod": "manual",
+		"shellConfigs": {
+			"zsh": {
+				"aliases": {
+					"fd": "flutter doctor"
+				}
+			}
+		}
+	},
+	"fd": {
+		"name": "fd",
+		"installationMethod": "manual",
+		"binaries": [{"name": "fd"}]
+	}`
+
+	cfgPath := writeValidationConfig(t, conflictsJSON)
+
+	t.Run("human mode reports conflict warning", func(t *testing.T) {
+		t.Setenv("AGENT", "0")
+		out, err := runCommand("-c", cfgPath, "validate")
+		if err != nil {
+			t.Fatalf("unexpected error on validate with warnings: %v\n%s", err, out.Combined)
+		}
+		if !strings.Contains(out.Stdout, `[WARN] 1 warning(s) found:`) {
+			t.Fatalf("expected warning header, got:\n%s", out.Stdout)
+		}
+		if !strings.Contains(out.Stdout, `alias "fd" ('flutter doctor') shadows binary "fd" from fd`) {
+			t.Fatalf("expected conflict warning text, got:\n%s", out.Stdout)
+		}
+	})
+
+	t.Run("agent mode reports WARN line", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := runCommand("-c", cfgPath, "validate")
+		if err != nil {
+			t.Fatalf("unexpected error on validate with warnings: %v\n%s", err, out.Combined)
+		}
+		if !strings.Contains(out.Stdout, `WARN: [] flutter: alias "fd" ('flutter doctor') shadows binary "fd" from fd`) {
+			t.Fatalf("expected WARN line in agent mode, got:\n%s", out.Stdout)
+		}
+	})
+}

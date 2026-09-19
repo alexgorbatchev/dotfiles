@@ -162,6 +162,8 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		o.logger.Error("Syncing TypeScript types warning", err)
 	}
 
+	o.WarnConflicts(sorted, projCfg)
+
 	o.logger.GetSubLogger("", "system").Info(logger.Message("DONE"))
 	return nil
 }
