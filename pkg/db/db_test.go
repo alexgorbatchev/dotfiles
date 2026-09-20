@@ -272,6 +272,106 @@ func TestInitializeSchemaErrors(t *testing.T) {
 	if err := InitializeSchema(ctx, db5); err == nil {
 		t.Error("expected InitializeSchema to fail on tool_usage table creation")
 	}
+
+	// 6. file_operations table creation fails
+	db6, err := sql.Open("sqlite", fmt.Sprintf("file:%s_fo_fail?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db6.Close()
+
+	_, _ = db6.ExecContext(ctx, "CREATE TABLE dummy (id INT);")
+	_, _ = db6.ExecContext(ctx, "CREATE INDEX file_operations ON dummy(id);")
+
+	if err := InitializeSchema(ctx, db6); err == nil {
+		t.Error("expected InitializeSchema to fail on file_operations table creation")
+	}
+
+	// 7. tool_usage index creation fails (name occupied by a table)
+	db7, err := sql.Open("sqlite", fmt.Sprintf("file:%s_tu_idx_fail?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db7.Close()
+
+	_, _ = db7.ExecContext(ctx, "CREATE TABLE file_operations (id INTEGER PRIMARY KEY, tool_name TEXT, operation_type TEXT, file_path TEXT, target_path TEXT, file_type TEXT, metadata TEXT, size_bytes INTEGER, permissions TEXT, created_at INTEGER, operation_id TEXT);")
+	_, _ = db7.ExecContext(ctx, "CREATE TABLE tool_installations (id INTEGER PRIMARY KEY, tool_name TEXT UNIQUE, version TEXT, install_path TEXT, timestamp TEXT, installed_at INTEGER, binary_paths TEXT, install_method TEXT);")
+	_, _ = db7.ExecContext(ctx, "CREATE TABLE idx_tool_usage_tool_name (id INT);")
+
+	if err := InitializeSchema(ctx, db7); err == nil {
+		t.Error("expected InitializeSchema to fail on tool_usage index creation")
+	}
+
+	// 8. file_operations drift columns migration fails (table exists as a view)
+	db8, err := sql.Open("sqlite", fmt.Sprintf("file:%s_fo_view?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db8.Close()
+
+	_, _ = db8.ExecContext(ctx, "CREATE VIEW file_operations AS SELECT 1 AS id;")
+	if err := InitializeSchema(ctx, db8); err == nil {
+		t.Error("expected InitializeSchema to fail on file_operations drift migration")
+	}
+}
+
+func TestNewConnectionErrors(t *testing.T) {
+	t.Run("directory creation fails", func(t *testing.T) {
+		ctx := context.Background()
+		// /dev/null cannot be a directory
+		_, err := NewConnection(ctx, "/dev/null/sub/dotfiles.db")
+		if err == nil {
+			t.Fatal("expected directory creation error, got nil")
+		}
+	})
+
+	t.Run("schema initialization fails in NewConnection", func(t *testing.T) {
+		ctx := context.Background()
+		dbPath := filepath.Join(t.TempDir(), "failing_schema.db")
+		// Pre-populate with conflicting table
+		db, err := sql.Open("sqlite", dbPath)
+		if err != nil {
+			t.Fatalf("failed to open sqlite: %v", err)
+		}
+		_, err = db.ExecContext(ctx, "CREATE TABLE idx_tool_usage_tool_name (id INT);")
+		if err != nil {
+			t.Fatalf("failed to create dummy table: %v", err)
+		}
+		db.Close()
+
+		_, err = NewConnection(ctx, dbPath)
+		if err == nil {
+			t.Fatal("expected NewConnection to fail when schema initialization fails, got nil")
+		}
+	})
+}
+
+func TestEnsureColumnsErrors(t *testing.T) {
+	ctx := context.Background()
+
+	// 1. ensureColumns on closed database
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s_closed?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	_ = db.Close()
+
+	if err := ensureColumns(ctx, db, "file_operations", driftColumns); err == nil {
+		t.Error("expected ensureColumns to fail on closed database")
+	}
+
+	// 2. ensureColumns with invalid alter statement
+	db2, err := sql.Open("sqlite", fmt.Sprintf("file:%s_alter_fail?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+	defer db2.Close()
+
+	_, _ = db2.ExecContext(ctx, "CREATE TABLE test_tab (id INT);")
+	badCols := []column{{name: "bad", definition: "INVALID SYNTAX DEFINITION (("}}
+	if err := ensureColumns(ctx, db2, "test_tab", badCols); err == nil {
+		t.Error("expected ensureColumns to fail on invalid column definition ALTER")
+	}
 }
 
 // Every connection SQLite opens to a plain ":memory:" DSN gets its own private,

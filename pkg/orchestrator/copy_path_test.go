@@ -121,5 +121,47 @@ func TestCopyPath(t *testing.T) {
 		if got := readFile(t, memFS, "/home/user/dst/tree/nested/b.txt"); got != "b" {
 			t.Errorf("nested/b.txt = %q", got)
 		}
+
+		// Copying the identical directory a second time is a no-op (sameContent on directory)
+		if err := orch.copyPath(context.Background(), "tool", "/home/user/src/tree", "/home/user/dst/tree"); err != nil {
+			t.Fatalf("second copyPath returned error: %v", err)
+		}
+	})
+
+	t.Run("copies with declared mode", func(t *testing.T) {
+		orch, memFS := newFixture(t)
+		writeFile(t, memFS, "/home/user/src/secret.key", "supersecret")
+
+		if err := orch.copyPathWithMode(context.Background(), "tool", "/home/user/src/secret.key", "/home/user/dst/secret.key", "0600"); err != nil {
+			t.Fatalf("copyPathWithMode returned error: %v", err)
+		}
+		info, err := memFS.Lstat("/home/user/dst/secret.key")
+		if err != nil {
+			t.Fatalf("lstat target: %v", err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Errorf("target mode = %04o, want 0600", info.Mode().Perm())
+		}
+	})
+
+	t.Run("sameContent comparisons", func(t *testing.T) {
+		_, memFS := newFixture(t)
+		writeFile(t, memFS, "/home/user/dir1/a.txt", "1")
+		writeFile(t, memFS, "/home/user/dir2/b.txt", "1")
+
+		// Different directory members
+		same, err := sameContent(memFS, "/home/user/dir1", "/home/user/dir2")
+		if err != nil {
+			t.Fatalf("sameContent error: %v", err)
+		}
+		if same {
+			t.Error("expected sameContent to be false for directories with different files")
+		}
+
+		// Non-existent target
+		same, err = sameContent(memFS, "/home/user/dir1/a.txt", "/home/user/dir1/nonexistent.txt")
+		if err != nil || same {
+			t.Errorf("sameContent non-existent target = (%v, %v), want (false, nil)", same, err)
+		}
 	})
 }

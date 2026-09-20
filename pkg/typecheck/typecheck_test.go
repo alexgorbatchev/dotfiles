@@ -1,12 +1,57 @@
 package typecheck
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 )
+
+func TestTSConfigPath(t *testing.T) {
+	got := TSConfigPath("/test/dir/.generated")
+	want := filepath.Join("/test/dir/.generated", "tsconfig.json")
+	if got != want {
+		t.Fatalf("TSConfigPath() = %q, want %q", got, want)
+	}
+}
+
+func TestProgramTSConfigValidation(t *testing.T) {
+	t.Run("missing dir", func(t *testing.T) {
+		p := Program{DeclarationsDir: "/decl"}
+		_, err := p.TSConfig()
+		if err == nil || !strings.Contains(err.Error(), "program directory is required") {
+			t.Fatalf("expected program directory error, got: %v", err)
+		}
+	})
+
+	t.Run("missing declarations dir", func(t *testing.T) {
+		p := Program{Dir: "/app/.generated"}
+		_, err := p.TSConfig()
+		if err == nil || !strings.Contains(err.Error(), "declarations directory is required") {
+			t.Fatalf("expected declarations directory error, got: %v", err)
+		}
+	})
+
+	t.Run("parent directory relative path", func(t *testing.T) {
+		p := Program{
+			Dir:             "/app/sub",
+			DeclarationsDir: "/app/sub/decl",
+			ToolConfigsDirs: []string{"/app"},
+		}
+		data, err := p.TSConfig()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !strings.Contains(string(data), `"../**/*.ts"`) {
+			t.Errorf("expected ../**/*.ts in tsconfig, got %s", string(data))
+		}
+	})
+}
 
 func TestProgramTSConfigUsesPathsRelativeToItsDirectory(t *testing.T) {
 	root := filepath.Join(string(filepath.Separator), "home", "me", "dotfiles")
@@ -121,4 +166,51 @@ func TestParseDiagnosticsIgnoresUnrelatedOutput(t *testing.T) {
 	if got := ParseDiagnostics("Version 7.0.2\n"); len(got) != 0 {
 		t.Errorf("expected no diagnostics, got %+v", got)
 	}
+}
+
+func TestRun(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success without diagnostics", func(t *testing.T) {
+		runner := exec.NewMockRunner()
+		runner.Register("tsc", []byte(""), nil)
+
+		diags, err := Run(ctx, runner, "tsc", "tsconfig.json", "/app")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(diags) != 0 {
+			t.Fatalf("expected 0 diagnostics, got %d", len(diags))
+		}
+	})
+
+	t.Run("compiler failure with diagnostics", func(t *testing.T) {
+		runner := exec.NewMockRunner()
+		diagOutput := "tools/test.tool.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.\n"
+		runner.Register("tsc", []byte(diagOutput), errors.New("exit status 2"))
+
+		diags, err := Run(ctx, runner, "tsc", "tsconfig.json", "/app")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(diags) != 1 {
+			t.Fatalf("expected 1 diagnostic, got %d", len(diags))
+		}
+		if diags[0].Code != "TS2322" {
+			t.Errorf("expected TS2322, got %s", diags[0].Code)
+		}
+	})
+
+	t.Run("compiler failure without diagnostics returns error", func(t *testing.T) {
+		runner := exec.NewMockRunner()
+		runner.Register("tsc", []byte(""), errors.New("cannot find executable"))
+
+		_, err := Run(ctx, runner, "tsc", "tsconfig.json", "/app")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "running tsc") {
+			t.Errorf("expected error message to mention 'running tsc', got %q", err.Error())
+		}
+	})
 }

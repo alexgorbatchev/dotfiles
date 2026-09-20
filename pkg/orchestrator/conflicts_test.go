@@ -342,3 +342,49 @@ func TestWarnConflicts(t *testing.T) {
 		t.Errorf("expected warning with full path when projCfg is nil, got:\n%s", outputNil)
 	}
 }
+
+func TestDetectConflicts_SortingTiebreakers(t *testing.T) {
+	tools := []*config.ToolConfig{
+		{
+			Name: "alpha",
+			ShellConfigs: &config.ShellConfigs{
+				Bash: &config.ShellTypeConfig{
+					Aliases: map[string]string{"foo": "bar", "aaa": "111"},
+				},
+				Zsh: &config.ShellTypeConfig{
+					Aliases: map[string]string{"foo": "bar"},
+				},
+			},
+			Binaries: []interface{}{
+				map[string]interface{}{"name": "foo"},
+			},
+		},
+		{
+			Name: "beta1",
+			ShellConfigs: &config.ShellConfigs{
+				Bash: &config.ShellTypeConfig{
+					Aliases: map[string]string{"foo": "bar2", "aaa": "222"},
+				},
+				Zsh: &config.ShellTypeConfig{
+					Aliases: map[string]string{"foo": "bar2"},
+				},
+			},
+			Binaries: []interface{}{
+				map[string]interface{}{"name": "foo"},
+			},
+		},
+		{
+			Name: "beta2",
+			ShellConfigs: &config.ShellConfigs{
+				Bash: &config.ShellTypeConfig{
+					Aliases: map[string]string{"foo": "bar3"},
+				},
+			},
+		},
+	}
+
+	conflicts := DetectConflicts(tools)
+	if len(conflicts) < 3 {
+		t.Fatalf("expected multiple conflicts for sorting test, got %d", len(conflicts))
+	}
+}

@@ -1,6 +1,7 @@
 package scaffold
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -320,4 +321,68 @@ func TestRunReportsAnUnreadableExistingFile(t *testing.T) {
 	if _, err := Run(osFS, Options{Dir: dir, TargetOS: "linux"}); err == nil {
 		t.Error("expected an error when an existing tool configuration cannot be read")
 	}
+}
+
+func TestRunFSErrors(t *testing.T) {
+	t.Run("fails when Exists returns error", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		faulty := &faultyFS{
+			FS:        mem,
+			existsErr: errors.New("exists check failed"),
+		}
+		if _, err := Run(faulty, Options{Dir: "/tools", TargetOS: "linux"}); err == nil {
+			t.Error("expected error when Exists fails, got nil")
+		}
+	})
+
+	t.Run("fails when WriteFile returns error", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		faulty := &faultyFS{
+			FS:           mem,
+			writeFileErr: errors.New("write failed"),
+		}
+		if _, err := Run(faulty, Options{Dir: "/tools", TargetOS: "linux"}); err == nil {
+			t.Error("expected error when WriteFile fails, got nil")
+		}
+	})
+
+	t.Run("fails when backup WriteFile returns error on Force overwrite", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		dir := "/tools"
+		_ = mem.MkdirAll(dir, 0755)
+		path := filepath.Join(dir, "dotfiles.tool.ts")
+		_ = mem.WriteFile(path, []byte("custom content"), 0644)
+
+		faulty := &faultyFS{
+			FS:              mem,
+			writeBackupFail: true,
+		}
+		if _, err := Run(faulty, Options{Dir: dir, TargetOS: "linux", Force: true}); err == nil {
+			t.Error("expected error when backup WriteFile fails, got nil")
+		}
+	})
+}
+
+type faultyFS struct {
+	fs.FS
+	existsErr       error
+	writeFileErr    error
+	writeBackupFail bool
+}
+
+func (f *faultyFS) Exists(path string) (bool, error) {
+	if f.existsErr != nil {
+		return false, f.existsErr
+	}
+	return f.FS.Exists(path)
+}
+
+func (f *faultyFS) WriteFile(path string, data []byte, perm os.FileMode) error {
+	if f.writeFileErr != nil {
+		return f.writeFileErr
+	}
+	if f.writeBackupFail && strings.Contains(path, ".bak") {
+		return errors.New("backup write failed")
+	}
+	return f.FS.WriteFile(path, data, perm)
 }

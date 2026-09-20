@@ -3,7 +3,6 @@ package arch
 import (
 	"os"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -93,27 +92,27 @@ func TestFileExists(t *testing.T) {
 }
 
 func TestDetectLibc(t *testing.T) {
+	oldGOOS := goos
+	t.Cleanup(func() { goos = oldGOOS })
+	goos = "linux"
+
 	tests := []struct {
 		name          string
-		osVal         string
 		existingFiles map[string]bool
 		want          string
 	}{
 		{
 			"glibc system",
-			OSLinux,
 			map[string]bool{"/lib64/ld-linux-x86-64.so.2": true},
 			LibcGnu,
 		},
 		{
 			"musl system",
-			OSLinux,
 			map[string]bool{"/lib/ld-musl-x86_64.so.1": true},
 			LibcMusl,
 		},
 		{
 			"ambiguous system (both loaders present)",
-			OSLinux,
 			map[string]bool{
 				"/lib64/ld-linux-x86-64.so.2": true,
 				"/lib/ld-musl-x86_64.so.1":    true,
@@ -122,7 +121,6 @@ func TestDetectLibc(t *testing.T) {
 		},
 		{
 			"no loaders",
-			OSLinux,
 			map[string]bool{},
 			LibcUnknown,
 		},
@@ -135,14 +133,8 @@ func TestDetectLibc(t *testing.T) {
 			}
 
 			got := DetectLibc(existsMock)
-			if runtime.GOOS != "linux" {
-				if got != LibcUnknown {
-					t.Errorf("DetectLibc() on non-Linux = %q, want %q", got, LibcUnknown)
-				}
-			} else {
-				if got != tt.want {
-					t.Errorf("DetectLibc() = %q, want %q", got, tt.want)
-				}
+			if got != tt.want {
+				t.Errorf("DetectLibc() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -514,6 +506,9 @@ func TestMatchesArchitecture_FZFAssets(t *testing.T) {
 func TestSelectBestMatch(t *testing.T) {
 	t.Run("returns empty string when no assets match", func(t *testing.T) {
 		sys := SystemInfo{OS: OSDarwin, Arch: ArchARM64}
+		if got := SelectBestMatch(nil, sys); got != "" {
+			t.Errorf("SelectBestMatch(nil) = %q, want empty string", got)
+		}
 		got := SelectBestMatch([]string{"tool-windows-x64.exe", "tool-linux-amd64.tar.gz"}, sys)
 		if got != "" {
 			t.Errorf("SelectBestMatch = %q, want empty string", got)
@@ -706,4 +701,73 @@ func TestSelectBestMatch(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestFilterNonBinaryAssets(t *testing.T) {
+	t.Run("returns all assets when all are non-binary", func(t *testing.T) {
+		assets := []string{"checksums.txt", "tool.sha256", "signature.sig"}
+		got := filterNonBinaryAssets(assets)
+		if len(got) != len(assets) {
+			t.Fatalf("expected all assets returned when none are binary, got: %v", got)
+		}
+	})
+
+	t.Run("filters out non-binary assets when binary exists", func(t *testing.T) {
+		assets := []string{"checksums.txt", "tool-linux-amd64.tar.gz"}
+		got := filterNonBinaryAssets(assets)
+		if len(got) != 1 || got[0] != "tool-linux-amd64.tar.gz" {
+			t.Fatalf("expected only binary asset, got: %v", got)
+		}
+	})
+}
+
+func TestApplySoftFilter(t *testing.T) {
+	t.Run("invalid regex pattern returns candidates unchanged", func(t *testing.T) {
+		candidates := []string{"foo", "bar"}
+		got := applySoftFilter(candidates, "[invalid")
+		if len(got) != len(candidates) {
+			t.Fatalf("expected candidates unchanged on invalid regex, got %v", got)
+		}
+	})
+
+	t.Run("no matches returns candidates unchanged", func(t *testing.T) {
+		candidates := []string{"foo", "bar"}
+		got := applySoftFilter(candidates, "baz")
+		if len(got) != len(candidates) {
+			t.Fatalf("expected candidates unchanged on no matches, got %v", got)
+		}
+	})
+}
+
+func TestRankLinuxVariant(t *testing.T) {
+	tests := []struct {
+		name    string
+		variant linuxVariant
+		libc    string
+		want    int
+	}{
+		{"glibc system prefers gnu", variantGnu, LibcGnu, 0},
+		{"glibc system secondary generic", variantGeneric, LibcGnu, 1},
+		{"glibc system dislikes musl", variantMusl, LibcGnu, 2},
+		{"musl system prefers musl", variantMusl, LibcMusl, 0},
+		{"musl system secondary generic", variantGeneric, LibcMusl, 1},
+		{"musl system dislikes gnu", variantGnu, LibcMusl, 2},
+		{"unknown libc prefers generic", variantGeneric, LibcUnknown, 0},
+		{"unknown libc secondary gnu", variantGnu, LibcUnknown, 1},
+		{"unknown libc dislikes musl", variantMusl, LibcUnknown, 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := rankLinuxVariant(tt.variant, tt.libc); got != tt.want {
+				t.Errorf("rankLinuxVariant(%s, %s) = %d, want %d", tt.variant, tt.libc, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSelectBestLinuxMatch(t *testing.T) {
+	if got := selectBestLinuxMatch(nil, LibcGnu); got != "" {
+		t.Errorf("selectBestLinuxMatch(nil) = %q, want empty string", got)
+	}
 }

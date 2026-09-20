@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 func TestOrchestratorSettersAndHelpers(t *testing.T) {
@@ -2223,5 +2225,398 @@ func TestCleanupStaleArtifacts_FullPipeline(t *testing.T) {
 	err := orch.CleanupStaleArtifacts(ctx, nil, projCfg)
 	if err != nil {
 		t.Fatalf("CleanupStaleArtifacts failed: %v", err)
+	}
+}
+
+func TestIsWithinCoverage(t *testing.T) {
+	tests := []struct {
+		dir  string
+		path string
+		want bool
+	}{
+		{"/a/b", "/a/b", true},
+		{"/a/b", "/a/b/c", true},
+		{"/a/b", "/a/b/c/d", true},
+		{"/a/b", "/a/c", false},
+		{"/a/b", "/a", false},
+		{"/a/b", "/other/path", false},
+	}
+
+	for _, tt := range tests {
+		got := isWithin(tt.dir, tt.path)
+		if got != tt.want {
+			t.Errorf("isWithin(%q, %q) = %v, want %v", tt.dir, tt.path, got, tt.want)
+		}
+	}
+}
+
+func TestRequireStagedPayloadAndDiscardStaging(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	// 1. discardStaging with empty string returns immediately
+	orch.discardStaging(ctx, "tool", "")
+
+	// 2. requireStagedPayload on tool without before-install hook returns nil
+	toolNoHook := &config.ToolConfig{Name: "no-hook"}
+	if err := orch.requireStagedPayload(ctx, toolNoHook, memFS, "/staging"); err != nil {
+		t.Errorf("expected nil for tool without hook, got: %v", err)
+	}
+
+	// 3. tool with before-install hook
+	toolWithHook := &config.ToolConfig{
+		Name: "hook-tool",
+		InstallParams: map[string]interface{}{
+			"hooks": []any{vm.HookBeforeInstall},
+		},
+	}
+
+	// 3a. ReadDir fails on unreadable/missing staging directory
+	if err := orch.requireStagedPayload(ctx, toolWithHook, memFS, "/missing-staging"); err == nil {
+		t.Error("expected error when staging dir does not exist")
+	}
+
+	// 3b. Staging dir exists but is empty
+	_ = memFS.MkdirAll("/empty-staging", 0755)
+	if err := orch.requireStagedPayload(ctx, toolWithHook, memFS, "/empty-staging"); err == nil {
+		t.Error("expected error when staging dir is empty")
+	}
+
+	// 3c. Staging dir exists and has files
+	_ = memFS.MkdirAll("/pop-staging", 0755)
+	_ = memFS.WriteFile("/pop-staging/bin", []byte("data"), 0755)
+	if err := orch.requireStagedPayload(ctx, toolWithHook, memFS, "/pop-staging"); err != nil {
+		t.Errorf("expected nil when staging dir has payload, got: %v", err)
+	}
+}
+
+func TestInstallTools_DisabledAndHostnameFiltering(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			DotfilesDir:     "/home/user/dotfiles",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/binaries",
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+		},
+	}
+
+	tools := []*config.ToolConfig{
+		{
+			Name:     "disabled-tool",
+			Disabled: true,
+			Binaries: []interface{}{"disabled-bin"},
+		},
+		{
+			Name:     "wrong-host-tool",
+			Hostname: "non-existent-hostname-xyz-999",
+			Binaries: []interface{}{"wrong-host-bin"},
+		},
+	}
+
+	if err := orch.InstallTools(ctx, tools, projCfg); err != nil {
+		t.Fatalf("InstallTools failed: %v", err)
+	}
+
+	// Verify neither tool generated shims
+	if exists, _ := memFS.Exists("/home/user/bin/disabled-bin"); exists {
+		t.Error("disabled tool should not be installed")
+	}
+	if exists, _ := memFS.Exists("/home/user/bin/wrong-host-bin"); exists {
+		t.Error("wrong host tool should not be installed")
+	}
+}
+
+func TestGenerateCompletionsForToolCoverage(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	orch := newTestOrchestrator(t, memFS, "")
+	orch.runner = runner
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			DotfilesDir:     "/home/user/dotfiles",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/binaries",
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+		},
+	}
+
+	// 1. Completion with map source
+	_ = memFS.MkdirAll("/home/user/dotfiles/completions", 0755)
+	_ = memFS.WriteFile("/home/user/dotfiles/completions/zsh-comp", []byte("comp script"), 0644)
+	toolMapSource := &config.ToolConfig{
+		Name:           "tool-src",
+		ConfigFilePath: "/home/user/dotfiles/tools/tool-src.tool.ts",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Completions: map[string]interface{}{
+					"source": "/home/user/dotfiles/completions/zsh-comp",
+				},
+			},
+		},
+	}
+	if err := orch.GenerateCompletionsForTool(ctx, toolMapSource, projCfg); err != nil {
+		t.Fatalf("GenerateCompletionsForTool with map source failed: %v", err)
+	}
+
+	// 2. Completion with cmd resolved from DB recorded binary paths
+	_ = memFS.MkdirAll("/opt/custom/bin", 0755)
+	_ = memFS.WriteFile("/opt/custom/bin/custom-cli", []byte("cli"), 0755)
+	_ = orch.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return orch.reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    "db-tool",
+			Version:     "1.0",
+			InstallPath: "/opt/custom/bin/custom-cli",
+			Timestamp:   "now",
+			InstalledAt: 100,
+			BinaryPaths: `["/opt/custom/bin/custom-cli"]`,
+		})
+	})
+	runner.Register("/opt/custom/bin/custom-cli", []byte("#compdef custom-cli\n"), nil)
+
+	toolDBCmd := &config.ToolConfig{
+		Name: "db-tool",
+		ShellConfigs: &config.ShellConfigs{
+			Zsh: &config.ShellTypeConfig{
+				Completions: map[string]interface{}{
+					"cmd": "custom-cli completion zsh",
+				},
+			},
+		},
+	}
+	if err := orch.GenerateCompletionsForTool(ctx, toolDBCmd, projCfg); err != nil {
+		t.Fatalf("GenerateCompletionsForTool with DB cmd failed: %v", err)
+	}
+
+	// 3. Completion command failure
+	runner.Register("/opt/custom/bin/custom-cli", []byte(""), errors.New("command failed"))
+	// Force overwrite so it attempts running command again
+	ctxOverwrite := config.WithOverwrite(ctx, true)
+	if err := orch.GenerateCompletionsForTool(ctxOverwrite, toolDBCmd, projCfg); err != nil {
+		t.Fatalf("GenerateCompletionsForTool on failing command returned error: %v", err)
+	}
+
+	// 4. Completion command timeout
+	runner.RegisterFunc("/opt/custom/bin/custom-cli", func(c *exec.MockCmd) error {
+		return context.DeadlineExceeded
+	})
+	if err := orch.GenerateCompletionsForTool(ctxOverwrite, toolDBCmd, projCfg); err != nil {
+		t.Fatalf("GenerateCompletionsForTool on timed out command returned error: %v", err)
+	}
+}
+
+func TestFindSystemBinaryCoverage(t *testing.T) {
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "~/.bin",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	// 1. Candidate in target dir is skipped
+	_ = memFS.MkdirAll("/home/user/.bin", 0755)
+	_ = memFS.WriteFile("/home/user/.bin/mybin", []byte("bin"), 0755)
+
+	// 2. Candidate in .generated/bin is skipped
+	_ = memFS.MkdirAll("/home/user/.generated/bin", 0755)
+	_ = memFS.WriteFile("/home/user/.generated/bin/mybin", []byte("bin"), 0755)
+
+	// 3. Fallback candidate in /opt/homebrew/bin is found
+	_ = memFS.MkdirAll("/opt/homebrew/bin", 0755)
+	_ = memFS.WriteFile("/opt/homebrew/bin/mybin", []byte("bin"), 0755)
+
+	t.Setenv("PATH", "~/.bin:/home/user/.generated/bin")
+	found, err := orch.findSystemBinary("mybin", projCfg)
+	if err != nil {
+		t.Fatalf("findSystemBinary: %v", err)
+	}
+	if found != "/opt/homebrew/bin/mybin" {
+		t.Errorf("findSystemBinary = %q, want /opt/homebrew/bin/mybin", found)
+	}
+
+	// 4. Candidate in user PATH
+	_ = memFS.MkdirAll("/home/user/custom-bin", 0755)
+	_ = memFS.WriteFile("/home/user/custom-bin/otherbin", []byte("bin"), 0755)
+	t.Setenv("PATH", "~/custom-bin")
+	found, err = orch.findSystemBinary("otherbin", projCfg)
+	if err != nil {
+		t.Fatalf("findSystemBinary: %v", err)
+	}
+	if found != "/home/user/custom-bin/otherbin" {
+		t.Errorf("findSystemBinary = %q, want /home/user/custom-bin/otherbin", found)
+	}
+}
+
+func TestPruneSyncedPackageCoverage(t *testing.T) {
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	pkgDir := "/home/user/.generated/node_modules/@alexgorbatchev/dotfiles"
+	_ = memFS.MkdirAll(pkgDir, 0755)
+	_ = memFS.WriteFile(filepath.Join(pkgDir, "keep.d.ts"), []byte("keep"), 0644)
+	_ = memFS.WriteFile(filepath.Join(pkgDir, "obsolete.d.ts"), []byte("obsolete"), 0644)
+
+	keep := map[string][]byte{"keep.d.ts": []byte("keep")}
+	if err := orch.pruneSyncedPackage(pkgDir, keep); err != nil {
+		t.Fatalf("pruneSyncedPackage failed: %v", err)
+	}
+
+	if exists, _ := memFS.Exists(filepath.Join(pkgDir, "obsolete.d.ts")); exists {
+		t.Error("expected obsolete.d.ts to be pruned")
+	}
+	if exists, _ := memFS.Exists(filepath.Join(pkgDir, "keep.d.ts")); !exists {
+		t.Error("expected keep.d.ts to be retained")
+	}
+}
+
+func TestWriteTypeCheckProgramCoverage(t *testing.T) {
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			DotfilesDir:  "",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	orch.SetConfigFilePath("/home/user/my-dotfiles/dotfiles.config.ts")
+	_ = memFS.MkdirAll("/home/user/my-dotfiles", 0755)
+	_ = memFS.MkdirAll("/home/user/.generated", 0755)
+
+	// Write a legacy tsconfig.json in projectDir
+	legacyTSConfig := "{\n  \"compilerOptions\": {\n    \"target\": \"ESNext\",\n    \"module\": \"ESNext\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"noEmit\": true,\n    \"skipLibCheck\": true,\n    \"lib\": [\n      \"ESNext\"\n    ]\n  },\n  \"include\": [\n    \"dotfiles.config.ts\",\n    \"tools/**/*.ts\"\n  ]\n}\n"
+	_ = memFS.WriteFile("/home/user/my-dotfiles/tsconfig.json", []byte(legacyTSConfig), 0644)
+
+	declDir := "/home/user/.generated/node_modules/@alexgorbatchev/dotfiles"
+	_ = memFS.MkdirAll(declDir, 0755)
+	if err := orch.writeTypeCheckProgram(projCfg, declDir, ""); err != nil {
+		t.Fatalf("writeTypeCheckProgram: %v", err)
+	}
+
+	// Verify project tsconfig was updated to extends
+	updated, err := memFS.ReadFile("/home/user/my-dotfiles/tsconfig.json")
+	if err != nil {
+		t.Fatalf("reading updated tsconfig: %v", err)
+	}
+	if !strings.Contains(string(updated), "extends") {
+		t.Errorf("expected tsconfig to be updated with extends, got: %s", string(updated))
+	}
+}
+
+func TestGetCliCommandAndFormatPathCoverage(t *testing.T) {
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	// 1. formatPath with nil / empty HomeDir
+	if got := orch.formatPath(nil, "/some/path"); got != "/some/path" {
+		t.Errorf("formatPath nil = %q, want /some/path", got)
+	}
+	if got := orch.formatPath(&config.ProjectConfig{}, "/some/path"); got != "/some/path" {
+		t.Errorf("formatPath empty home = %q, want /some/path", got)
+	}
+
+	// 2. getCliCommand with DOTFILES_CLI_COMMAND set
+	t.Setenv("DOTFILES_CLI_COMMAND", "custom-dotfiles-cli")
+	if cmd := orch.getCliCommand(); cmd != "custom-dotfiles-cli" {
+		t.Errorf("getCliCommand = %q, want custom-dotfiles-cli", cmd)
+	}
+
+	// 3. getCliCommand with DOTFILES_E2E_TEST set
+	t.Setenv("DOTFILES_CLI_COMMAND", "")
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	if cmd := orch.getCliCommand(); cmd == "" {
+		t.Error("expected non-empty getCliCommand in E2E mode")
+	}
+}
+
+func TestEnsureShimDirsAndGenerateToolNilConfig(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	if err := orch.ensureShimDirs(ctx, nil); err == nil {
+		t.Error("expected ensureShimDirs(nil) to return error")
+	}
+
+	tool := &config.ToolConfig{Name: "test"}
+	if err := orch.GenerateTool(ctx, tool, nil); err == nil {
+		t.Error("expected GenerateTool(nil) to return error")
+	}
+
+	// isDir coverage
+	_ = memFS.MkdirAll("/a/dir", 0755)
+	_ = memFS.WriteFile("/a/file", []byte("content"), 0644)
+	if !orch.isDir("/a/dir") {
+		t.Error("expected /a/dir to be recognized as directory")
+	}
+	if orch.isDir("/a/file") {
+		t.Error("expected /a/file to not be recognized as directory")
+	}
+	if orch.isDir("/a/nonexistent") {
+		t.Error("expected /a/nonexistent to not be recognized as directory")
+	}
+}
+
+func TestCleanupStaleCopiesErrorsAndFiltering(t *testing.T) {
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			DotfilesDir:  "/home/user/dotfiles",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	// 1. Error on bad placeholder in copy target
+	toolBadCopy := &config.ToolConfig{
+		Name: "bad-copy",
+		Copies: []config.CopyConfig{
+			{Source: "/src", Target: "{unknown_placeholder}"},
+		},
+	}
+	if err := orch.CleanupStaleCopies(ctx, []*config.ToolConfig{toolBadCopy}, projCfg); err == nil {
+		t.Error("expected CleanupStaleCopies to return error on bad copy placeholder")
+	}
+
+	// 2. Error on bad placeholder in template target
+	toolBadTmpl := &config.ToolConfig{
+		Name: "bad-tmpl",
+		Templates: []config.TemplateConfig{
+			{Source: "/src", Target: "{unknown_placeholder}"},
+		},
+	}
+	if err := orch.CleanupStaleCopies(ctx, []*config.ToolConfig{toolBadTmpl}, projCfg); err == nil {
+		t.Error("expected CleanupStaleCopies to return error on bad template placeholder")
+	}
+
+	// 3. Disabled tool and mismatched hostname tool are skipped
+	toolSkipped := &config.ToolConfig{
+		Name:     "skipped-tool",
+		Disabled: true,
+		Copies: []config.CopyConfig{
+			{Source: "/src", Target: "/home/user/dst"},
+		},
+	}
+	if err := orch.CleanupStaleCopies(ctx, []*config.ToolConfig{toolSkipped}, projCfg); err != nil {
+		t.Fatalf("unexpected error for disabled tool in CleanupStaleCopies: %v", err)
 	}
 }
