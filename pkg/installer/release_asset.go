@@ -3,15 +3,147 @@ package installer
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
+
+// prepareDestDir ensures the target destination directory exists.
+func prepareDestDir(fsys fs.FS, binDir string) (string, error) {
+	destDir := binDir
+	if destDir == "" {
+		destDir = os.TempDir()
+	}
+	if err := fsys.MkdirAll(destDir, 0755); err != nil {
+		return "", fmt.Errorf("creating destination directory: %w", err)
+	}
+	return destDir, nil
+}
+
+// matchReleaseAsset selects the best matching asset from a list of release assets
+// matching assetPattern (if specified) and the target platform and architecture.
+func matchReleaseAsset[T any](assets []T, name func(T) string, sysInfo arch.SystemInfo, assetPattern string) *T {
+	var candidates []T
+	if assetPattern != "" {
+		for _, asset := range assets {
+			if MatchAssetPattern(name(asset), assetPattern) {
+				candidates = append(candidates, asset)
+			}
+		}
+	} else {
+		candidates = assets
+	}
+
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	archRegex := arch.GetArchitectureRegex(sysInfo)
+
+	var strictMatches []T
+	for _, c := range candidates {
+		if arch.MatchesArchitecture(name(c), archRegex) {
+			strictMatches = append(strictMatches, c)
+		}
+	}
+
+	if len(strictMatches) > 0 {
+		strictNames := make([]string, len(strictMatches))
+		for i, sm := range strictMatches {
+			strictNames[i] = name(sm)
+		}
+		bestName := arch.SelectBestMatch(strictNames, sysInfo)
+		if bestName != "" {
+			for _, asset := range strictMatches {
+				if name(asset) == bestName {
+					assetCopy := asset
+					return &assetCopy
+				}
+			}
+		}
+		assetCopy := strictMatches[0]
+		return &assetCopy
+	}
+
+	// Fallback if assetPattern was explicitly specified but no strict platform match was found
+	if assetPattern != "" && len(candidates) > 0 {
+		assetCopy := candidates[0]
+		return &assetCopy
+	}
+
+	return nil
+}
+
+// releaseAssetSelection describes resolving an asset for a release installer.
+type releaseAssetSelection[T any] struct {
+	Log          *logger.Logger
+	FS           fs.FS
+	Runner       exec.CommandRunner
+	Tool         *config.ToolConfig
+	SysCtx       *SystemContext
+	ReleaseTag   string
+	Release      any
+	Assets       []T
+	AssetName    func(T) string
+	AssetPattern string
+	Param        string
+}
+
+// selectReleaseAsset resolves which asset to download for a release installer,
+// checking for custom assetSelector callbacks in the tool config first and
+// falling back to architecture and pattern matching.
+func selectReleaseAsset[T any](ctx context.Context, sel releaseAssetSelection[T]) (*T, error) {
+	param := sel.Param
+	if param == "" {
+		param = assetSelectorParam
+	}
+
+	sysCtx := sel.SysCtx
+	if sysCtx == nil {
+		sysCtx = NewDefaultSystemContext()
+	}
+
+	if vm.HasResolver(sel.Tool, param) {
+		names := assetNames(sel.Assets, sel.AssetName)
+		chosen, err := selectAssetByCallback(ctx, assetSelection{
+			Log:          sel.Log,
+			FS:           sel.FS,
+			Runner:       sel.Runner,
+			Tool:         sel.Tool,
+			Target:       sysCtx.target(),
+			Param:        param,
+			Assets:       sel.Assets,
+			Release:      sel.Release,
+			AssetPattern: sel.AssetPattern,
+			AssetNames:   names,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return pickNamedAsset(sel.Tool.Name, chosen, sel.Assets, sel.AssetName, names)
+	}
+
+	matched := matchReleaseAsset(sel.Assets, sel.AssetName, sysCtx.systemInfo(), sel.AssetPattern)
+	if matched == nil {
+		patternStr := ""
+		if sel.AssetPattern != "" {
+			patternStr = " and pattern " + sel.AssetPattern
+		}
+		return nil, fmt.Errorf(
+			"no compatible asset found for release %q matching %s/%s%s",
+			sel.ReleaseTag, sysCtx.OS, sysCtx.Arch, patternStr,
+		)
+	}
+	return matched, nil
+}
 
 // releaseAssetInstaller turns a downloaded release asset into the tool's binaries. The
 // installers that pick an asset out of a release listing (github-release, gitea-release)

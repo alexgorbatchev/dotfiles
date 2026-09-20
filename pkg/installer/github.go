@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -315,13 +313,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		return nil, err
 	}
 
-	destDir := g.BinDir
-	if destDir == "" {
-		destDir = os.TempDir()
-	}
-
-	if err := g.fsys.MkdirAll(destDir, 0755); err != nil {
-		return nil, fmt.Errorf("creating destination directory: %w", err)
+	destDir, err := prepareDestDir(g.fsys, g.BinDir)
+	if err != nil {
+		return nil, err
 	}
 
 	assetPath := filepath.Join(destDir, matched.Name)
@@ -420,59 +414,7 @@ func (g *GitHubInstaller) matchAsset(assets []githubAsset, assetPattern string) 
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
-
-	// Filter assets by assetPattern if provided
-	var candidates []githubAsset
-	if assetPattern != "" {
-		for _, asset := range assets {
-			if MatchAssetPattern(asset.Name, assetPattern) {
-				candidates = append(candidates, asset)
-			}
-		}
-	} else {
-		candidates = assets
-	}
-
-	if len(candidates) == 0 {
-		return nil
-	}
-
-	sysInfo := sysCtx.systemInfo()
-	archRegex := arch.GetArchitectureRegex(sysInfo)
-
-	// Find strict matches for both OS and CPU architecture
-	var strictMatches []githubAsset
-	for _, c := range candidates {
-		if arch.MatchesArchitecture(c.Name, archRegex) {
-			strictMatches = append(strictMatches, c)
-		}
-	}
-
-	if len(strictMatches) > 0 {
-		strictNames := make([]string, len(strictMatches))
-		for i, sm := range strictMatches {
-			strictNames[i] = sm.Name
-		}
-		bestName := arch.SelectBestMatch(strictNames, sysInfo)
-		if bestName != "" {
-			for _, asset := range strictMatches {
-				if asset.Name == bestName {
-					assetCopy := asset
-					return &assetCopy
-				}
-			}
-		}
-		assetCopy := strictMatches[0]
-		return &assetCopy
-	}
-
-	// Fallback if assetPattern was explicitly specified but no strict platform match was found
-	if assetPattern != "" && len(candidates) > 0 {
-		assetCopy := candidates[0]
-		return &assetCopy
-	}
-
-	return nil
+	return matchReleaseAsset(assets, githubAssetName, sysCtx.systemInfo(), assetPattern)
 }
 
 func init() {

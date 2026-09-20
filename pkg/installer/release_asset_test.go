@@ -4,13 +4,17 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/arch"
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 // mdTuiAssets is the asset list of henriklovhaug/md-tui v0.10.4, a cargo-dist release
@@ -137,5 +141,177 @@ func mockXz(runner *exec.MockRunner, tarBytes []byte) {
 		}
 		_, err := c.Stdout().Write(tarBytes)
 		return err
+	})
+}
+
+func TestPrepareDestDir(t *testing.T) {
+	memFS := fs.NewMemFS()
+
+	dir, err := prepareDestDir(memFS, "/custom/bin")
+	if err != nil || dir != "/custom/bin" {
+		t.Fatalf("prepareDestDir(/custom/bin) = %q, %v; want /custom/bin", dir, err)
+	}
+	exists, err := memFS.Exists("/custom/bin")
+	if err != nil || !exists {
+		t.Errorf("expected /custom/bin to exist")
+	}
+
+	tempDir, err := prepareDestDir(memFS, "")
+	if err != nil || tempDir == "" {
+		t.Fatalf("prepareDestDir(\"\") = %q, %v; want non-empty tempDir", tempDir, err)
+	}
+
+	badFS := &mockErrorFS{FS: memFS}
+	_, err = prepareDestDir(badFS, "/readonly/bin")
+	if err == nil {
+		t.Errorf("expected prepareDestDir on failing fs to fail")
+	}
+}
+
+func TestMatchReleaseAsset(t *testing.T) {
+	type asset struct {
+		Name string
+	}
+	nameFn := func(a asset) string { return a.Name }
+	sysInfoLinux := arch.SystemInfo{OS: "linux", Arch: "amd64"}
+
+	tests := []struct {
+		name         string
+		assets       []asset
+		sysInfo      arch.SystemInfo
+		assetPattern string
+		wantName     string
+		wantNil      bool
+	}{
+		{
+			name:         "empty asset list",
+			assets:       nil,
+			sysInfo:      sysInfoLinux,
+			assetPattern: "",
+			wantNil:      true,
+		},
+		{
+			name: "pattern with no matching candidates",
+			assets: []asset{
+				{Name: "tool-linux-amd64.tar.gz"},
+			},
+			sysInfo:      sysInfoLinux,
+			assetPattern: "*.zip",
+			wantNil:      true,
+		},
+		{
+			name: "pattern matches but no strict platform match -> fallback to first candidate",
+			assets: []asset{
+				{Name: "tool-universal.zip"},
+				{Name: "tool-extra.zip"},
+			},
+			sysInfo:      sysInfoLinux,
+			assetPattern: "*.zip",
+			wantName:     "tool-universal.zip",
+		},
+		{
+			name: "strict platform match found without pattern",
+			assets: []asset{
+				{Name: "tool-darwin-arm64.tar.gz"},
+				{Name: "tool-linux-amd64.tar.gz"},
+				{Name: "tool-windows-amd64.zip"},
+			},
+			sysInfo:      sysInfoLinux,
+			assetPattern: "",
+			wantName:     "tool-linux-amd64.tar.gz",
+		},
+		{
+			name: "pattern filter narrows before platform matching",
+			assets: []asset{
+				{Name: "tool-linux-amd64.deb"},
+				{Name: "tool-linux-amd64.tar.gz"},
+			},
+			sysInfo:      sysInfoLinux,
+			assetPattern: "*.tar.gz",
+			wantName:     "tool-linux-amd64.tar.gz",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchReleaseAsset(tt.assets, nameFn, tt.sysInfo, tt.assetPattern)
+			if tt.wantNil {
+				if got != nil {
+					t.Fatalf("matchReleaseAsset = %v, want nil", got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatalf("matchReleaseAsset = nil, want %q", tt.wantName)
+			}
+			if got.Name != tt.wantName {
+				t.Fatalf("matchReleaseAsset = %q, want %q", got.Name, tt.wantName)
+			}
+		})
+	}
+}
+
+func TestGiteaInstaller_MatchAssetMethod(t *testing.T) {
+	inst := NewGiteaInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, &SystemContext{OS: "linux", Arch: "amd64"})
+	assets := []giteaAsset{
+		{Name: "tool-linux-amd64.tar.gz"},
+		{Name: "tool-darwin-arm64.tar.gz"},
+	}
+
+	matched := inst.matchAsset(assets, "")
+	if matched == nil || matched.Name != "tool-linux-amd64.tar.gz" {
+		t.Errorf("inst.matchAsset = %v, want tool-linux-amd64.tar.gz", matched)
+	}
+
+	instNilCtx := NewGiteaInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, nil)
+	_ = instNilCtx.matchAsset(assets, "")
+}
+
+func TestGitHubInstaller_MatchAssetNilContext(t *testing.T) {
+	instNilCtx := NewGitHubInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, nil)
+	assets := []githubAsset{
+		{Name: "tool-linux-amd64.tar.gz"},
+	}
+	_ = instNilCtx.matchAsset(assets, "")
+}
+
+func TestSelectReleaseAsset(t *testing.T) {
+	type asset struct {
+		Name string
+	}
+	nameFn := func(a asset) string { return a.Name }
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	t.Run("no asset found returns descriptive error", func(t *testing.T) {
+		tool := &config.ToolConfig{Name: "mytool"}
+		_, err := selectReleaseAsset(context.Background(), releaseAssetSelection[asset]{
+			Tool:         tool,
+			SysCtx:       sysCtx,
+			ReleaseTag:   "v1.0.0",
+			Assets:       []asset{{Name: "mytool-windows-amd64.exe"}},
+			AssetName:    nameFn,
+			AssetPattern: "*.tar.gz",
+		})
+		if err == nil {
+			t.Fatal("expected error for unmatched asset, got nil")
+		}
+		wantSubstr := `no compatible asset found for release "v1.0.0" matching linux/amd64 and pattern *.tar.gz`
+		if err.Error() != wantSubstr {
+			t.Errorf("error = %q, want %q", err.Error(), wantSubstr)
+		}
+	})
+
+	t.Run("nil sysCtx defaults properly", func(t *testing.T) {
+		tool := &config.ToolConfig{Name: "mytool"}
+		_, err := selectReleaseAsset(context.Background(), releaseAssetSelection[asset]{
+			Tool:       tool,
+			SysCtx:     nil,
+			ReleaseTag: "v1.0.0",
+			Assets:     []asset{{Name: "nonexistent"}},
+			AssetName:  nameFn,
+		})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
 	})
 }

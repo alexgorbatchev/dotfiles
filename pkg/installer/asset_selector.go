@@ -126,68 +126,35 @@ func pickNamedAsset[T any](toolName, chosen string, assets []T, name func(T) str
 // express -- the whole set of assets at once, or the release's tag. Without one, the
 // built-in matcher narrows by `assetPattern` and then by platform and architecture.
 func (g *GitHubInstaller) selectAsset(ctx context.Context, tool *config.ToolConfig, release *githubRelease, assetPattern string) (*githubAsset, error) {
-	if vm.HasResolver(tool, assetSelectorParam) {
-		names := assetNames(release.Assets, githubAssetName)
-		chosen, err := selectAssetByCallback(ctx, assetSelection{
-			Log:          g.log,
-			FS:           g.fsys,
-			Runner:       g.runner,
-			Tool:         tool,
-			Target:       g.sysCtx.target(),
-			Param:        assetSelectorParam,
-			Assets:       release.Assets,
-			Release:      release,
-			AssetPattern: assetPattern,
-			AssetNames:   names,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return pickNamedAsset(tool.Name, chosen, release.Assets, githubAssetName, names)
-	}
-
-	matched := g.matchAsset(release.Assets, assetPattern)
-	if matched == nil {
-		patternStr := ""
-		if assetPattern != "" {
-			patternStr = " and pattern " + assetPattern
-		}
-		return nil, fmt.Errorf(
-			"no compatible asset found for release %q matching %s/%s%s",
-			release.TagName, g.sysCtx.OS, g.sysCtx.Arch, patternStr,
-		)
-	}
-	return matched, nil
+	return selectReleaseAsset(ctx, releaseAssetSelection[githubAsset]{
+		Log:          g.log,
+		FS:           g.fsys,
+		Runner:       g.runner,
+		Tool:         tool,
+		SysCtx:       g.sysCtx,
+		ReleaseTag:   release.TagName,
+		Release:      release,
+		Assets:       release.Assets,
+		AssetName:    githubAssetName,
+		AssetPattern: assetPattern,
+	})
 }
 
 // selectAsset decides which gitea-release asset to download, the same way
 // github-release does.
 func (g *GiteaInstaller) selectAsset(ctx context.Context, tool *config.ToolConfig, release *giteaRelease, assetPattern string) (*giteaAsset, error) {
-	if vm.HasResolver(tool, assetSelectorParam) {
-		names := assetNames(release.Assets, giteaAssetName)
-		chosen, err := selectAssetByCallback(ctx, assetSelection{
-			Log:          g.log,
-			FS:           g.fsys,
-			Runner:       g.runner,
-			Tool:         tool,
-			Target:       g.sysCtx.target(),
-			Param:        assetSelectorParam,
-			Assets:       release.Assets,
-			Release:      release,
-			AssetPattern: assetPattern,
-			AssetNames:   names,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return pickNamedAsset(tool.Name, chosen, release.Assets, giteaAssetName, names)
-	}
-
-	matched := matchAsset(release.Assets, g.sysCtx.systemInfo(), assetPattern)
-	if matched == nil {
-		return nil, fmt.Errorf("no matching release asset found for OS %s and Arch %s", g.sysCtx.OS, g.sysCtx.Arch)
-	}
-	return matched, nil
+	return selectReleaseAsset(ctx, releaseAssetSelection[giteaAsset]{
+		Log:          g.log,
+		FS:           g.fsys,
+		Runner:       g.runner,
+		Tool:         tool,
+		SysCtx:       g.sysCtx,
+		ReleaseTag:   release.TagName,
+		Release:      release,
+		Assets:       release.Assets,
+		AssetName:    giteaAssetName,
+		AssetPattern: assetPattern,
+	})
 }
 
 // selectAsset decides which release asset the dmg or pkg installer downloads. The

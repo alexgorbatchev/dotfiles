@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -270,13 +269,9 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		return nil, err
 	}
 
-	destDir := g.BinDir
-	if destDir == "" {
-		destDir = os.TempDir()
-	}
-
-	if err := g.fsys.MkdirAll(destDir, 0755); err != nil {
-		return nil, fmt.Errorf("creating destination directory: %w", err)
+	destDir, err := prepareDestDir(g.fsys, g.BinDir)
+	if err != nil {
+		return nil, err
 	}
 
 	assetPath := filepath.Join(destDir, matched.Name)
@@ -340,55 +335,16 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 	}, nil
 }
 
+func (g *GiteaInstaller) matchAsset(assets []giteaAsset, assetPattern string) *giteaAsset {
+	sysCtx := g.sysCtx
+	if sysCtx == nil {
+		sysCtx = NewDefaultSystemContext()
+	}
+	return matchReleaseAsset(assets, giteaAssetName, sysCtx.systemInfo(), assetPattern)
+}
+
 func matchAsset(assets []giteaAsset, sysInfo arch.SystemInfo, assetPattern string) *giteaAsset {
-	var candidates []giteaAsset
-	if assetPattern != "" {
-		for _, asset := range assets {
-			if MatchAssetPattern(asset.Name, assetPattern) {
-				candidates = append(candidates, asset)
-			}
-		}
-	} else {
-		candidates = assets
-	}
-
-	if len(candidates) == 0 {
-		return nil
-	}
-
-	archRegex := arch.GetArchitectureRegex(sysInfo)
-
-	var strictMatches []giteaAsset
-	for _, c := range candidates {
-		if arch.MatchesArchitecture(c.Name, archRegex) {
-			strictMatches = append(strictMatches, c)
-		}
-	}
-
-	if len(strictMatches) > 0 {
-		strictNames := make([]string, len(strictMatches))
-		for i, sm := range strictMatches {
-			strictNames[i] = sm.Name
-		}
-		bestName := arch.SelectBestMatch(strictNames, sysInfo)
-		if bestName != "" {
-			for _, asset := range strictMatches {
-				if asset.Name == bestName {
-					assetCopy := asset
-					return &assetCopy
-				}
-			}
-		}
-		assetCopy := strictMatches[0]
-		return &assetCopy
-	}
-
-	if assetPattern != "" && len(candidates) > 0 {
-		assetCopy := candidates[0]
-		return &assetCopy
-	}
-
-	return nil
+	return matchReleaseAsset(assets, giteaAssetName, sysInfo, assetPattern)
 }
 
 func init() {
