@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/block"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -64,6 +65,38 @@ func (ins *Inspector) InspectTool(ctx context.Context, tool *config.ToolConfig) 
 	}
 
 	// 1. Inspect Symlinks
+	symItems, err := ins.inspectSymlinks(ctx, tool, resolveTarget, resolveSource)
+	if err != nil {
+		return nil, err
+	}
+	items = append(items, symItems...)
+
+	// 2. Inspect Copies
+	copyItems, err := ins.inspectCopies(ctx, tool, resolveTarget, resolveSource)
+	if err != nil {
+		return nil, err
+	}
+	items = append(items, copyItems...)
+
+	// 3. Inspect Templates
+	tmplItems, err := ins.inspectTemplates(ctx, tool, resolveTarget, resolveSource)
+	if err != nil {
+		return nil, err
+	}
+	items = append(items, tmplItems...)
+
+	// 4. Inspect Blocks
+	blockItems, err := ins.inspectBlocks(ctx, tool, resolveTarget)
+	if err != nil {
+		return nil, err
+	}
+	items = append(items, blockItems...)
+
+	return items, nil
+}
+
+func (ins *Inspector) inspectSymlinks(ctx context.Context, tool *config.ToolConfig, resolveTarget, resolveSource func(string) string) ([]Item, error) {
+	var items []Item
 	for _, sym := range tool.Symlinks {
 		target := resolveTarget(sym.Target)
 		source := resolveSource(sym.Source)
@@ -82,19 +115,24 @@ func (ins *Inspector) InspectTool(ctx context.Context, tool *config.ToolConfig) 
 		}
 
 		desired := source
+		targetDir := filepath.Dir(target)
+		normCurrent := ins.normalizeSymlinkTarget(targetDir, current)
+		normDesired := ins.normalizeSymlinkTarget(targetDir, desired)
+		normBase := ins.normalizeSymlinkTarget(targetDir, base)
+
 		state := StateInSync
-		if current != desired {
-			if current == "" {
-				if base == "" {
+		if normCurrent != normDesired {
+			if normCurrent == "" {
+				if normBase == "" {
 					state = StateNew
 				} else {
 					state = StateMissing
 				}
-			} else if base == "" {
+			} else if normBase == "" {
 				state = StateUnmanaged
-			} else if current == base {
+			} else if normCurrent == normBase {
 				state = StateUpstreamUpdate
-			} else if desired == base {
+			} else if normDesired == normBase {
 				state = StateLocalDrift
 			} else {
 				state = StateConflict
@@ -116,8 +154,70 @@ func (ins *Inspector) InspectTool(ctx context.Context, tool *config.ToolConfig) 
 			DesiredContent: desired,
 		})
 	}
+	return items, nil
+}
 
-	// 2. Inspect Templates
+func (ins *Inspector) inspectCopies(ctx context.Context, tool *config.ToolConfig, resolveTarget, resolveSource func(string) string) ([]Item, error) {
+	var items []Item
+	for _, cp := range tool.Copies {
+		target := resolveTarget(cp.Target)
+		source := resolveSource(cp.Source)
+
+		sourceData, err := ins.fs.ReadFile(source)
+		desired := ""
+		sourceExists := err == nil
+		if sourceExists {
+			desired = string(sourceData)
+		}
+
+		currentData, err := ins.fs.ReadFile(target)
+		current := ""
+		currentExists := err == nil
+		if currentExists {
+			current = string(currentData)
+		}
+
+		recorded, _ := ins.reg.GetFileState(ctx, target)
+		baseHash := ""
+		if recorded != nil && recorded.ContentHash != nil {
+			baseHash = *recorded.ContentHash
+		}
+
+		currentHash := ""
+		if currentExists {
+			currentHash = fs.HashContent([]byte(current))
+		}
+		desiredHash := ""
+		if sourceExists {
+			desiredHash = fs.HashContent([]byte(desired))
+		}
+
+		state := Evaluate(Versions{
+			Base:    baseHash,
+			Current: currentHash,
+			Desired: desiredHash,
+		})
+
+		diffText := ""
+		if state != StateInSync {
+			diffText = UnifiedDiff(target+" (current)", target+" (desired)", current, desired)
+		}
+
+		items = append(items, Item{
+			ToolName:       tool.Name,
+			FilePath:       target,
+			Type:           "copy",
+			State:          state,
+			Diff:           diffText,
+			CurrentContent: current,
+			DesiredContent: desired,
+		})
+	}
+	return items, nil
+}
+
+func (ins *Inspector) inspectTemplates(ctx context.Context, tool *config.ToolConfig, resolveTarget, resolveSource func(string) string) ([]Item, error) {
+	var items []Item
 	for _, tmpl := range tool.Templates {
 		target := resolveTarget(tmpl.Target)
 		source := resolveSource(tmpl.Source)
@@ -168,8 +268,11 @@ func (ins *Inspector) InspectTool(ctx context.Context, tool *config.ToolConfig) 
 			DesiredContent: desired,
 		})
 	}
+	return items, nil
+}
 
-	// 3. Inspect Blocks
+func (ins *Inspector) inspectBlocks(ctx context.Context, tool *config.ToolConfig, resolveTarget func(string) string) ([]Item, error) {
+	var items []Item
 	for _, blk := range tool.Blocks {
 		target := resolveTarget(blk.Target)
 		desiredBody := blk.Content
@@ -220,8 +323,37 @@ func (ins *Inspector) InspectTool(ctx context.Context, tool *config.ToolConfig) 
 			DesiredContent: desiredBody,
 		})
 	}
-
 	return items, nil
+}
+
+func (ins *Inspector) normalizeSymlinkTarget(targetDir, p string) string {
+	if p == "" {
+		return ""
+	}
+	if !filepath.IsAbs(p) && targetDir != "" {
+		p = filepath.Join(targetDir, p)
+	}
+	if abs, err := ins.fs.Abs(p); err == nil {
+		p = abs
+	}
+	return normalizeCanonicalPath(p)
+}
+
+func normalizeCanonicalPath(p string) string {
+	if p == "" {
+		return ""
+	}
+	p = filepath.Clean(p)
+	for _, prefix := range []string{"/private/var", "/private/tmp", "/private/etc"} {
+		alias := strings.TrimPrefix(prefix, "/private")
+		if p == prefix {
+			return alias
+		}
+		if strings.HasPrefix(p, prefix+"/") {
+			return alias + strings.TrimPrefix(p, prefix)
+		}
+	}
+	return p
 }
 
 // InspectAll inspects all provided tools.

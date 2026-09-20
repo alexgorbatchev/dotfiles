@@ -177,6 +177,225 @@ func TestInspector_SymlinkStates(t *testing.T) {
 	}
 }
 
+func TestInspector_CopyStates(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	mem := fs.NewMemFS()
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.HomeDir = "/home/user"
+	_ = mem.MkdirAll("/home/user/.config/app", 0755)
+	_ = mem.MkdirAll("/repo/tools/tool", 0755)
+
+	srcPath := "/repo/tools/tool/config.toml"
+	targetPath := "/home/user/.config/app/config.toml"
+
+	_ = mem.WriteFile(srcPath, []byte("theme = default\n"), 0644)
+
+	tool := &config.ToolConfig{
+		Name:           "tool",
+		ConfigFilePath: "/repo/tools/tool/tool.tool.ts",
+		Copies: []config.CopyConfig{
+			{
+				Source: "./config.toml",
+				Target: "~/.config/app/config.toml",
+			},
+		},
+	}
+
+	ins := NewInspector(mem, reg, projCfg)
+
+	t.Run("StateNew when target does not exist and no base recorded", func(t *testing.T) {
+		items, err := ins.InspectTool(ctx, tool)
+		if err != nil {
+			t.Fatalf("InspectTool failed: %v", err)
+		}
+		if len(items) != 1 {
+			t.Fatalf("expected 1 item, got %d", len(items))
+		}
+		item := items[0]
+		if item.Type != "copy" {
+			t.Errorf("expected Type 'copy', got %q", item.Type)
+		}
+		if item.State != StateNew {
+			t.Errorf("expected StateNew, got %q", item.State)
+		}
+		if item.Diff == "" {
+			t.Error("expected non-empty diff for StateNew")
+		}
+	})
+
+	t.Run("StateInSync when target exists matching desired without base", func(t *testing.T) {
+		_ = mem.WriteFile(targetPath, []byte("theme = default\n"), 0644)
+		items, err := ins.InspectTool(ctx, tool)
+		if err != nil {
+			t.Fatalf("InspectTool failed: %v", err)
+		}
+		if len(items) != 1 || items[0].State != StateInSync {
+			t.Errorf("expected StateInSync, got %+v", items)
+		}
+	})
+
+	t.Run("StateUnmanaged when target exists differing from desired without base", func(t *testing.T) {
+		_ = mem.WriteFile(targetPath, []byte("theme = custom\n"), 0644)
+		items, err := ins.InspectTool(ctx, tool)
+		if err != nil {
+			t.Fatalf("InspectTool failed: %v", err)
+		}
+		if len(items) != 1 || items[0].State != StateUnmanaged {
+			t.Errorf("expected StateUnmanaged, got %+v", items)
+		}
+	})
+
+	// Record base state in registry (base content: "theme = default\n")
+	baseHash := fs.HashContent([]byte("theme = default\n"))
+	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "tool",
+			OperationType: "copy",
+			FilePath:      targetPath,
+			ContentHash:   &baseHash,
+			FileType:      "file",
+			CreatedAt:     100,
+			OperationID:   "op_copy_1",
+		})
+	})
+
+	t.Run("StateMissing when recorded target is removed from disk", func(t *testing.T) {
+		_ = mem.Remove(targetPath)
+		items, err := ins.InspectTool(ctx, tool)
+		if err != nil {
+			t.Fatalf("InspectTool failed: %v", err)
+		}
+		if len(items) != 1 || items[0].State != StateMissing {
+			t.Errorf("expected StateMissing, got %+v", items)
+		}
+	})
+
+	t.Run("StateUpstreamUpdate when disk matches base but source updated", func(t *testing.T) {
+		_ = mem.WriteFile(targetPath, []byte("theme = default\n"), 0644)
+		_ = mem.WriteFile(srcPath, []byte("theme = v2\n"), 0644)
+		items, err := ins.InspectTool(ctx, tool)
+		if err != nil {
+			t.Fatalf("InspectTool failed: %v", err)
+		}
+		if len(items) != 1 || items[0].State != StateUpstreamUpdate {
+			t.Errorf("expected StateUpstreamUpdate, got %+v", items)
+		}
+	})
+
+	t.Run("StateLocalDrift when source matches base but disk modified", func(t *testing.T) {
+		_ = mem.WriteFile(srcPath, []byte("theme = default\n"), 0644)
+		_ = mem.WriteFile(targetPath, []byte("theme = user-edit\n"), 0644)
+		items, err := ins.InspectTool(ctx, tool)
+		if err != nil {
+			t.Fatalf("InspectTool failed: %v", err)
+		}
+		if len(items) != 1 || items[0].State != StateLocalDrift {
+			t.Errorf("expected StateLocalDrift, got %+v", items)
+		}
+	})
+
+	t.Run("StateConflict when both disk and source modified from base", func(t *testing.T) {
+		_ = mem.WriteFile(srcPath, []byte("theme = v2\n"), 0644)
+		_ = mem.WriteFile(targetPath, []byte("theme = user-edit\n"), 0644)
+		items, err := ins.InspectTool(ctx, tool)
+		if err != nil {
+			t.Fatalf("InspectTool failed: %v", err)
+		}
+		if len(items) != 1 || items[0].State != StateConflict {
+			t.Errorf("expected StateConflict, got %+v", items)
+		}
+	})
+}
+
+func TestInspector_SymlinkCanonicalTargetMatching(t *testing.T) {
+	ctx := context.Background()
+	database, _ := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+	mem := fs.NewMemFS()
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.HomeDir = "/home/user"
+	_ = mem.MkdirAll("/home/user", 0755)
+
+	tests := []struct {
+		name       string
+		diskTarget string
+		toolSource string
+		wantState  State
+	}{
+		{
+			name:       "macOS /private/var alias matches /var",
+			diskTarget: "/private/var/folders/xyz/tool/config",
+			toolSource: "/var/folders/xyz/tool/config",
+			wantState:  StateInSync,
+		},
+		{
+			name:       "macOS /private/tmp alias matches /tmp",
+			diskTarget: "/private/tmp/tool/config",
+			toolSource: "/tmp/tool/config",
+			wantState:  StateInSync,
+		},
+		{
+			name:       "macOS /tmp on disk matches /private/tmp desired",
+			diskTarget: "/tmp/tool/config",
+			toolSource: "/private/tmp/tool/config",
+			wantState:  StateInSync,
+		},
+		{
+			name:       "macOS /private/etc alias matches /etc",
+			diskTarget: "/private/etc/hosts.custom",
+			toolSource: "/etc/hosts.custom",
+			wantState:  StateInSync,
+		},
+		{
+			name:       "Cleaned path with relative components matches",
+			diskTarget: "/home/user/app/../app/config",
+			toolSource: "/home/user/app/config",
+			wantState:  StateInSync,
+		},
+		{
+			name:       "Non-matching symlink returns drift",
+			diskTarget: "/other/path/config",
+			toolSource: "/var/folders/xyz/tool/config",
+			wantState:  StateUnmanaged,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			symLinkTarget := "/home/user/symlink"
+			_ = mem.Remove(symLinkTarget)
+			_ = mem.Symlink(tt.diskTarget, symLinkTarget)
+
+			tool := &config.ToolConfig{
+				Name: "test-symlink",
+				Symlinks: []config.SymlinkConfig{
+					{Source: tt.toolSource, Target: symLinkTarget},
+				},
+			}
+
+			ins := NewInspector(mem, reg, projCfg)
+			items, err := ins.InspectTool(ctx, tool)
+			if err != nil {
+				t.Fatalf("InspectTool failed: %v", err)
+			}
+			if len(items) != 1 {
+				t.Fatalf("expected 1 item, got %d", len(items))
+			}
+			if items[0].State != tt.wantState {
+				t.Errorf("got state %q, want %q (diff: %s)", items[0].State, tt.wantState, items[0].Diff)
+			}
+		})
+	}
+}
+
 func TestUnifiedDiff_Binary(t *testing.T) {
 	binary1 := "\x00\x01\x02"
 	binary2 := "\x00\x01\x03"
