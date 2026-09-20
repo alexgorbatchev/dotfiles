@@ -323,3 +323,126 @@ func TestApplyHandlesAnEmptyBody(t *testing.T) {
 		t.Errorf("got:\n%q\nwant:\n%q", got, want)
 	}
 }
+
+func TestCRLFHandling(t *testing.T) {
+	crlfContent := "Host personal-pi\r\n  HostName 192.168.1.50\r\n\r\n# >>> dotfiles:ssh-includes (managed by dotfiles - do not edit inside block)\r\nInclude /repo/tools/ssh/config\r\n# <<< dotfiles:ssh-includes\r\n\r\nHost corporate-bastion\r\n  HostName bastion.corp.example.com\r\n"
+
+	t.Run("Find extracts body without carriage returns", func(t *testing.T) {
+		region, found, err := Find(crlfContent, "ssh-includes")
+		if err != nil {
+			t.Fatalf("finding block: %v", err)
+		}
+		if !found {
+			t.Fatal("expected to find block")
+		}
+		if strings.Contains(region.Body, "\r") {
+			t.Errorf("body contains trailing carriage return: %q", region.Body)
+		}
+		if region.Body != "Include /repo/tools/ssh/config" {
+			t.Errorf("got body %q, want %q", region.Body, "Include /repo/tools/ssh/config")
+		}
+		extracted := crlfContent[region.Start:region.End]
+		if !strings.HasPrefix(extracted, "# >>>") || !strings.HasSuffix(extracted, "\r\n") {
+			t.Errorf("extracted region is not bounded properly: %q", extracted)
+		}
+	})
+
+	t.Run("Find without notice on CRLF", func(t *testing.T) {
+		raw := "# >>> dotfiles:test\r\nmy body\r\n# <<< dotfiles:test\r\n"
+		region, found, err := Find(raw, "test")
+		if err != nil {
+			t.Fatalf("finding block without notice: %v", err)
+		}
+		if !found {
+			t.Fatal("expected to find block")
+		}
+		if region.Body != "my body" {
+			t.Errorf("got body %q, want %q", region.Body, "my body")
+		}
+	})
+
+	t.Run("Apply is idempotent with CRLF", func(t *testing.T) {
+		opts := Options{
+			ID:    "ssh-includes",
+			Body:  "Include /repo/tools/ssh/config",
+			Style: StyleHash,
+		}
+		once, err := Apply(crlfContent, opts)
+		if err != nil {
+			t.Fatalf("first apply: %v", err)
+		}
+		if once != crlfContent {
+			t.Errorf("applying existing CRLF block changed content:\n--- got ---\n%q\n--- want ---\n%q", once, crlfContent)
+		}
+		twice, err := Apply(once, opts)
+		if err != nil {
+			t.Fatalf("second apply: %v", err)
+		}
+		if twice != once {
+			t.Errorf("second apply changed content:\n--- once ---\n%q\n--- twice ---\n%q", once, twice)
+		}
+	})
+
+	t.Run("Apply updates block in CRLF content with new body", func(t *testing.T) {
+		opts := Options{
+			ID:    "ssh-includes",
+			Body:  "Include /repo/tools/ssh/config\nInclude /repo/tools/ssh/config.extra",
+			Style: StyleHash,
+		}
+		got, err := Apply(crlfContent, opts)
+		if err != nil {
+			t.Fatalf("applying updated block: %v", err)
+		}
+		want := "Host personal-pi\r\n  HostName 192.168.1.50\r\n\r\n# >>> dotfiles:ssh-includes (managed by dotfiles - do not edit inside block)\r\nInclude /repo/tools/ssh/config\r\nInclude /repo/tools/ssh/config.extra\r\n# <<< dotfiles:ssh-includes\r\n\r\nHost corporate-bastion\r\n  HostName bastion.corp.example.com\r\n"
+		if got != want {
+			t.Errorf("got:\n%q\nwant:\n%q", got, want)
+		}
+	})
+
+	t.Run("Apply inserts block into CRLF content at bottom", func(t *testing.T) {
+		initial := "Host existing\r\n"
+		opts := Options{
+			ID:       "new",
+			Body:     "line 1\nline 2",
+			Style:    StyleHash,
+			Position: Bottom,
+		}
+		got, err := Apply(initial, opts)
+		if err != nil {
+			t.Fatalf("applying new block: %v", err)
+		}
+		want := "Host existing\r\n# >>> dotfiles:new (managed by dotfiles - do not edit inside block)\r\nline 1\r\nline 2\r\n# <<< dotfiles:new\r\n"
+		if got != want {
+			t.Errorf("got:\n%q\nwant:\n%q", got, want)
+		}
+	})
+
+	t.Run("Apply inserts block into CRLF content at top", func(t *testing.T) {
+		initial := "Host existing\r\n"
+		opts := Options{
+			ID:       "new",
+			Body:     "line 1\r\nline 2",
+			Style:    StyleHash,
+			Position: Top,
+		}
+		got, err := Apply(initial, opts)
+		if err != nil {
+			t.Fatalf("applying top block: %v", err)
+		}
+		want := "# >>> dotfiles:new (managed by dotfiles - do not edit inside block)\r\nline 1\r\nline 2\r\n# <<< dotfiles:new\r\nHost existing\r\n"
+		if got != want {
+			t.Errorf("got:\n%q\nwant:\n%q", got, want)
+		}
+	})
+
+	t.Run("Remove cleanly removes block from CRLF content", func(t *testing.T) {
+		got, err := Remove(crlfContent, "ssh-includes")
+		if err != nil {
+			t.Fatalf("removing block: %v", err)
+		}
+		want := "Host personal-pi\r\n  HostName 192.168.1.50\r\n\r\n\r\nHost corporate-bastion\r\n  HostName bastion.corp.example.com\r\n"
+		if got != want {
+			t.Errorf("got:\n%q\nwant:\n%q", got, want)
+		}
+	})
+}

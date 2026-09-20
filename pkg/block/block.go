@@ -75,7 +75,7 @@ var validID = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 // found only when the prefix still agrees would be duplicated rather than rewritten,
 // leaving the user with two copies of it.
 func markerPattern(arrow, id string) *regexp.Regexp {
-	return regexp.MustCompile(`(?m)^.*` + regexp.QuoteMeta(arrow) + `[ \t]+dotfiles:` + regexp.QuoteMeta(id) + `(?:[ \t].*)?$`)
+	return regexp.MustCompile(`(?m)^[^\r\n]*` + regexp.QuoteMeta(arrow) + `[ \t]+dotfiles:` + regexp.QuoteMeta(id) + `(?:[ \t][^\r\n]*)?\r?$`)
 }
 
 // Find locates the managed block with the given id.
@@ -120,7 +120,9 @@ func Find(content, id string) (Region, bool, error) {
 		bodyStart++
 	}
 	body := content[bodyStart:closes[0][0]]
+	body = strings.TrimSuffix(body, "\r\n")
 	body = strings.TrimSuffix(body, "\n")
+	body = strings.TrimSuffix(body, "\r")
 
 	return Region{Body: body, Start: start, End: end}, true, nil
 }
@@ -137,28 +139,37 @@ func Apply(content string, opts Options) (string, error) {
 		return "", err
 	}
 
-	rendered := render(opts)
+	eol := "\n"
+	if strings.Contains(content, "\r\n") || strings.Contains(opts.Body, "\r\n") {
+		eol = "\r\n"
+	}
+
+	rendered := render(opts, eol)
 
 	if found {
 		// Whether the existing block ended in a newline decides whether the new one
 		// does, so replacing it neither joins it to the next line nor invents a
 		// blank one.
-		if region.End > 0 && content[region.End-1] == '\n' {
-			rendered += "\n"
+		if region.End > 0 {
+			if strings.HasSuffix(content[:region.End], "\r\n") {
+				rendered += "\r\n"
+			} else if strings.HasSuffix(content[:region.End], "\n") {
+				rendered += "\n"
+			}
 		}
 		return content[:region.Start] + rendered + content[region.End:], nil
 	}
 
 	if content == "" {
-		return rendered + "\n", nil
+		return rendered + eol, nil
 	}
 	if opts.Position == Top {
-		return rendered + "\n" + content, nil
+		return rendered + eol + content, nil
 	}
-	if !strings.HasSuffix(content, "\n") {
-		content += "\n"
+	if !strings.HasSuffix(content, "\n") && !strings.HasSuffix(content, "\r") {
+		content += eol
 	}
-	return content + rendered + "\n", nil
+	return content + rendered + eol, nil
 }
 
 // Remove returns content without the block, and returns it untouched when the block
@@ -176,7 +187,7 @@ func Remove(content, id string) (string, error) {
 }
 
 // render builds the marker-delimited text for a block, without a trailing newline.
-func render(opts Options) string {
+func render(opts Options, eol string) string {
 	style := opts.Style
 	if style == "" {
 		style = StyleHash
@@ -184,9 +195,15 @@ func render(opts Options) string {
 	prefix := string(style)
 
 	var out strings.Builder
-	out.WriteString(prefix + " >>> dotfiles:" + opts.ID + " " + noticeText + "\n")
+	out.WriteString(prefix + " >>> dotfiles:" + opts.ID + " " + noticeText + eol)
 	if opts.Body != "" {
-		out.WriteString(strings.TrimSuffix(opts.Body, "\n") + "\n")
+		body := strings.ReplaceAll(opts.Body, "\r\n", "\n")
+		body = strings.TrimSuffix(body, "\n")
+		body = strings.TrimSuffix(body, "\r")
+		if eol == "\r\n" {
+			body = strings.ReplaceAll(body, "\n", "\r\n")
+		}
+		out.WriteString(body + eol)
 	}
 	out.WriteString(prefix + " <<< dotfiles:" + opts.ID)
 	return out.String()
