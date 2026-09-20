@@ -98,6 +98,9 @@ func (p *ProgressBar) Update(downloaded int64) {
 
 // RenderFrame generates the colored, formatted progress bar string.
 func (p *ProgressBar) RenderFrame() string {
+	if p == nil {
+		return ""
+	}
 	elapsed := time.Since(p.startTime)
 	elapsedMs := elapsed.Milliseconds()
 
@@ -110,6 +113,9 @@ func (p *ProgressBar) RenderFrame() string {
 	}
 
 	transferredBytes := p.bytesDownloaded
+	if transferredBytes < 0 {
+		transferredBytes = 0
+	}
 	if transferredBytes > p.totalBytes {
 		transferredBytes = p.totalBytes
 	}
@@ -117,7 +123,9 @@ func (p *ProgressBar) RenderFrame() string {
 	var percentage float64
 	if p.totalBytes > 0 {
 		percentage = (float64(transferredBytes) / float64(p.totalBytes)) * 100
-		if percentage > 100 {
+		if math.IsNaN(percentage) || math.IsInf(percentage, 0) || percentage < 0 {
+			percentage = 0
+		} else if percentage > 100 {
 			percentage = 100
 		}
 	}
@@ -147,6 +155,12 @@ func renderPrefix(filename string, useAnsi bool) string {
 }
 
 func renderFancyProgressField(percentage float64, percentageText, transferredText, totalText string, useAnsi bool) string {
+	if math.IsNaN(percentage) || math.IsInf(percentage, 0) || percentage < 0 {
+		percentage = 0
+	} else if percentage > 100 {
+		percentage = 100
+	}
+
 	transferSummary := fmt.Sprintf("(%s/%s)", transferredText, totalText)
 	progressFieldText := fmt.Sprintf(" %s %s ", percentageText, transferSummary)
 
@@ -170,6 +184,11 @@ func renderFancyProgressField(percentage float64, percentageText, transferredTex
 	transferStart := percentageEnd + 1
 	transferEnd := transferStart + len(transferSummary)
 	loadedChars := int(math.Floor(progressFieldWidth * (percentage / 100)))
+	if loadedChars < 0 {
+		loadedChars = 0
+	} else if loadedChars > progressFieldWidth {
+		loadedChars = progressFieldWidth
+	}
 
 	return renderStyledProgressField(visibleFieldText, loadedChars, percentageStart, percentageEnd, transferStart, transferEnd)
 }
@@ -216,27 +235,33 @@ func getProgressFieldStyle(index, loadedChars, percentageStart, percentageEnd, t
 }
 
 func formatSpeed(bytesDownloaded int64, elapsedMs int64) string {
-	if elapsedMs <= 0 {
+	if elapsedMs <= 0 || bytesDownloaded <= 0 {
 		return "0B/s"
 	}
 	speed := float64(bytesDownloaded) / (float64(elapsedMs) / 1000.0)
+	if math.IsNaN(speed) || math.IsInf(speed, 0) || speed <= 0 {
+		return "0B/s"
+	}
 	return formatBytes(speed) + "/s"
 }
 
 func formatEta(bytesDownloaded, totalBytes, elapsedMs int64, useAnsi bool) string {
 	elapsed := time.Duration(elapsedMs) * time.Millisecond
-	if elapsed < etaVisibilityDelay || bytesDownloaded <= 0 || bytesDownloaded >= totalBytes {
+	if elapsed < etaVisibilityDelay || bytesDownloaded <= 0 || totalBytes <= 0 || bytesDownloaded >= totalBytes {
 		return ""
 	}
 
 	remainingBytes := totalBytes - bytesDownloaded
 	bytesPerMs := float64(bytesDownloaded) / float64(elapsedMs)
 
-	if bytesPerMs <= 0 {
+	if bytesPerMs <= 0 || math.IsNaN(bytesPerMs) || math.IsInf(bytesPerMs, 0) {
 		return ""
 	}
 
 	etaMs := float64(remainingBytes) / bytesPerMs
+	if math.IsNaN(etaMs) || math.IsInf(etaMs, 0) || etaMs < 0 {
+		return ""
+	}
 	etaDuration := time.Duration(etaMs) * time.Millisecond
 	etaText := fmt.Sprintf(" | %s left", formatDuration(etaDuration))
 
@@ -262,6 +287,9 @@ func formatDuration(d time.Duration) string {
 }
 
 func formatBytes(bytes float64) string {
+	if math.IsNaN(bytes) || math.IsInf(bytes, 0) || bytes <= 0 {
+		return "0B"
+	}
 	units := []string{"B", "kB", "MB", "GB", "TB"}
 	if bytes < 1000 {
 		return fmt.Sprintf("%.0fB", bytes)
@@ -278,6 +306,11 @@ func formatBytes(bytes float64) string {
 }
 
 func formatPercentage(percentage float64) string {
+	if math.IsNaN(percentage) || math.IsInf(percentage, 0) || percentage < 0 {
+		percentage = 0
+	} else if percentage > 100 {
+		percentage = 100
+	}
 	s := fmt.Sprintf("%.4f", percentage)
 	if len(s) > 5 {
 		s = s[:5]
