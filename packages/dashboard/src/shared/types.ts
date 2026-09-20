@@ -1,6 +1,5 @@
 export interface IBinaryConfig {
   name: string;
-  pattern: string;
 }
 
 export interface IFileState {
@@ -201,35 +200,6 @@ export interface IConfigSummary {
   binariesDir: string;
   targetDir: string;
   toolConfigsDir: string | string[];
-}
-
-/**
- * Single file entry for the files list.
- */
-export interface IFileEntry {
-  filePath: string;
-  fileType: string;
-  toolName: string;
-}
-
-/**
- * Files list response (flat list, UI builds tree).
- */
-export interface IFilesList {
-  files: IFileEntry[];
-  totalCount: number;
-}
-
-/**
- * File tree node for UI display.
- */
-export interface IFileTreeNode {
-  name: string;
-  path: string;
-  type: "directory" | "file";
-  fileType?: string;
-  toolName?: string;
-  children?: IFileTreeNode[];
 }
 
 /**

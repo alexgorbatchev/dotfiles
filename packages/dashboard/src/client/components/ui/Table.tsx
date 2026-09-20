@@ -27,17 +27,6 @@ export function TableBody({ class: className, ...props }: ComponentProps<"tbody"
   );
 }
 
-export function TableFooter({ class: className, ...props }: ComponentProps<"tfoot">): JSX.Element {
-  return (
-    <tfoot
-      data-testid="TableFooter"
-      data-slot="table-footer"
-      class={cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)}
-      {...props}
-    />
-  );
-}
-
 export function TableRow({ class: className, ...props }: ComponentProps<"tr">): JSX.Element {
   return (
     <tr
@@ -72,17 +61,6 @@ export function TableCell({ class: className, ...props }: ComponentProps<"td">):
         "whitespace-nowrap p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
-      {...props}
-    />
-  );
-}
-
-export function TableCaption({ class: className, ...props }: ComponentProps<"caption">): JSX.Element {
-  return (
-    <caption
-      data-testid="TableCaption"
-      data-slot="table-caption"
-      class={cn("mt-4 text-muted-foreground text-sm", className)}
       {...props}
     />
   );

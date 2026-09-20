@@ -5,16 +5,7 @@ import { describe, expect, test } from "bun:test";
 
 setupUITests();
 
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/Table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/Table";
 
 describe("Table", () => {
   test("renders table element", () => {
@@ -119,36 +110,6 @@ describe("TableBody", () => {
     );
 
     expect(screen.getByTestId("body")).toHaveAttribute("data-slot", "table-body");
-  });
-});
-
-describe("TableFooter", () => {
-  test("renders tfoot element", () => {
-    render(
-      <Table>
-        <TableFooter data-testid="footer">
-          <TableRow>
-            <TableCell>Footer</TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>,
-    );
-
-    expect(screen.getByTestId("footer").tagName).toBe("TFOOT");
-  });
-
-  test("has table-footer data-slot attribute", () => {
-    render(
-      <Table>
-        <TableFooter data-testid="footer">
-          <TableRow>
-            <TableCell>Footer</TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>,
-    );
-
-    expect(screen.getByTestId("footer")).toHaveAttribute("data-slot", "table-footer");
   });
 });
 
@@ -286,43 +247,10 @@ describe("TableCell", () => {
   });
 });
 
-describe("TableCaption", () => {
-  test("renders caption element", () => {
-    render(
-      <Table>
-        <TableCaption data-testid="caption">Table caption</TableCaption>
-        <TableBody>
-          <TableRow>
-            <TableCell>Cell</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>,
-    );
-
-    expect(screen.getByTestId("caption").tagName).toBe("CAPTION");
-  });
-
-  test("has table-caption data-slot attribute", () => {
-    render(
-      <Table>
-        <TableCaption data-testid="caption">Caption</TableCaption>
-        <TableBody>
-          <TableRow>
-            <TableCell>Cell</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>,
-    );
-
-    expect(screen.getByTestId("caption")).toHaveAttribute("data-slot", "table-caption");
-  });
-});
-
 describe("Table composition", () => {
   test("renders full table with all subcomponents", () => {
     render(
       <Table>
-        <TableCaption>A list of items</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
@@ -339,20 +267,12 @@ describe("Table composition", () => {
             <TableCell>200</TableCell>
           </TableRow>
         </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell>Total</TableCell>
-            <TableCell>300</TableCell>
-          </TableRow>
-        </TableFooter>
       </Table>,
     );
 
-    expect(screen.getByText("A list of items")).toBeInTheDocument();
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Value")).toBeInTheDocument();
     expect(screen.getByText("Item 1")).toBeInTheDocument();
     expect(screen.getByText("Item 2")).toBeInTheDocument();
-    expect(screen.getByText("Total")).toBeInTheDocument();
   });
 });

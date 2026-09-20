@@ -14,5 +14,7 @@ export default defineConfig({
     // pkg/vm is the DSL's public authoring surface, consumed by users' .tool.ts
     // files rather than from inside this repository.
     "**/pkg/vm/**",
+    // Test setup utility exported for use across UI test files.
+    "**/packages/dashboard/src/testing/**",
   ],
 });

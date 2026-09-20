@@ -51,7 +51,7 @@ describe("getBinaryName", () => {
   });
 
   test("returns name from binary config object", () => {
-    expect(getBinaryName({ name: "bar", pattern: "**/*" })).toBe("bar");
+    expect(getBinaryName({ name: "bar" })).toBe("bar");
   });
 });
 
@@ -73,7 +73,7 @@ describe("buildBinaryToToolMap", () => {
     const tools = [
       createMockToolDetail({
         name: "tool-c",
-        binaries: [{ name: "bin-c", pattern: "**/*" }],
+        binaries: [{ name: "bin-c" }],
       }),
     ];
 

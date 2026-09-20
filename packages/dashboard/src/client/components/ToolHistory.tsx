@@ -75,6 +75,7 @@ export function ToolHistory({ entries, installedAt, dotfilesDir }: IToolHistoryP
                       {operationIcons[entry.operationType] || <File class="h-4 w-4" />}
                     </span>
                     <span class="font-medium">{operationLabels[entry.operationType] || entry.operationType}</span>
+                    {entry.fileType && <span class="text-xs text-muted-foreground">({entry.fileType})</span>}
                     <span class="ml-auto text-xs text-muted-foreground">{entry.relativeTime}</span>
                   </div>
                   <div class="mt-1 truncate text-sm text-muted-foreground" title={entry.filePath}>

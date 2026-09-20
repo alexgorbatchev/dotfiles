@@ -42,39 +42,6 @@ export function CardTitle({ class: className, ...props }: CardProps): JSX.Elemen
   );
 }
 
-export function CardDescription({ class: className, ...props }: CardProps): JSX.Element {
-  return (
-    <div
-      data-testid="CardDescription"
-      data-slot="card-description"
-      class={cn("text-muted-foreground text-sm", className)}
-      {...props}
-    />
-  );
-}
-
-export function CardAction({ class: className, ...props }: CardProps): JSX.Element {
-  return (
-    <div
-      data-testid="CardAction"
-      data-slot="card-action"
-      class={cn("col-start-2 row-span-2 row-start-1 self-start justify-self-end", className)}
-      {...props}
-    />
-  );
-}
-
 export function CardContent({ class: className, ...props }: CardProps): JSX.Element {
   return <div data-testid="CardContent" data-slot="card-content" class={cn("px-6", className)} {...props} />;
-}
-
-export function CardFooter({ class: className, ...props }: CardProps): JSX.Element {
-  return (
-    <div
-      data-testid="CardFooter"
-      data-slot="card-footer"
-      class={cn("flex items-center px-6 [.border-t]:pt-6", className)}
-      {...props}
-    />
-  );
 }
