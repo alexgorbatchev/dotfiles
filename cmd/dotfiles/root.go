@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree"
 	hostarch "github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -117,7 +118,7 @@ func resolveTarget(log *logger.Logger) vm.Target {
 	return resolved
 }
 
-var Version = "2.2.0"
+var Version = "2.6.0"
 
 var (
 	cfgFile  string
@@ -148,6 +149,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
+	cobrahelptree.Setup(rootCmd)
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to configuration file")
 	rootCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Simulate operations without committing disk changes")
 	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "Enable source location tracing in logs")

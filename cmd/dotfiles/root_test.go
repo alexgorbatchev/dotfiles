@@ -287,3 +287,55 @@ func TestResolveTargetWarnsPerOverriddenFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestVersionContract(t *testing.T) {
+	if Version != "2.6.0" {
+		t.Errorf("Version = %q, want %q", Version, "2.6.0")
+	}
+
+	outVersionCmd, err := runCommand("version")
+	if err != nil {
+		t.Fatalf("dotfiles version failed: %v", err)
+	}
+	if strings.TrimSpace(outVersionCmd.Stdout) != "2.6.0" {
+		t.Errorf("dotfiles version stdout = %q, want \"2.6.0\"", strings.TrimSpace(outVersionCmd.Stdout))
+	}
+
+	outVersionFlag, err := runCommand("--version")
+	if err != nil {
+		t.Fatalf("dotfiles --version failed: %v", err)
+	}
+	if strings.TrimSpace(outVersionFlag.Stdout) != "2.6.0" {
+		t.Errorf("dotfiles --version stdout = %q, want \"2.6.0\"", strings.TrimSpace(outVersionFlag.Stdout))
+	}
+}
+
+func TestRootHelpTree_DualMode(t *testing.T) {
+	t.Run("Human Mode shows aligned tree connectors", func(t *testing.T) {
+		t.Setenv("AGENT", "0")
+		out, err := runCommand("--help")
+		if err != nil {
+			t.Fatalf("dotfiles --help failed: %v", err)
+		}
+		if !strings.Contains(out.Stdout, "Available Commands:") {
+			t.Errorf("expected Available Commands: section, got:\n%s", out.Stdout)
+		}
+		if !strings.Contains(out.Stdout, "├─") || !strings.Contains(out.Stdout, "╰─") {
+			t.Errorf("expected tree connectors (├─, ╰─) in human help, got:\n%s", out.Stdout)
+		}
+	})
+
+	t.Run("Agent Mode shows compact agent help", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := runCommand("--help")
+		if err != nil {
+			t.Fatalf("dotfiles --help failed in AGENT=1 mode: %v", err)
+		}
+		if !strings.Contains(out.Stdout, "command: dotfiles") || !strings.Contains(out.Stdout, "subcommands:") {
+			t.Errorf("expected agent format in AGENT=1 help, got:\n%s", out.Stdout)
+		}
+		if strings.Contains(out.Stdout, "├─") || strings.Contains(out.Stdout, "╰─") {
+			t.Errorf("expected no tree connectors in AGENT=1 mode, got:\n%s", out.Stdout)
+		}
+	})
+}
