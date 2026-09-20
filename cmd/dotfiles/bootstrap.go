@@ -33,6 +33,8 @@ type Services struct {
 	DB            *sql.DB
 	Registry      *registry.Registry
 	Orchestrator  *orchestrator.Orchestrator
+	// Target is the resolved target OS, architecture and C library for this run.
+	Target vm.Target
 	// Installers is the registry the Orchestrator installs from. Commands that
 	// need an installer directly (update checks) must resolve it here rather than
 	// in the package-level default registry, so that tests, which are given mock
@@ -339,6 +341,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		DB:            sqlDB,
 		Registry:      reg,
 		Orchestrator:  orch,
+		Target:        target,
 		Installers:    instReg,
 		Runner:        runner,
 		HTTPClient:    httpClient,

@@ -32,9 +32,14 @@ Existing files are left untouched unless --force is passed.`,
 			return fmt.Errorf("no tool configs directory is configured")
 		}
 
+		targetOS := services.Target.OS
+		if targetOS == "" {
+			targetOS = runtime.GOOS
+		}
+
 		results, err := scaffold.Run(services.FS, scaffold.Options{
 			Dir:      dirs[0],
-			TargetOS: runtime.GOOS,
+			TargetOS: targetOS,
 			Force:    scaffoldForce,
 		})
 		if err != nil {
