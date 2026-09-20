@@ -25,12 +25,40 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 
 - CLI entrypoint: `cmd/dotfiles/` -> `cmd/dotfiles/AGENTS.md`
 - Dashboard workspace: `packages/dashboard/` -> `packages/dashboard/AGENTS.md`
+- Go arch package: `pkg/arch/` -> `pkg/arch/AGENTS.md`
+- Go archive package: `pkg/archive/` -> `pkg/archive/AGENTS.md`
+- Go backup package: `pkg/backup/` -> `pkg/backup/AGENTS.md`
+- Go block package: `pkg/block/` -> `pkg/block/AGENTS.md`
+- Go cliout package: `pkg/cliout/` -> `pkg/cliout/AGENTS.md`
+- Go config package: `pkg/config/` -> `pkg/config/AGENTS.md`
+- Go dashboard package: `pkg/dashboard/` -> `pkg/dashboard/AGENTS.md`
+- Go db package: `pkg/db/` -> `pkg/db/AGENTS.md`
+- Go downloader package: `pkg/downloader/` -> `pkg/downloader/AGENTS.md`
+- Go drift package: `pkg/drift/` -> `pkg/drift/AGENTS.md`
+- Go embedded package: `pkg/embedded/` -> `pkg/embedded/AGENTS.md`
+- Go exec package: `pkg/exec/` -> `pkg/exec/AGENTS.md`
+- Go features package: `pkg/features/` -> `pkg/features/AGENTS.md`
+- Go filesystem package: `pkg/fs/` -> `pkg/fs/AGENTS.md`
+- Go github package: `pkg/github/` -> `pkg/github/AGENTS.md`
+- Go installer package: `pkg/installer/` -> `pkg/installer/AGENTS.md`
+- Go lifecycle package: `pkg/lifecycle/` -> `pkg/lifecycle/AGENTS.md`
 - Go logger package: `pkg/logger/` -> `pkg/logger/AGENTS.md`
 - Go orchestrator package: `pkg/orchestrator/` -> `pkg/orchestrator/AGENTS.md`
-- Go installer package: `pkg/installer/` -> `pkg/installer/AGENTS.md`
-- Go filesystem package: `pkg/fs/` -> `pkg/fs/AGENTS.md`
+- Go proxy package: `pkg/proxy/` -> `pkg/proxy/AGENTS.md`
+- Go registry package: `pkg/registry/` -> `pkg/registry/AGENTS.md`
+- Go scaffold package: `pkg/scaffold/` -> `pkg/scaffold/AGENTS.md`
+- Go shell package: `pkg/shell/` -> `pkg/shell/AGENTS.md`
+- Go shellinit package: `pkg/shellinit/` -> `pkg/shellinit/AGENTS.md`
+- Go shim package: `pkg/shim/` -> `pkg/shim/AGENTS.md`
+- Go symlink package: `pkg/symlink/` -> `pkg/symlink/AGENTS.md`
+- Go typecheck package: `pkg/typecheck/` -> `pkg/typecheck/AGENTS.md`
+- Go unwrap package: `pkg/unwrap/` -> `pkg/unwrap/AGENTS.md`
+- Go updater package: `pkg/updater/` -> `pkg/updater/AGENTS.md`
+- Go usagelog package: `pkg/usagelog/` -> `pkg/usagelog/AGENTS.md`
+- Go utils package: `pkg/utils/` -> `pkg/utils/AGENTS.md`
+- Go venv package: `pkg/venv/` -> `pkg/venv/AGENTS.md`
+- Go version package: `pkg/version/` -> `pkg/version/AGENTS.md`
 - Go VM package: `pkg/vm/` -> `pkg/vm/AGENTS.md`
-- Go scaffold package: `pkg/scaffold/`
 - Go E2E test suite: `tests/e2e/`
 - Verification fixture: `test-project/`
 - Isolated installer test workspace: `test-install/` -> `test-install/AGENTS.md`
