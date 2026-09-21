@@ -3,8 +3,12 @@
 # Default task
 default: test
 
+# Run CLI in interactive human mode
+run *args:
+	go run ./cmd/dotfiles {{ args }}
+
 # Run CLI against test-project in interactive human mode
-run *args="generate":
+test-project *args="generate":
 	go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Run CLI against test-project in agent mode (AGENT=1)

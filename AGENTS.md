@@ -5,7 +5,8 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 ## Shared commands
 
 - Default action (run tests without compile): `just`
-- Run CLI against fixture project: `just run`
+- Run CLI: `just run` (e.g. `just run --help`, `just run --config /path/to/dotfiles.config.ts generate`)
+- Run CLI against fixture project: `just test-project` (runs `generate` by default, or `just test-project diff`, etc.)
 - Install deps: `bun install --frozen-lockfile`
 - Format & autofix: `just fix` (or `bun fix`)
 - Lint: `just lint` (or `bun lint`)
