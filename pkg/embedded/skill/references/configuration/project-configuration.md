@@ -109,7 +109,7 @@ updated: `dotfiles generate` warns about a configured profile that is missing an
 creating it to you.
 
 `catalog` (`generate`, `filePath`) is accepted by the loader, but no command writes a
-catalog file and `dotfiles features` does not report it; both keys default to empty.
+catalog file; both keys default to empty.
 
 ### github
 
@@ -132,7 +132,7 @@ then `GH_TOKEN` environment variables are consulted. It applies to every method 
 resolves GitHub releases -- `github-release`, `cargo`, `dmg` and `pkg` -- and to the
 dashboard's README lookup.
 
-`dotfiles upgrade` is the exception: it upgrades the CLI itself from the public API
+`dotfiles self upgrade` is the exception: it upgrades the CLI itself from the public API
 rather than from `host`, so it authenticates from `GITHUB_TOKEN` or `GH_TOKEN` alone
 and never sends a token written for your `host`.
 

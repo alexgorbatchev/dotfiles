@@ -1212,6 +1212,14 @@ func TestCompletion_BinAcceptsBinaryOrToolName(t *testing.T) {
 	}
 	got, _ = parseCompletionOutput(t, out.Stdout)
 	assertCandidates(t, got, []string{})
+
+	// path get completion offers the supported path names
+	out, err = runCommand(cobra.ShellCompRequestCmd, "path", "get", "")
+	if err != nil {
+		t.Fatalf("__complete path get returned error: %v\n%s", err, out.Combined)
+	}
+	got, _ = parseCompletionOutput(t, out.Stdout)
+	assertCandidates(t, got, []string{"binaries", "cache", "dotfiles", "generated", "home", "shellScripts", "target", "toolConfigs"})
 }
 
 func TestCompletion_ConfigLoadFailureReportsError(t *testing.T) {
@@ -2639,7 +2647,17 @@ func TestEnvDeleteCommand_Confirmation(t *testing.T) {
 	t.Run("no terminal deletes with --force", func(t *testing.T) {
 		out, err := deleteWith(t, false, "", "--force")
 		if err != nil {
-			t.Fatalf("env delete --force: %v\n%s", err, out.Combined)
+			t.Fatalf("venv delete --force: %v\n%s", err, out.Combined)
+		}
+		mustNotContain(t, "stderr", out.Stderr, "[y/N]")
+		mustBeGone(t)
+	})
+
+	t.Run("no terminal deletes with -f shorthand", func(t *testing.T) {
+		createEnv(t)
+		out, err := deleteWith(t, false, "", "-f")
+		if err != nil {
+			t.Fatalf("venv delete -f: %v\n%s", err, out.Combined)
 		}
 		mustNotContain(t, "stderr", out.Stderr, "[y/N]")
 		mustBeGone(t)

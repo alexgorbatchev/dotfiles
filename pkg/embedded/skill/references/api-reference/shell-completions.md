@@ -132,4 +132,4 @@ Reload completions after running `dotfiles generate`:
 autoload -U compinit && compinit
 ```
 
-Subcommands that take a tool name (`install`, `update`, `uninstall`, `why`, `files`, `log`, `validate`) complete it from the configured tools, so `dotfiles install <Tab>` lists tool names rather than files. `bin` also offers the configured binary names. The candidates come from the configuration the CLI would run with, so `--config` on the command line is honoured.
+Subcommands that take a tool name (`tool install`, `tool update`, `tool uninstall`, `tool which`, `tool files`, `state log`, `tool validate`, or root shortcuts `install`, `update`) complete it from the configured tools, so `dotfiles tool install <Tab>` lists tool names rather than files. `tool which` also offers the configured binary names. The candidates come from the configuration the CLI would run with, so `--config` on the command line is honoured.

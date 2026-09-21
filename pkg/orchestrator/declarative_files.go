@@ -271,7 +271,7 @@ func (o *Orchestrator) contentForAction(req actionRequest) (string, bool, error)
 
 	case drift.ActionKeep:
 		log.Warn(logger.Message(fmt.Sprintf(
-			"%s was changed since dotfiles last wrote it; keeping your version. Run `dotfiles diff` to see it.",
+			"%s was changed since dotfiles last wrote it; keeping your version. Run `dotfiles state diff` to see it.",
 			o.contract(req.label),
 		)))
 		return req.current, false, nil
@@ -310,7 +310,7 @@ func (o *Orchestrator) contentForAction(req actionRequest) (string, bool, error)
 		// told where to make the other half.
 		log.Warn(logger.Message(fmt.Sprintf(
 			"%s was changed since dotfiles last wrote it; keeping your version because this run cannot prompt. "+
-				"Run `dotfiles diff %s` to review it.",
+				"Run `dotfiles state diff %s` to review it.",
 			o.contract(req.label), o.contract(req.label),
 		)))
 		return req.current, false, nil

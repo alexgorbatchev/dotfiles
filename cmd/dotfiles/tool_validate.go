@@ -37,13 +37,13 @@ It then type-checks the TypeScript configuration with the compiler a configured 
 as the binary "tsc" (the scaffolded typescript.tool.ts), running it from that tool's current
 directory rather than from PATH. A missing or uninstalled compiler is reported as an error.
 
-When run without arguments, 'dotfiles validate' checks all configured tools.
-When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates only that specific tool.`,
+When run without arguments, 'dotfiles tool validate' checks all configured tools.
+When a tool name is provided (e.g. 'dotfiles tool validate ripgrep'), it validates only that specific tool.`,
 	Example: `  # Validate all tool configurations
-  dotfiles validate
+  dotfiles tool validate
 
   # Validate a specific tool configuration
-  dotfiles validate ripgrep`,
+  dotfiles tool validate ripgrep`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)

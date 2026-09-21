@@ -152,7 +152,7 @@ Nothing has to be added by hand: the include list lives in the CLI-owned file an
 
 ### Type-Checking
 
-`dotfiles validate` type-checks the configuration with that program, using the TypeScript 7 compiler provisioned like any other tool: `dotfiles scaffold` writes `tools/typescript.tool.ts`, which installs `microsoft/typescript-go` from its GitHub release, and `dotfiles install typescript` installs it. The compiler is declared with `.bin("tsc", { shim: false })`, so it is not put on PATH and cannot shadow the TypeScript your other projects use; `validate` runs it from the tool's `current` directory. Until it is installed, `validate` reports that as an error rather than skipping the type-check. Your editor uses the same program through the extending `tsconfig.json`.
+`dotfiles tool validate` type-checks the configuration with that program, using the TypeScript 7 compiler provisioned like any other tool: `dotfiles tool scaffold` writes `tools/typescript.tool.ts`, which installs `microsoft/typescript-go` from its GitHub release, and `dotfiles tool install typescript` installs it. The compiler is declared with `.bin("tsc", { shim: false })`, so it is not put on PATH and cannot shadow the TypeScript your other projects use; `tool validate` runs it from the tool's `current` directory. Until it is installed, `tool validate` reports that as an error rather than skipping the type-check. Your editor uses the same program through the extending `tsconfig.json`.
 
 ### Common Type Errors
 

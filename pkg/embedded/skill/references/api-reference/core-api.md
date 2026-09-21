@@ -150,7 +150,7 @@ otherwise, so edits stay in the dotfiles repository.
 Records `{ enabled?: boolean, constraint?: string }` on the tool configuration.
 Platform overrides merge it field by field.
 
-`enabled: false` takes the tool out of update checks: `dotfiles check-updates` skips it,
+`enabled: false` takes the tool out of update checks: `dotfiles tool check` skips it,
 and the dashboard reports no update for it without asking the installer. Omitted, it is
 checked.
 

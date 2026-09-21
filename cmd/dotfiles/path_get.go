@@ -40,9 +40,10 @@ func runPathGet(cmd *cobra.Command, name string) error {
 }
 
 var pathGetCmd = &cobra.Command{
-	Use:   "get <name>",
-	Args:  cobra.ExactArgs(1),
-	Short: "Print a specific path (target, binaries, store, cache)",
+	Use:       "get <name>",
+	Args:      cobra.ExactArgs(1),
+	ValidArgs: []string{"binaries", "cache", "dotfiles", "generated", "home", "shellScripts", "target", "toolConfigs"},
+	Short:     "Print a specific path (target, binaries, store, cache)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runPathGet(cmd, args[0])
 	},

@@ -62,7 +62,7 @@ export default defineTool((install, ctx) =>
 - **Automated On-Demand Installation**: Tools are installed automatically the first time you try to run them. No need to pre-install everything.
 - **Declarative Tool Management**: Define every tool, from installation to shell integration, in a typed TypeScript file (`.tool.ts`).
 - **Declarative Files, Templates & Managed Blocks**: Manage templates, symlinks, copies, and delimited comment blocks inside shared files (`~/.bashrc`, `~/.ssh/config`) with automatic syntax detection.
-- **3-Way Drift & Diff Inspection**: Inspect drift and 3-way differences across declared files and disk state with visual line diffing (`dotfiles diff`).
+- **3-Way Drift & Diff Inspection**: Inspect drift and 3-way differences across declared files and disk state with visual line diffing (`dotfiles state diff`).
 - **Non-Destructive Backups**: Automatic incremental backup preservation (`.bak`, `.bak.2`) ensures existing user files are never overwritten or destroyed.
 - **Zero-Overhead Shell Startup**: Your shell's startup time is unaffected. All tool loading is deferred until the moment you actually run a command, adding no latency to your shell's initialization.
 - **Powerful Shell Integration**: Centrally manage aliases, environment variables, shell functions, and completions for Zsh, Bash, and PowerShell.
@@ -98,34 +98,34 @@ curl -fsSL https://alexgorbatchev.github.io/dotfiles/install.sh | bash
 
 This installs the standalone native Go binary to `~/.local/bin/dotfiles` and updates your shims. Your `dotfiles.config.ts`, `.tool.ts` files, and `~/.zshrc` / `~/.bashrc` initialization lines require **zero changes**. You can optionally remove the old global npm package: `npm uninstall -g @alexgorbatchev/dotfiles`.
 
-### Upgrading the CLI Binary (`dotfiles upgrade`)
+### Upgrading the CLI Binary (`dotfiles self upgrade`)
 
 Keep the `dotfiles` CLI binary updated to the latest release directly from GitHub Releases:
 
 ```bash
 # Check for available updates
-$ dotfiles upgrade --check
+$ dotfiles self upgrade --check
 
 # Upgrade to latest stable release
-$ dotfiles upgrade
+$ dotfiles self upgrade
 
 # Upgrade or downgrade to a specific version
-$ dotfiles upgrade 2.2.0
+$ dotfiles self upgrade 2.2.0
 ```
 
-### Inspecting Drift (`dotfiles diff`)
+### Inspecting Drift (`dotfiles state diff`)
 
 Inspect 3-way differences and drift status between repository declarations, on-disk files, and recorded base state:
 
 ```bash
 # Inspect drift across all configured tools
-$ dotfiles diff
+$ dotfiles state diff
 
 # Inspect drift for a single tool
-$ dotfiles diff fzf
+$ dotfiles state diff fzf
 
 # Output drift analysis in JSON format
-$ dotfiles diff --json
+$ dotfiles state diff --json
 ```
 
 ### Manual Install

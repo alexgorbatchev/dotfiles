@@ -9,7 +9,7 @@ import (
 var selfVersionCmd = &cobra.Command{
 	Use:   "version",
 	Args:  cobra.NoArgs,
-	Short: "Print version, commit hash, and build target info",
+	Short: "Print the dotfiles CLI version",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Fprintln(cmd.OutOrStdout(), Version)
 	},

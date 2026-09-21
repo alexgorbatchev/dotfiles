@@ -93,7 +93,7 @@ func completeToolNames(cmd *cobra.Command, args []string, toComplete string) ([]
 	return filterByPrefix(toolNameCandidates(remaining), toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
-// completeBinaryOrToolName completes the single argument of `bin`, whose lookup
+// completeBinaryOrToolName completes the single argument of `tool which`, whose lookup
 // accepts either a binary name or a tool name, so both are offered.
 func completeBinaryOrToolName(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	if len(args) > 0 {

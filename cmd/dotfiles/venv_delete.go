@@ -69,5 +69,5 @@ var venvDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	venvDeleteCmd.Flags().BoolVar(&venvDeleteForce, "force", false, "Skip confirmation prompt")
+	venvDeleteCmd.Flags().BoolVarP(&venvDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }

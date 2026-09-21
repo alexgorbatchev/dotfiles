@@ -50,9 +50,10 @@ func lookupPath(paths map[string]string, name string) (string, bool) {
 }
 
 var pathCmd = &cobra.Command{
-	Use:   "path [name]",
-	Short: "Query configured system, binary, and storage directories",
-	Args:  cobra.MaximumNArgs(1),
+	Use:       "path [name]",
+	Short:     "Query configured system, binary, and storage directories",
+	Args:      cobra.MaximumNArgs(1),
+	ValidArgs: []string{"binaries", "cache", "dotfiles", "generated", "home", "shellScripts", "target", "toolConfigs"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 1 {
 			return runPathGet(cmd, args[0])

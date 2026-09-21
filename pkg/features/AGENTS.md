@@ -17,8 +17,7 @@ Tool readme parsing and the on-disk readme cache.
 
 - Stale generated output in fixtures -> delete `.generated/` and rerun the CLI.
 - There is no catalog generator. `features.catalog` is accepted by the configuration
-  loader and nothing reads it; the markdown table `dotfiles features generate-readme`
-  prints lives in `cmd/dotfiles/features.go`, not here.
+  loader and nothing reads it.
 
 ## Boundaries
 
