@@ -285,9 +285,9 @@ func TestCheckUpdatesThroughDevProxy(t *testing.T) {
 	port := freePort(t)
 	t.Setenv(devProxyEnv, strconv.Itoa(port))
 
-	out, err := p.run("check-updates")
+	out, err := p.run("tool", "check")
 	if err != nil {
-		t.Fatalf("check-updates: %v\n%s", err, out.Combined)
+		t.Fatalf("tool check: %v\n%s", err, out.Combined)
 	}
 	mustContain(t, "stdout", out.Stdout, "proxied: available (v1.2.3)\n")
 
@@ -305,9 +305,9 @@ func TestUpgradeCheckThroughDevProxy(t *testing.T) {
 	t.Setenv("DOTFILES_GITHUB_HOST", server.URL)
 	t.Setenv(devProxyEnv, strconv.Itoa(freePort(t)))
 
-	out, err := runCommand("upgrade", "--check")
+	out, err := runCommand("self", "upgrade", "--check")
 	if err != nil {
-		t.Fatalf("upgrade --check: %v\n%s", err, out.Combined)
+		t.Fatalf("self upgrade --check: %v\n%s", err, out.Combined)
 	}
 	mustContain(t, "stdout", out.Stdout, "up to date")
 

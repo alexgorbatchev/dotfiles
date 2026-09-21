@@ -14,10 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var generateCmd = &cobra.Command{
+var stateGenerateCmd = &cobra.Command{
 	Use:   "generate",
 	Args:  cobra.NoArgs,
-	Short: "Orchestrates shim and symlink generation",
+	Short: "Compile and link shims, symlinks, blocks, and templates",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		if overwrite {
@@ -103,6 +103,5 @@ func writeCLICompletion(ctx context.Context, services *Services) error {
 }
 
 func init() {
-	generateCmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite conflicting files that were not created by the generator")
-	rootCmd.AddCommand(generateCmd)
+	stateGenerateCmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite conflicting files that were not created by the generator")
 }

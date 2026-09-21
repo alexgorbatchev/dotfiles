@@ -8,11 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var uninstallCmd = &cobra.Command{
-	Use:               "uninstall [tool]",
-	Args:              cobra.MaximumNArgs(1),
-	Short:             "Uninstalls a specific tool and cleans up matching shims/symlinks",
-	ValidArgsFunction: completeToolName,
+var toolUninstallCmd = &cobra.Command{
+	Use:               "uninstall [tool...]",
+	Args:              cobra.ArbitraryArgs,
+	Short:             "Uninstall one or all configured tools",
+	ValidArgsFunction: completeToolNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
@@ -26,15 +26,16 @@ var uninstallCmd = &cobra.Command{
 		log.Info("Starting tool uninstallation...")
 
 		if len(args) > 0 {
-			toolName := args[0]
-			targetTool := config.FindTool(services.ToolConfigs, toolName)
-			if targetTool == nil {
-				return fmt.Errorf("tool %q not found in configuration", toolName)
-			}
+			for _, toolName := range args {
+				targetTool := config.FindTool(services.ToolConfigs, toolName)
+				if targetTool == nil {
+					return fmt.Errorf("tool %q not found in configuration", toolName)
+				}
 
-			err = services.Orchestrator.UninstallTool(ctx, targetTool, services.ProjectConfig)
-			if err != nil {
-				return err
+				err = services.Orchestrator.UninstallTool(ctx, targetTool, services.ProjectConfig)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			log.Info("Uninstalling all configured tools")
@@ -56,8 +57,4 @@ var uninstallCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(uninstallCmd)
 }

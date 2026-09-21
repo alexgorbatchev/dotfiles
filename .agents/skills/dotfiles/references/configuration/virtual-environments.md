@@ -15,13 +15,13 @@ Instead of a single global dotfiles configuration, you can create project-specif
 
 ```bash
 # Create with default name 'env' in current directory
-dotfiles env create
+dotfiles venv create
 
 # Create with custom name
-dotfiles env create my-env
+dotfiles venv create my-env
 
 # Create at absolute path
-dotfiles env create /path/to/project/.devenv
+dotfiles venv create /path/to/project/.devenv
 ```
 
 This creates:
@@ -66,9 +66,9 @@ Once activated, all dotfiles commands use the environment's configuration automa
 source env/source
 
 # These all use env/dotfiles.config.ts automatically
-dotfiles generate
-dotfiles install
-dotfiles update fd
+dotfiles state generate
+dotfiles tool install
+dotfiles tool update fd
 ```
 
 No need to pass `--config` - the CLI detects `DOTFILES_ENV_DIR` and uses its `dotfiles.config.ts`.
@@ -89,8 +89,8 @@ export default defineTool((install) =>
 );
 EOF
 
-dotfiles generate
-dotfiles install fd
+dotfiles state generate
+dotfiles tool install fd
 ```
 
 ## Deactivating
@@ -105,16 +105,16 @@ This restores the previous `PATH` and `XDG_CONFIG_HOME` values.
 
 ```bash
 # Delete default 'env' directory (asks for confirmation first)
-dotfiles env delete
+dotfiles venv delete
 
 # Delete specific environment
-dotfiles env delete my-env
+dotfiles venv delete my-env
 
 # Skip the confirmation prompt (required in scripts, CI, or AGENT=1)
-dotfiles env delete --force
+dotfiles venv delete --force
 ```
 
-See [`dotfiles env delete`](../getting-started/cli-reference.md#dotfiles-env) for exactly when the prompt is shown and what `--force` skips.
+See [`dotfiles venv delete`](../getting-started/cli-reference.md#dotfiles-venv) for exactly when the prompt is shown and what `--force` skips.
 
 ## Use Cases
 
@@ -124,7 +124,7 @@ Keep project tools isolated from your global configuration:
 
 ```bash
 cd ~/projects/data-science
-dotfiles env create
+dotfiles venv create
 source env/source
 
 # Add project-specific tools
@@ -139,7 +139,7 @@ export default defineTool((install) =>
 );
 EOF
 
-dotfiles generate
+dotfiles state generate
 ```
 
 ### Team Environments
@@ -148,7 +148,7 @@ Share tool configurations with your team:
 
 ```bash
 cd ~/work/team-project
-dotfiles env create .devenv
+dotfiles venv create .devenv
 
 # Configure shared tools
 # ...
@@ -165,7 +165,7 @@ Team members then run:
 git clone <repo>
 cd team-project
 source .devenv/source
-dotfiles install
+dotfiles tool install
 ```
 
 ### Multiple Environments
@@ -175,13 +175,13 @@ Different projects can have different tool versions:
 ```bash
 # Project A uses older tools
 cd ~/projects/legacy
-dotfiles env create
+dotfiles venv create
 source env/source
 # Configure tools...
 
 # Project B uses latest
 cd ~/projects/modern
-dotfiles env create
+dotfiles venv create
 source env/source
 # Configure different versions...
 ```
@@ -203,7 +203,7 @@ This prevents activated environments from affecting global tool configurations.
 
 ## Generated Files
 
-After running `dotfiles generate`, the environment contains:
+After running `dotfiles state generate`, the environment contains:
 
 ```
 env/

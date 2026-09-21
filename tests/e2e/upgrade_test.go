@@ -108,7 +108,7 @@ func TestE2EUpgrade(t *testing.T) {
 	})
 
 	t.Run("should report new version available on --check", func(t *testing.T) {
-		stdout, stderr, exitCode, err := h.RunCommand("upgrade", "--check")
+		stdout, stderr, exitCode, err := h.RunCommand("self", "upgrade", "--check")
 		if err != nil || exitCode != 0 {
 			t.Fatalf("upgrade --check failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -119,7 +119,7 @@ func TestE2EUpgrade(t *testing.T) {
 	})
 
 	t.Run("should perform dry-run upgrade without error", func(t *testing.T) {
-		stdout, stderr, exitCode, err := h.RunCommand("upgrade", "--dry-run")
+		stdout, stderr, exitCode, err := h.RunCommand("self", "upgrade", "--dry-run")
 		if err != nil || exitCode != 0 {
 			t.Fatalf("upgrade --dry-run failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}

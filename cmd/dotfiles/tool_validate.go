@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var validateJSON bool
+var toolValidateJSON bool
 
 type ValidationError struct {
 	ToolName string `json:"tool"`
@@ -26,10 +26,10 @@ type ValidationWarning struct {
 	Message  string `json:"message"`
 }
 
-var validateCmd = &cobra.Command{
+var toolValidateCmd = &cobra.Command{
 	Use:               "validate [tool]",
 	Args:              cobra.MaximumNArgs(1),
-	Short:             "Validates tool configuration files for schema issues and errors",
+	Short:             "Validate configuration schema, parameters, and types",
 	ValidArgsFunction: completeToolName,
 	Long: `Validates tool configuration files (.tool.ts) and project configuration for schema issues, missing parameters, invalid installer methods, and bad shell settings.
 
@@ -235,7 +235,7 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 
 		out := cmd.OutOrStdout()
 
-		if validateJSON {
+		if toolValidateJSON {
 			if err := cliout.RenderJSON(out, map[string]any{
 				"valid":    len(errors) == 0,
 				"checked":  len(targetTools),
@@ -301,6 +301,5 @@ When a tool name is provided (e.g. 'dotfiles validate ripgrep'), it validates on
 }
 
 func init() {
-	validateCmd.Flags().BoolVar(&validateJSON, "json", false, "Output results in JSON format")
-	rootCmd.AddCommand(validateCmd)
+	toolValidateCmd.Flags().BoolVar(&toolValidateJSON, "json", false, "Output results in JSON format")
 }

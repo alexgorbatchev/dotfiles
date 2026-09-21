@@ -35,7 +35,7 @@ func TestE2EConflict(t *testing.T) {
 
 	t.Run("should detect conflicts with existing non-generator files", func(t *testing.T) {
 		// Run detect-conflicts
-		stdout, stderr, exitCode, err := h.RunCommand("detect-conflicts", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := h.RunCommand("shell", "audit", "--config", h.ConfigPath)
 		if err != nil {
 			t.Fatalf("detect-conflicts failed: %v", err)
 		}

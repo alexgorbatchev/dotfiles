@@ -51,42 +51,47 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 }`
 	_ = os.WriteFile(filepath.Join(tmpDir, "dotfiles.config.json"), []byte(cfgContent), 0644)
 
-	// 1. binCmd coverage
-	t.Run("binCmd list, resolve, default, error", func(t *testing.T) {
-		_, err := executeCommand("bin", "--list")
+	// 1. tool which and path coverage
+	t.Run("tool which and path queries", func(t *testing.T) {
+		_, err := executeCommand("tool", "which", "bat")
 		if err != nil {
-			t.Errorf("bin --list failed: %v", err)
+			t.Errorf("tool which bat failed: %v", err)
 		}
 
-		out, err := executeCommand("bin", "bat")
+		out, err := executeCommand("tool", "which", "--bin", "bat")
 		if err != nil {
-			t.Errorf("bin bat failed: %v", err)
+			t.Errorf("tool which --bin bat failed: %v", err)
 		}
 		if out == "" {
-			t.Errorf("expected non-empty output for bin bat")
+			t.Errorf("expected non-empty output for tool which --bin bat")
 		}
 
-		_, err = executeCommand("bin")
+		_, err = executeCommand("path")
 		if err != nil {
-			t.Errorf("bin (default) failed: %v", err)
+			t.Errorf("path (default) failed: %v", err)
 		}
 
-		_, err = executeCommand("bin", "nonexistent-tool")
+		_, err = executeCommand("path", "target")
+		if err != nil {
+			t.Errorf("path target failed: %v", err)
+		}
+
+		_, err = executeCommand("tool", "which", "nonexistent-tool")
 		if err == nil {
-			t.Errorf("expected error for nonexistent tool in bin command")
+			t.Errorf("expected error for nonexistent tool in tool which command")
 		}
 	})
 
-	// 2. generateCmd coverage
-	t.Run("generateCmd with shellInstall profiles", func(t *testing.T) {
-		_, err := executeCommand("generate")
+	// 2. state generate coverage
+	t.Run("state generate with shellInstall profiles", func(t *testing.T) {
+		_, err := executeCommand("state", "generate")
 		if err != nil {
-			t.Errorf("generate command failed: %v", err)
+			t.Errorf("state generate command failed: %v", err)
 		}
 	})
 
-	// 3. logCmd and filesCmd coverage with populated registry
-	t.Run("logCmd and filesCmd with installed tool in registry", func(t *testing.T) {
+	// 3. state log and tool files coverage with populated registry
+	t.Run("state log and tool files with installed tool in registry", func(t *testing.T) {
 		installPath := filepath.Join(tmpDir, "installed-bat")
 		_ = os.MkdirAll(filepath.Join(installPath, "sub"), 0755)
 		_ = os.WriteFile(filepath.Join(installPath, "sub", "bat"), []byte("bin"), 0755)
@@ -116,29 +121,31 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 			conn.Close()
 		}
 
-		_, _ = executeCommand("files")
-		_, _ = executeCommand("files", "bat")
-		_, _ = executeCommand("log", "--status")
-		_, _ = executeCommand("log", "bat", "--status")
-		_, _ = executeCommand("log", "--type", "ops")
-		_, _ = executeCommand("log", "--since", "24h")
-		_, _ = executeCommand("log", "bat")
+		_, _ = executeCommand("tool", "files")
+		_, _ = executeCommand("tool", "files", "bat")
+		_, _ = executeCommand("state", "log", "--status")
+		_, _ = executeCommand("state", "log", "bat", "--status")
+		_, _ = executeCommand("state", "log", "--type", "ops")
+		_, _ = executeCommand("state", "log", "--since", "2026-01-01")
+		_, _ = executeCommand("state", "log", "bat")
 	})
 
-	// 4. updateCmd coverage
-	t.Run("updateCmd check and perform update", func(t *testing.T) {
-		_, _ = executeCommand("update", "--check")
-		_, _ = executeCommand("update", "--dry-run", "bat")
+	// 4. tool update and check coverage
+	t.Run("tool update and check coverage", func(t *testing.T) {
+		_, _ = executeCommand("tool", "check")
+		_, _ = executeCommand("tool", "update", "--dry-run", "bat")
 	})
 
-	// 5. cleanupCmd coverage
-	t.Run("cleanupCmd orphan cleanup", func(t *testing.T) {
-		_, _ = executeCommand("cleanup", "--dry-run")
+	// 5. state cleanup coverage
+	t.Run("state cleanup orphan cleanup", func(t *testing.T) {
+		_, _ = executeCommand("state", "cleanup", "--dry-run")
 	})
 
-	// 6. featuresCmd coverage
-	t.Run("featuresCmd list and details", func(t *testing.T) {
-		_, _ = executeCommand("features")
+	// 6. tool list, info, and shell audit coverage
+	t.Run("tool list, info, and shell audit", func(t *testing.T) {
+		_, _ = executeCommand("tool", "list")
+		_, _ = executeCommand("tool", "info", "bat")
+		_, _ = executeCommand("shell", "audit")
 	})
 
 	// 7. dashboardCmd coverage (with signal shutdown)

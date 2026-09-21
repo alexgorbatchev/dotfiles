@@ -20,20 +20,21 @@ func TestCommandsExecution(t *testing.T) {
 	targetSkill := filepath.Join(tmpDir, "skill_target")
 
 	commands := [][]string{
-		{"--config", cfgPath, "env"},
-		{"--config", cfgPath, "cleanup"},
-		{"--config", cfgPath, "detect-conflicts"},
-		{"--config", cfgPath, "features"},
-		{"--config", cfgPath, "generate"},
+		{"--config", cfgPath, "shell", "init"},
+		{"--config", cfgPath, "shell", "audit"},
+		{"--config", cfgPath, "state", "cleanup"},
+		{"--config", cfgPath, "state", "generate"},
 		{"--config", cfgPath, "skill", targetSkill},
-		{"--config", cfgPath, "check-updates"},
-		{"--config", cfgPath, "bin"},
-		{"--config", cfgPath, "log"},
-		{"--config", cfgPath, "validate"},
+		{"--config", cfgPath, "tool", "check"},
+		{"--config", cfgPath, "tool", "list"},
+		{"--config", cfgPath, "path"},
+		{"--config", cfgPath, "state", "log"},
+		{"--config", cfgPath, "tool", "validate"},
+		{"--config", cfgPath, "self", "version"},
 	}
 
 	for _, cmdArgs := range commands {
-		t.Run(cmdArgs[0], func(t *testing.T) {
+		t.Run(strings.Join(cmdArgs, " "), func(t *testing.T) {
 			rootCmd.SetIn(strings.NewReader(""))
 			rootCmd.SetOut(io.Discard)
 			rootCmd.SetErr(io.Discard)

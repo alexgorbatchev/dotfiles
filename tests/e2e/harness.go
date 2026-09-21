@@ -241,19 +241,19 @@ func (h *TestHarness) RunCommand(args ...string) (stdout, stderr string, exitCod
 }
 
 func (h *TestHarness) Generate(args ...string) (stdout, stderr string, exitCode int, err error) {
-	allArgs := append([]string{"generate", "--config", h.ConfigPath}, args...)
+	allArgs := append([]string{"state", "generate", "--config", h.ConfigPath}, args...)
 	return h.RunCommand(allArgs...)
 }
 
 func (h *TestHarness) Install(tools []string, args ...string) (stdout, stderr string, exitCode int, err error) {
-	allArgs := []string{"install", "--config", h.ConfigPath}
+	allArgs := []string{"tool", "install", "--config", h.ConfigPath}
 	allArgs = append(allArgs, tools...)
 	allArgs = append(allArgs, args...)
 	return h.RunCommand(allArgs...)
 }
 
 func (h *TestHarness) Update(args ...string) (stdout, stderr string, exitCode int, err error) {
-	allArgs := []string{"update", "--config", h.ConfigPath}
+	allArgs := []string{"tool", "update", "--config", h.ConfigPath}
 	allArgs = append(allArgs, args...)
 	return h.RunCommand(allArgs...)
 }

@@ -41,7 +41,7 @@ fi
 if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
   echo "Updating $TOOL_NAME to latest version..."
   # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
-  eval "$GENERATOR_CLI_EXECUTABLE" update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+  eval "$GENERATOR_CLI_EXECUTABLE" tool update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
   exit $?
 fi
 
@@ -51,7 +51,7 @@ if [ -x "$TOOL_EXECUTABLE" ]; then
 else
   # Tool not found, try to install it
   if [ "$TOOL_REQUIRES_SUDO" = "1" ] && { [ ! -t 0 ] || [ ! -t 2 ]; }; then
-    echo "$TOOL_NAME requires an interactive install with sudo. Run: dotfiles install $TOOL_NAME" >&2
+    echo "$TOOL_NAME requires an interactive install with sudo. Run: dotfiles tool install $TOOL_NAME" >&2
     exit 1
   fi
 
@@ -59,7 +59,7 @@ else
   # Suppress dotfiles output during transparent installation in shim mode
   # Temporarily disable set -e to handle install failures gracefully
   set +e
-  eval "$GENERATOR_CLI_EXECUTABLE" install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+  eval "$GENERATOR_CLI_EXECUTABLE" tool install --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
   install_exit_code=$?
   set -e
 

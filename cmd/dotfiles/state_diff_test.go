@@ -22,13 +22,13 @@ export default defineTool((i) => i("manual").block("~/.ssh/config", { id: "main"
 `), 0644)
 
 	var buf bytes.Buffer
-	diffCmd.SetOut(&buf)
-	diffCmd.SetErr(&buf)
+	stateDiffCmd.SetOut(&buf)
+	stateDiffCmd.SetErr(&buf)
 	cfgFile = configPath
 
-	err := diffCmd.RunE(diffCmd, []string{})
+	err := stateDiffCmd.RunE(stateDiffCmd, []string{})
 	if err != nil {
-		t.Fatalf("diffCmd.RunE failed: %v", err)
+		t.Fatalf("stateDiffCmd.RunE failed: %v", err)
 	}
 
 	out := buf.String()
@@ -51,15 +51,15 @@ export default defineTool((i) => i("manual").block("~/.ssh/config", { id: "main"
 `), 0644)
 
 	var buf bytes.Buffer
-	diffCmd.SetOut(&buf)
-	diffCmd.SetErr(&buf)
+	stateDiffCmd.SetOut(&buf)
+	stateDiffCmd.SetErr(&buf)
 	cfgFile = configPath
 	diffJSON = true
 	defer func() { diffJSON = false }()
 
-	err := diffCmd.RunE(diffCmd, []string{})
+	err := stateDiffCmd.RunE(stateDiffCmd, []string{})
 	if err != nil {
-		t.Fatalf("diffCmd.RunE failed: %v", err)
+		t.Fatalf("stateDiffCmd.RunE failed: %v", err)
 	}
 
 	out := buf.String()
@@ -86,13 +86,13 @@ export default defineTool((i) => i("manual").copy("./app.conf", "~/.config/app/a
 `), 0644)
 
 	var buf bytes.Buffer
-	diffCmd.SetOut(&buf)
-	diffCmd.SetErr(&buf)
+	stateDiffCmd.SetOut(&buf)
+	stateDiffCmd.SetErr(&buf)
 	cfgFile = configPath
 
-	err := diffCmd.RunE(diffCmd, []string{})
+	err := stateDiffCmd.RunE(stateDiffCmd, []string{})
 	if err != nil {
-		t.Fatalf("diffCmd.RunE failed: %v", err)
+		t.Fatalf("stateDiffCmd.RunE failed: %v", err)
 	}
 
 	out := buf.String()

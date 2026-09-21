@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -63,10 +64,8 @@ func runCommand(args ...string) (commandOutput, error) {
 	quiet = false
 
 	// Reset subcommand flags
-	host = "127.0.0.1"
-	port = 8080
-	listBins = false
-	generateReadme = false
+	dashboardHost = "127.0.0.1"
+	dashboardPort = 8080
 	logTailLines = 50
 	skillDir = ""
 
@@ -155,121 +154,109 @@ func TestSubcommands(t *testing.T) {
 	}{
 		{
 			name:           "generate command default",
-			args:           []string{"generate"},
+			args:           []string{"state", "generate"},
 			expectedOutput: []string{"Starting generation", "DONE"},
 			expectedErr:    false,
 		},
 		{
 			name:           "generate command dry-run",
-			args:           []string{"generate", "--dry-run"},
+			args:           []string{"state", "generate", "--dry-run"},
 			expectedOutput: []string{"Starting generation", "DONE"},
 			expectedErr:    false,
 		},
 		{
 			name:           "install all tools",
-			args:           []string{"install"},
+			args:           []string{"tool", "install"},
 			expectedOutput: []string{"Installing all configured tools"},
 			expectedErr:    false,
 		},
 		{
 			name:           "install single tool",
-			args:           []string{"install", "bat"},
+			args:           []string{"tool", "install", "bat"},
 			expectedOutput: []string{"[bat] Installing..."},
 			expectedErr:    false,
 		},
 		{
 			name:           "uninstall all tools",
-			args:           []string{"uninstall"},
+			args:           []string{"tool", "uninstall"},
 			expectedOutput: []string{"Uninstalling all configured tools"},
 			expectedErr:    false,
 		},
 		{
 			name:           "uninstall single tool",
-			args:           []string{"uninstall", "bat"},
+			args:           []string{"tool", "uninstall", "bat"},
 			expectedOutput: []string{"[bat] Uninstalling..."},
 			expectedErr:    false,
 		},
 		{
 			name:           "update command",
-			args:           []string{"update"},
+			args:           []string{"tool", "update"},
 			expectedOutput: []string{"Evaluating versions and checking for updates"},
 			expectedErr:    false,
 		},
 		{
 			name:           "env command",
-			args:           []string{"env"},
+			args:           []string{"shell", "init"},
 			expectedOutput: []string{"export PATH="},
 			expectedErr:    false,
 		},
 		{
 			name:           "env create and delete flow",
-			args:           []string{"env", "create", "myenv"},
+			args:           []string{"venv", "create", "myenv"},
 			expectedOutput: []string{"Virtual environment created at:"},
 			expectedErr:    false,
 		},
 		{
 			name:           "files command default",
-			args:           []string{"files"},
+			args:           []string{"tool", "files"},
 			expectedOutput: []string{"No files currently managed"},
 			expectedErr:    false,
 		},
 		{
 			name:           "bin command target dir",
-			args:           []string{"bin"},
-			expectedOutput: []string{"Target bin directory: " + filepath.Join(tmpDir, "target")},
+			args:           []string{"path"},
+			expectedOutput: []string{filepath.Join(tmpDir, "target")},
 			expectedErr:    false,
 		},
 		{
 			name:           "bin command list flag",
-			args:           []string{"bin", "--list"},
-			expectedOutput: []string{"bat (bat)"},
-			expectedErr:    false,
-		},
-		{
-			name:           "features command default",
-			args:           []string{"features"},
-			expectedOutput: []string{"ShellInstall:"},
-			expectedErr:    false,
-		},
-		{
-			name:           "features command generate-readme",
-			args:           []string{"features", "--generate-readme"},
-			expectedOutput: []string{"# Configured Tools & Features", "| Tool | Method | Binaries | Description |", "bat"},
+			args:           []string{"tool", "list"},
+			expectedOutput: []string{"bat"},
 			expectedErr:    false,
 		},
 		{
 			name:           "cleanup command",
-			args:           []string{"cleanup"},
+			args:           []string{"state", "cleanup"},
 			expectedOutput: []string{"Starting cleanup of orphaned tools and stale artifacts"},
 			expectedErr:    false,
 		},
 		{
 			name:           "check-updates command",
-			args:           []string{"check-updates"},
+			args:           []string{"tool", "check"},
 			expectedOutput: []string{"Checking for updates across configured tools"},
 			expectedErr:    false,
 		},
 		{
 			name:           "log command",
-			args:           []string{"log"},
+			args:           []string{"state", "log"},
 			expectedOutput: []string{"No log entries found."},
 			expectedErr:    false,
 		},
 		{
 			name:           "skill command",
-			args:           []string{"skill"},
+			args:           []string{"skill", "--dir", filepath.Join(tmpDir, "empty-skills")},
 			expectedOutput: []string{"No AI skills found."},
 			expectedErr:    false,
 		},
 		{
 			name:           "global flags platform arch libc",
-			args:           []string{"--platform=linux", "--arch=amd64", "--libc=gnu", "env"},
+			args:           []string{"--platform=linux", "--arch=amd64", "--libc=gnu", "shell", "init"},
 			expectedOutput: []string{"export PATH="},
 			expectedErr:    false,
 		},
 		{
 			name:           "global flags verbose and quiet",
-			args:           []string{"-v", "env"},
+			args:           []string{"-v", "shell", "init"},
 			expectedOutput: []string{"export PATH="},
 			expectedErr:    false,
 		},
@@ -460,14 +447,14 @@ func TestEnvCreateAndDelete(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_TEST", "true")
 	createTempConfigDir(t)
 
-	out1, err := executeCommand("env", "create", "testenv")
+	out1, err := executeCommand("venv", "create", "testenv")
 	if err != nil || !strings.Contains(out1, "Virtual environment created at:") {
-		t.Fatalf("env create failed: %v, out: %s", err, out1)
+		t.Fatalf("venv create failed: %v, out: %s", err, out1)
 	}
 
-	out2, err := executeCommand("env", "delete", "testenv", "--force")
+	out2, err := executeCommand("venv", "delete", "testenv", "--force")
 	if err != nil || !strings.Contains(out2, "Deleted virtual environment at") {
-		t.Fatalf("env delete failed: %v, out: %s", err, out2)
+		t.Fatalf("venv delete failed: %v, out: %s", err, out2)
 	}
 }
 
@@ -513,9 +500,9 @@ func TestInstallCommand_ShimModeQuietOutput(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_TEST", "true")
 	createTempConfigDir(t)
 
-	out, err := executeCommand("install", "--shim-mode", "bat")
+	out, err := executeCommand("tool", "install", "--shim-mode", "bat")
 	if err != nil {
-		t.Fatalf("install bat in shim mode failed: %v", err)
+		t.Fatalf("tool install bat in shim mode failed: %v", err)
 	}
 	if out != "" {
 		t.Errorf("expected no output in shim mode, got: %q", out)
@@ -525,20 +512,20 @@ func TestInstallCommand_ShimModeQuietOutput(t *testing.T) {
 func TestUpdateCommand_HelpAndUninstalled(t *testing.T) {
 	tmpDir := createTempConfigDir(t)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
-	_, err := executeCommand("-c", configPath, "update", "non-existent-tool")
+	_, err := executeCommand("-c", configPath, "tool", "update", "non-existent-tool")
 	if err == nil {
-		t.Errorf("expected update non-existent-tool to return an error")
+		t.Errorf("expected tool update non-existent-tool to return an error")
 	}
 
-	out, err := executeCommand("update", "--help")
+	out, err := executeCommand("tool", "update", "--help")
 	if err != nil {
-		t.Fatalf("update --help failed: %v", err)
+		t.Fatalf("tool update --help failed: %v", err)
 	}
-	if !strings.Contains(out, "When run without arguments, checks all installed tools") || !strings.Contains(out, "dotfiles update ripgrep") {
-		t.Errorf("expected update --help to contain usage details, got:\n%s", out)
+	if !strings.Contains(out, "When run without arguments, checks all installed tools") || !strings.Contains(out, "dotfiles tool update ripgrep") {
+		t.Errorf("expected tool update --help to contain usage details, got:\n%s", out)
 	}
 	if !strings.Contains(out, "--force") || !strings.Contains(out, "-f") {
-		t.Errorf("expected update --help to contain --force / -f flag documentation, got:\n%s", out)
+		t.Errorf("expected tool update --help to contain --force / -f flag documentation, got:\n%s", out)
 	}
 }
 
@@ -547,15 +534,15 @@ func TestUpdateCommand_ForceFlag(t *testing.T) {
 	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 
 	// Test update with --force for all tools in dry-run mode
-	outForceAll, err := executeCommand("-c", absConfig, "--dry-run", "update", "--force")
+	outForceAll, err := executeCommand("-c", absConfig, "--dry-run", "tool", "update", "--force")
 	if err != nil {
-		t.Errorf("update --force failed: %v, out: %s", err, outForceAll)
+		t.Errorf("tool update --force failed: %v, out: %s", err, outForceAll)
 	}
 
 	// Test update with -f for a non-existent tool returns error
-	_, err = executeCommand("-c", absConfig, "--dry-run", "update", "-f", "non-existent-tool")
+	_, err = executeCommand("-c", absConfig, "--dry-run", "tool", "update", "-f", "non-existent-tool")
 	if err == nil {
-		t.Errorf("expected update -f non-existent-tool to return an error")
+		t.Errorf("expected tool update -f non-existent-tool to return an error")
 	}
 }
 
@@ -563,27 +550,27 @@ func TestCheckUpdatesCommand_Details(t *testing.T) {
 	repoRoot := findRepoRoot()
 	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 
-	out, err := executeCommand("-c", absConfig, "check-updates")
+	out, err := executeCommand("-c", absConfig, "tool", "check")
 	if err != nil {
-		t.Fatalf("check-updates failed: %v, out: %s", err, out)
+		t.Fatalf("tool check failed: %v, out: %s", err, out)
 	}
 
 	if !strings.Contains(out, "Checking for updates across configured tools") {
-		t.Errorf("expected check-updates output to mention checking tools, got:\n%s", out)
+		t.Errorf("expected tool check output to mention checking tools, got:\n%s", out)
 	}
 }
 
 func TestRunMain(t *testing.T) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()
-	os.Args = []string{"dotfiles", "version"}
+	os.Args = []string{"dotfiles", "self", "version"}
 	runMain()
 }
 
 func TestVersionCommand(t *testing.T) {
-	out, err := executeCommand("version")
+	out, err := executeCommand("self", "version")
 	if err != nil {
-		t.Fatalf("version command failed: %v", err)
+		t.Fatalf("self version command failed: %v", err)
 	}
 	if strings.TrimSpace(out) != Version {
 		t.Errorf("expected version output to be %q, got %q", Version, out)
@@ -603,9 +590,9 @@ func TestWhyCommand(t *testing.T) {
 	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 
 	t.Run("found tool by binary name bat", func(t *testing.T) {
-		out, err := executeCommand("-c", absConfig, "why", "bat")
+		out, err := executeCommand("-c", absConfig, "tool", "which", "bat")
 		if err != nil {
-			t.Fatalf("why bat failed: %v", err)
+			t.Fatalf("tool which bat failed: %v", err)
 		}
 		expectedPath := filepath.Join(repoRoot, "test-project/tools/github-release--bat.tool.ts")
 		if strings.TrimSpace(out) != expectedPath {
@@ -614,9 +601,9 @@ func TestWhyCommand(t *testing.T) {
 	})
 
 	t.Run("found tool in subfolder by binary name eza", func(t *testing.T) {
-		out, err := executeCommand("-c", absConfig, "why", "eza")
+		out, err := executeCommand("-c", absConfig, "tool", "which", "eza")
 		if err != nil {
-			t.Fatalf("why eza failed: %v", err)
+			t.Fatalf("tool which eza failed: %v", err)
 		}
 		expectedPath := filepath.Join(repoRoot, "test-project/tools/subfolder/cargo--eza.tool.ts")
 		if strings.TrimSpace(out) != expectedPath {
@@ -625,9 +612,9 @@ func TestWhyCommand(t *testing.T) {
 	})
 
 	t.Run("found tool by full name github-release--bat", func(t *testing.T) {
-		out, err := executeCommand("-c", absConfig, "why", "github-release--bat")
+		out, err := executeCommand("-c", absConfig, "tool", "which", "github-release--bat")
 		if err != nil {
-			t.Fatalf("why github-release--bat failed: %v", err)
+			t.Fatalf("tool which github-release--bat failed: %v", err)
 		}
 		expectedPath := filepath.Join(repoRoot, "test-project/tools/github-release--bat.tool.ts")
 		if strings.TrimSpace(out) != expectedPath {
@@ -636,7 +623,7 @@ func TestWhyCommand(t *testing.T) {
 	})
 
 	t.Run("not found tool fz", func(t *testing.T) {
-		out, err := executeCommand("-c", absConfig, "why", "fz")
+		out, err := executeCommand("-c", absConfig, "tool", "which", "fz")
 		if err == nil {
 			t.Errorf("expected error when tool not found, got nil")
 		}
@@ -646,7 +633,7 @@ func TestWhyCommand(t *testing.T) {
 	})
 
 	t.Run("no argument provided", func(t *testing.T) {
-		out, err := executeCommand("-c", absConfig, "why")
+		out, err := executeCommand("-c", absConfig, "tool", "which")
 		if err == nil {
 			t.Errorf("expected error when no arg provided, got nil")
 		}
@@ -656,7 +643,7 @@ func TestWhyCommand(t *testing.T) {
 	})
 
 	t.Run("bootstrap error invalid config file", func(t *testing.T) {
-		out, err := executeCommand("-c", "/nonexistent/config.ts", "why", "bat")
+		out, err := executeCommand("-c", "/nonexistent/config.ts", "tool", "which", "bat")
 		if err == nil {
 			t.Errorf("expected error on bootstrap failure, got nil")
 		}
@@ -689,28 +676,28 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 		wantErr  string
 		contains []string
 	}{
-		{name: "files", args: []string{"-c", absConfig, "files"}, contains: []string{"files currently managed"}},
-		{name: "files json", args: []string{"-c", absConfig, "files", "--json"}, contains: []string{"["}},
-		{name: "files from json config", args: []string{"-c", jsonConfig, "files"}, contains: []string{"files currently managed"}},
-		{name: "generate overwrite", args: []string{"-c", absConfig, "generate", "--overwrite"}},
-		{name: "generate", args: []string{"-c", absConfig, "generate"}},
-		{name: "install one", args: []string{"-c", absConfig, "--dry-run", "install", "bat"}},
-		{name: "install all", args: []string{"-c", absConfig, "--dry-run", "install"}},
-		{name: "uninstall one", args: []string{"-c", absConfig, "--dry-run", "uninstall", "bat"}},
-		{name: "uninstall all", args: []string{"-c", absConfig, "--dry-run", "uninstall"}},
-		{name: "update uninstalled tool", args: []string{"-c", absConfig, "--dry-run", "update", "bat"}, wantErr: `tool "bat" is not installed`},
-		{name: "update all", args: []string{"-c", absConfig, "--dry-run", "update"}},
-		{name: "log", args: []string{"-c", absConfig, "log"}},
-		{name: "log tail", args: []string{"-c", absConfig, "log", "--tail", "10"}},
-		{name: "log json", args: []string{"-c", absConfig, "log", "--json"}},
-		{name: "bin", args: []string{"-c", absConfig, "bin"}},
-		{name: "bin list", args: []string{"-c", absConfig, "bin", "--list"}, contains: []string{"brew"}},
-		{name: "check-updates", args: []string{"-c", absConfig, "check-updates"}, contains: []string{"up to date"}},
-		{name: "features", args: []string{"-c", absConfig, "features"}, contains: []string{"ShellInstall"}},
-		{name: "detect-conflicts", args: []string{"-c", absConfig, "detect-conflicts"}, contains: []string{"conflicts"}},
-		{name: "env", args: []string{"-c", absConfig, "env"}, contains: []string{"export PATH="}},
-		{name: "cleanup", args: []string{"-c", absConfig, "cleanup"}},
-		{name: "validate", args: []string{"-c", absConfig, "validate"}},
+		{name: "files", args: []string{"-c", absConfig, "tool", "files"}, contains: []string{"files currently managed"}},
+		{name: "files json", args: []string{"-c", absConfig, "tool", "files", "--json"}, contains: []string{"["}},
+		{name: "files from json config", args: []string{"-c", jsonConfig, "tool", "files"}, contains: []string{"files currently managed"}},
+		{name: "generate overwrite", args: []string{"-c", absConfig, "state", "generate", "--overwrite"}},
+		{name: "generate", args: []string{"-c", absConfig, "state", "generate"}},
+		{name: "install one", args: []string{"-c", absConfig, "--dry-run", "tool", "install", "bat"}},
+		{name: "install all", args: []string{"-c", absConfig, "--dry-run", "tool", "install"}},
+		{name: "uninstall one", args: []string{"-c", absConfig, "--dry-run", "tool", "uninstall", "bat"}},
+		{name: "uninstall all", args: []string{"-c", absConfig, "--dry-run", "tool", "uninstall"}},
+		{name: "update uninstalled tool", args: []string{"-c", absConfig, "--dry-run", "tool", "update", "bat"}, wantErr: `tool "bat" is not installed`},
+		{name: "update all", args: []string{"-c", absConfig, "--dry-run", "tool", "update"}},
+		{name: "log", args: []string{"-c", absConfig, "state", "log"}},
+		{name: "log tail", args: []string{"-c", absConfig, "state", "log", "--tail", "10"}},
+		{name: "log json", args: []string{"-c", absConfig, "state", "log", "--json"}},
+		{name: "bin", args: []string{"-c", absConfig, "path"}},
+		{name: "bin list", args: []string{"-c", absConfig, "tool", "list"}, contains: []string{"brew"}},
+		{name: "check-updates", args: []string{"-c", absConfig, "tool", "check"}, contains: []string{"up to date"}},
+		{name: "tool info", args: []string{"-c", absConfig, "tool", "info", "github-release--bat"}, contains: []string{"github-release"}},
+		{name: "detect-conflicts", args: []string{"-c", absConfig, "shell", "audit"}, contains: []string{"conflicts"}},
+		{name: "env", args: []string{"-c", absConfig, "shell", "init"}, contains: []string{"export PATH="}},
+		{name: "cleanup", args: []string{"-c", absConfig, "state", "cleanup"}},
+		{name: "validate", args: []string{"-c", absConfig, "tool", "validate"}},
 		{name: "skill", args: []string{"-c", absConfig, "skill", "--dir", filepath.Join(repoRoot, ".agents/skills")}, contains: []string{"dotfiles"}},
 		{name: "dashboard help", args: []string{"dashboard", "--help"}, contains: []string{"Usage:"}},
 	}
@@ -772,9 +759,9 @@ func TestDetectConflictsCommand_ErrorReturn(t *testing.T) {
 		t.Fatalf("failed writing test config: %v", err)
 	}
 
-	_, err := executeCommand("-c", configPath, "detect-conflicts")
+	_, err := executeCommand("-c", configPath, "shell", "audit")
 	if err == nil {
-		t.Fatalf("expected detect-conflicts to return error when non-generator file exists")
+		t.Fatalf("expected shell audit to return error when non-generator file exists")
 	}
 	if !strings.Contains(err.Error(), "conflicts detected") {
 		t.Errorf("expected conflict error message, got: %v", err)
@@ -786,7 +773,7 @@ func TestUpdateAndValidateCommand_FindTool(t *testing.T) {
 	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 
 	// Validate with suffix 'bat' should resolve 'github-release--bat'
-	out, err := executeCommand("-c", absConfig, "validate", "bat")
+	out, err := executeCommand("-c", absConfig, "tool", "validate", "bat")
 	if err != nil {
 		t.Fatalf("validate bat by binary/suffix failed: %v", err)
 	}
@@ -845,7 +832,7 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("check-updates --json in human vs agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "check-updates", "--json")
+		outHuman, err := executeCommand("-c", absConfig, "tool", "check", "--json")
 		if err != nil {
 			t.Fatalf("check-updates --json failed: %v", err)
 		}
@@ -855,9 +842,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "check-updates", "--json")
+		outAgent, err := executeCommand("-c", absConfig, "tool", "check", "--json")
 		if err != nil {
-			t.Fatalf("check-updates --json failed in agent mode: %v", err)
+			t.Fatalf("tool check --json failed in agent mode: %v", err)
 		}
 		jsonAgent := extractJSONPayload(outAgent)
 		if strings.Contains(jsonAgent, "\n") {
@@ -870,9 +857,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("check-updates text in agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := executeCommand("-c", absConfig, "check-updates")
+		out, err := executeCommand("-c", absConfig, "tool", "check")
 		if err != nil {
-			t.Fatalf("check-updates failed in agent mode: %v", err)
+			t.Fatalf("tool check failed in agent mode: %v", err)
 		}
 		if !strings.Contains(out, "tool:") {
 			t.Errorf("expected key-value format in agent mode, got:\n%s", out)
@@ -881,9 +868,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("files --json in human vs agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "files", "--json")
+		outHuman, err := executeCommand("-c", absConfig, "tool", "files", "--json")
 		if err != nil {
-			t.Fatalf("files --json failed: %v", err)
+			t.Fatalf("tool files --json failed: %v", err)
 		}
 		jsonHuman := extractJSONPayload(outHuman)
 		if !strings.Contains(jsonHuman, "[]") && !strings.Contains(jsonHuman, "[\n  ") {
@@ -891,9 +878,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "files", "--json")
+		outAgent, err := executeCommand("-c", absConfig, "tool", "files", "--json")
 		if err != nil {
-			t.Fatalf("files --json in agent mode failed: %v", err)
+			t.Fatalf("tool files --json in agent mode failed: %v", err)
 		}
 		jsonAgent := extractJSONPayload(outAgent)
 		if strings.Contains(jsonAgent, "  ") {
@@ -903,13 +890,13 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("files tree in human vs agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		outHuman, _ := executeCommand("-c", absConfig, "files")
+		outHuman, _ := executeCommand("-c", absConfig, "tool", "files")
 		if !strings.Contains(outHuman, "No files currently managed") && !strings.Contains(outHuman, "- ") {
 			t.Errorf("expected human list in human mode, got:\n%s", outHuman)
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, _ := executeCommand("-c", absConfig, "files")
+		outAgent, _ := executeCommand("-c", absConfig, "tool", "files")
 		if !strings.Contains(outAgent, "no files managed") && !strings.Contains(outAgent, "tool:") {
 			t.Errorf("expected compact agent output in agent mode, got:\n%s", outAgent)
 		}
@@ -917,19 +904,19 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("bin --json in human vs agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "bin", "--list", "--json")
+		outHuman, err := executeCommand("-c", absConfig, "tool", "list", "--json")
 		if err != nil {
-			t.Fatalf("bin --list --json failed: %v", err)
+			t.Fatalf("tool list --json failed: %v", err)
 		}
 		jsonHuman := extractJSONPayload(outHuman)
-		if !strings.Contains(jsonHuman, "  \"binary\":") {
+		if !strings.Contains(jsonHuman, "  \"name\":") {
 			t.Errorf("expected pretty JSON in human mode, got:\n%s", jsonHuman)
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "bin", "--list", "--json")
+		outAgent, err := executeCommand("-c", absConfig, "tool", "list", "--json")
 		if err != nil {
-			t.Fatalf("bin --list --json in agent mode failed: %v", err)
+			t.Fatalf("tool list --json in agent mode failed: %v", err)
 		}
 		jsonAgent := extractJSONPayload(outAgent)
 		if strings.Contains(jsonAgent, "\n") {
@@ -939,9 +926,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("detect-conflicts --json in human vs agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "detect-conflicts", "--json")
+		outHuman, err := executeCommand("-c", absConfig, "shell", "audit", "--json")
 		if err != nil {
-			t.Fatalf("detect-conflicts --json failed: %v", err)
+			t.Fatalf("shell audit --json failed: %v", err)
 		}
 		jsonHuman := extractJSONPayload(outHuman)
 		if !strings.Contains(jsonHuman, "  \"hasConflicts\":") {
@@ -949,9 +936,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "detect-conflicts", "--json")
+		outAgent, err := executeCommand("-c", absConfig, "shell", "audit", "--json")
 		if err != nil {
-			t.Fatalf("detect-conflicts --json in agent mode failed: %v", err)
+			t.Fatalf("shell audit --json in agent mode failed: %v", err)
 		}
 		jsonAgent := extractJSONPayload(outAgent)
 		if strings.Contains(jsonAgent, "  ") {
@@ -961,30 +948,30 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("detect-conflicts text in agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := executeCommand("-c", absConfig, "detect-conflicts")
+		out, err := executeCommand("-c", absConfig, "shell", "audit")
 		if err != nil {
-			t.Fatalf("detect-conflicts failed: %v", err)
+			t.Fatalf("shell audit failed: %v", err)
 		}
 		if !strings.Contains(out, "OK: no conflicts") {
 			t.Errorf("expected 'OK: no conflicts' in agent mode, got:\n%s", out)
 		}
 	})
 
-	t.Run("features --json in human vs agent mode", func(t *testing.T) {
+	t.Run("path --json in human vs agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "features", "--json")
+		outHuman, err := executeCommand("-c", absConfig, "path", "list", "--json")
 		if err != nil {
-			t.Fatalf("features --json failed: %v", err)
+			t.Fatalf("path list --json failed: %v", err)
 		}
 		jsonHuman := extractJSONPayload(outHuman)
-		if !strings.Contains(jsonHuman, "  \"shellInstall\":") {
+		if !strings.Contains(jsonHuman, "  \"target\":") {
 			t.Errorf("expected pretty JSON in human mode, got:\n%s", jsonHuman)
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "features", "--json")
+		outAgent, err := executeCommand("-c", absConfig, "path", "list", "--json")
 		if err != nil {
-			t.Fatalf("features --json in agent mode failed: %v", err)
+			t.Fatalf("path list --json in agent mode failed: %v", err)
 		}
 		jsonAgent := extractJSONPayload(outAgent)
 		if strings.Contains(jsonAgent, "  ") {
@@ -1016,9 +1003,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 
 	t.Run("log --json and log --status --json", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "log", "--status", "--json")
+		outHuman, err := executeCommand("-c", absConfig, "state", "log", "--status", "--json")
 		if err != nil {
-			t.Fatalf("log --status --json failed: %v", err)
+			t.Fatalf("state log --status --json failed: %v", err)
 		}
 		jsonHuman := extractJSONPayload(outHuman)
 		if !strings.Contains(jsonHuman, "[]") && !strings.Contains(jsonHuman, "  ") {
@@ -1026,9 +1013,9 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "log", "--status", "--json")
+		outAgent, err := executeCommand("-c", absConfig, "state", "log", "--status", "--json")
 		if err != nil {
-			t.Fatalf("log --status --json in agent mode failed: %v", err)
+			t.Fatalf("state log --status --json in agent mode failed: %v", err)
 		}
 		jsonAgent := extractJSONPayload(outAgent)
 		if strings.Contains(jsonAgent, "  ") {
@@ -1059,28 +1046,26 @@ func TestPositionalArgumentValidation(t *testing.T) {
 		args    []string
 		wantErr string
 	}{
-		{"why requires a tool", []string{"why"}, "accepts 1 arg(s), received 0"},
-		{"why rejects a second tool", []string{"why", "bat", "fd"}, "accepts 1 arg(s), received 2"},
-		{"log rejects a second tool", []string{"log", "bat", "fd"}, atMostOne},
-		{"files rejects a second tool", []string{"files", "bat", "fd"}, atMostOne},
-		{"validate rejects a second tool", []string{"validate", "bat", "fd"}, atMostOne},
-		{"uninstall rejects a second tool", []string{"uninstall", "bat", "fd"}, atMostOne},
-		{"update rejects a second tool", []string{"update", "bat", "fd"}, atMostOne},
-		{"bin rejects a second name", []string{"bin", "bat", "fd"}, atMostOne},
-		{"upgrade rejects a second version", []string{"upgrade", "1.0.0", "2.0.0"}, atMostOne},
-		{"skill rejects a second path", []string{"skill", "a", "b"}, atMostOne},
-		{"env create rejects a second name", []string{"env", "create", "a", "b"}, atMostOne},
-		{"env delete rejects a second name", []string{"env", "delete", "a", "b"}, atMostOne},
-		{"features rejects an unknown word", []string{"features", "readme"}, `invalid argument "readme" for "dotfiles features"`},
-		{"features rejects a second word", []string{"features", "generate-readme", "generate-readme"}, atMostOne},
-		{"generate takes no arguments", []string{"generate", "bat"}, `unknown command "bat" for "dotfiles generate"`},
-		{"cleanup takes no arguments", []string{"cleanup", "bat"}, `unknown command "bat" for "dotfiles cleanup"`},
-		{"dashboard takes no arguments", []string{"dashboard", "bat"}, `unknown command "bat" for "dotfiles dashboard"`},
-		{"check-updates takes no arguments", []string{"check-updates", "bat"}, `unknown command "bat" for "dotfiles check-updates"`},
-		{"detect-conflicts takes no arguments", []string{"detect-conflicts", "bat"}, `unknown command "bat" for "dotfiles detect-conflicts"`},
-		{"version takes no arguments", []string{"version", "bat"}, `unknown command "bat" for "dotfiles version"`},
-		{"scaffold takes no arguments", []string{"scaffold", "bat"}, `unknown command "bat" for "dotfiles scaffold"`},
-		{"env takes no arguments", []string{"env", "bat"}, `unknown command "bat" for "dotfiles env"`},
+		{"tool which requires a tool", []string{"tool", "which"}, "accepts 1 arg(s), received 0"},
+		{"tool which rejects a second tool", []string{"tool", "which", "bat", "fd"}, "accepts 1 arg(s), received 2"},
+		{"tool info requires a tool", []string{"tool", "info"}, "accepts 1 arg(s), received 0"},
+		{"tool info rejects a second tool", []string{"tool", "info", "bat", "fd"}, "accepts 1 arg(s), received 2"},
+		{"state log rejects a second tool", []string{"state", "log", "bat", "fd"}, atMostOne},
+		{"tool files rejects a second tool", []string{"tool", "files", "bat", "fd"}, atMostOne},
+		{"tool validate rejects a second tool", []string{"tool", "validate", "bat", "fd"}, atMostOne},
+		{"path rejects a second name", []string{"path", "bat", "fd"}, atMostOne},
+		{"self upgrade rejects a second version", []string{"self", "upgrade", "1.0.0", "2.0.0"}, atMostOne},
+		{"skill copy requires a path", []string{"skill", "copy"}, "accepts 1 arg(s), received 0"},
+		{"skill copy rejects a second path", []string{"skill", "copy", "a", "b"}, "accepts 1 arg(s), received 2"},
+		{"venv create rejects a second name", []string{"venv", "create", "a", "b"}, atMostOne},
+		{"venv delete rejects a second name", []string{"venv", "delete", "a", "b"}, atMostOne},
+		{"state generate takes no arguments", []string{"state", "generate", "bat"}, `unknown command "bat" for "dotfiles state generate"`},
+		{"state cleanup takes no arguments", []string{"state", "cleanup", "bat"}, `unknown command "bat" for "dotfiles state cleanup"`},
+		{"self version takes no arguments", []string{"self", "version", "bat"}, `unknown command "bat" for "dotfiles self version"`},
+		{"shell audit takes no arguments", []string{"shell", "audit", "bat"}, `unknown command "bat" for "dotfiles shell audit"`},
+		{"venv list takes no arguments", []string{"venv", "list", "bat"}, `unknown command "bat" for "dotfiles venv list"`},
+		{"path list takes no arguments", []string{"path", "list", "bat"}, `unknown command "bat" for "dotfiles path list"`},
+		{"tool list takes no arguments", []string{"tool", "list", "bat"}, `unknown command "bat" for "dotfiles tool list"`},
 	}
 
 	for _, tt := range tests {
@@ -1172,22 +1157,20 @@ func TestCompletion_ToolNamePositionalArgs(t *testing.T) {
 		args           []string
 		wantCandidates []string
 	}{
-		{"install first arg", []string{"install", ""}, allTools},
-		{"update first arg", []string{"update", ""}, allTools},
-		{"uninstall first arg", []string{"uninstall", ""}, allTools},
-		{"why first arg", []string{"why", ""}, allTools},
-		{"files first arg", []string{"files", ""}, allTools},
-		{"log first arg", []string{"log", ""}, allTools},
-		{"validate first arg", []string{"validate", ""}, allTools},
-		{"prefix filters candidates", []string{"install", "github-release--b"}, []string{"github-release--bat"}},
-		{"install excludes tools already on the line", []string{"install", "github-release--bat", ""}, []string{"brew", "github-release--fd"}},
-		{"install treats KEY=VALUE as not a tool", []string{"install", "FOO=1", ""}, allTools},
-		{"why accepts a single tool only", []string{"why", "github-release--bat", ""}, []string{}},
-		{"update accepts a single tool only", []string{"update", "github-release--bat", ""}, []string{}},
-		{"uninstall accepts a single tool only", []string{"uninstall", "github-release--bat", ""}, []string{}},
-		{"files accepts a single tool only", []string{"files", "github-release--bat", ""}, []string{}},
-		{"log accepts a single tool only", []string{"log", "github-release--bat", ""}, []string{}},
-		{"validate accepts a single tool only", []string{"validate", "github-release--bat", ""}, []string{}},
+		{"install first arg", []string{"tool", "install", ""}, allTools},
+		{"update first arg", []string{"tool", "update", ""}, allTools},
+		{"uninstall first arg", []string{"tool", "uninstall", ""}, allTools},
+		{"which first arg", []string{"tool", "which", ""}, []string{"bat", "brew", "fd", "github-release--bat", "github-release--fd"}},
+		{"files first arg", []string{"tool", "files", ""}, allTools},
+		{"log first arg", []string{"state", "log", ""}, allTools},
+		{"validate first arg", []string{"tool", "validate", ""}, allTools},
+		{"prefix filters candidates", []string{"tool", "install", "github-release--b"}, []string{"github-release--bat"}},
+		{"install excludes tools already on the line", []string{"tool", "install", "github-release--bat", ""}, []string{"brew", "github-release--fd"}},
+		{"install treats KEY=VALUE as not a tool", []string{"tool", "install", "FOO=1", ""}, allTools},
+		{"which accepts a single tool only", []string{"tool", "which", "github-release--bat", ""}, []string{}},
+		{"files accepts a single tool only", []string{"tool", "files", "github-release--bat", ""}, []string{}},
+		{"log accepts a single tool only", []string{"state", "log", "github-release--bat", ""}, []string{}},
+		{"validate accepts a single tool only", []string{"tool", "validate", "github-release--bat", ""}, []string{}},
 	}
 
 	for _, tt := range tests {
@@ -1212,9 +1195,9 @@ func TestCompletion_ToolNamePositionalArgs(t *testing.T) {
 func TestCompletion_BinAcceptsBinaryOrToolName(t *testing.T) {
 	createCompletionConfigDir(t)
 
-	out, err := runCommand(cobra.ShellCompRequestCmd, "bin", "")
+	out, err := runCommand(cobra.ShellCompRequestCmd, "tool", "which", "")
 	if err != nil {
-		t.Fatalf("__complete bin returned error: %v\n%s", err, out.Combined)
+		t.Fatalf("__complete tool which returned error: %v\n%s", err, out.Combined)
 	}
 	got, directive := parseCompletionOutput(t, out.Stdout)
 	// brew appears once even though it is both a tool name and that tool's implicit binary.
@@ -1223,9 +1206,9 @@ func TestCompletion_BinAcceptsBinaryOrToolName(t *testing.T) {
 		t.Fatalf("directive = %d, want ShellCompDirectiveNoFileComp set", directive)
 	}
 
-	out, err = runCommand(cobra.ShellCompRequestCmd, "bin", "bat", "")
+	out, err = runCommand(cobra.ShellCompRequestCmd, "tool", "which", "bat", "")
 	if err != nil {
-		t.Fatalf("__complete bin bat returned error: %v\n%s", err, out.Combined)
+		t.Fatalf("__complete tool which bat returned error: %v\n%s", err, out.Combined)
 	}
 	got, _ = parseCompletionOutput(t, out.Stdout)
 	assertCandidates(t, got, []string{})
@@ -1235,10 +1218,11 @@ func TestCompletion_ConfigLoadFailureReportsError(t *testing.T) {
 	createCompletionConfigDir(t)
 	missingConfig := filepath.Join(t.TempDir(), "missing.config.json")
 
-	// One subcommand per completion variant: repeatable tool, single tool, binary-or-tool.
-	for _, sub := range []string{"install", "why", "bin"} {
-		t.Run(sub, func(t *testing.T) {
-			out, err := runCommand("--config", missingConfig, cobra.ShellCompRequestCmd, sub, "")
+	for _, sub := range [][]string{{"tool", "install"}, {"tool", "which"}} {
+		t.Run(strings.Join(sub, " "), func(t *testing.T) {
+			args := append([]string{"--config", missingConfig, cobra.ShellCompRequestCmd}, sub...)
+			args = append(args, "")
+			out, err := runCommand(args...)
 			if err != nil {
 				t.Fatalf("__complete must never fail the process, got error: %v\n%s", err, out.Combined)
 			}
@@ -1257,9 +1241,9 @@ func TestCompletion_ConfigLoadFailureReportsError(t *testing.T) {
 func TestCompletion_DescribesInstallationMethod(t *testing.T) {
 	createCompletionConfigDir(t)
 
-	out, err := runCommand(cobra.ShellCompRequestCmd, "install", "")
+	out, err := runCommand(cobra.ShellCompRequestCmd, "tool", "install", "")
 	if err != nil {
-		t.Fatalf("__complete install returned error: %v\n%s", err, out.Combined)
+		t.Fatalf("__complete tool install returned error: %v\n%s", err, out.Combined)
 	}
 	for _, want := range []string{"brew\tmanual\n", "github-release--bat\tgithub-release\n"} {
 		if !strings.Contains(out.Stdout, want) {
@@ -1273,7 +1257,7 @@ func TestCompletion_DescribesInstallationMethod(t *testing.T) {
 func TestGenerateCommand_WritesCLICompletion(t *testing.T) {
 	p := newE2EProject(t, `"manual-tool": {"name": "manual-tool", "installationMethod": "manual"}`)
 
-	out, err := p.run("generate")
+	out, err := p.run("state", "generate")
 	if err != nil {
 		t.Fatalf("generate: %v\n%s", err, out.Combined)
 	}
@@ -1488,7 +1472,7 @@ func TestUpdateCommands_UseBootstrappedInstallers(t *testing.T) {
 	p := newE2EProject(t, `"gh": {"name": "gh", "installationMethod": "github-release", "installParams": {"repo": "acme/never-fetched"}}`)
 	p.seedInstallation(t, "gh", "v1.0.0", filepath.Join(p.Root, "installed", "gh"))
 
-	for _, args := range [][]string{{"check-updates"}, {"update", "gh"}, {"update"}} {
+	for _, args := range [][]string{{"tool", "check"}, {"tool", "update", "gh"}, {"tool", "update"}} {
 		out, err := p.run(args...)
 		if err != nil {
 			t.Fatalf("%v: %v\n%s", args, err, out.Combined)
@@ -1641,9 +1625,9 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	}
 
 	t.Run("installs a newer release and records its version", func(t *testing.T) {
-		out, err := p.run("update", "newer")
+		out, err := p.run("tool", "update", "newer")
 		if err != nil {
-			t.Fatalf("update newer: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update newer: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "New version available: v0.1.0 -> v9.9.9", "Successfully updated to version v9.9.9")
 		if rec := p.installation(t, "newer"); rec == nil || rec.Version != "v9.9.9" {
@@ -1653,51 +1637,51 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 
 	t.Run("reports an up to date tool from the cached release", func(t *testing.T) {
 		// The previous subtest fetched this repository, so the installer answers from its cache.
-		out, err := p.run("update", "newer")
+		out, err := p.run("tool", "update", "newer")
 		if err != nil {
-			t.Fatalf("update newer again: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update newer again: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "Already up to date (v9.9.9, cached)")
 	})
 
 	t.Run("reports an up to date tool on a fresh fetch", func(t *testing.T) {
-		out, err := p.run("update", "same")
+		out, err := p.run("tool", "update", "same")
 		if err != nil {
-			t.Fatalf("update same: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update same: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "Already up to date (v0.1.0)")
 		mustNotContain(t, "stderr", out.Stderr, "cached")
 	})
 
 	t.Run("treats an unparsable installed version as outdated", func(t *testing.T) {
-		out, err := p.run("update", "unknown-current")
+		out, err := p.run("tool", "update", "unknown-current")
 		if err != nil {
-			t.Fatalf("update unknown-current: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update unknown-current: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "New version available: unknown -> v9.9.9")
 	})
 
 	t.Run("reports an installed tool without a version as up to date", func(t *testing.T) {
-		out, err := p.run("update", "manual-unversioned")
+		out, err := p.run("tool", "update", "manual-unversioned")
 		if err != nil {
-			t.Fatalf("update manual-unversioned: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update manual-unversioned: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "Already up to date")
 		mustNotContain(t, "stderr", out.Stderr, "Already up to date (")
 	})
 
 	t.Run("force reinstalls the recorded version when nothing is newer", func(t *testing.T) {
-		out, err := p.run("update", "--force", "manual-versioned")
+		out, err := p.run("tool", "update", "--force", "manual-versioned")
 		if err != nil {
-			t.Fatalf("update --force manual-versioned: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update --force manual-versioned: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "Force updating: reinstalling version v1.0.0", "Successfully updated to version v1.0.0")
 	})
 
 	t.Run("shim mode is silent", func(t *testing.T) {
-		out, err := p.run("update", "--shim-mode", "manual-versioned")
+		out, err := p.run("tool", "update", "--shim-mode", "manual-versioned")
 		if err != nil {
-			t.Fatalf("update --shim-mode: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update --shim-mode: %v\n%s", err, out.Combined)
 		}
 		if out.Combined != "" {
 			t.Fatalf("expected no output in shim mode, got:\n%s", out.Combined)
@@ -1705,31 +1689,31 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	})
 
 	t.Run("a failed installation is an error", func(t *testing.T) {
-		out, err := p.run("update", "sudo-tool")
+		out, err := p.run("tool", "update", "sudo-tool")
 		if err == nil {
-			t.Fatalf("expected update sudo-tool to fail:\n%s", out.Combined)
+			t.Fatalf("expected tool update sudo-tool to fail:\n%s", out.Combined)
 		}
 		mustContain(t, "error", err.Error(), `updating tool "sudo-tool" to version v9.9.9 failed`, "does not support sudo")
 	})
 
 	t.Run("an unknown installer is an error", func(t *testing.T) {
-		_, err := p.run("update", "bogus")
+		_, err := p.run("tool", "update", "bogus")
 		if err == nil || !strings.Contains(err.Error(), `getting installer for "bogus"`) {
 			t.Fatalf("error = %v, want installer lookup failure", err)
 		}
 	})
 
 	t.Run("a tool that is not installed is an error", func(t *testing.T) {
-		_, err := p.run("update", "never-installed")
+		_, err := p.run("tool", "update", "never-installed")
 		if err == nil || !strings.Contains(err.Error(), `tool "never-installed" is not installed`) {
 			t.Fatalf("error = %v, want not-installed failure", err)
 		}
 	})
 
 	t.Run("updating everything skips what it cannot handle and continues past failures", func(t *testing.T) {
-		out, err := p.run("update")
+		out, err := p.run("tool", "update")
 		if err != nil {
-			t.Fatalf("update: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr,
 			"Checking all configured tools for updates...",
@@ -1739,9 +1723,9 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	})
 
 	t.Run("force updating everything reinstalls each installed tool", func(t *testing.T) {
-		out, err := p.run("update", "--force")
+		out, err := p.run("tool", "update", "--force")
 		if err != nil {
-			t.Fatalf("update --force: %v\n%s", err, out.Combined)
+			t.Fatalf("tool update --force: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr,
 			"[same] Force updating: reinstalling version v0.1.0",
@@ -1768,9 +1752,9 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	p.seedInstallation(t, "upd", "v0.1.0", filepath.Join(p.Root, "installed", "upd"))
 
 	t.Run("human output on a fresh fetch", func(t *testing.T) {
-		out, err := p.run("check-updates")
+		out, err := p.run("tool", "check")
 		if err != nil {
-			t.Fatalf("check-updates: %v\n%s", err, out.Combined)
+			t.Fatalf("tool check: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout,
 			"avail: available (v9.9.9)\n",
@@ -1788,9 +1772,9 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	})
 
 	t.Run("human output from the cached releases", func(t *testing.T) {
-		out, err := p.run("check-updates")
+		out, err := p.run("tool", "check")
 		if err != nil {
-			t.Fatalf("check-updates: %v\n%s", err, out.Combined)
+			t.Fatalf("tool check: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout, "same: up to date (v0.1.0, cached)\n")
 		mustContain(t, "stderr", out.Stderr, "[same] Up to date (v0.1.0, cached)")
@@ -1798,9 +1782,9 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 
 	t.Run("agent output", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := p.run("check-updates")
+		out, err := p.run("tool", "check")
 		if err != nil {
-			t.Fatalf("check-updates: %v\n%s", err, out.Combined)
+			t.Fatalf("tool check: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout,
 			"tool:avail current: latest:v9.9.9 update:true cached:true\n",
@@ -1810,9 +1794,9 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	})
 
 	t.Run("json output", func(t *testing.T) {
-		out, err := p.run("check-updates", "--json")
+		out, err := p.run("tool", "check", "--json")
 		if err != nil {
-			t.Fatalf("check-updates --json: %v\n%s", err, out.Combined)
+			t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
 		}
 		var results []ToolUpdateResult
 		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
@@ -1855,9 +1839,9 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 	p.seedInstallation(t, "pinned", "v1.2.3", filepath.Join(p.Root, "installed", "pinned"))
 	p.seedInstallation(t, "admitted", "v1.2.3", filepath.Join(p.Root, "installed", "admitted"))
 
-	out, err := p.run("check-updates", "--json")
+	out, err := p.run("tool", "check", "--json")
 	if err != nil {
-		t.Fatalf("check-updates --json: %v\n%s", err, out.Combined)
+		t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
 	}
 	var results []ToolUpdateResult
 	if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
@@ -1911,9 +1895,9 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	})
 
 	t.Run("history in human mode", func(t *testing.T) {
-		out, err := p.run("log")
+		out, err := p.run("state", "log")
 		if err != nil {
-			t.Fatalf("log: %v\n%s", err, out.Combined)
+			t.Fatalf("state log: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout, "[bat] write", "(binary)", "[bat] symlink", "(symlink)")
 		mustContain(t, "stderr", out.Stderr, "Reading operation history and logs")
@@ -1921,17 +1905,17 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 
 	t.Run("history in agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := p.run("log")
+		out, err := p.run("state", "log")
 		if err != nil {
-			t.Fatalf("log: %v\n%s", err, out.Combined)
+			t.Fatalf("state log: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout, "tool:bat op:write path:", "type:binary", "tool:bat op:symlink path:")
 	})
 
 	t.Run("history as json", func(t *testing.T) {
-		out, err := p.run("log", "--json")
+		out, err := p.run("state", "log", "--json")
 		if err != nil {
-			t.Fatalf("log --json: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --json: %v\n%s", err, out.Combined)
 		}
 		var ops []map[string]any
 		if err := json.Unmarshal([]byte(out.Stdout), &ops); err != nil {
@@ -1943,27 +1927,27 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	})
 
 	t.Run("type filter", func(t *testing.T) {
-		out, err := p.run("log", "--type", "symlink")
+		out, err := p.run("state", "log", "--type", "symlink")
 		if err != nil {
-			t.Fatalf("log --type symlink: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --type symlink: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout, "[bat] symlink")
 		mustNotContain(t, "stdout", out.Stdout, "[bat] write")
 	})
 
 	t.Run("since filter keeps operations after the date", func(t *testing.T) {
-		out, err := p.run("log", "--since", "2024-01-03")
+		out, err := p.run("state", "log", "--since", "2024-01-03")
 		if err != nil {
-			t.Fatalf("log --since: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --since: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout, "[bat] symlink")
 		mustNotContain(t, "stdout", out.Stdout, "[bat] write")
 	})
 
 	t.Run("since filter with no matches falls back to disk logs", func(t *testing.T) {
-		out, err := p.run("log", "--since", "2030-01-01")
+		out, err := p.run("state", "log", "--since", "2030-01-01")
 		if err != nil {
-			t.Fatalf("log --since: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --since: %v\n%s", err, out.Combined)
 		}
 		if out.Stdout != "No log entries found.\n" {
 			t.Fatalf("stdout = %q, want the no-entries message", out.Stdout)
@@ -1971,17 +1955,17 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	})
 
 	t.Run("an unparsable since date is ignored", func(t *testing.T) {
-		out, err := p.run("log", "--since", "yesterday")
+		out, err := p.run("state", "log", "--since", "yesterday")
 		if err != nil {
-			t.Fatalf("log --since yesterday: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --since yesterday: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout, "[bat] write", "[bat] symlink")
 	})
 
 	t.Run("status in human mode", func(t *testing.T) {
-		out, err := p.run("log", "--status")
+		out, err := p.run("state", "log", "--status")
 		if err != nil {
-			t.Fatalf("log --status: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --status: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout,
 			"File states for bat:\n",
@@ -1992,15 +1976,15 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	})
 
 	t.Run("status for one tool", func(t *testing.T) {
-		out, err := p.run("log", "bat", "--status")
+		out, err := p.run("state", "log", "bat", "--status")
 		if err != nil {
-			t.Fatalf("log bat --status: %v\n%s", err, out.Combined)
+			t.Fatalf("state log bat --status: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout, "File states for bat:\n")
 
-		out, err = p.run("log", "ghost", "--status")
+		out, err = p.run("state", "log", "ghost", "--status")
 		if err != nil {
-			t.Fatalf("log ghost --status: %v\n%s", err, out.Combined)
+			t.Fatalf("state log ghost --status: %v\n%s", err, out.Combined)
 		}
 		if out.Stdout != "" {
 			t.Fatalf("stdout for a tool without states = %q, want empty", out.Stdout)
@@ -2009,9 +1993,9 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 
 	t.Run("status in agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := p.run("log", "--status")
+		out, err := p.run("state", "log", "--status")
 		if err != nil {
-			t.Fatalf("log --status: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --status: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout,
 			"tool:bat path:"+existing+" type:binary exists:true size:4 target:\n",
@@ -2020,9 +2004,9 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	})
 
 	t.Run("status as json", func(t *testing.T) {
-		out, err := p.run("log", "--status", "--json")
+		out, err := p.run("state", "log", "--status", "--json")
 		if err != nil {
-			t.Fatalf("log --status --json: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --status --json: %v\n%s", err, out.Combined)
 		}
 		var states []FileStateInfo
 		if err := json.Unmarshal([]byte(out.Stdout), &states); err != nil {
@@ -2044,16 +2028,16 @@ func TestLogCommand_DiskLogFallback(t *testing.T) {
 	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
 
 	t.Run("nothing recorded", func(t *testing.T) {
-		out, err := p.run("log")
+		out, err := p.run("state", "log")
 		if err != nil {
-			t.Fatalf("log: %v\n%s", err, out.Combined)
+			t.Fatalf("state log: %v\n%s", err, out.Combined)
 		}
 		if out.Stdout != "No log entries found.\n" {
 			t.Fatalf("stdout = %q, want the no-entries message", out.Stdout)
 		}
-		out, err = p.run("log", "--json")
+		out, err = p.run("state", "log", "--json")
 		if err != nil {
-			t.Fatalf("log --json: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --json: %v\n%s", err, out.Combined)
 		}
 		if strings.TrimSpace(out.Stdout) != "[]" {
 			t.Fatalf("stdout = %q, want an empty JSON array", out.Stdout)
@@ -2066,18 +2050,18 @@ func TestLogCommand_DiskLogFallback(t *testing.T) {
 	}
 
 	t.Run("tail of the generated log", func(t *testing.T) {
-		out, err := p.run("log", "--tail", "2")
+		out, err := p.run("state", "log", "--tail", "2")
 		if err != nil {
-			t.Fatalf("log --tail 2: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --tail 2: %v\n%s", err, out.Combined)
 		}
 		if out.Stdout != "two\nthree\n" {
 			t.Fatalf("stdout = %q, want the last two lines", out.Stdout)
 		}
 		mustContain(t, "stderr", out.Stderr, "Reading log file: "+logPath)
 
-		out, err = p.run("log", "--tail", "0")
+		out, err = p.run("state", "log", "--tail", "0")
 		if err != nil {
-			t.Fatalf("log --tail 0: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --tail 0: %v\n%s", err, out.Combined)
 		}
 		if out.Stdout != "one\ntwo\nthree\n" {
 			t.Fatalf("stdout = %q, want every line", out.Stdout)
@@ -2085,9 +2069,9 @@ func TestLogCommand_DiskLogFallback(t *testing.T) {
 	})
 
 	t.Run("tail as json", func(t *testing.T) {
-		out, err := p.run("log", "--tail", "2", "--json")
+		out, err := p.run("state", "log", "--tail", "2", "--json")
 		if err != nil {
-			t.Fatalf("log --tail 2 --json: %v\n%s", err, out.Combined)
+			t.Fatalf("state log --tail 2 --json: %v\n%s", err, out.Combined)
 		}
 		var lines []string
 		if err := json.Unmarshal([]byte(out.Stdout), &lines); err != nil {
@@ -2106,9 +2090,9 @@ func TestLogCommand_DiskLogFallback(t *testing.T) {
 		if err := os.WriteFile(usagePath, []byte("bat used\n"), 0644); err != nil {
 			t.Fatalf("writing usage log: %v", err)
 		}
-		out, err := p.run("log")
+		out, err := p.run("state", "log")
 		if err != nil {
-			t.Fatalf("log: %v\n%s", err, out.Combined)
+			t.Fatalf("state log: %v\n%s", err, out.Combined)
 		}
 		if out.Stdout != "bat used\n" {
 			t.Fatalf("stdout = %q, want the shim usage log", out.Stdout)
@@ -2124,9 +2108,9 @@ func TestScaffoldCommand(t *testing.T) {
 	dotfilesTool := filepath.Join(toolsDir, "dotfiles.tool.ts")
 
 	t.Run("creates the starter files", func(t *testing.T) {
-		out, err := p.run("scaffold")
+		out, err := p.run("tool", "scaffold")
 		if err != nil {
-			t.Fatalf("scaffold: %v\n%s", err, out.Combined)
+			t.Fatalf("tool scaffold: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "Created "+dotfilesTool)
 		if _, err := os.Stat(dotfilesTool); err != nil {
@@ -2135,9 +2119,9 @@ func TestScaffoldCommand(t *testing.T) {
 	})
 
 	t.Run("leaves existing files alone", func(t *testing.T) {
-		out, err := p.run("scaffold")
+		out, err := p.run("tool", "scaffold")
 		if err != nil {
-			t.Fatalf("scaffold: %v\n%s", err, out.Combined)
+			t.Fatalf("tool scaffold: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, dotfilesTool+" already exists, skipping")
 	})
@@ -2146,9 +2130,9 @@ func TestScaffoldCommand(t *testing.T) {
 		if err := os.WriteFile(dotfilesTool, []byte("// my edits\n"), 0644); err != nil {
 			t.Fatalf("editing file: %v", err)
 		}
-		out, err := p.run("scaffold", "--force")
+		out, err := p.run("tool", "scaffold", "--force")
 		if err != nil {
-			t.Fatalf("scaffold --force: %v\n%s", err, out.Combined)
+			t.Fatalf("tool scaffold --force: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr,
 			"Overwrote "+dotfilesTool,
@@ -2167,9 +2151,9 @@ func TestScaffoldCommand(t *testing.T) {
 		fresh := newE2EProject(t, "")
 		freshTools := filepath.Join(fresh.Root, "tools")
 		fresh.writeConfig(t, "", fmt.Sprintf(`"toolConfigsDir": %q`, freshTools), "")
-		out, err := fresh.run("scaffold", "--dry-run")
+		out, err := fresh.run("tool", "scaffold", "--dry-run")
 		if err != nil {
-			t.Fatalf("scaffold --dry-run: %v\n%s", err, out.Combined)
+			t.Fatalf("tool scaffold --dry-run: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "Would create "+filepath.Join(freshTools, "dotfiles.tool.ts"))
 		if _, err := os.Stat(freshTools); !os.IsNotExist(err) {
@@ -2339,20 +2323,20 @@ func TestBinCommand_Resolution(t *testing.T) {
 
 	for _, name := range []string{"ghb", "gh-tool"} {
 		t.Run("resolves "+name, func(t *testing.T) {
-			out, err := p.run("bin", name)
+			out, err := p.run("tool", "which", "--bin", name)
 			if err != nil {
-				t.Fatalf("bin %s: %v\n%s", name, err, out.Combined)
+				t.Fatalf("tool which --bin %s: %v\n%s", name, err, out.Combined)
 			}
-			if out.Stdout != wantPath {
+			if strings.TrimSpace(out.Stdout) != wantPath {
 				t.Fatalf("stdout = %q, want %q", out.Stdout, wantPath)
 			}
 		})
 	}
 
 	t.Run("resolves as json", func(t *testing.T) {
-		out, err := p.run("bin", "ghb", "--json")
+		out, err := p.run("tool", "which", "--bin", "ghb", "--json")
 		if err != nil {
-			t.Fatalf("bin ghb --json: %v\n%s", err, out.Combined)
+			t.Fatalf("tool which --bin ghb --json: %v\n%s", err, out.Combined)
 		}
 		var got map[string]string
 		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
@@ -2364,49 +2348,53 @@ func TestBinCommand_Resolution(t *testing.T) {
 	})
 
 	t.Run("unknown name", func(t *testing.T) {
-		_, err := p.run("bin", "nope")
-		if err == nil || !strings.Contains(err.Error(), "binary or tool not found: nope") {
+		_, err := p.run("tool", "which", "--bin", "nope")
+		if err == nil || !strings.Contains(err.Error(), "not found") {
 			t.Fatalf("error = %v, want not-found failure", err)
 		}
 	})
 
 	t.Run("binary missing on disk", func(t *testing.T) {
-		_, err := p.run("bin", "plain")
+		_, err := p.run("tool", "which", "--bin", "plain")
 		if err == nil || !strings.Contains(err.Error(), "binary path does not exist") {
 			t.Fatalf("error = %v, want missing-path failure", err)
 		}
 	})
 
 	t.Run("bin dir as json", func(t *testing.T) {
-		out, err := p.run("bin", "--json")
+		out, err := p.run("path", "target", "--json")
 		if err != nil {
-			t.Fatalf("bin --json: %v\n%s", err, out.Combined)
+			t.Fatalf("path target --json: %v\n%s", err, out.Combined)
 		}
 		var got map[string]string
 		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
 			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
 		}
-		if got["binDir"] != p.TargetDir {
-			t.Fatalf("binDir = %q, want the target dir %q", got["binDir"], p.TargetDir)
+		if got["path"] != p.TargetDir {
+			t.Fatalf("path = %q, want the target dir %q", got["path"], p.TargetDir)
 		}
 	})
 
 	t.Run("list as json", func(t *testing.T) {
-		out, err := p.run("bin", "--list", "--json")
+		out, err := p.run("tool", "list", "--json")
 		if err != nil {
-			t.Fatalf("bin --list --json: %v\n%s", err, out.Combined)
+			t.Fatalf("tool list --json: %v\n%s", err, out.Combined)
 		}
-		var got []BinaryInfo
+		var got []ToolListItem
 		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
 			t.Fatalf("stdout is not a JSON array: %v\n%s", err, out.Stdout)
 		}
-		if !slices.Contains(got, BinaryInfo{Binary: "ghb", Tool: "gh-tool"}) || !slices.Contains(got, BinaryInfo{Binary: "plain", Tool: "plain"}) {
-			t.Fatalf("binaries = %+v, want ghb (gh-tool) and plain (plain)", got)
+		names := []string{}
+		for _, item := range got {
+			names = append(names, item.Name)
+		}
+		if !slices.Contains(names, "gh-tool") || !slices.Contains(names, "plain") {
+			t.Fatalf("tools = %+v, want gh-tool and plain", names)
 		}
 	})
 }
 
-// TestBinCommand_PrintsTargetDir runs the no-argument form against the on-disk
+// TestBinCommand_PrintsTargetDir runs the target path query against the on-disk
 // fixture, whose targetDir ({paths.generatedDir}/user-bin) and binariesDir
 // ({paths.generatedDir}/binaries) differ, so printing the wrong one is visible.
 func TestBinCommand_PrintsTargetDir(t *testing.T) {
@@ -2414,91 +2402,86 @@ func TestBinCommand_PrintsTargetDir(t *testing.T) {
 	wantDir := filepath.Join(findRepoRoot(), "test-project", ".generated", "user-bin")
 
 	t.Run("human", func(t *testing.T) {
-		out, err := runCommand("-c", absConfig, "bin")
+		out, err := runCommand("-c", absConfig, "path", "target")
 		if err != nil {
-			t.Fatalf("bin: %v\n%s", err, out.Combined)
+			t.Fatalf("path target: %v\n%s", err, out.Combined)
 		}
 		if out.Stdout != wantDir+"\n" {
 			t.Fatalf("stdout = %q, want the configured target dir %q", out.Stdout, wantDir)
 		}
-		mustContain(t, "stderr", out.Stderr, "Target bin directory: "+wantDir)
 	})
 
 	t.Run("json", func(t *testing.T) {
-		out, err := runCommand("-c", absConfig, "bin", "--json")
+		out, err := runCommand("-c", absConfig, "path", "target", "--json")
 		if err != nil {
-			t.Fatalf("bin --json: %v\n%s", err, out.Combined)
+			t.Fatalf("path target --json: %v\n%s", err, out.Combined)
 		}
 		var got map[string]string
 		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
 			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
 		}
-		if got["binDir"] != wantDir {
-			t.Fatalf("binDir = %q, want the configured target dir %q", got["binDir"], wantDir)
+		if got["path"] != wantDir {
+			t.Fatalf("path = %q, want the configured target dir %q", got["path"], wantDir)
 		}
 	})
 }
 
-func TestFeaturesCommand_Output(t *testing.T) {
+func TestToolListAndInfoCommand_Output(t *testing.T) {
 	p := newE2EProject(t, `
-		"gh": {"name": "gh", "installationMethod": "manual", "binaries": [{"name": "ghb"}, {"name": "ghc"}, {"pattern": "unnamed"}]},
+		"gh": {"name": "gh", "installationMethod": "manual", "binaries": [{"name": "ghb"}, {"name": "ghc"}]},
 		"sh": {"name": "sh"}
 	`)
 
-	for _, args := range [][]string{{"features", "generate-readme"}, {"features", "--generate-readme"}} {
-		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			out, err := p.run(args...)
-			if err != nil {
-				t.Fatalf("%v: %v\n%s", args, err, out.Combined)
-			}
-			mustContain(t, "stdout", out.Stdout,
-				"# Configured Tools & Features",
-				"| **gh** | manual | `[ghb ghc]` | Managed via dotfiles |",
-				"| **sh** | shell | sh | Managed via dotfiles |",
-			)
-		})
-	}
-
-	t.Run("agent mode text", func(t *testing.T) {
-		t.Setenv("AGENT", "1")
-		out, err := p.run("features")
+	t.Run("tool list text", func(t *testing.T) {
+		out, err := p.run("tool", "list")
 		if err != nil {
-			t.Fatalf("features: %v\n%s", err, out.Combined)
+			t.Fatalf("tool list: %v\n%s", err, out.Combined)
 		}
-		if out.Stdout != "shellInstall:false\n" {
-			t.Fatalf("stdout = %q, want the compact feature line", out.Stdout)
+		mustContain(t, "stdout", out.Stdout, "gh", "sh")
+	})
+
+	t.Run("tool list agent mode", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := p.run("tool", "list")
+		if err != nil {
+			t.Fatalf("tool list: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "name:gh", "name:sh")
+	})
+
+	t.Run("tool list json", func(t *testing.T) {
+		out, err := p.run("tool", "list", "--json")
+		if err != nil {
+			t.Fatalf("tool list --json: %v\n%s", err, out.Combined)
+		}
+		var got []ToolListItem
+		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
+			t.Fatalf("stdout is not a JSON array: %v\n%s", err, out.Stdout)
+		}
+		if len(got) != 2 {
+			t.Fatalf("expected 2 tools, got %d", len(got))
 		}
 	})
 
-	t.Run("json", func(t *testing.T) {
-		out, err := p.run("features", "--json")
+	t.Run("tool info", func(t *testing.T) {
+		out, err := p.run("tool", "info", "gh")
 		if err != nil {
-			t.Fatalf("features --json: %v\n%s", err, out.Combined)
+			t.Fatalf("tool info gh: %v\n%s", err, out.Combined)
 		}
-		var got map[string]any
+		mustContain(t, "stdout", out.Stdout, "gh", "manual", "ghb", "ghc")
+	})
+
+	t.Run("tool info json", func(t *testing.T) {
+		out, err := p.run("tool", "info", "gh", "--json")
+		if err != nil {
+			t.Fatalf("tool info gh --json: %v\n%s", err, out.Combined)
+		}
+		var got ToolInfoReport
 		if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
 			t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
 		}
-		if _, ok := got["shellInstall"]; !ok {
-			t.Errorf("shellInstall missing from %v", got)
-		}
-	})
-
-	// features.catalog is accepted by the configuration loader, but nothing in the
-	// binary generates a catalog, so reporting it as a feature flag claims a capability
-	// that does not exist.
-	t.Run("no output mode reports the unimplemented catalog feature", func(t *testing.T) {
-		for _, mode := range []string{"0", "1"} {
-			t.Setenv("AGENT", mode)
-			for _, args := range [][]string{{"features"}, {"features", "--json"}} {
-				out, err := p.run(args...)
-				if err != nil {
-					t.Fatalf("%v (AGENT=%s): %v\n%s", args, mode, err, out.Combined)
-				}
-				if strings.Contains(strings.ToLower(out.Stdout), "catalog") {
-					t.Errorf("%v (AGENT=%s) reports a catalog feature:\n%s", args, mode, out.Stdout)
-				}
-			}
+		if got.Name != "gh" || got.InstallationMethod != "manual" || len(got.Binaries) != 2 {
+			t.Fatalf("unexpected info report: %+v", got)
 		}
 	})
 }
@@ -2513,27 +2496,27 @@ func TestEnvCommand_Lifecycle(t *testing.T) {
 		t.Fatalf("getting working dir: %v", err)
 	}
 
-	out, err := p.run("env", "create", "venv")
+	out, err := p.run("venv", "create", "venv")
 	if err != nil {
-		t.Fatalf("env create venv: %v\n%s", err, out.Combined)
+		t.Fatalf("venv create venv: %v\n%s", err, out.Combined)
 	}
 	mustContain(t, "stdout", out.Stdout, "Virtual environment created at: "+filepath.Join(cwd, "venv"))
 
-	_, err = p.run("env", "create", "venv")
+	_, err = p.run("venv", "create", "venv")
 	if err == nil || !strings.Contains(err.Error(), "failed to create virtual environment") {
 		t.Fatalf("error = %v, want creation failure for an existing environment", err)
 	}
 
-	_, err = p.run("env", "delete", "missing")
+	_, err = p.run("venv", "delete", "missing")
 	if err == nil || !strings.Contains(err.Error(), `virtual environment "missing" not found in `+cwd) {
 		t.Fatalf("error = %v, want not-found failure", err)
 	}
 
 	// An absolute environment path is accepted as-is.
 	envDir := filepath.Join(cwd, "venv")
-	out, err = p.run("env", "delete", "--force", envDir)
+	out, err = p.run("venv", "delete", "--force", envDir)
 	if err != nil {
-		t.Fatalf("env delete %s: %v\n%s", envDir, err, out.Combined)
+		t.Fatalf("venv delete %s: %v\n%s", envDir, err, out.Combined)
 	}
 	if out.Stdout != "Deleted virtual environment at "+envDir+"\n" {
 		t.Fatalf("stdout = %q, want the deletion confirmation", out.Stdout)
@@ -2558,8 +2541,8 @@ func TestEnvDeleteCommand_Confirmation(t *testing.T) {
 
 	createEnv := func(t *testing.T) {
 		t.Helper()
-		if out, err := p.run("env", "create", "venv"); err != nil {
-			t.Fatalf("env create venv: %v\n%s", err, out.Combined)
+		if out, err := p.run("venv", "create", "venv"); err != nil {
+			t.Fatalf("venv create venv: %v\n%s", err, out.Combined)
 		}
 	}
 	mustExist := func(t *testing.T) {
@@ -2574,7 +2557,7 @@ func TestEnvDeleteCommand_Confirmation(t *testing.T) {
 			t.Fatalf("expected %s to be removed (stat err = %v)", envDir, err)
 		}
 	}
-	// deleteWith runs env delete with stdin replaced by answer. go test never runs
+	// deleteWith runs venv delete with stdin replaced by answer. go test never runs
 	// on a terminal, so terminal is what stdioIsTerminal reports for this run.
 	deleteWith := func(t *testing.T, terminal bool, answer string, extra ...string) (commandOutput, error) {
 		t.Helper()
@@ -2585,14 +2568,14 @@ func TestEnvDeleteCommand_Confirmation(t *testing.T) {
 			stdioIsTerminal = orig
 			rootCmd.SetIn(nil)
 		})
-		return p.run(append([]string{"env", "delete", "venv"}, extra...)...)
+		return p.run(append([]string{"venv", "delete", "venv"}, extra...)...)
 	}
 
 	t.Run("a terminal is asked and y deletes", func(t *testing.T) {
 		createEnv(t)
 		out, err := deleteWith(t, true, "y\n")
 		if err != nil {
-			t.Fatalf("env delete: %v\n%s", err, out.Combined)
+			t.Fatalf("venv delete: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, prompt)
 		if out.Stdout != "Deleted virtual environment at "+envDir+"\n" {
@@ -2684,22 +2667,22 @@ func TestInstallCommand_ArgumentHandling(t *testing.T) {
 	`)
 
 	t.Run("KEY=VALUE words are not tool names", func(t *testing.T) {
-		out, err := p.run("install", "FOO=1", "bat")
+		out, err := p.run("tool", "install", "FOO=1", "bat")
 		if err != nil {
-			t.Fatalf("install FOO=1 bat: %v\n%s", err, out.Combined)
+			t.Fatalf("tool install FOO=1 bat: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "[bat] Installing...")
 	})
 
 	t.Run("unknown tool", func(t *testing.T) {
-		_, err := p.run("install", "nope")
+		_, err := p.run("tool", "install", "nope")
 		if err == nil || !strings.Contains(err.Error(), `tool "nope" not found in configuration`) {
 			t.Fatalf("error = %v, want not-found failure", err)
 		}
 	})
 
 	t.Run("a failed installation is logged once and the error silenced", func(t *testing.T) {
-		out, err := p.run("install", "broken")
+		out, err := p.run("tool", "install", "broken")
 		if !errors.Is(err, ErrSilent) {
 			t.Fatalf("error = %v, want ErrSilent", err)
 		}
@@ -2707,9 +2690,9 @@ func TestInstallCommand_ArgumentHandling(t *testing.T) {
 	})
 
 	t.Run("force reinstalls", func(t *testing.T) {
-		out, err := p.run("install", "--force", "bat")
+		out, err := p.run("tool", "install", "--force", "bat")
 		if err != nil {
-			t.Fatalf("install --force bat: %v\n%s", err, out.Combined)
+			t.Fatalf("tool install --force bat: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "[bat] Installing...")
 	})
@@ -2718,7 +2701,7 @@ func TestInstallCommand_ArgumentHandling(t *testing.T) {
 func TestUninstallCommand_Errors(t *testing.T) {
 	t.Run("unknown tool", func(t *testing.T) {
 		p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
-		_, err := p.run("uninstall", "nope")
+		_, err := p.run("tool", "uninstall", "nope")
 		if err == nil || !strings.Contains(err.Error(), `tool "nope" not found in configuration`) {
 			t.Fatalf("error = %v, want not-found failure", err)
 		}
@@ -2729,7 +2712,7 @@ func TestUninstallCommand_Errors(t *testing.T) {
 			"a": {"name": "a", "dependencies": ["b"]},
 			"b": {"name": "b", "dependencies": ["a"]}
 		`)
-		_, err := p.run("uninstall")
+		_, err := p.run("tool", "uninstall")
 		if err == nil || !strings.Contains(err.Error(), "dependency cycle detected among tools: a, b") {
 			t.Fatalf("error = %v, want cycle detection", err)
 		}
@@ -2741,9 +2724,9 @@ func TestCleanupCommand_RemovesOrphans(t *testing.T) {
 	p.seedInstallation(t, "ghost", "v1.0.0", filepath.Join(p.Root, "installed", "ghost"))
 	p.seedInstallation(t, "bat", "v1.0.0", filepath.Join(p.Root, "installed", "bat"))
 
-	out, err := p.run("cleanup")
+	out, err := p.run("state", "cleanup")
 	if err != nil {
-		t.Fatalf("cleanup: %v\n%s", err, out.Combined)
+		t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
 	}
 	mustContain(t, "stderr", out.Stderr, "[ghost] Removing orphaned tool...")
 	if rec := p.installation(t, "ghost"); rec != nil {
@@ -2779,9 +2762,9 @@ func TestGenerateCommand_UpdatesExistingProfiles(t *testing.T) {
 		}
 	}
 
-	out, err := p.run("generate")
+	out, err := p.run("state", "generate")
 	if err != nil {
-		t.Fatalf("generate: %v\n%s", err, out.Combined)
+		t.Fatalf("state generate: %v\n%s", err, out.Combined)
 	}
 	mustContain(t, "stderr", out.Stderr, "Integrating generated shell scripts with profiles")
 	if strings.Contains(out.Stderr, "Profile not found") {
@@ -2809,9 +2792,9 @@ func TestGenerateCommand_SkipsMissingProfiles(t *testing.T) {
 	p := newE2EProject(t, `"bat": {"name": "bat"}`)
 	p.writeConfig(t, `"bat": {"name": "bat"}`, "", shellInstallFeature)
 
-	out, err := p.run("generate")
+	out, err := p.run("state", "generate")
 	if err != nil {
-		t.Fatalf("generate: %v\n%s", err, out.Combined)
+		t.Fatalf("state generate: %v\n%s", err, out.Combined)
 	}
 
 	for rel, script := range shellInstallProfiles {
@@ -2828,22 +2811,271 @@ func TestWhyCommand_MissingConfigFile(t *testing.T) {
 	missing := filepath.Join(p.Root, "tools", "bat.tool.ts")
 	p.writeConfig(t, fmt.Sprintf(`"bat": {"name": "bat", "configFilePath": %q}`, missing), "", "")
 
-	_, err := p.run("why", "bat")
+	_, err := p.run("tool", "which", "bat")
 	if err == nil || !strings.Contains(err.Error(), `config file for "bat" does not exist: `+missing) {
 		t.Fatalf("error = %v, want missing config file failure", err)
 	}
 }
 
 func TestSubcommandArgConsistency(t *testing.T) {
-	if diffCmd.Use != "diff [tool]" {
-		t.Errorf("diffCmd.Use = %q, want %q", diffCmd.Use, "diff [tool]")
+	if stateDiffCmd.Use != "diff [tool]" {
+		t.Errorf("stateDiffCmd.Use = %q, want %q", stateDiffCmd.Use, "diff [tool]")
 	}
-	if filesCmd.Use != "files [tool]" {
-		t.Errorf("filesCmd.Use = %q, want %q", filesCmd.Use, "files [tool]")
+	if toolFilesCmd.Use != "files [tool]" {
+		t.Errorf("toolFilesCmd.Use = %q, want %q", toolFilesCmd.Use, "files [tool]")
 	}
 	for _, cmd := range rootCmd.Commands() {
 		if strings.Contains(cmd.Use, "toolName") {
 			t.Errorf("command %q has inconsistent argument name %q (must use 'tool' instead of 'toolName')", cmd.Name(), cmd.Use)
 		}
 	}
+}
+
+func TestNewHierarchySubcommandsCoverage(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	toolsDir := filepath.Join(tmpDir, "tools")
+	_ = os.MkdirAll(toolsDir, 0755)
+
+	configContent := fmt.Sprintf(`{
+	"projectConfig": {
+		"paths": {
+			"homeDir": %q,
+			"targetDir": %q,
+			"generatedDir": %q,
+			"binariesDir": %q,
+			"dotfilesDir": %q,
+			"shellScriptsDir": %q,
+			"toolConfigsDir": %q
+		}
+	},
+	"toolConfigs": {
+		"bat": {
+			"name": "bat",
+			"installationMethod": "github-release",
+			"binaries": [{"name": "bat"}]
+		}
+	}
+}`, tmpDir, filepath.Join(tmpDir, "bin"), filepath.Join(tmpDir, ".generated"), filepath.Join(tmpDir, ".generated", "binaries"), tmpDir, filepath.Join(tmpDir, ".generated", "shell-scripts"), toolsDir)
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing config: %v", err)
+	}
+
+	t.Run("venv list coverage", func(t *testing.T) {
+		oldWd, _ := os.Getwd()
+		_ = os.Chdir(tmpDir)
+		defer func() { _ = os.Chdir(oldWd) }()
+
+		// 1. Empty venv list
+		out, err := executeCommand("venv", "list")
+		if err != nil {
+			t.Fatalf("venv list empty: %v", err)
+		}
+		if !strings.Contains(out, "No virtual environments detected") {
+			t.Errorf("expected no venvs detected, got: %s", out)
+		}
+
+		// Agent mode empty
+		t.Setenv("AGENT", "1")
+		outAgent, _ := executeCommand("venv", "list")
+		if !strings.Contains(outAgent, "no virtual environments detected") {
+			t.Errorf("expected compact empty output, got: %s", outAgent)
+		}
+		t.Setenv("AGENT", "0")
+
+		// 2. Create an environment
+		_, err = executeCommand("venv", "create", "env1")
+		if err != nil {
+			t.Fatalf("venv create env1: %v", err)
+		}
+
+		// 3. List with detected environment
+		out, err = executeCommand("venv", "list")
+		if err != nil {
+			t.Fatalf("venv list with env: %v", err)
+		}
+		if !strings.Contains(out, "env1") {
+			t.Errorf("expected env1 in list, got: %s", out)
+		}
+
+		// Agent mode with env
+		t.Setenv("AGENT", "1")
+		outAgent, _ = executeCommand("venv", "list")
+		if !strings.Contains(outAgent, "name:env1") {
+			t.Errorf("expected compact agent output with name:env1, got: %s", outAgent)
+		}
+		t.Setenv("AGENT", "0")
+
+		// JSON mode
+		outJSON, err := executeCommand("venv", "list", "--json")
+		if err != nil {
+			t.Fatalf("venv list --json: %v", err)
+		}
+		if !strings.Contains(outJSON, `"name": "env1"`) {
+			t.Errorf("expected JSON output with env1, got: %s", outJSON)
+		}
+
+		// Active environment outside cwd
+		t.Setenv("DOTFILES_ENV_DIR", filepath.Join(tmpDir, "external-env"))
+		t.Setenv("DOTFILES_ENV_NAME", "external-env")
+		outActive, _ := executeCommand("venv", "list")
+		if !strings.Contains(outActive, "external-env") {
+			t.Errorf("expected external-env in list, got: %s", outActive)
+		}
+		t.Setenv("DOTFILES_ENV_DIR", "")
+		t.Setenv("DOTFILES_ENV_NAME", "")
+
+		// Delete environment
+		_, _ = executeCommand("venv", "delete", "env1", "--force")
+	})
+
+	t.Run("tool scaffold with name", func(t *testing.T) {
+		// Single tool creation
+		out, err := executeCommand("-c", configPath, "tool", "scaffold", "customtool")
+		if err != nil {
+			t.Fatalf("tool scaffold customtool: %v", err)
+		}
+		createdPath := filepath.Join(toolsDir, "customtool.tool.ts")
+		if _, err := os.Stat(createdPath); err != nil {
+			t.Fatalf("expected %s to exist: %v", createdPath, err)
+		}
+
+		// Skip existing without --force
+		out, _ = executeCommand("-c", configPath, "tool", "scaffold", "customtool")
+		if !strings.Contains(out, "already exists, skipping") {
+			t.Errorf("expected skip message, got: %s", out)
+		}
+
+		// Overwrite with --force
+		out, err = executeCommand("-c", configPath, "tool", "scaffold", "--force", "customtool")
+		if err != nil {
+			t.Fatalf("tool scaffold --force customtool: %v", err)
+		}
+
+		// Dry run single tool
+		out, err = executeCommand("-c", configPath, "--dry-run", "tool", "scaffold", "drytool")
+		if err != nil {
+			t.Fatalf("tool scaffold --dry-run: %v", err)
+		}
+		if !strings.Contains(out, "Would create") {
+			t.Errorf("expected dry-run would create message, got: %s", out)
+		}
+	})
+
+	t.Run("tool info details", func(t *testing.T) {
+		// Human output
+		out, err := executeCommand("-c", configPath, "tool", "info", "bat")
+		if err != nil {
+			t.Fatalf("tool info bat: %v", err)
+		}
+		if !strings.Contains(out, "Tool: bat") || !strings.Contains(out, "github-release") {
+			t.Errorf("expected tool info output, got: %s", out)
+		}
+
+		// Agent mode
+		t.Setenv("AGENT", "1")
+		outAgent, err := executeCommand("-c", configPath, "tool", "info", "bat")
+		if err != nil {
+			t.Fatalf("tool info bat in agent mode: %v", err)
+		}
+		if !strings.Contains(outAgent, "tool:bat") {
+			t.Errorf("expected agent mode format, got: %s", outAgent)
+		}
+		t.Setenv("AGENT", "0")
+
+		// JSON mode
+		outJSON, err := executeCommand("-c", configPath, "tool", "info", "bat", "--json")
+		if err != nil {
+			t.Fatalf("tool info bat --json: %v", err)
+		}
+		if !strings.Contains(outJSON, `"name": "bat"`) {
+			t.Errorf("expected JSON format, got: %s", outJSON)
+		}
+
+		// Tool not found
+		_, err = executeCommand("-c", configPath, "tool", "info", "missing-tool")
+		if err == nil {
+			t.Fatalf("expected error for missing tool")
+		}
+	})
+
+	t.Run("shell init varieties", func(t *testing.T) {
+		for _, sh := range []string{"zsh", "bash", "powershell", "fish", ""} {
+			args := []string{"-c", configPath, "shell", "init"}
+			if sh != "" {
+				args = append(args, sh)
+			}
+			out, err := executeCommand(args...)
+			if err != nil {
+				t.Fatalf("shell init %s failed: %v", sh, err)
+			}
+			if out == "" {
+				t.Errorf("expected non-empty output for shell init %s", sh)
+			}
+		}
+	})
+
+	t.Run("path queries and get/list", func(t *testing.T) {
+		for _, name := range []string{"target", "binaries", "cache", "dotfiles", "generated", "toolConfigs", "shellScripts", "home"} {
+			out, err := executeCommand("-c", configPath, "path", "get", name)
+			if err != nil {
+				t.Fatalf("path get %s failed: %v", name, err)
+			}
+			if strings.TrimSpace(out) == "" {
+				t.Errorf("expected non-empty path for %s", name)
+			}
+		}
+
+		// Path list text & JSON
+		outList, err := executeCommand("-c", configPath, "path", "list")
+		if err != nil {
+			t.Fatalf("path list failed: %v", err)
+		}
+		if !strings.Contains(outList, "target:") {
+			t.Errorf("expected target: in path list, got: %s", outList)
+		}
+
+		// Agent mode path list
+		t.Setenv("AGENT", "1")
+		outListAgent, _ := executeCommand("-c", configPath, "path", "list")
+		if !strings.Contains(outListAgent, "target:") {
+			t.Errorf("expected target: in agent mode path list, got: %s", outListAgent)
+		}
+		t.Setenv("AGENT", "0")
+
+		// Path get JSON
+		outGetJSON, err := executeCommand("-c", configPath, "path", "get", "target", "--json")
+		if err != nil {
+			t.Fatalf("path get target --json: %v", err)
+		}
+		if !strings.Contains(outGetJSON, `"path":`) {
+			t.Errorf("expected path key in JSON, got: %s", outGetJSON)
+		}
+
+		// Invalid path name
+		_, err = executeCommand("-c", configPath, "path", "get", "nonexistent-dir")
+		if err == nil {
+			t.Fatalf("expected error for nonexistent path name")
+		}
+	})
+
+	t.Run("skill copy command", func(t *testing.T) {
+		destDir := t.TempDir()
+		_, err := executeCommand("skill", "copy", destDir)
+		if err != nil {
+			t.Fatalf("skill copy: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(destDir, "dotfiles", "SKILL.md")); err != nil {
+			t.Fatalf("expected copied SKILL.md to exist: %v", err)
+		}
+	})
+
+	t.Run("dashboard start command with shutdown", func(t *testing.T) {
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		}()
+		_, _ = executeCommand("-c", configPath, "dashboard", "start", "--port", "0")
+	})
 }

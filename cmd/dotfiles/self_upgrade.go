@@ -9,25 +9,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var upgradeCmd = &cobra.Command{
+var selfUpgradeCmd = &cobra.Command{
 	Use:   "upgrade [version]",
 	Args:  cobra.MaximumNArgs(1),
-	Short: "Upgrade dotfiles CLI binary to the latest or specified version",
+	Short: "Self-upgrade dotfiles CLI to latest or specified release",
 	Long: `Checks for and downloads the latest release of the dotfiles executable from GitHub Releases, safely updating the running binary.
 
-If a version is specified (e.g., "dotfiles upgrade 2.0.1"), upgrades or downgrades to that exact release version.
+If a version is specified (e.g., "dotfiles self upgrade 2.0.1"), upgrades or downgrades to that exact release version.
 Use --check to inspect available updates without downloading or modifying the executable.`,
 	Example: `  # Upgrade to latest stable release
-  dotfiles upgrade
+  dotfiles self upgrade
 
   # Check if an update is available without installing
-  dotfiles upgrade --check
+  dotfiles self upgrade --check
 
   # Upgrade to a specific version
-  dotfiles upgrade 2.0.1
+  dotfiles self upgrade 2.0.1
 
   # Force re-download and re-install
-  dotfiles upgrade --force`,
+  dotfiles self upgrade --force`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		log := GetLogger("upgrade", cmd.ErrOrStderr())
@@ -116,9 +116,7 @@ Use --check to inspect available updates without downloading or modifying the ex
 }
 
 func init() {
-	upgradeCmd.Flags().Bool("check", false, "Check for available updates without applying")
-	upgradeCmd.Flags().BoolP("force", "f", false, "Force re-download and installation even if already up to date")
-	upgradeCmd.Flags().Bool("prerelease", false, "Include prerelease versions when checking for latest release")
-
-	rootCmd.AddCommand(upgradeCmd)
+	selfUpgradeCmd.Flags().Bool("check", false, "Check for available updates without applying")
+	selfUpgradeCmd.Flags().BoolP("force", "f", false, "Force re-download and installation even if already up to date")
+	selfUpgradeCmd.Flags().Bool("prerelease", false, "Include prerelease versions when checking for latest release")
 }

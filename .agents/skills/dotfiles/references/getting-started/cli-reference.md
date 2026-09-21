@@ -1,222 +1,237 @@
 # CLI Reference
 
-The `dotfiles` CLI provides several commands to manage your tools, generate shims, inspect installations, and launch the web dashboard:
+The `dotfiles` CLI is organized around a subject-first command hierarchy (`dotfiles <subject> <verb> [args]`):
 
 ```bash
-# Install a tool by name or binary name
-dotfiles install fzf
-dotfiles install --force fzf
+# Managed tool configurations (.tool.ts) & packages
+dotfiles tool list
+dotfiles tool info fzf
+dotfiles tool which fzf
+dotfiles tool which --bin fzf
+dotfiles tool install fzf
+dotfiles tool uninstall fzf
+dotfiles tool update fzf
+dotfiles tool check --json
+dotfiles tool validate fzf --json
+dotfiles tool files fzf
+dotfiles tool scaffold
 
-# Generate shims and shell configuration files
-dotfiles generate
+# System, binary, and storage path queries
+dotfiles path
+dotfiles path list
+dotfiles path get target
+dotfiles path get binaries
 
-# Print full path to the .tool.ts config file that installs a tool or binary
-dotfiles why fzf
+# Interactive shell integration & collision audits
+dotfiles shell init zsh
+dotfiles shell audit
 
-# Validate tool configurations for schema issues or errors
-dotfiles validate
-dotfiles validate fzf --json
+# Isolated dotfiles virtual environments
+dotfiles venv list
+dotfiles venv create myenv
+dotfiles venv delete myenv
 
-# Update installed tools
-dotfiles update fzf
-dotfiles update
+# System state, drift detection, and orchestration
+dotfiles state generate
+dotfiles state diff
+dotfiles state cleanup
+dotfiles state log fzf --tail 50
 
-# Check available updates using installed-state data
-dotfiles check-updates --json
+# Web dashboard UI
+dotfiles dashboard
+dotfiles dashboard start --port 8080
 
-# Upgrade dotfiles CLI binary itself
-dotfiles upgrade --check
-dotfiles upgrade
-dotfiles upgrade 2.2.0
-
-# Launch web dashboard
-dotfiles dashboard --port 8080
-
-# View file operation logs
-dotfiles log fzf --tail 50
-
-# Inspect drift and 3-way differences across declared files and blocks
-dotfiles diff
-dotfiles diff fzf
-dotfiles diff --json
-
-# Display tree of installed tool files
-dotfiles files fzf
-
-# Print the real path of an installed binary
-dotfiles bin fzf
-
-# Remove tools and artifacts that are no longer configured
-dotfiles cleanup
-
-# Manage isolated dotfiles environments
-dotfiles env create myenv
-dotfiles env delete myenv
-
-# Inspect feature flags, or find files a shim would overwrite
-dotfiles features --json
-dotfiles detect-conflicts --json
-
-# Write the starter tool configurations
-dotfiles scaffold
-
-# Manage AI skills or copy embedded skill directory
+# AI Agent skill definitions
 dotfiles skill .agents/skills/
+dotfiles skill copy .agents/skills/
 
-# Uninstall a tool, or every configured tool
-dotfiles uninstall fzf
-dotfiles uninstall
-
-# Print CLI version
-dotfiles version
+# Self-management
+dotfiles self version
+dotfiles self upgrade
+dotfiles self upgrade --check
 ```
 
 ## Command Details
 
-### `dotfiles install [tool...]`
+### `dotfiles tool`
 
-Installs the named tools, by tool name or by binary name. With no argument, installs
-every configured tool, in dependency order.
+Commands that manage configured tools, lifecycles, and binary lookups.
+
+#### `dotfiles tool list`
+
+Lists all configured tools, including their installation method, status, version, and binaries.
+
+- `--json`: Output tool list in JSON format.
+
+#### `dotfiles tool info <tool>`
+
+Displays detailed metadata, dependencies, configuration paths, and on-disk binary locations for a specific tool.
+
+- `--json`: Output tool metadata and locations in JSON format.
+
+#### `dotfiles tool which <name>`
+
+Finds the `.tool.ts` configuration file that configures a tool or binary name. When passed `--bin`, resolves and prints the absolute path of the installed executable binary on disk.
+
+- `--bin`: Output the path to the installed binary executable instead of the configuration file.
+- `--json`: Output result in JSON format.
+
+#### `dotfiles tool install [tool...]`
+
+Installs the named tools, by tool name or by binary name. With no argument, installs every configured tool, in dependency order.
 
 - `-f, --force`: Force reinstallation even if already installed.
 - `--shim-mode`: Quiet output, used by generated shims when they install on first use.
 
-### `dotfiles generate`
+#### `dotfiles tool uninstall [tool...]`
 
-Writes the shims, symlinks, copies, shell initialization scripts and completions the
-configuration calls for, and removes the artifacts of declarations that have gone.
+Removes installed tools and their associated binaries, shims, and symlinks. With no argument, uninstalls every configured tool in reverse dependency order.
 
-- `--overwrite`: Replace files that the generator did not create, instead of leaving
-  them in place. See [`detect-conflicts`](#dotfiles-detect-conflicts) for finding them
-  first.
+#### `dotfiles tool update [tool...]`
 
-### `dotfiles update [tool]`
-
-Updates one installed tool, or every installed tool when no name is given. Tools that
-are not installed are skipped.
+Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed are skipped during batch updates.
 
 - `-f, --force`: Re-download and reinstall even if already up to date.
 - `--shim-mode`: Quiet output, used by generated shims running `<binary> @update`.
 
-### `dotfiles check-updates`
+#### `dotfiles tool check [tool...]`
 
-Checks available updates using recorded installed-state data.
+Checks available updates from upstream releases without installing.
 
 - `--json`: Output update status in JSON format.
 
-### `dotfiles upgrade [version]`
-
-Upgrades or downgrades the `dotfiles` CLI binary from GitHub Releases. With a version
-argument, moves to exactly that release.
-
-- `--check`: Check for available updates without applying them.
-- `-f, --force`: Re-download and reinstall even if already up to date.
-- `--prerelease`: Consider prereleases when looking for the latest version.
-
-### `dotfiles dashboard`
-
-Launches the web dashboard visualization client and server.
-
-- `-p, --port <port>`: Dashboard HTTP port (default: `8080`).
-- `-H, --host <address>`: Address to bind to (default: `127.0.0.1`).
-
-### `dotfiles validate [tool]`
+#### `dotfiles tool validate [tool]`
 
 Validates tool configuration files for syntax, schema, or structural errors, then type-checks the TypeScript configuration.
 
-The type-check runs the TypeScript compiler over the CLI-owned `.generated/tsconfig.json` (regenerated first, so the bin-name registry is current) and reports each diagnostic as a validation error attributed to the tool whose `.tool.ts` it is in, with the file, line and column. The compiler is the `tsc` binary declared by a configured tool -- the scaffolded `typescript.tool.ts` installs `microsoft/typescript-go` pinned to `typescript/v7.0.2` -- and is run from that tool's `current` directory; it is deliberately not exposed on PATH, so it never shadows another project's TypeScript. When no tool declares `tsc`, or the tool is not installed yet, `validate` fails with a message naming `dotfiles scaffold` and `dotfiles install`; it never skips silently. A JSON-configured project has nothing to type-check, and `--dry-run` skips the step because the generated program is not written to disk; both are announced.
+The type-check runs the TypeScript compiler over the CLI-owned `.generated/tsconfig.json` (regenerated first, so the bin-name registry is current) and reports each diagnostic as a validation error attributed to the tool whose `.tool.ts` it is in, with the file, line, and column. The compiler is the `tsc` binary declared by a configured tool -- the scaffolded `typescript.tool.ts` installs `microsoft/typescript-go` pinned to `typescript/v7.0.2` -- and is run from that tool's `current` directory; it is deliberately not exposed on PATH, so it never shadows another project's TypeScript. When no tool declares `tsc`, or the tool is not installed yet, `validate` fails with a message naming `dotfiles tool scaffold` and `dotfiles tool install typescript`; it never skips silently. A JSON-configured project has nothing to type-check, and `--dry-run` skips the step because the generated program is not written to disk; both are announced.
 
 - `--json`: Output validation results in JSON format (type-check diagnostics appear in `errors`).
 
-### `dotfiles why <tool>`
+#### `dotfiles tool files [tool]`
 
-Finds and prints the path to the `.tool.ts` file responsible for configuring a tool or binary name.
-
-### `dotfiles diff [tool]`
-
-Inspects 3-way differences and drift status between the repository declarations,
-the files currently on disk, and the recorded base state in SQLite.
-
-Reports state across all symlinks, copies, templates, and managed blocks:
-`in-sync`, `local-drift`, `upstream-update`, `conflict`, `missing`, or `unmanaged`.
-When differences exist, prints a unified line diff.
-
-- `--json`: Output drift evaluation and diffs in JSON format.
-
-### `dotfiles files [tool]`
-
-Lists on-disk files associated with an installed tool.
+Displays a tree view of files in the tool installation directory or lists all managed files.
 
 - `--json`: Output file tree in JSON format.
 
-### `dotfiles log [tool]`
+#### `dotfiles tool scaffold [name]`
+
+Writes starter `.tool.ts` configuration files into the primary tool configs directory, creating that directory if it does not exist. Loading a configuration never creates tool files; this command is the only thing that does. When a name is provided, generates a single starter `<name>.tool.ts` file.
+
+An existing file is left untouched, so running it again adds what is missing without discarding local edits.
+
+- `-f, --force`: Overwrite tool configurations that already exist.
+
+---
+
+### `dotfiles path`
+
+Queries configured system, target, binary, cache, and storage directories.
+
+With no arguments, `dotfiles path` prints all resolved directories. Specifying a path name (or using `dotfiles path get <name>`) prints that specific directory path.
+
+Supported directory names: `target`, `binaries`, `cache`, `dotfiles`, `generated`, `toolConfigs`, `shellScripts`, `home`.
+
+- `--json`: Output paths in JSON format.
+
+#### `dotfiles path list`
+
+Prints all resolved configuration and runtime directories.
+
+- `--json`: Output directory list in JSON format.
+
+#### `dotfiles path get <name>`
+
+Prints the absolute path of a specific configuration or runtime directory.
+
+- `--json`: Output result in JSON format.
+
+---
+
+### `dotfiles shell`
+
+Interactive shell integration, PATH exports, completion scripts, and collision audits.
+
+#### `dotfiles shell init [shell]`
+
+Emits shell export strings and initialization hooks (similar to `brew shellenv`). Supports `zsh`, `bash`, `powershell`, and `fish`.
+
+#### `dotfiles shell audit`
+
+Detects collisions across aliases, functions, and binaries, and reports every shim `dotfiles state generate` would have to write over a file it did not create. Run it before `dotfiles state generate --overwrite`.
+
+- `--json`: Output conflict analysis in JSON format.
+
+---
+
+### `dotfiles venv`
+
+Manages isolated dotfiles environments -- a directory with its own `dotfiles.config.ts`, `tools/` and `XDG_CONFIG_HOME`, activated by prepending its bin directory to PATH. See [virtual-environments.md](../configuration/virtual-environments.md). It is the dotfiles equivalent of a Python virtual environment, not a Python one.
+
+#### `dotfiles venv list`
+
+Lists detected virtual environments in the current working directory and indicates which environment is currently active.
+
+- `--json`: Output environment list in JSON format.
+
+#### `dotfiles venv create [name]`
+
+Creates an environment directory, named `env` by default.
+
+#### `dotfiles venv delete [name]`
+
+Removes an environment directory. On an interactive terminal it first asks `Delete environment at '<dir>'? [y/N]` and only `y` or `yes` deletes; anything else cancels. Without a terminal to ask on (pipes, CI, `AGENT=1`) it refuses and exits non-zero instead of deleting.
+
+- `-f, --force`: Skip the confirmation prompt. Required when there is no interactive terminal.
+
+---
+
+### `dotfiles state`
+
+System state, drift detection, and orchestration.
+
+#### `dotfiles state generate`
+
+Writes the shims, symlinks, copies, shell initialization scripts and completions the configuration calls for, and removes the artifacts of declarations that have gone.
+
+- `--overwrite`: Replace files that the generator did not create, instead of leaving them in place. See [`shell audit`](#dotfiles-shell-audit) for finding them first.
+
+#### `dotfiles state diff [tool]`
+
+Inspects 3-way differences and drift status between repository declarations, the files currently on disk, and the recorded base state in SQLite.
+
+Reports state across all symlinks, copies, templates, and managed blocks: `in-sync`, `local-drift`, `upstream-update`, `conflict`, `missing`, or `unmanaged`. When differences exist, prints a unified line diff.
+
+- `--json`: Output drift evaluation and diffs in JSON format.
+
+#### `dotfiles state cleanup`
+
+Uninstalls every tool that is recorded as installed but is no longer configured or has been disabled, removing its binaries, shims and symlinks. Artifacts of tools that are still configured are reconciled by `dotfiles state generate`, not here.
+
+#### `dotfiles state log [tool]`
 
 Displays file operations and installation log entries.
 
 - `-n, --tail <N>`: Number of entries to show from the end of the log (default: `50`).
 - `--since <YYYY-MM-DD>`: Only show operations recorded on or after that date.
 - `--type <kind>`: Filter by file kind (`shim`, `binary`, `symlink`, `copy`, `config`, `completion`, ...).
-- `--status`: Show the current file states for tools instead of the operation history.
+- `--status`: Show current file states for tools instead of operation history.
 - `--json`: Output log entries in JSON format.
 
-### `dotfiles bin [name]`
+---
 
-With no argument, prints `paths.targetDir`, the directory the shims live in. With a tool
-or binary name, prints the real path of that binary, following the `current` symlink, and
-fails if nothing is installed there.
+### `dotfiles dashboard`
 
-- `-l, --list`: List all configured binaries and their associated tool names.
-- `--json`: Output the result in JSON format.
+Launches the local web dashboard visualization client and server.
 
-### `dotfiles cleanup`
+- `-p, --port <port>`: Dashboard HTTP port (default: `8080`).
+- `-H, --host <address>`: Address to bind to (default: `127.0.0.1`).
 
-Uninstalls every tool that is recorded as installed but is no longer configured or has
-been disabled, removing its binaries, shims and symlinks. Artifacts of tools that are
-still configured are reconciled by `dotfiles generate`, not here. It takes no flags.
+#### `dotfiles dashboard start`
 
-### `dotfiles env`
+Starts the local HTTP dashboard server and prints its URL.
 
-Manages isolated dotfiles environments -- a directory with its own `dotfiles.config.ts`,
-`tools/` and `XDG_CONFIG_HOME`, activated by prepending its bin directory to PATH. See
-[virtual-environments.md](../configuration/virtual-environments.md). It is the dotfiles
-equivalent of a Python virtual environment, not a Python one.
-
-Run on its own, `dotfiles env` prints the `export PATH=...` line that puts the current
-project's shim directory first, for `eval`.
-
-- `dotfiles env create [name]`: Create an environment directory, named `env` by default.
-  It takes no flags.
-- `dotfiles env delete [name]`: Remove an environment. On an interactive terminal it first asks `Delete environment at '<dir>'? [y/N]` and only `y` or `yes` deletes; anything else cancels. Without a terminal to ask on (pipes, CI, `AGENT=1`) it refuses and exits non-zero instead of deleting.
-  - `--force`: Skip the confirmation prompt. Required when there is no interactive terminal.
-
-### `dotfiles features [generate-readme]`
-
-With no argument, prints the feature flags of the loaded configuration: whether
-`features.shellInstall` is set.
-
-With the `generate-readme` argument, prints a markdown table of every configured tool,
-its installation method and its binaries, to standard output.
-
-- `--generate-readme`: The same as passing the `generate-readme` argument.
-- `--json`: Output the feature flags in JSON format.
-
-### `dotfiles detect-conflicts`
-
-Reports every shim `dotfiles generate` would have to write over a file it did not
-create, naming the tool and the path. Run it before `dotfiles generate --overwrite`.
-
-- `--json`: Output conflict analysis in JSON format.
-
-### `dotfiles scaffold`
-
-Writes the starter `.tool.ts` files a dotfiles repository is expected to have into the
-primary tool configs directory, creating that directory if it does not exist. Loading a
-configuration never creates tool files; this command is the only thing that does.
-
-An existing file is left untouched, so running it again adds what is missing without
-discarding local edits.
-
-- `--force`: Overwrite tool configurations that already exist.
+---
 
 ### `dotfiles skill [path]`
 
@@ -225,15 +240,29 @@ Lists installed AI skills or extracts the embedded `dotfiles` skill folder into 
 - `--dir <path>`: Custom skills search directory path.
 - `--json`: Output skill list in JSON format.
 
-### `dotfiles uninstall [tool]`
+#### `dotfiles skill copy <path>`
 
-Removes an installed tool and its associated binaries, shims and symlinks. With no
-argument, uninstalls every configured tool, in reverse dependency order. It takes no
-flags.
+Extracts the embedded `dotfiles` skill directory into `<path>/dotfiles`.
 
-### `dotfiles version`
+---
+
+### `dotfiles self`
+
+CLI binary version and upgrade management.
+
+#### `dotfiles self version`
 
 Prints the CLI version string.
+
+#### `dotfiles self upgrade [version]`
+
+Upgrades or downgrades the `dotfiles` CLI binary from GitHub Releases. With a version argument, moves to exactly that release.
+
+- `--check`: Check for available updates without applying them.
+- `-f, --force`: Re-download and reinstall even if already up to date.
+- `--prerelease`: Consider prereleases when looking for the latest version.
+
+---
 
 ## Global Flags
 
@@ -248,14 +277,9 @@ The following flags are available on all commands:
 - `--libc <libc>`: Override the detected C library (`gnu`, `musl`, `unknown`), which is what [`ctx.systemInfo.libc`](../api-reference/context-api.md#ctxsysteminfo) reports on a Linux target. Off Linux there is no C library to select, so the flag is ignored and `libc` stays `unknown`. Any other value is rejected.
 - `-v, --verbose`: Enable verbose logging.
 - `-q, --quiet`: Enable quiet logging.
-- `--version`: Print the version and exit, like `dotfiles version`.
+- `--version`: Print the version and exit, like `dotfiles self version`.
 
-`--platform`, `--arch` and `--libc` resolve to one target that governs the whole run: the
-configuration is loaded for it, `install` selects release assets for it, and every
-[hook](../api-reference/lifecycle-hooks.md) and function-valued install parameter reports
-it through [`ctx.systemInfo`](../api-reference/context-api.md#ctxsysteminfo). Each flag
-that overrides what the machine reports is warned about, because the output of a run
-carried out for another machine otherwise looks like this machine's.
+`--platform`, `--arch` and `--libc` resolve to one target that governs the whole run: the configuration is loaded for it, `install` selects release assets for it, and every [hook](../api-reference/lifecycle-hooks.md) and function-valued install parameter reports it through [`ctx.systemInfo`](../api-reference/context-api.md#ctxsysteminfo). Each flag that overrides what the machine reports is warned about, because the output of a run carried out for another machine otherwise looks like this machine's.
 
 ## Dual-Mode Output (`AGENT=1`)
 
@@ -263,7 +287,7 @@ The CLI automatically adapts its output stream based on the `AGENT` environment 
 
 - **Agent Mode (`AGENT=1`)**: Token-conservative output designed for LLMs and automated agents:
   - JSON (`--json`) is minified onto a single line with zero extra whitespace.
-  - Directory trees (`dotfiles files`) render using compact indented bullets (`* file`).
+  - Directory trees (`dotfiles tool files`) render using compact indented bullets (`* file`).
   - Terminal dividers and decorative whitespace are omitted.
   - Query outputs emit flat key-value pairs (`tool:bat current:0.24.0 latest:0.25.0 update:true`).
   - ANSI colors in diagnostic logs are suppressed.
@@ -274,9 +298,9 @@ The CLI automatically adapts its output stream based on the `AGENT` environment 
 
 ## Shell Completions
 
-`dotfiles generate` writes the CLI's own zsh completion script, so no tool configuration has to declare it.
+`dotfiles state generate` writes the CLI's own zsh completion script, so no tool configuration has to declare it.
 
 - The script is written to `${shellScriptsDir}/zsh/completions/_dotfiles`. `shellScriptsDir` defaults to `${generatedDir}/shell-scripts`, and the generated `main.zsh` adds that `completions` directory to `fpath`.
-- Subcommands that take a tool name (`install`, `update`, `uninstall`, `why`, `files`, `log`, `validate`) complete it from the configured tools; `bin` also completes configured binary names.
-- Reload completions with `autoload -U compinit && compinit` (or restart your shell) after running `dotfiles generate`.
+- Subcommands that take a tool name (`tool install`, `tool update`, `tool uninstall`, `tool which`, `tool files`, `state log`, `tool validate`) complete it from the configured tools; `tool which` also completes configured binary names.
+- Reload completions with `autoload -U compinit && compinit` (or restart your shell) after running `dotfiles state generate`.
 - `dotfiles completion zsh` still prints the same script for manual use.

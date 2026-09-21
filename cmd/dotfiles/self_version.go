@@ -6,15 +6,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var versionCmd = &cobra.Command{
+var selfVersionCmd = &cobra.Command{
 	Use:   "version",
 	Args:  cobra.NoArgs,
-	Short: "Print the dotfiles CLI version",
+	Short: "Print version, commit hash, and build target info",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Fprintln(cmd.OutOrStdout(), Version)
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(versionCmd)
 }

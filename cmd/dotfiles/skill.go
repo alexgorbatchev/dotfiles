@@ -84,130 +84,139 @@ func parseSkillDescription(content string) string {
 	return "No description"
 }
 
-var skillCmd = &cobra.Command{
-	Use:   "skill [path]",
-	Args:  cobra.MaximumNArgs(1),
-	Short: "Manage AI skills or copy dotfiles skill folder to target path",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log := GetLogger("skill", cmd.ErrOrStderr())
+func copySkillToPath(cmd *cobra.Command, targetPath string) error {
+	log := GetLogger("skill", cmd.ErrOrStderr())
+	destPath := filepath.Join(targetPath, "dotfiles")
+	if err := os.MkdirAll(destPath, 0755); err != nil {
+		return fmt.Errorf("creating destination skill directory: %w", err)
+	}
 
-		if len(args) > 0 {
-			targetPath := args[0]
-			destPath := filepath.Join(targetPath, "dotfiles")
-			if err := os.MkdirAll(destPath, 0755); err != nil {
-				return fmt.Errorf("creating destination skill directory: %w", err)
-			}
-
-			err := iofs.WalkDir(embedded.SkillFS, "skill", func(path string, d iofs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-				rel, err := filepath.Rel("skill", path)
-				if err != nil || rel == "." {
-					return nil
-				}
-				dst := filepath.Join(destPath, rel)
-				if d.IsDir() {
-					return os.MkdirAll(dst, 0755)
-				}
-				data, err := iofs.ReadFile(embedded.SkillFS, path)
-				if err != nil {
-					return fmt.Errorf("reading embedded skill file %q: %w", path, err)
-				}
-				return os.WriteFile(dst, data, 0644)
-			})
-
-			if err != nil {
-				return fmt.Errorf("extracting embedded skill: %w", err)
-			}
-
-			log.Info(logger.Message(fmt.Sprintf("Copied skill folder to %s", destPath)))
+	err := iofs.WalkDir(embedded.SkillFS, "skill", func(path string, d iofs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel("skill", path)
+		if err != nil || rel == "." {
 			return nil
 		}
+		dst := filepath.Join(destPath, rel)
+		if d.IsDir() {
+			return os.MkdirAll(dst, 0755)
+		}
+		data, err := iofs.ReadFile(embedded.SkillFS, path)
+		if err != nil {
+			return fmt.Errorf("reading embedded skill file %q: %w", path, err)
+		}
+		return os.WriteFile(dst, data, 0644)
+	})
 
-		cwd, _ := os.Getwd()
-		homeDir, _ := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("extracting embedded skill: %w", err)
+	}
 
-		searchDirs := []string{
+	log.Info(logger.Message(fmt.Sprintf("Copied skill folder to %s", destPath)))
+	return nil
+}
+
+func listSkills(cmd *cobra.Command) error {
+	log := GetLogger("skill", cmd.ErrOrStderr())
+	cwd, _ := os.Getwd()
+	homeDir, _ := os.UserHomeDir()
+
+	var searchDirs []string
+	if skillDir != "" {
+		searchDirs = []string{utils.ExpandHomePath(homeDir, skillDir)}
+	} else {
+		searchDirs = []string{
 			filepath.Join(cwd, ".agents", "skills"),
 			filepath.Join(cwd, ".pi", "skills"),
 		}
 		if homeDir != "" {
 			searchDirs = append(searchDirs, filepath.Join(homeDir, ".agents", "skills"))
 		}
-		if skillDir != "" {
-			searchDirs = append([]string{utils.ExpandHomePath(homeDir, skillDir)}, searchDirs...)
+	}
+
+	type SkillInfo struct {
+		Name        string `json:"name"`
+		Path        string `json:"path"`
+		Description string `json:"description"`
+	}
+
+	var foundSkills []SkillInfo
+
+	for _, sDir := range searchDirs {
+		entries, err := os.ReadDir(sDir)
+		if err != nil {
+			continue
 		}
 
-		type SkillInfo struct {
-			Name        string
-			Path        string
-			Description string
-		}
-
-		var foundSkills []SkillInfo
-
-		for _, sDir := range searchDirs {
-			entries, err := os.ReadDir(sDir)
-			if err != nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
 				continue
 			}
 
-			for _, entry := range entries {
-				if !entry.IsDir() {
-					continue
-				}
+			skillPath := filepath.Join(sDir, entry.Name())
+			skillFile := filepath.Join(skillPath, "SKILL.md")
 
-				skillPath := filepath.Join(sDir, entry.Name())
-				skillFile := filepath.Join(skillPath, "SKILL.md")
-
-				if exists, _ := fileExists(skillFile); exists {
-					data, err := os.ReadFile(skillFile)
-					desc := "No description"
-					if err == nil {
-						desc = parseSkillDescription(string(data))
-					}
-					foundSkills = append(foundSkills, SkillInfo{
-						Name:        entry.Name(),
-						Path:        skillPath,
-						Description: desc,
-					})
+			if exists, _ := fileExists(skillFile); exists {
+				data, err := os.ReadFile(skillFile)
+				desc := "No description"
+				if err == nil {
+					desc = parseSkillDescription(string(data))
 				}
+				foundSkills = append(foundSkills, SkillInfo{
+					Name:        entry.Name(),
+					Path:        skillPath,
+					Description: desc,
+				})
 			}
 		}
+	}
 
-		if len(foundSkills) == 0 {
-			log.Info("No AI skills found.")
-			if skillJSON {
-				return cliout.RenderJSON(cmd.OutOrStdout(), []any{})
-			}
-			if cliout.IsAgentMode() {
-				fmt.Fprintln(cmd.OutOrStdout(), "no skills found")
-			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), "No AI skills found.")
-			}
-			return nil
-		}
-
+	if len(foundSkills) == 0 {
+		log.Info("No AI skills found.")
 		if skillJSON {
-			return cliout.RenderJSON(cmd.OutOrStdout(), foundSkills)
+			return cliout.RenderJSON(cmd.OutOrStdout(), []any{})
 		}
-
-		log.Info(logger.Message(fmt.Sprintf("Installed AI skills (%d):", len(foundSkills))))
-		for _, s := range foundSkills {
-			if cliout.IsAgentMode() {
-				fmt.Fprintf(cmd.OutOrStdout(), "name:%s desc:%s path:%s\n", s.Name, s.Description, s.Path)
-			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s (%s)\n", s.Name, s.Description, s.Path)
-			}
+		if cliout.IsAgentMode() {
+			fmt.Fprintln(cmd.OutOrStdout(), "no skills found")
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), "No AI skills found.")
 		}
-
 		return nil
+	}
+
+	if skillJSON {
+		return cliout.RenderJSON(cmd.OutOrStdout(), foundSkills)
+	}
+
+	log.Info(logger.Message(fmt.Sprintf("Installed AI skills (%d):", len(foundSkills))))
+	for _, s := range foundSkills {
+		if cliout.IsAgentMode() {
+			fmt.Fprintf(cmd.OutOrStdout(), "name:%s desc:%s path:%s\n", s.Name, s.Description, s.Path)
+		} else {
+			fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s (%s)\n", s.Name, s.Description, s.Path)
+		}
+	}
+
+	return nil
+}
+
+var skillCmd = &cobra.Command{
+	Use:   "skill [path]",
+	Args:  cobra.MaximumNArgs(1),
+	Short: "AI Agent skill definitions",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return copySkillToPath(cmd, args[0])
+		}
+		return listSkills(cmd)
 	},
 }
 
 func init() {
-	skillCmd.Flags().StringVar(&skillDir, "dir", "", "Custom skills directory path")
+	skillCmd.Flags().StringVar(&skillDir, "dir", "", "Custom skills directory to search")
 	skillCmd.Flags().BoolVar(&skillJSON, "json", false, "Output results in JSON format")
+	skillCmd.AddCommand(skillCopyCmd)
 	rootCmd.AddCommand(skillCmd)
 }

@@ -5,12 +5,13 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
 )
 
-var checkUpdatesJSON bool
+var toolCheckJSON bool
 
 // ToolUpdateResult represents the update status of a tool.
 type ToolUpdateResult struct {
@@ -21,10 +22,11 @@ type ToolUpdateResult struct {
 	Cached         bool   `json:"cached"`
 }
 
-var checkUpdatesCmd = &cobra.Command{
-	Use:   "check-updates",
-	Args:  cobra.NoArgs,
-	Short: "Check for tool updates across configured tools",
+var toolCheckCmd = &cobra.Command{
+	Use:               "check [tool...]",
+	Args:              cobra.ArbitraryArgs,
+	Short:             "Check for newer upstream versions without installing",
+	ValidArgsFunction: completeToolNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
@@ -33,13 +35,25 @@ var checkUpdatesCmd = &cobra.Command{
 		}
 		defer services.Close()
 
-		log := GetLogger("check-updates", cmd.ErrOrStderr())
+		log := GetLogger("check", cmd.ErrOrStderr())
 		log.Info("Checking for updates across configured tools...")
 
 		instReg := services.Installers
 		jsonResults := []ToolUpdateResult{}
 
-		for _, tool := range services.ToolConfigs {
+		toolsToCheck := services.ToolConfigs
+		if len(args) > 0 {
+			toolsToCheck = []*config.ToolConfig{}
+			for _, name := range args {
+				tc := config.FindTool(services.ToolConfigs, name)
+				if tc == nil {
+					return fmt.Errorf("tool %q not found in configuration", name)
+				}
+				toolsToCheck = append(toolsToCheck, tc)
+			}
+		}
+
+		for _, tool := range toolsToCheck {
 			if tool.Disabled || tool.InstallationMethod == "" {
 				continue
 			}
@@ -106,7 +120,7 @@ var checkUpdatesCmd = &cobra.Command{
 					}
 				}
 
-				if checkUpdatesJSON {
+				if toolCheckJSON {
 					jsonResults = append(jsonResults, ToolUpdateResult{
 						ToolName:       tool.Name,
 						CurrentVersion: localVersion,
@@ -142,7 +156,7 @@ var checkUpdatesCmd = &cobra.Command{
 			}
 		}
 
-		if checkUpdatesJSON {
+		if toolCheckJSON {
 			return cliout.RenderJSON(cmd.OutOrStdout(), jsonResults)
 		}
 
@@ -151,6 +165,5 @@ var checkUpdatesCmd = &cobra.Command{
 }
 
 func init() {
-	checkUpdatesCmd.Flags().BoolVar(&checkUpdatesJSON, "json", false, "Output results in JSON format")
-	rootCmd.AddCommand(checkUpdatesCmd)
+	toolCheckCmd.Flags().BoolVar(&toolCheckJSON, "json", false, "Output results in JSON format")
 }

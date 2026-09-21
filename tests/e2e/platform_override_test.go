@@ -28,7 +28,7 @@ func TestE2EProjectPlatformOverrides(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stdout, stderr, exitCode, err := h.RunCommand("env", "--config", h.ConfigPath, "--platform", tt.targetOS, "--arch", tt.targetArch)
+			stdout, stderr, exitCode, err := h.RunCommand("shell", "init", "--config", h.ConfigPath, "--platform", tt.targetOS, "--arch", tt.targetArch)
 			if err != nil {
 				t.Fatalf("env failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 			}

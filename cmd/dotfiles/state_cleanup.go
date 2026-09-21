@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cleanupCmd = &cobra.Command{
+var stateCleanupCmd = &cobra.Command{
 	Use:   "cleanup",
 	Args:  cobra.NoArgs,
-	Short: "Triggers standalone cleanup of orphaned tools and stale artifacts",
+	Short: "Standalone cleanup of orphaned tools and stale artifacts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
@@ -52,8 +52,4 @@ var cleanupCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(cleanupCmd)
 }

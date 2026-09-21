@@ -65,7 +65,7 @@ func typeCheckToolConfigs(ctx context.Context, services *Services, log *logger.L
 			ToolName: typeCheckToolName,
 			Config:   services.ConfigPath,
 			Message: fmt.Sprintf("No configured tool provides the TypeScript compiler %q, so the tool configurations were not type-checked. "+
-				"Run `dotfiles scaffold` to add typescript.tool.ts, then `dotfiles install typescript`.", compilerBinary),
+				"Run `dotfiles tool scaffold` to add typescript.tool.ts, then `dotfiles tool install typescript`.", compilerBinary),
 		}}, nil
 	}
 
@@ -76,7 +76,7 @@ func typeCheckToolConfigs(ctx context.Context, services *Services, log *logger.L
 			ToolName: tool.Name,
 			Config:   tool.ConfigFilePath,
 			Message: fmt.Sprintf("The TypeScript compiler %q declared by tool %q is not installed (expected at %s), so the tool configurations were not type-checked. "+
-				"Run `dotfiles install %s`.", compilerBinary, tool.Name, compilerPath, tool.Name),
+				"Run `dotfiles tool install %s`.", compilerBinary, tool.Name, compilerPath, tool.Name),
 		}}, nil
 	}
 

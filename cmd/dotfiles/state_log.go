@@ -32,10 +32,10 @@ type FileStateInfo struct {
 	TargetPath string `json:"targetPath,omitempty"`
 }
 
-var logCmd = &cobra.Command{
+var stateLogCmd = &cobra.Command{
 	Use:               "log [tool]",
 	Args:              cobra.MaximumNArgs(1),
-	Short:             "Display or tail log output and file registry operation history",
+	Short:             "Inspect or tail file operation history and audit logs",
 	ValidArgsFunction: completeToolName,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
@@ -214,10 +214,9 @@ var logCmd = &cobra.Command{
 }
 
 func init() {
-	logCmd.Flags().IntVarP(&logTailLines, "tail", "n", 50, "Number of lines to output from the tail of the log")
-	logCmd.Flags().StringVar(&logType, "type", "", "Filter by file type (shim, binary, symlink, copy, config, completion, etc.)")
-	logCmd.Flags().BoolVar(&logStatus, "status", false, "Show current file states for tools")
-	logCmd.Flags().StringVar(&logSince, "since", "", "Show operations created since date (YYYY-MM-DD)")
-	logCmd.Flags().BoolVar(&logJSON, "json", false, "Output results in JSON format")
-	rootCmd.AddCommand(logCmd)
+	stateLogCmd.Flags().IntVarP(&logTailLines, "tail", "n", 50, "Number of lines to output from the tail of the log")
+	stateLogCmd.Flags().StringVar(&logType, "type", "", "Filter by file type (shim, binary, symlink, copy, config, completion, etc.)")
+	stateLogCmd.Flags().BoolVar(&logStatus, "status", false, "Show current file states for tools")
+	stateLogCmd.Flags().StringVar(&logSince, "since", "", "Show operations created since date (YYYY-MM-DD)")
+	stateLogCmd.Flags().BoolVar(&logJSON, "json", false, "Output results in JSON format")
 }

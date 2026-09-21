@@ -9,10 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var installCmd = &cobra.Command{
+var toolInstallCmd = &cobra.Command{
 	Use:               "install [tool...]",
 	Args:              cobra.ArbitraryArgs,
-	Short:             "Installs either a single specified tool or all tools defined in the configuration",
+	Short:             "Install one or all configured tools",
 	ValidArgsFunction: completeToolNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
@@ -67,7 +67,6 @@ var installCmd = &cobra.Command{
 }
 
 func init() {
-	installCmd.Flags().Bool("shim-mode", false, "Quiet installation mode for shims")
-	installCmd.Flags().BoolP("force", "f", false, "Force installation even if already installed")
-	rootCmd.AddCommand(installCmd)
+	toolInstallCmd.Flags().Bool("shim-mode", false, "Quiet installation mode for shims")
+	toolInstallCmd.Flags().BoolP("force", "f", false, "Force installation even if already installed")
 }

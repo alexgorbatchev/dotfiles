@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var filesJSON bool
+var toolFilesJSON bool
 
 func buildDirTree(fsys fs.FS, dirPath string) ([]*cliout.TreeNode, error) {
 	entries, err := fsys.ReadDir(dirPath)
@@ -43,10 +43,10 @@ func buildDirTree(fsys fs.FS, dirPath string) ([]*cliout.TreeNode, error) {
 	return nodes, nil
 }
 
-var filesCmd = &cobra.Command{
+var toolFilesCmd = &cobra.Command{
 	Use:               "files [tool]",
 	Args:              cobra.MaximumNArgs(1),
-	Short:             "Display a tree view of files in the tool installation directory or list managed files",
+	Short:             "Display directory tree or files installed by a tool",
 	ValidArgsFunction: completeToolName,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
@@ -72,7 +72,7 @@ var filesCmd = &cobra.Command{
 
 			nodes, err := buildDirTree(services.FS, inst.InstallPath)
 			if err != nil || len(nodes) == 0 {
-				if filesJSON {
+				if toolFilesJSON {
 					return cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
 						"tool":        toolName,
 						"installPath": inst.InstallPath,
@@ -84,7 +84,7 @@ var filesCmd = &cobra.Command{
 				return nil
 			}
 
-			if filesJSON {
+			if toolFilesJSON {
 				return cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
 					"tool":        toolName,
 					"installPath": inst.InstallPath,
@@ -107,7 +107,7 @@ var filesCmd = &cobra.Command{
 			states = []*registry.FileState{}
 		}
 
-		if filesJSON {
+		if toolFilesJSON {
 			return cliout.RenderJSON(cmd.OutOrStdout(), states)
 		}
 
@@ -132,6 +132,5 @@ var filesCmd = &cobra.Command{
 }
 
 func init() {
-	filesCmd.Flags().BoolVar(&filesJSON, "json", false, "Output results in JSON format")
-	rootCmd.AddCommand(filesCmd)
+	toolFilesCmd.Flags().BoolVar(&toolFilesJSON, "json", false, "Output results in JSON format")
 }

@@ -57,7 +57,7 @@ func TestScaffoldCommand_RespectsPlatformFlag(t *testing.T) {
 			toolsDir := filepath.Join(p.Root, "tools")
 			p.writeConfig(t, "", fmt.Sprintf(`"toolConfigsDir": %q`, toolsDir), "")
 
-			out, err := p.run("--platform", tt.platform, "scaffold")
+			out, err := p.run("--platform", tt.platform, "tool", "scaffold")
 			if err != nil {
 				t.Fatalf("scaffold --platform %s failed: %v\n%s", tt.platform, err, out.Combined)
 			}

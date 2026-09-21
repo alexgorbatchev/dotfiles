@@ -115,18 +115,18 @@ func TestValidateTypeCheck_CompilerNotConfigured(t *testing.T) {
 	p := newTypeScriptProject(t)
 	p.writeTool(t, "good", validToolContent)
 
-	out, err := p.run("validate")
+	out, err := p.run("tool", "validate")
 	if err == nil {
 		t.Fatalf("expected validate to fail without a compiler tool:\n%s", out.Combined)
 	}
-	for _, want := range []string{"No configured tool provides the TypeScript compiler", "dotfiles scaffold", "dotfiles install typescript"} {
+	for _, want := range []string{"No configured tool provides the TypeScript compiler", "dotfiles tool scaffold", "dotfiles tool install typescript"} {
 		if !strings.Contains(out.Stdout, want) {
 			t.Errorf("stdout lacks %q:\n%s", want, out.Stdout)
 		}
 	}
 
 	t.Run("json reports it as an error", func(t *testing.T) {
-		out, err := p.run("validate", "--json")
+		out, err := p.run("tool", "validate", "--json")
 		if err == nil {
 			t.Fatalf("expected validate --json to fail:\n%s", out.Combined)
 		}
@@ -142,12 +142,12 @@ func TestValidateTypeCheck_CompilerNotInstalled(t *testing.T) {
 	p.writeTool(t, "typescript", compilerToolContent)
 	p.writeTool(t, "good", validToolContent)
 
-	out, err := p.run("validate")
+	out, err := p.run("tool", "validate")
 	if err == nil {
 		t.Fatalf("expected validate to fail while the compiler is not installed:\n%s", out.Combined)
 	}
 	want := fmt.Sprintf("expected at %s", filepath.Join(p.Root, "generated", "binaries", "typescript", "current", "tsc"))
-	for _, s := range []string{`declared by tool "typescript" is not installed`, want, "dotfiles install typescript"} {
+	for _, s := range []string{`declared by tool "typescript" is not installed`, want, "dotfiles tool install typescript"} {
 		if !strings.Contains(out.Stdout, s) {
 			t.Errorf("stdout lacks %q:\n%s", s, out.Stdout)
 		}
@@ -161,7 +161,7 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 	p.installCompiler(t, "typescript")
 
 	t.Run("a valid project passes", func(t *testing.T) {
-		out, err := p.run("validate")
+		out, err := p.run("tool", "validate")
 		if err != nil {
 			t.Fatalf("validate: %v\n%s", err, out.Combined)
 		}
@@ -176,7 +176,7 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 	p.writeTool(t, "broken", brokenToolContent)
 
 	t.Run("diagnostics are attributed to the tool", func(t *testing.T) {
-		out, err := p.run("validate")
+		out, err := p.run("tool", "validate")
 		if err == nil || !strings.Contains(err.Error(), "validation failed with 2 error(s)") {
 			t.Fatalf("error = %v, want two type errors\n%s", err, out.Combined)
 		}
@@ -201,21 +201,21 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 	})
 
 	t.Run("validating one tool keeps only its diagnostics", func(t *testing.T) {
-		out, err := p.run("validate", "good")
+		out, err := p.run("tool", "validate", "good")
 		if err != nil {
 			t.Fatalf("validate good: %v\n%s", err, out.Combined)
 		}
 		if !strings.Contains(out.Stdout, "Checked 1 tool configuration(s)") {
 			t.Errorf("unexpected summary:\n%s", out.Stdout)
 		}
-		out, err = p.run("validate", "broken")
+		out, err = p.run("tool", "validate", "broken")
 		if err == nil || !strings.Contains(err.Error(), "validation failed with 2 error(s)") {
 			t.Fatalf("validate broken: error = %v\n%s", err, out.Combined)
 		}
 	})
 
 	t.Run("json carries the diagnostics", func(t *testing.T) {
-		out, err := p.run("validate", "--json")
+		out, err := p.run("tool", "validate", "--json")
 		if err == nil {
 			t.Fatalf("expected validate --json to fail:\n%s", out.Combined)
 		}
@@ -227,7 +227,7 @@ func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 
 	t.Run("agent mode prefixes the diagnostic", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := p.run("validate")
+		out, err := p.run("tool", "validate")
 		if err == nil {
 			t.Fatalf("expected validate to fail:\n%s", out.Combined)
 		}
@@ -244,7 +244,7 @@ func TestGenerateSkipsShimForShimlessBinary(t *testing.T) {
 	p.writeTool(t, "typescript", compilerToolContent)
 	p.writeTool(t, "good", validToolContent)
 
-	out, err := p.run("generate")
+	out, err := p.run("state", "generate")
 	if err != nil {
 		t.Fatalf("generate: %v\n%s", err, out.Combined)
 	}

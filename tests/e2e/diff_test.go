@@ -37,7 +37,7 @@ export default defineTool((install) =>
 	_ = os.WriteFile(templatePath, []byte("environment = {envName}\nport = 8080\n"), 0644)
 
 	t.Run("diff shows drift before generate", func(t *testing.T) {
-		stdout, stderr, exitCode, err := h.RunCommand("diff", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := h.RunCommand("state", "diff", "--config", h.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("diff command failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -52,7 +52,7 @@ export default defineTool((install) =>
 			t.Fatalf("generate failed")
 		}
 
-		stdout, stderr, exitCode, err := h.RunCommand("diff", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := h.RunCommand("state", "diff", "--config", h.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("diff command failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -66,7 +66,7 @@ export default defineTool((install) =>
 		settingsPath := filepath.Join(h.TempDir, ".generated", "user-home", ".config", "app", "settings.conf")
 		_ = os.WriteFile(settingsPath, []byte("environment = production\nport = 9090\n"), 0644)
 
-		stdout, stderr, exitCode, err := h.RunCommand("diff", "decl-tool", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := h.RunCommand("state", "diff", "decl-tool", "--config", h.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("diff command failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -80,7 +80,7 @@ export default defineTool((install) =>
 	})
 
 	t.Run("diff --json outputs structured drift data", func(t *testing.T) {
-		stdout, stderr, exitCode, err := h.RunCommand("diff", "--json", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := h.RunCommand("state", "diff", "--json", "--config", h.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("diff --json failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -101,7 +101,7 @@ export default defineTool((install) =>
 			},
 		})
 
-		stdout, stderr, exitCode, err := hAgent.RunCommand("diff", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := hAgent.RunCommand("state", "diff", "--config", h.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("diff in agent mode failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}

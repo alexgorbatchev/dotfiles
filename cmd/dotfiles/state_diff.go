@@ -12,9 +12,9 @@ import (
 
 var diffJSON bool
 
-var diffCmd = &cobra.Command{
+var stateDiffCmd = &cobra.Command{
 	Use:               "diff [tool]",
-	Short:             "Inspect drift and 3-way differences between repo declarations, disk, and state",
+	Short:             "3-way drift between repo declarations, disk, and state DB",
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: completeToolName,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -98,6 +98,5 @@ var diffCmd = &cobra.Command{
 }
 
 func init() {
-	diffCmd.Flags().BoolVar(&diffJSON, "json", false, "Output results in JSON format")
-	rootCmd.AddCommand(diffCmd)
+	stateDiffCmd.Flags().BoolVar(&diffJSON, "json", false, "Output results in JSON format")
 }

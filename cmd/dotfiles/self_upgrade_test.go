@@ -79,10 +79,10 @@ func TestUpgradeCommand_Check(t *testing.T) {
 		args     []string
 		want     string
 	}{
-		{"check reports a newer release", newer, []string{"upgrade", "--check"}, "New version available"},
-		{"check reports an up to date build", same, []string{"upgrade", "--check"}, "up to date"},
-		{"dry-run only announces a newer release", newer, []string{"upgrade", "--dry-run"}, "[dry-run]"},
-		{"dry-run on an up to date build", same, []string{"upgrade", "--dry-run"}, "[dry-run]"},
+		{"check reports a newer release", newer, []string{"self", "upgrade", "--check"}, "New version available"},
+		{"check reports an up to date build", same, []string{"self", "upgrade", "--check"}, "up to date"},
+		{"dry-run only announces a newer release", newer, []string{"self", "upgrade", "--dry-run"}, "[dry-run]"},
+		{"dry-run on an up to date build", same, []string{"self", "upgrade", "--dry-run"}, "[dry-run]"},
 	}
 
 	for _, tt := range tests {
@@ -149,7 +149,7 @@ func TestUpgradeCommand_UpgradeSuccess(t *testing.T) {
 
 	t.Setenv("DOTFILES_GITHUB_HOST", server.URL)
 
-	out, err := runCommand("upgrade", "9.9.9", "--force", "--dry-run")
+	out, err := runCommand("self", "upgrade", "9.9.9", "--force", "--dry-run")
 	if err != nil {
 		t.Fatalf("upgrade execution error: %v\n%s", err, out.Combined)
 	}
@@ -163,7 +163,7 @@ func TestUpgradeCommand_MockServerPortFallback(t *testing.T) {
 	t.Setenv("DOTFILES_GITHUB_HOST", "")
 	t.Setenv("MOCK_SERVER_PORT", port)
 
-	out, err := runCommand("upgrade", "--check")
+	out, err := runCommand("self", "upgrade", "--check")
 	if err != nil {
 		t.Fatalf("upgrade --check: %v\n%s", err, out.Combined)
 	}
@@ -176,7 +176,7 @@ func TestUpgradeCommand_CheckFailure(t *testing.T) {
 	server, _ := newReleaseListServer(t, http.StatusInternalServerError, `{"message": "boom"}`)
 	t.Setenv("DOTFILES_GITHUB_HOST", server.URL)
 
-	_, err := runCommand("upgrade", "--check")
+	_, err := runCommand("self", "upgrade", "--check")
 	if err == nil || !strings.Contains(err.Error(), "checking for update:") {
 		t.Fatalf("error = %v, want the update check failure", err)
 	}
@@ -186,7 +186,7 @@ func TestUpgradeCommand_AlreadyUpToDate(t *testing.T) {
 	server, _ := newReleaseListServer(t, http.StatusOK, fmt.Sprintf(`[{"tag_name": "v%s", "prerelease": false}]`, Version))
 	t.Setenv("DOTFILES_GITHUB_HOST", server.URL)
 
-	out, err := runCommand("upgrade")
+	out, err := runCommand("self", "upgrade")
 	if err != nil {
 		t.Fatalf("upgrade: %v\n%s", err, out.Combined)
 	}

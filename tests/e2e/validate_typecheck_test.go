@@ -48,24 +48,24 @@ func TestE2EValidateTypeChecks(t *testing.T) {
 	})
 
 	t.Run("an uninstalled compiler is an actionable error", func(t *testing.T) {
-		stdout, _, exitCode, err := h.RunCommand("validate", "--config", h.ConfigPath)
+		stdout, _, exitCode, err := h.RunCommand("tool", "validate", "--config", h.ConfigPath)
 		if err != nil {
-			t.Fatalf("validate: %v", err)
+			t.Fatalf("tool validate: %v", err)
 		}
 		if exitCode == 0 {
 			t.Fatalf("expected validate to fail while the compiler is not installed:\n%s", stdout)
 		}
-		if !strings.Contains(stdout, "not installed") || !strings.Contains(stdout, "dotfiles install typescript") {
-			t.Errorf("expected an actionable message naming `dotfiles install typescript`:\n%s", stdout)
+		if !strings.Contains(stdout, "not installed") || !strings.Contains(stdout, "dotfiles tool install typescript") {
+			t.Errorf("expected an actionable message naming `dotfiles tool install typescript`:\n%s", stdout)
 		}
 	})
 
 	installCompilerInSandbox(t, h)
 
 	t.Run("a valid project passes", func(t *testing.T) {
-		stdout, stderr, exitCode, err := h.RunCommand("validate", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := h.RunCommand("tool", "validate", "--config", h.ConfigPath)
 		if err != nil {
-			t.Fatalf("validate: %v", err)
+			t.Fatalf("tool validate: %v", err)
 		}
 		if exitCode != 0 {
 			t.Fatalf("expected validate to pass (exit %d):\nstdout: %s\nstderr: %s", exitCode, stdout, stderr)
@@ -92,7 +92,7 @@ func TestE2EValidateTypeChecks(t *testing.T) {
 			t.Fatalf("writing broken tool: %v", err)
 		}
 
-		stdout, _, exitCode, err := h.RunCommand("validate", "--config", h.ConfigPath)
+		stdout, _, exitCode, err := h.RunCommand("tool", "validate", "--config", h.ConfigPath)
 		if err != nil {
 			t.Fatalf("validate: %v", err)
 		}

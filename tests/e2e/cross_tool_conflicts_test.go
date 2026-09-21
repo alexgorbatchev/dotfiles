@@ -71,7 +71,7 @@ export default defineTool((install) =>
 			t.Fatalf("writing flutter tool: %v", err)
 		}
 
-		stdout, stderr, exitCode, err := hTypecheck.RunCommand("validate", "--config", hTypecheck.ConfigPath)
+		stdout, stderr, exitCode, err := hTypecheck.RunCommand("tool", "validate", "--config", hTypecheck.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("validate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}

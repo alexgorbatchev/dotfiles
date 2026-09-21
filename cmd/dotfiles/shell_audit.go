@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var detectConflictsJSON bool
+var shellAuditJSON bool
 
 type ConflictItem struct {
 	ToolName string `json:"tool"`
@@ -18,10 +18,10 @@ type ConflictItem struct {
 	Reason   string `json:"reason"`
 }
 
-var detectConflictsCmd = &cobra.Command{
-	Use:   "detect-conflicts",
+var shellAuditCmd = &cobra.Command{
+	Use:   "audit",
 	Args:  cobra.NoArgs,
-	Short: "Detects conflicts with existing non-generator files",
+	Short: "Detect collisions across aliases, functions, and binaries",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		services, err := BootstrapServices(ctx, cfgFile)
@@ -30,7 +30,7 @@ var detectConflictsCmd = &cobra.Command{
 		}
 		defer services.Close()
 
-		log := GetLogger("detect-conflicts", cmd.ErrOrStderr())
+		log := GetLogger("shell-audit", cmd.ErrOrStderr())
 		log.Info("Detecting file conflicts...")
 
 		shimGen := shim.NewGenerator(services.FS)
@@ -59,7 +59,7 @@ var detectConflictsCmd = &cobra.Command{
 			}
 		}
 
-		if detectConflictsJSON {
+		if shellAuditJSON {
 			if err := cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
 				"hasConflicts": len(conflicts) > 0,
 				"conflicts":    conflicts,
@@ -96,6 +96,5 @@ var detectConflictsCmd = &cobra.Command{
 }
 
 func init() {
-	detectConflictsCmd.Flags().BoolVar(&detectConflictsJSON, "json", false, "Output results in JSON format")
-	rootCmd.AddCommand(detectConflictsCmd)
+	shellAuditCmd.Flags().BoolVar(&shellAuditJSON, "json", false, "Output results in JSON format")
 }

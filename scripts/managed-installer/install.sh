@@ -269,10 +269,10 @@ if [[ "${CONFIG_EXISTS}" != "1" ]]; then
 fi
 
 log "Provisioning starter tool configurations"
-run_dotfiles --config "${CONFIG_PATH}" scaffold
+run_dotfiles --config "${CONFIG_PATH}" tool scaffold
 
 log "Installing dotfiles CLI tool into .generated"
-run_dotfiles --config "${CONFIG_PATH}" install dotfiles
+run_dotfiles --config "${CONFIG_PATH}" tool install dotfiles
 
 permanent_bin="${INSTALL_DIR}/.generated/binaries/dotfiles/current/dotfiles"
 if [[ -x "${permanent_bin}" ]]; then
@@ -280,7 +280,7 @@ if [[ -x "${permanent_bin}" ]]; then
 fi
 
 log "Generating shims and shell configuration"
-run_dotfiles --config "${CONFIG_PATH}" generate
+run_dotfiles --config "${CONFIG_PATH}" state generate
 
 init_script="${INSTALL_DIR}/dotfiles-init.sh"
 log "Creating $(format_path "${init_script}")"

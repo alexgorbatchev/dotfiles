@@ -78,30 +78,32 @@ func resolveUpdate(tool *config.ToolConfig, installedVersion string, res *instal
 	installable := latest != "" && latest != "unknown" && latest != "latest" && version.MatchesConstraint(latest, constraint)
 	switch {
 	case installable:
-		return hasUpdate, latest
-	case installedVersion == "" || installedVersion == "unknown" || installedVersion == "latest":
-		return hasUpdate, utils.GenerateTimestamp()
+		targetVersion = latest
+	case installedVersion != "" && installedVersion != "unknown":
+		targetVersion = installedVersion
 	default:
-		return hasUpdate, installedVersion
+		targetVersion = utils.GenerateTimestamp()
 	}
+
+	return hasUpdate, targetVersion
 }
 
-var updateCmd = &cobra.Command{
-	Use:               "update [tool]",
-	Args:              cobra.MaximumNArgs(1),
-	Short:             "Evaluates versions and installs newer software packages if available",
-	ValidArgsFunction: completeToolName,
+var toolUpdateCmd = &cobra.Command{
+	Use:               "update [tool...]",
+	Args:              cobra.ArbitraryArgs,
+	Short:             "Upgrade tools to their latest available release",
+	ValidArgsFunction: completeToolNames,
 	Long: `Evaluates tool versions and updates software packages if newer versions are available.
 
-When run without arguments, checks all installed tools for updates and installs newer versions if available. When a tool name is provided, checks and updates only that tool if it is currently installed. Uninstalled tools are skipped.`,
+When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating.`,
 	Example: `  # Update all installed tools
-  dotfiles update
+  dotfiles tool update
 
   # Update a specific installed tool
-  dotfiles update ripgrep
+  dotfiles tool update ripgrep
 
   # Force re-download and re-installation even if already up to date
-  dotfiles update --force ripgrep`,
+  dotfiles tool update --force ripgrep`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		shimMode, _ := cmd.Flags().GetBool("shim-mode")
@@ -172,78 +174,73 @@ When run without arguments, checks all installed tools for updates and installs 
 			return nil
 		}
 
-		toolName := args[0]
-
-		// 1. Find tool config
-		targetTool := config.FindTool(services.ToolConfigs, toolName)
-
-		if targetTool == nil {
-			return fmt.Errorf("tool %q not found in configuration", toolName)
-		}
-
-		// 2. Check if installed in DB
-		installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
-		if err != nil {
-			return fmt.Errorf("tool %q is not installed (no database record found): %w", toolName, err)
-		}
-		if installed == nil {
-			return fmt.Errorf("tool %q is not installed", toolName)
-		}
-
-		// 3. Get the installer
-		inst, err := services.Installers.Get(targetTool.InstallationMethod)
-		if err != nil {
-			return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
-		}
-
-		// Configure BinDir, BaseURL, and cache settings if supported
-		toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
-		configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
-
-		toolLog := log.WithTag(targetTool.Name)
-
-		// 4. Check for update
-		toolLog.Info(logger.Message("Checking for updates..."))
-		res, err := inst.CheckUpdate(ctx, targetTool)
-		if err != nil {
-			return fmt.Errorf("checking update for %q: %w", targetTool.Name, err)
-		}
-
-		hasUpdate, targetVersion := resolveUpdate(targetTool, installed.Version, res)
-
-		if hasUpdate || force {
-			if hasUpdate {
-				toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
-			} else {
-				toolLog.Info(logger.Message(fmt.Sprintf("Force updating: reinstalling version %s", targetVersion)))
+		for _, toolName := range args {
+			targetTool := config.FindTool(services.ToolConfigs, toolName)
+			if targetTool == nil {
+				return fmt.Errorf("tool %q not found in configuration", toolName)
 			}
 
-			// Update the target tool's version pointer and install params to the new version and run installation
-			targetTool.Version = &targetVersion
-			if targetTool.InstallParams != nil {
-				targetTool.InstallParams["version"] = targetVersion
-			}
-			err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
+			installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 			if err != nil {
-				return fmt.Errorf("updating tool %q to version %s failed: %w", targetTool.Name, targetVersion, err)
+				return fmt.Errorf("tool %q is not installed (no database record found): %w", toolName, err)
 			}
-			updatedRecord, errRec := services.Registry.GetToolInstallation(ctx, targetTool.Name)
-			if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
-				targetVersion = updatedRecord.Version
-			}
-			toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", targetVersion)))
-		} else {
-			if installed != nil && installed.Version != "" {
-				if res != nil && res.Cached {
-					toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s, cached)", installed.Version)))
-				} else {
-					toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s)", installed.Version)))
+			if installed == nil {
+				if len(args) == 1 {
+					return fmt.Errorf("tool %q is not installed", toolName)
 				}
-			} else {
-				if res != nil && res.Cached {
-					toolLog.Info(logger.Message("Already up to date (cached)"))
+				continue
+			}
+
+			inst, err := services.Installers.Get(targetTool.InstallationMethod)
+			if err != nil {
+				return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
+			}
+
+			toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
+			configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
+
+			toolLog := log.WithTag(targetTool.Name)
+			toolLog.Info(logger.Message("Checking for updates..."))
+			res, err := inst.CheckUpdate(ctx, targetTool)
+			if err != nil {
+				return fmt.Errorf("checking update for %q: %w", targetTool.Name, err)
+			}
+
+			hasUpdate, targetVersion := resolveUpdate(targetTool, installed.Version, res)
+
+			if hasUpdate || force {
+				if hasUpdate {
+					toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
 				} else {
-					toolLog.Info(logger.Message("Already up to date"))
+					toolLog.Info(logger.Message(fmt.Sprintf("Force updating: reinstalling version %s", targetVersion)))
+				}
+
+				targetTool.Version = &targetVersion
+				if targetTool.InstallParams != nil {
+					targetTool.InstallParams["version"] = targetVersion
+				}
+				err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
+				if err != nil {
+					return fmt.Errorf("updating tool %q to version %s failed: %w", targetTool.Name, targetVersion, err)
+				}
+				updatedRecord, errRec := services.Registry.GetToolInstallation(ctx, targetTool.Name)
+				if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
+					targetVersion = updatedRecord.Version
+				}
+				toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", targetVersion)))
+			} else {
+				if installed != nil && installed.Version != "" {
+					if res != nil && res.Cached {
+						toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s, cached)", installed.Version)))
+					} else {
+						toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s)", installed.Version)))
+					}
+				} else {
+					if res != nil && res.Cached {
+						toolLog.Info(logger.Message("Already up to date (cached)"))
+					} else {
+						toolLog.Info(logger.Message("Already up to date"))
+					}
 				}
 			}
 		}
@@ -253,7 +250,6 @@ When run without arguments, checks all installed tools for updates and installs 
 }
 
 func init() {
-	updateCmd.Flags().Bool("shim-mode", false, "Quiet update mode for shims")
-	updateCmd.Flags().BoolP("force", "f", false, "Force re-download and re-installation even if already up to date")
-	rootCmd.AddCommand(updateCmd)
+	toolUpdateCmd.Flags().Bool("shim-mode", false, "Quiet update mode for shims")
+	toolUpdateCmd.Flags().BoolP("force", "f", false, "Force re-download and re-installation even if already up to date")
 }

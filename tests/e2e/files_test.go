@@ -22,7 +22,7 @@ func TestE2EFiles(t *testing.T) {
 	h.CopyFixture("main")
 
 	t.Run("should display message when no files are managed", func(t *testing.T) {
-		stdout, stderr, exitCode, err := h.RunCommand("files", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err := h.RunCommand("tool", "files", "--config", h.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("files command failed on clean DB: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
@@ -45,7 +45,7 @@ func TestE2EFiles(t *testing.T) {
 		}
 
 		// Then check files command
-		stdout, stderr, exitCode, err = h.RunCommand("files", "--config", h.ConfigPath)
+		stdout, stderr, exitCode, err = h.RunCommand("tool", "files", "--config", h.ConfigPath)
 		if err != nil || exitCode != 0 {
 			t.Fatalf("files command failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}

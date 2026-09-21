@@ -79,7 +79,7 @@ func TestValidateCommand_ParameterRules(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := runCommand("-c", writeValidationConfig(t, tt.toolConfigs), "validate")
+			out, err := runCommand("-c", writeValidationConfig(t, tt.toolConfigs), "tool", "validate")
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error = %v, wantErr %v\n%s", err, tt.wantErr, out.Combined)
 			}
@@ -95,7 +95,7 @@ func TestValidateCommand_Reporting(t *testing.T) {
 	configPath := writeValidationConfig(t, `"gh": {"name": "gh", "installationMethod": "github-release", "dependencies": ["ghost"]}`)
 
 	t.Run("human mode lists warnings then errors", func(t *testing.T) {
-		out, err := runCommand("-c", configPath, "validate")
+		out, err := runCommand("-c", configPath, "tool", "validate")
 		if err == nil || !strings.Contains(err.Error(), "validation failed with 1 error(s)") {
 			t.Fatalf("error = %v, want validation failure", err)
 		}
@@ -106,7 +106,7 @@ func TestValidateCommand_Reporting(t *testing.T) {
 
 	t.Run("agent mode prefixes each line", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := runCommand("-c", configPath, "validate")
+		out, err := runCommand("-c", configPath, "tool", "validate")
 		if err == nil {
 			t.Fatalf("expected validation failure:\n%s", out.Combined)
 		}
@@ -116,7 +116,7 @@ func TestValidateCommand_Reporting(t *testing.T) {
 	})
 
 	t.Run("json reports invalid and still fails", func(t *testing.T) {
-		out, err := runCommand("-c", configPath, "validate", "--json")
+		out, err := runCommand("-c", configPath, "tool", "validate", "--json")
 		if err == nil {
 			t.Fatalf("expected validation failure:\n%s", out.Combined)
 		}
@@ -130,7 +130,7 @@ func TestValidateCommand_ValidConfig(t *testing.T) {
 	tmpDir := createTempConfigDir(t)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
 
-	out, err := executeCommand("-c", configPath, "validate")
+	out, err := executeCommand("-c", configPath, "tool", "validate")
 	if err != nil {
 		t.Fatalf("validate command failed: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestValidateCommand_SpecificTool(t *testing.T) {
 	tmpDir := createTempConfigDir(t)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
 
-	out, err := executeCommand("-c", configPath, "validate", "bat")
+	out, err := executeCommand("-c", configPath, "tool", "validate", "bat")
 	if err != nil {
 		t.Fatalf("validate bat failed: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestValidateCommand_NonExistentTool(t *testing.T) {
 	tmpDir := createTempConfigDir(t)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
 
-	_, err := executeCommand("-c", configPath, "validate", "non-existent-tool")
+	_, err := executeCommand("-c", configPath, "tool", "validate", "non-existent-tool")
 	if err == nil {
 		t.Errorf("expected validate non-existent-tool to return an error")
 	}
@@ -178,7 +178,7 @@ func TestValidateCommand_InvalidMethod(t *testing.T) {
 		t.Fatalf("writing config failed: %v", err)
 	}
 
-	out, err := executeCommand("-c", configPath, "validate")
+	out, err := executeCommand("-c", configPath, "tool", "validate")
 	if err == nil {
 		t.Errorf("expected validate with invalid installer method to fail, got out:\n%s", out)
 	}
@@ -203,7 +203,7 @@ func TestValidateCommand_AptWithoutSudoWarning(t *testing.T) {
 		t.Fatalf("writing config failed: %v", err)
 	}
 
-	out, err := executeCommand("-c", configPath, "validate")
+	out, err := executeCommand("-c", configPath, "tool", "validate")
 	if err != nil {
 		t.Fatalf("validate apt without sudo failed unexpectedly: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestValidateCommand_JSON_HumanAndAgent(t *testing.T) {
 
 	t.Run("human mode json pretty", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		out, err := executeCommand("-c", configPath, "validate", "--json")
+		out, err := executeCommand("-c", configPath, "tool", "validate", "--json")
 		if err != nil {
 			t.Fatalf("validate --json failed: %v", err)
 		}
@@ -229,7 +229,7 @@ func TestValidateCommand_JSON_HumanAndAgent(t *testing.T) {
 
 	t.Run("agent mode json minified", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := executeCommand("-c", configPath, "validate", "--json")
+		out, err := executeCommand("-c", configPath, "tool", "validate", "--json")
 		if err != nil {
 			t.Fatalf("validate --json failed: %v", err)
 		}
@@ -244,7 +244,7 @@ func TestValidateCommand_JSON_HumanAndAgent(t *testing.T) {
 
 	t.Run("agent mode text output", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := executeCommand("-c", configPath, "validate")
+		out, err := executeCommand("-c", configPath, "tool", "validate")
 		if err != nil {
 			t.Fatalf("validate in agent mode failed: %v", err)
 		}
@@ -276,7 +276,7 @@ func TestValidateCommand_CrossToolConflicts(t *testing.T) {
 
 	t.Run("human mode reports conflict warning", func(t *testing.T) {
 		t.Setenv("AGENT", "0")
-		out, err := runCommand("-c", cfgPath, "validate")
+		out, err := runCommand("-c", cfgPath, "tool", "validate")
 		if err != nil {
 			t.Fatalf("unexpected error on validate with warnings: %v\n%s", err, out.Combined)
 		}
@@ -290,7 +290,7 @@ func TestValidateCommand_CrossToolConflicts(t *testing.T) {
 
 	t.Run("agent mode reports WARN line", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
-		out, err := runCommand("-c", cfgPath, "validate")
+		out, err := runCommand("-c", cfgPath, "tool", "validate")
 		if err != nil {
 			t.Fatalf("unexpected error on validate with warnings: %v\n%s", err, out.Combined)
 		}

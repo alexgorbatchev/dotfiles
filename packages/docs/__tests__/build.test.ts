@@ -34,7 +34,7 @@ describe("site build", () => {
   test("rewrites a parent-relative link with a fragment", async () => {
     const hrefs = await collectHrefs(await readPage("configuration/virtual-environments"), CONTENT_LINK_SELECTOR);
 
-    expect(hrefs).toEqual(["/dotfiles/getting-started/cli-reference/#dotfiles-env"]);
+    expect(hrefs).toEqual(["/dotfiles/getting-started/cli-reference/#dotfiles-venv"]);
   });
 
   test("rewrites a parent-relative link to another section", async () => {
