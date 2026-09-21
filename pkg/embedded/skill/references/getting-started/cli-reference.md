@@ -132,7 +132,7 @@ The type-check runs the TypeScript compiler over the CLI-owned `.generated/tscon
 
 Finds and prints the path to the `.tool.ts` file responsible for configuring a tool or binary name.
 
-### `dotfiles diff [toolName]`
+### `dotfiles diff [tool]`
 
 Inspects 3-way differences and drift status between the repository declarations,
 the files currently on disk, and the recorded base state in SQLite.
@@ -143,7 +143,7 @@ When differences exist, prints a unified line diff.
 
 - `--json`: Output drift evaluation and diffs in JSON format.
 
-### `dotfiles files [toolName]`
+### `dotfiles files [tool]`
 
 Lists on-disk files associated with an installed tool.
 

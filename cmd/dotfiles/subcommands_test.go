@@ -2833,3 +2833,17 @@ func TestWhyCommand_MissingConfigFile(t *testing.T) {
 		t.Fatalf("error = %v, want missing config file failure", err)
 	}
 }
+
+func TestSubcommandArgConsistency(t *testing.T) {
+	if diffCmd.Use != "diff [tool]" {
+		t.Errorf("diffCmd.Use = %q, want %q", diffCmd.Use, "diff [tool]")
+	}
+	if filesCmd.Use != "files [tool]" {
+		t.Errorf("filesCmd.Use = %q, want %q", filesCmd.Use, "files [tool]")
+	}
+	for _, cmd := range rootCmd.Commands() {
+		if strings.Contains(cmd.Use, "toolName") {
+			t.Errorf("command %q has inconsistent argument name %q (must use 'tool' instead of 'toolName')", cmd.Name(), cmd.Use)
+		}
+	}
+}

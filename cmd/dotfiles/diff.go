@@ -13,7 +13,7 @@ import (
 var diffJSON bool
 
 var diffCmd = &cobra.Command{
-	Use:               "diff [toolName]",
+	Use:               "diff [tool]",
 	Short:             "Inspect drift and 3-way differences between repo declarations, disk, and state",
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: completeToolName,
