@@ -94,7 +94,7 @@ var projectConfigConsumers = map[string]string{
 	"features.shellInstall.bash":       "shellinit profile injection",
 	"features.shellInstall.powershell": "shellinit profile injection",
 
-	// Reported by `dotfiles features`, but no command writes a catalog file.
+	// Accepted by the configuration loader, but no command writes a catalog file.
 	"features.catalog.generate": "",
 	"features.catalog.filePath": "",
 

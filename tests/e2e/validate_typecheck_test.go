@@ -27,7 +27,7 @@ func installCompilerInSandbox(t *testing.T, h *TestHarness) {
 	}
 }
 
-// `dotfiles validate` type-checks the tool configurations with the compiler the
+// `dotfiles tool validate` type-checks the tool configurations with the compiler the
 // scaffolded typescript tool provides, reports the compiler's absence as an error rather
 // than skipping, and maps each diagnostic onto the tool whose file it is in.
 func TestE2EValidateTypeChecks(t *testing.T) {

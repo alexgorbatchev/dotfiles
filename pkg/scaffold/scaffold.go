@@ -23,7 +23,7 @@ type projectTSConfig struct {
 
 // ProjectTSConfig renders the tsconfig.json a project is given when it has none. It
 // only extends the tsconfig the CLI writes under the generated directory, so an editor
-// checks tool configurations with the same program `dotfiles validate` runs; the
+// checks tool configurations with the same program `dotfiles tool validate` runs; the
 // argument is that file's path relative to the project's tsconfig.
 func ProjectTSConfig(generatedTSConfig string) ([]byte, error) {
 	out, err := json.MarshalIndent(projectTSConfig{Extends: filepath.ToSlash(generatedTSConfig)}, "", "  ")
@@ -130,16 +130,16 @@ export default defineTool((install, _ctx) =>
 // so "latest" is not a safe choice.
 const typescriptReleaseTag = "typescript/v7.0.2"
 
-// typescriptToolContent installs the native TypeScript compiler `dotfiles validate`
+// typescriptToolContent installs the native TypeScript compiler `dotfiles tool validate`
 // type-checks tool configurations with. It is declared without a shim on purpose: the
 // generated bin directory is on PATH, and a TypeScript 7 `tsc` there would shadow the
 // TypeScript other projects on the machine install for themselves. `validate` reaches
 // the compiler through the tool's current directory instead.
 const typescriptToolContent = `import { defineTool } from "@alexgorbatchev/dotfiles";
 
-// The TypeScript compiler that "dotfiles validate" type-checks tool configurations
+// The TypeScript compiler that "dotfiles tool validate" type-checks tool configurations
 // with. It has no shim, so it never shadows another project's TypeScript on PATH;
-// "dotfiles validate" runs it from this tool's current directory.
+// "dotfiles tool validate" runs it from this tool's current directory.
 export default defineTool((install) =>
   install("github-release", {
     repo: "microsoft/typescript-go",
@@ -177,7 +177,7 @@ var legacyContents = map[string][]string{
 // Templates are provisioned in this order, which is the order results are reported.
 var templates = []template{
 	{name: "dotfiles.tool.ts", content: dotfilesToolContent},
-	// `dotfiles validate` type-checks tool configurations with this compiler on every
+	// `dotfiles tool validate` type-checks tool configurations with this compiler on every
 	// platform.
 	{name: "typescript.tool.ts", content: typescriptToolContent},
 	// Homebrew underpins the other macOS installers, so a macOS repository is expected

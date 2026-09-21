@@ -1,6 +1,6 @@
 import { defineTool } from "@alexgorbatchev/dotfiles";
 
-// The compiler `dotfiles validate` type-checks with; declared without a shim so the
+// The compiler `dotfiles tool validate` type-checks with; declared without a shim so the
 // generated bin directory never carries a `tsc`.
 export default defineTool((install) =>
   install("github-release", {

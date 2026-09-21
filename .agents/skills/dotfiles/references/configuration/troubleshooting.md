@@ -16,7 +16,7 @@ Every location the CLI writes to comes from the `paths` section of `dotfiles.con
 - `paths.shellScriptsDir` holds `main.zsh`, `main.bash` and `main.ps1`, plus the `zsh/completions` directory.
 - `paths.binariesDir` holds installed tools as `<tool>/current/<binary>`.
 
-`dotfiles files` (with no argument) prints every file the CLI has written, tagged with its kind, so it is the quickest way to see the resolved locations:
+`dotfiles tool files` (with no argument) prints every file the CLI has written, tagged with its kind, so it is the quickest way to see the resolved locations:
 
 ```
 - github-release--rg (shim): <paths.targetDir>/rg
