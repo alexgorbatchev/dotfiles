@@ -20,7 +20,7 @@ For complete documentation, guides, and API references, visit **[https://alexgor
 
 ## Example: A Complete Tool Configuration
 
-Define everything about a tool—installation, binary path, config file symlinks, and shell environment—in one place.
+Define everything about a tool—installation, binary path, config file symlinks, managed comment blocks, and shell environment—in one place.
 
 ```typescript
 // ~/.dotfiles/tools/ripgrep.tool.ts
@@ -36,7 +36,12 @@ export default defineTool((install, ctx) =>
     .dependsOn("pcre2")
     // 3. Create symlinks for configuration files
     .symlink("./ripgreprc", "~/.ripgreprc")
-    // 4. Configure shell-specific integration (aliases, functions, env vars, PATH)
+    // 4. Own a managed comment block inside shared configuration files
+    .block("~/.bashrc", {
+      id: "ripgrep-config",
+      content: "export RIPGREP_CONFIG_PATH=~/.ripgreprc",
+    })
+    // 5. Configure shell-specific integration (aliases, functions, env vars, PATH)
     .zsh((shell) =>
       shell
         // Add custom directories to PATH
@@ -56,6 +61,9 @@ export default defineTool((install, ctx) =>
 
 - **Automated On-Demand Installation**: Tools are installed automatically the first time you try to run them. No need to pre-install everything.
 - **Declarative Tool Management**: Define every tool, from installation to shell integration, in a typed TypeScript file (`.tool.ts`).
+- **Declarative Files, Templates & Managed Blocks**: Manage templates, symlinks, copies, and delimited comment blocks inside shared files (`~/.bashrc`, `~/.ssh/config`) with automatic syntax detection.
+- **3-Way Drift & Diff Inspection**: Inspect drift and 3-way differences across declared files and disk state with visual line diffing (`dotfiles diff`).
+- **Non-Destructive Backups**: Automatic incremental backup preservation (`.bak`, `.bak.2`) ensures existing user files are never overwritten or destroyed.
 - **Zero-Overhead Shell Startup**: Your shell's startup time is unaffected. All tool loading is deferred until the moment you actually run a command, adding no latency to your shell's initialization.
 - **Powerful Shell Integration**: Centrally manage aliases, environment variables, shell functions, and completions for Zsh, Bash, and PowerShell.
 - **Global Tool Access**: Automatically generates executable shims, making every tool available system-wide to all applications, not just your interactive shell.
@@ -65,8 +73,8 @@ export default defineTool((install, ctx) =>
 
 ## How It Works
 
-1. **Define**: You describe a tool's installation and configuration in a `.tool.ts` file.
-2. **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools and generates a single shell file to source.
+1. **Define**: You describe a tool's installation, configuration files, managed blocks, and shell settings in a `.tool.ts` file.
+2. **Generate**: You run `dotfiles generate`. This creates lightweight executable **shims** for all your defined tools, reconciles declared files and managed blocks, and generates shell files to source.
 3. **Run & Auto-Install**: The first time you execute a tool's command (e.g., `rg --version`), the shim intercepts the call, triggers the generator to download and install the tool, and then seamlessly executes your command. All subsequent calls are instantaneous. Each execution can also be appended to a local usage log, which the dashboard compacts into SQLite on startup.
 4. **Source**: Your shell profile sources the generated init files, and all your tools, aliases, and functions become available everywhere.
 
@@ -103,6 +111,21 @@ $ dotfiles upgrade
 
 # Upgrade or downgrade to a specific version
 $ dotfiles upgrade 2.2.0
+```
+
+### Inspecting Drift (`dotfiles diff`)
+
+Inspect 3-way differences and drift status between repository declarations, on-disk files, and recorded base state:
+
+```bash
+# Inspect drift across all configured tools
+$ dotfiles diff
+
+# Inspect drift for a single tool
+$ dotfiles diff fzf
+
+# Output drift analysis in JSON format
+$ dotfiles diff --json
 ```
 
 ### Manual Install
