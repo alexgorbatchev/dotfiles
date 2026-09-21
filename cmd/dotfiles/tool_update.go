@@ -90,6 +90,7 @@ func resolveUpdate(tool *config.ToolConfig, installedVersion string, res *instal
 
 var toolUpdateCmd = &cobra.Command{
 	Use:               "update [tool...]",
+	Aliases:           []string{"u"},
 	Args:              cobra.ArbitraryArgs,
 	Short:             "Upgrade tools to their latest available release",
 	ValidArgsFunction: completeToolNames,

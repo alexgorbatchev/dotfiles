@@ -11,6 +11,7 @@ import (
 
 var toolInstallCmd = &cobra.Command{
 	Use:               "install [tool...]",
+	Aliases:           []string{"i"},
 	Args:              cobra.ArbitraryArgs,
 	Short:             "Install one or all configured tools",
 	ValidArgsFunction: completeToolNames,

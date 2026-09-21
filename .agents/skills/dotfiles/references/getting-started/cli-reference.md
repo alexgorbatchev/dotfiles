@@ -49,7 +49,28 @@ dotfiles skill copy .agents/skills/
 dotfiles self version
 dotfiles self upgrade
 dotfiles self upgrade --check
+
+# Top-level convenience shortcuts
+dotfiles g                     # shortcut for dotfiles state generate
+dotfiles i fzf                 # shortcut for dotfiles tool install fzf
+dotfiles u                     # shortcut for dotfiles tool update
 ```
+
+## Top-Level Shortcuts
+
+For everyday convenience, the most high-frequency commands provide top-level root shortcuts (registered as hidden commands to preserve clean `--help` output) along with single-letter aliases:
+
+| Shortcut                                   | Canonical Command                 | Description                                             |
+| :----------------------------------------- | :-------------------------------- | :------------------------------------------------------ |
+| `dotfiles generate`, `dotfiles g`          | `dotfiles state generate`         | Compile and link shims, symlinks, blocks, and templates |
+| `dotfiles install [tool...]`, `dotfiles i` | `dotfiles tool install [tool...]` | Install one or all configured tools                     |
+| `dotfiles update [tool...]`, `dotfiles u`  | `dotfiles tool update [tool...]`  | Upgrade tools to their latest available release         |
+
+Inside their respective domains, the same single-letter aliases are supported:
+
+- `dotfiles state g` -> `dotfiles state generate`
+- `dotfiles tool i` -> `dotfiles tool install`
+- `dotfiles tool u` -> `dotfiles tool update`
 
 ## Command Details
 
@@ -78,6 +99,8 @@ Finds the `.tool.ts` configuration file that configures a tool or binary name. W
 
 #### `dotfiles tool install [tool...]`
 
+_(Alias: `i`, Root shortcuts: `dotfiles install`, `dotfiles i`)_
+
 Installs the named tools, by tool name or by binary name. With no argument, installs every configured tool, in dependency order.
 
 - `-f, --force`: Force reinstallation even if already installed.
@@ -88,6 +111,8 @@ Installs the named tools, by tool name or by binary name. With no argument, inst
 Removes installed tools and their associated binaries, shims, and symlinks. With no argument, uninstalls every configured tool in reverse dependency order.
 
 #### `dotfiles tool update [tool...]`
+
+_(Alias: `u`, Root shortcuts: `dotfiles update`, `dotfiles u`)_
 
 Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed are skipped during batch updates.
 
@@ -191,6 +216,8 @@ Removes an environment directory. On an interactive terminal it first asks `Dele
 System state, drift detection, and orchestration.
 
 #### `dotfiles state generate`
+
+_(Alias: `g`, Root shortcuts: `dotfiles generate`, `dotfiles g`)_
 
 Writes the shims, symlinks, copies, shell initialization scripts and completions the configuration calls for, and removes the artifacts of declarations that have gone.
 

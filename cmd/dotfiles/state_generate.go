@@ -15,9 +15,10 @@ import (
 )
 
 var stateGenerateCmd = &cobra.Command{
-	Use:   "generate",
-	Args:  cobra.NoArgs,
-	Short: "Compile and link shims, symlinks, blocks, and templates",
+	Use:     "generate",
+	Aliases: []string{"g"},
+	Args:    cobra.NoArgs,
+	Short:   "Compile and link shims, symlinks, blocks, and templates",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		if overwrite {
