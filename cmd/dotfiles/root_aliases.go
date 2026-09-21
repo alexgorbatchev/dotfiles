@@ -31,6 +31,14 @@ var rootUpdateCmd = &cobra.Command{
 	RunE:              toolUpdateCmd.RunE,
 }
 
+var rootVersionCmd = &cobra.Command{
+	Use:    "version",
+	Short:  "Print the dotfiles CLI version (shortcut for self version)",
+	Args:   cobra.NoArgs,
+	Hidden: true,
+	Run:    selfVersionCmd.Run,
+}
+
 func init() {
 	rootGenerateCmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite conflicting files that were not created by the generator")
 
@@ -43,4 +51,5 @@ func init() {
 	rootCmd.AddCommand(rootGenerateCmd)
 	rootCmd.AddCommand(rootInstallCmd)
 	rootCmd.AddCommand(rootUpdateCmd)
+	rootCmd.AddCommand(rootVersionCmd)
 }

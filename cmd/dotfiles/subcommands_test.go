@@ -1062,6 +1062,7 @@ func TestPositionalArgumentValidation(t *testing.T) {
 		{"state generate takes no arguments", []string{"state", "generate", "bat"}, `unknown command "bat" for "dotfiles state generate"`},
 		{"state cleanup takes no arguments", []string{"state", "cleanup", "bat"}, `unknown command "bat" for "dotfiles state cleanup"`},
 		{"self version takes no arguments", []string{"self", "version", "bat"}, `unknown command "bat" for "dotfiles self version"`},
+		{"version takes no arguments", []string{"version", "bat"}, `unknown command "bat" for "dotfiles version"`},
 		{"shell audit takes no arguments", []string{"shell", "audit", "bat"}, `unknown command "bat" for "dotfiles shell audit"`},
 		{"venv list takes no arguments", []string{"venv", "list", "bat"}, `unknown command "bat" for "dotfiles venv list"`},
 		{"path list takes no arguments", []string{"path", "list", "bat"}, `unknown command "bat" for "dotfiles path list"`},

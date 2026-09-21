@@ -54,6 +54,7 @@ dotfiles self upgrade --check
 dotfiles g                     # shortcut for dotfiles state generate
 dotfiles i fzf                 # shortcut for dotfiles tool install fzf
 dotfiles u                     # shortcut for dotfiles tool update
+dotfiles version               # shortcut for dotfiles self version
 ```
 
 ## Top-Level Shortcuts
@@ -65,6 +66,7 @@ For everyday convenience, the most high-frequency commands provide top-level roo
 | `dotfiles generate`, `dotfiles g`          | `dotfiles state generate`         | Compile and link shims, symlinks, blocks, and templates |
 | `dotfiles install [tool...]`, `dotfiles i` | `dotfiles tool install [tool...]` | Install one or all configured tools                     |
 | `dotfiles update [tool...]`, `dotfiles u`  | `dotfiles tool update [tool...]`  | Upgrade tools to their latest available release         |
+| `dotfiles version`                         | `dotfiles self version`           | Print the dotfiles CLI version                          |
 
 Inside their respective domains, the same single-letter aliases are supported:
 

@@ -295,10 +295,18 @@ func TestVersionContract(t *testing.T) {
 
 	outVersionCmd, err := runCommand("self", "version")
 	if err != nil {
-		t.Fatalf("dotfiles version failed: %v", err)
+		t.Fatalf("dotfiles self version failed: %v", err)
 	}
 	if strings.TrimSpace(outVersionCmd.Stdout) != "2.6.0" {
-		t.Errorf("dotfiles version stdout = %q, want \"2.6.0\"", strings.TrimSpace(outVersionCmd.Stdout))
+		t.Errorf("dotfiles self version stdout = %q, want \"2.6.0\"", strings.TrimSpace(outVersionCmd.Stdout))
+	}
+
+	outRootVersionCmd, err := runCommand("version")
+	if err != nil {
+		t.Fatalf("dotfiles version failed: %v", err)
+	}
+	if strings.TrimSpace(outRootVersionCmd.Stdout) != "2.6.0" {
+		t.Errorf("dotfiles version stdout = %q, want \"2.6.0\"", strings.TrimSpace(outRootVersionCmd.Stdout))
 	}
 
 	outVersionFlag, err := runCommand("--version")
