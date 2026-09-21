@@ -126,7 +126,7 @@ func TestShadowChecker_ExternalCommandDetection(t *testing.T) {
 		if len(warnings) != 1 {
 			t.Fatalf("expected 1 warning, got %d: %+v", len(warnings), warnings)
 		}
-		expected := `Binary "git" shadows /usr/bin/git`
+		expected := `Binary 'git' shadows '/usr/bin/git'`
 		if warnings[0].Message != expected {
 			t.Errorf("got %q, want %q", warnings[0].Message, expected)
 		}
@@ -350,7 +350,7 @@ func TestShadowChecker_FallbackDirs(t *testing.T) {
 	if len(warnings) != 1 {
 		t.Fatalf("expected 1 warning from fallback dirs, got %d: %+v", len(warnings), warnings)
 	}
-	expected := `Binary "brew-cmd" shadows /opt/homebrew/bin/brew-cmd`
+	expected := `Binary 'brew-cmd' shadows '/opt/homebrew/bin/brew-cmd'`
 	if warnings[0].Message != expected {
 		t.Errorf("got %q, want %q", warnings[0].Message, expected)
 	}

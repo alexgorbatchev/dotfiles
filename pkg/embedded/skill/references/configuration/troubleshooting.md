@@ -82,7 +82,7 @@ Shim usage tracking is enabled by default: every run of a shim appends a line to
 
 **Messages**:
 
-- `WARN   [tool]         Binary "name" shadows /usr/bin/name`
+- `WARN   [tool]         Binary 'name' shadows '/usr/bin/name'`
 - `WARN   [tool]         [zsh] Alias "ls" shadows /bin/ls`
 - `WARN   [tool]         [zsh] Function "cd" shadows zsh builtin "cd"`
 
