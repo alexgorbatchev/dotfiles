@@ -20,6 +20,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - The synced package directory (`.generated/node_modules/@alexgorbatchev/dotfiles/`) holds exactly what `pkg/embedded`'s `dist` contains: `SyncTypeScriptTypes` removes anything else, so a declaration an older release emitted cannot linger. The bin-name registry and the CLI-owned tsconfig live in `.generated/` itself and are outside that prune.
 - `SyncTypeScriptTypes` receives every configured tool, not the pruned list: the bin-name registry it writes describes the configuration, so disabled and hostname-scoped tools stay in it. It also owns `.generated/tsconfig.json` (via `pkg/typecheck.Program`); the project's own `tsconfig.json` is only written when absent or byte-identical to the one an earlier version generated (`pkg/scaffold.IsLegacyProjectTSConfig`).
 - Shadow checking runs asynchronously across active tools during `GenerateTools`, checking binaries, aliases, and functions against external system PATH executables and shell builtins (zsh, bash, powershell), suppressing warnings when a binary intentionally delegates to the external target.
+- Shell CLI wrapper function `dotfiles()` uses `getCliCommand()` (via `formatCliCommandForShell`) to resolve the executing binary/command (including dev `go run` or `DOTFILES_CLI_COMMAND`) unquoted rather than hardcoding `targetDir/dotfiles`.
 
 ## Local gotchas
 

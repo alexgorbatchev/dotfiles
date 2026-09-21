@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	osexec "os/exec"
 	"path/filepath"
@@ -702,17 +703,21 @@ func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
 		t.Fatalf("failed to generate shell scripts: %v", err)
 	}
 
+	expectedCmdZsh := orchWithConfig.formatCliCommandForShell("zsh", projCfg)
+	expectedCmdPs1 := orchWithConfig.formatCliCommandForShell("powershell", projCfg)
+
 	zshData1, _ := memFS1.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
 	zshContent1 := string(zshData1)
-	if !strings.Contains(zshContent1, `dotfiles() {\n  "/home/user/.generated/user-bin/dotfiles" --config "/home/user/.dotfiles/dotfiles.config.ts" "$@"\n}`) &&
-		!strings.Contains(zshContent1, `"/home/user/.generated/user-bin/dotfiles" --config "/home/user/.dotfiles/dotfiles.config.ts"`) {
-		t.Errorf("expected zsh wrapper to include --config flag, got:\n%s", zshContent1)
+	expectedZsh1 := fmt.Sprintf("dotfiles() {\n  %s --config \"/home/user/.dotfiles/dotfiles.config.ts\" \"$@\"\n}", expectedCmdZsh)
+	if !strings.Contains(zshContent1, expectedZsh1) {
+		t.Errorf("expected zsh wrapper to contain %q, got:\n%s", expectedZsh1, zshContent1)
 	}
 
 	ps1Data1, _ := memFS1.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
 	ps1Content1 := string(ps1Data1)
-	if !strings.Contains(ps1Content1, `& "/home/user/.generated/user-bin/dotfiles" --config "/home/user/.dotfiles/dotfiles.config.ts" $args`) {
-		t.Errorf("expected powershell wrapper to include --config flag, got:\n%s", ps1Content1)
+	expectedPs1 := fmt.Sprintf("function dotfiles {\n  & %s --config \"/home/user/.dotfiles/dotfiles.config.ts\" $args\n}", expectedCmdPs1)
+	if !strings.Contains(ps1Content1, expectedPs1) {
+		t.Errorf("expected powershell wrapper to contain %q, got:\n%s", expectedPs1, ps1Content1)
 	}
 
 	// 2. Without configFilePath
@@ -725,15 +730,160 @@ func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
 
 	zshData2, _ := memFS2.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
 	zshContent2 := string(zshData2)
-	if !strings.Contains(zshContent2, `"/home/user/.generated/user-bin/dotfiles" "$@"`) {
-		t.Errorf("expected zsh wrapper without --config flag, got:\n%s", zshContent2)
+	expectedZsh2 := fmt.Sprintf("dotfiles() {\n  %s \"$@\"\n}", expectedCmdZsh)
+	if !strings.Contains(zshContent2, expectedZsh2) {
+		t.Errorf("expected zsh wrapper without --config flag to contain %q, got:\n%s", expectedZsh2, zshContent2)
 	}
 
 	ps1Data2, _ := memFS2.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
 	ps1Content2 := string(ps1Data2)
-	if !strings.Contains(ps1Content2, `& "/home/user/.generated/user-bin/dotfiles" $args`) {
-		t.Errorf("expected powershell wrapper without --config flag, got:\n%s", ps1Content2)
+	expectedPs2 := fmt.Sprintf("function dotfiles {\n  & %s $args\n}", expectedCmdPs1)
+	if !strings.Contains(ps1Content2, expectedPs2) {
+		t.Errorf("expected powershell wrapper without --config flag to contain %q, got:\n%s", expectedPs2, ps1Content2)
 	}
+}
+
+func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
+	ctx := context.Background()
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			GeneratedDir:    "/home/user/.generated",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			TargetDir:       "/home/user/.generated/user-bin",
+		},
+	}
+
+	t.Run("with custom multi-token CLI command", func(t *testing.T) {
+		t.Setenv("DOTFILES_CLI_COMMAND", "go run /custom/repo/cmd/dotfiles")
+		memFS := fs.NewMemFS()
+		orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles.config.ts")
+		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
+			t.Fatalf("generateShellScripts failed: %v", err)
+		}
+
+		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
+		wantZsh := "dotfiles() {\n  go run /custom/repo/cmd/dotfiles --config \"/home/user/dotfiles.config.ts\" \"$@\"\n}"
+		if !strings.Contains(string(zshData), wantZsh) {
+			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
+		}
+
+		bashData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.bash")
+		if !strings.Contains(string(bashData), wantZsh) {
+			t.Errorf("expected main.bash to contain %q, got:\n%s", wantZsh, string(bashData))
+		}
+
+		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
+		wantPs1 := "function dotfiles {\n  & go run /custom/repo/cmd/dotfiles --config \"/home/user/dotfiles.config.ts\" $args\n}"
+		if !strings.Contains(string(ps1Data), wantPs1) {
+			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
+		}
+	})
+
+	t.Run("with custom single binary path", func(t *testing.T) {
+		t.Setenv("DOTFILES_CLI_COMMAND", "/opt/dotfiles/bin/dotfiles")
+		memFS := fs.NewMemFS()
+		orch := newTestOrchestrator(t, memFS, "")
+		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
+			t.Fatalf("generateShellScripts failed: %v", err)
+		}
+
+		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
+		wantZsh := "dotfiles() {\n  /opt/dotfiles/bin/dotfiles \"$@\"\n}"
+		if !strings.Contains(string(zshData), wantZsh) {
+			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
+		}
+
+		bashData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.bash")
+		if !strings.Contains(string(bashData), wantZsh) {
+			t.Errorf("expected main.bash to contain %q, got:\n%s", wantZsh, string(bashData))
+		}
+
+		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
+		wantPs1 := "function dotfiles {\n  & /opt/dotfiles/bin/dotfiles $args\n}"
+		if !strings.Contains(string(ps1Data), wantPs1) {
+			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
+		}
+	})
+
+	t.Run("with multi-token command having space in package path", func(t *testing.T) {
+		t.Setenv("DOTFILES_CLI_COMMAND", "go run /path with spaces/cmd/dotfiles")
+		memFS := fs.NewMemFS()
+		orch := newTestOrchestrator(t, memFS, "")
+		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
+			t.Fatalf("generateShellScripts failed: %v", err)
+		}
+
+		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
+		wantZsh := "dotfiles() {\n  go run \"/path with spaces/cmd/dotfiles\" \"$@\"\n}"
+		if !strings.Contains(string(zshData), wantZsh) {
+			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
+		}
+
+		bashData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.bash")
+		if !strings.Contains(string(bashData), wantZsh) {
+			t.Errorf("expected main.bash to contain %q, got:\n%s", wantZsh, string(bashData))
+		}
+
+		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
+		wantPs1 := "function dotfiles {\n  & go run \"/path with spaces/cmd/dotfiles\" $args\n}"
+		if !strings.Contains(string(ps1Data), wantPs1) {
+			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
+		}
+	})
+
+	t.Run("with bare dotfiles prevents recursion", func(t *testing.T) {
+		t.Setenv("DOTFILES_CLI_COMMAND", "dotfiles")
+		memFS := fs.NewMemFS()
+		orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles.config.ts")
+		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
+			t.Fatalf("generateShellScripts failed: %v", err)
+		}
+
+		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
+		wantZsh := "dotfiles() {\n  command dotfiles --config \"/home/user/dotfiles.config.ts\" \"$@\"\n}"
+		if !strings.Contains(string(zshData), wantZsh) {
+			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
+		}
+
+		bashData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.bash")
+		if !strings.Contains(string(bashData), wantZsh) {
+			t.Errorf("expected main.bash to contain %q, got:\n%s", wantZsh, string(bashData))
+		}
+
+		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
+		wantPs1 := "function dotfiles {\n  & \"/home/user/.generated/user-bin/dotfiles\" --config \"/home/user/dotfiles.config.ts\" $args\n}"
+		if !strings.Contains(string(ps1Data), wantPs1) {
+			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
+		}
+	})
+
+	t.Run("with virtual path containing spaces not on host disk", func(t *testing.T) {
+		t.Setenv("DOTFILES_CLI_COMMAND", "/virtual path with spaces/bin/dotfiles")
+		memFS := fs.NewMemFS()
+		orch := newTestOrchestrator(t, memFS, "")
+		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
+			t.Fatalf("generateShellScripts failed: %v", err)
+		}
+
+		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
+		wantZsh := "dotfiles() {\n  \"/virtual path with spaces/bin/dotfiles\" \"$@\"\n}"
+		if !strings.Contains(string(zshData), wantZsh) {
+			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
+		}
+
+		bashData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.bash")
+		if !strings.Contains(string(bashData), wantZsh) {
+			t.Errorf("expected main.bash to contain %q, got:\n%s", wantZsh, string(bashData))
+		}
+
+		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
+		wantPs1 := "function dotfiles {\n  & \"/virtual path with spaces/bin/dotfiles\" $args\n}"
+		if !strings.Contains(string(ps1Data), wantPs1) {
+			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
+		}
+	})
 }
 
 // bashRuntimeProject is a project generated onto the real filesystem under a

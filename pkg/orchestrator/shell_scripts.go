@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -48,19 +49,19 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			// 2. Dotfiles CLI Section
 			scriptLines = append(scriptLines, shellinit.GenerateSectionHeader("Dotfiles CLI"))
-			dotfilesBin := filepath.ToSlash(filepath.Join(projCfg.Paths.TargetDir, "dotfiles"))
+			cliCmd := o.formatCliCommandForShell(sh, projCfg)
 			var wrapper string
 			if o.configFilePath != "" {
 				if sh == "powershell" {
-					wrapper = fmt.Sprintf("function dotfiles {\n  & %q --config %q $args\n}", dotfilesBin, o.configFilePath)
+					wrapper = fmt.Sprintf("function dotfiles {\n  & %s --config %q $args\n}", cliCmd, o.configFilePath)
 				} else {
-					wrapper = fmt.Sprintf("dotfiles() {\n  %q --config %q \"$@\"\n}", dotfilesBin, o.configFilePath)
+					wrapper = fmt.Sprintf("dotfiles() {\n  %s --config %q \"$@\"\n}", cliCmd, o.configFilePath)
 				}
 			} else {
 				if sh == "powershell" {
-					wrapper = fmt.Sprintf("function dotfiles {\n  & %q $args\n}", dotfilesBin)
+					wrapper = fmt.Sprintf("function dotfiles {\n  & %s $args\n}", cliCmd)
 				} else {
-					wrapper = fmt.Sprintf("dotfiles() {\n  %q \"$@\"\n}", dotfilesBin)
+					wrapper = fmt.Sprintf("dotfiles() {\n  %s \"$@\"\n}", cliCmd)
 				}
 			}
 			scriptLines = append(scriptLines, wrapper)
@@ -219,7 +220,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					}
 					if sourceFile != "" {
 						fullSourcePath := filepath.ToSlash(filepath.Join(pluginPath, sourceFile))
-						cliCmd := o.getCliCommand()
+						cliCmd := o.formatCliCommandForShell("zsh", projCfg)
 						cfgFile := o.getConfigFilePath()
 
 						toolBlockLines = append(toolBlockLines,
@@ -479,4 +480,50 @@ func formatFunctionBody(body string) string {
 		formatted = append(formatted, "  "+l[cut:])
 	}
 	return strings.Join(formatted, "\n")
+}
+
+func (o *Orchestrator) formatCliCommandForShell(sh string, projCfg *config.ProjectConfig) string {
+	cliCmd := o.getCliCommand()
+
+	// Normalize Windows backslashes for all shells. Forward slashes are safe in
+	// Bash, Zsh, and PowerShell across macOS, Linux, and Windows.
+	cliCmd = strings.ReplaceAll(cliCmd, `\`, `/`)
+
+	// Avoid infinite recursion when the CLI command resolves to bare "dotfiles":
+	// In Bash/Zsh, shell functions override external executables on PATH, so we
+	// prefix with "command". In PowerShell, we target the installed TargetDir binary.
+	if cliCmd == "dotfiles" {
+		if sh != "powershell" {
+			return "command dotfiles"
+		}
+		if projCfg != nil && projCfg.Paths.TargetDir != "" {
+			return fmt.Sprintf(`"%s"`, filepath.ToSlash(filepath.Join(projCfg.Paths.TargetDir, "dotfiles")))
+		}
+		return "dotfiles"
+	}
+
+	// If it starts with "go run ", preserve it as an unquoted multi-token command
+	// but quote the target package path if it contains spaces.
+	if strings.HasPrefix(cliCmd, "go run ") {
+		pkgPath := strings.TrimPrefix(cliCmd, "go run ")
+		if strings.Contains(pkgPath, " ") && !strings.HasPrefix(pkgPath, `"`) {
+			return fmt.Sprintf(`go run "%s"`, pkgPath)
+		}
+		return cliCmd
+	}
+
+	// If it contains path separators and spaces, treat it as an executable path
+	// and quote it so shells don't split the path at whitespace.
+	if strings.Contains(cliCmd, "/") && strings.Contains(cliCmd, " ") && !strings.HasPrefix(cliCmd, `"`) {
+		return fmt.Sprintf(`"%s"`, cliCmd)
+	}
+
+	// If it's an existing file on disk and contains spaces, quote it.
+	if strings.Contains(cliCmd, " ") && !strings.HasPrefix(cliCmd, `"`) {
+		if _, err := os.Stat(cliCmd); err == nil {
+			return fmt.Sprintf(`"%s"`, cliCmd)
+		}
+	}
+
+	return cliCmd
 }
