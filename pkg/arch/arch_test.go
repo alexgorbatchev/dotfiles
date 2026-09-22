@@ -524,6 +524,27 @@ func TestSelectBestMatch(t *testing.T) {
 		}
 	})
 
+	t.Run("returns empty string when only incompatible CPU assets match OS", func(t *testing.T) {
+		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64}
+		got := SelectBestMatch([]string{"tool-linux-arm64.tar.gz", "tool-windows-amd64.exe"}, sys)
+		if got != "" {
+			t.Errorf("SelectBestMatch = %q, want empty string for incompatible CPU", got)
+		}
+	})
+
+	t.Run("architecture-agnostic asset without CPU identifier matches on Linux", func(t *testing.T) {
+		sys := SystemInfo{OS: OSLinux, Arch: ArchAMD64}
+		assets := []string{
+			"onefetch-linux.tar.gz",
+			"onefetch-mac.tar.gz",
+			"onefetch-win.tar.gz",
+		}
+		got := SelectBestMatch(assets, sys)
+		if got != "onefetch-linux.tar.gz" {
+			t.Errorf("SelectBestMatch = %q, want %q", got, "onefetch-linux.tar.gz")
+		}
+	})
+
 	t.Run("macOS universal binary vs specific", func(t *testing.T) {
 		sys := SystemInfo{OS: OSDarwin, Arch: ArchARM64}
 		assets := []string{

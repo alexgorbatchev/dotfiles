@@ -315,6 +315,41 @@ func filterNonBinaryAssets(assetNames []string) []string {
 	return assetNames
 }
 
+var (
+	arm64CPURegex = regexp.MustCompile(`(?i)(^|[^a-z0-9])(arm64|aarch64|aarch)([^a-z0-9]|$)`)
+	amd64CPURegex = regexp.MustCompile(`(?i)(^|[^a-z0-9])(amd64|x86_64|x64|x86-64)([^a-z0-9]|$)`)
+	otherCPURegex = regexp.MustCompile(`(?i)(^|[^a-z0-9])(armv[5-8][a-z]*|armhf|armel|i[3-6]86|x86_32|ppc64le|ppc64|s390x|riscv64|mips64le|mips64|mipsel|mips|loong64)([^a-z0-9]|$)`)
+)
+
+func isIncompatibleCPU(assetName string, sys SystemInfo) bool {
+	lower := strings.ToLower(assetName)
+
+	switch sys.Arch {
+	case ArchAMD64:
+		if (arm64CPURegex.MatchString(lower) || otherCPURegex.MatchString(lower)) && !amd64CPURegex.MatchString(lower) {
+			return true
+		}
+	case ArchARM64:
+		if otherCPURegex.MatchString(lower) && !arm64CPURegex.MatchString(lower) {
+			return true
+		}
+		if sys.OS != OSDarwin && amd64CPURegex.MatchString(lower) && !arm64CPURegex.MatchString(lower) {
+			return true
+		}
+	}
+	return false
+}
+
+func filterIncompatibleCPUAssets(assetNames []string, sys SystemInfo) []string {
+	var filtered []string
+	for _, name := range assetNames {
+		if !isIncompatibleCPU(name, sys) {
+			filtered = append(filtered, name)
+		}
+	}
+	return filtered
+}
+
 func filterLinuxIncompatibleAssets(assetNames []string, sys SystemInfo) []string {
 	if sys.OS != OSLinux {
 		return assetNames
@@ -449,6 +484,7 @@ func SelectBestMatch(assetNames []string, sys SystemInfo) string {
 
 	binaryAssets := filterNonBinaryAssets(assetNames)
 	compatibleAssets := filterLinuxIncompatibleAssets(binaryAssets, sys)
+	compatibleAssets = filterIncompatibleCPUAssets(compatibleAssets, sys)
 
 	var matches []string
 	if architectureRegex.SystemPattern != "" {
