@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -62,7 +63,8 @@ func (c *CargoInstaller) SetGitHubSettings(settings GitHubSettings) {
 }
 
 // cargoVersion is a resolved crate version. tag is set when a GitHub release
-// resolved it, so the download URL uses the tag the repository really has.
+// resolved it, so the download URL uses the tag the repository really has; a
+// version without one is tried under each spelling of its tag (releaseTagCandidates).
 type cargoVersion struct {
 	version string
 	tag     string
@@ -72,18 +74,6 @@ type cargoVersion struct {
 // `{version}` asset placeholder and quickinstall archive names expect.
 func (v cargoVersion) bare() string {
 	return strings.TrimPrefix(v.version, "v")
-}
-
-// releaseTag returns the GitHub release tag to download from: the tag that
-// resolved the version when known, otherwise the conventional "v" prefix.
-func (v cargoVersion) releaseTag() string {
-	if v.tag != "" {
-		return v.tag
-	}
-	if strings.HasPrefix(v.version, "v") {
-		return v.version
-	}
-	return "v" + v.version
 }
 
 func NewCargoInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *CargoInstaller {
@@ -366,6 +356,17 @@ func (c *CargoInstaller) fetchGitHubReleaseTag(ctx context.Context, tool *config
 	return release.TagName, nil
 }
 
+// releaseTagCandidates are the tags a release of version can carry, in the order to
+// try them. A version does not record whether its tag has a "v" (sharkdp/bat tags
+// v0.24.0, BurntSushi/ripgrep tags 14.1.1). The "v" spelling comes first either way:
+// it is the common convention, and a version written as "v1.2.3" names it outright.
+func releaseTagCandidates(version string) []string {
+	if bare, ok := strings.CutPrefix(version, "v"); ok {
+		return []string{version, bare}
+	}
+	return []string{"v" + version, version}
+}
+
 // installArchive downloads a prebuilt archive into the tool directory, extracts
 // it and promotes the declared binaries.
 func (c *CargoInstaller) installArchive(ctx context.Context, tool *config.ToolConfig, url, archiveName, sha256 string) ([]string, error) {
@@ -417,7 +418,11 @@ func (c *CargoInstaller) tryQuickinstall(ctx context.Context, tool *config.ToolC
 }
 
 // tryGithubReleases downloads the asset assetPattern names from the release
-// tagged for ver in githubRepo.
+// tagged for ver in githubRepo. A pinned version, from .version() or from the
+// version an update check found, arrives without the tag it was released under, so
+// each spelling of it is tried against the download URL itself. Release downloads
+// are not rate limited the way the GitHub API is, so this needs no API request. Only
+// a 404 moves on to the next spelling; any other failure is reported as it is.
 func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.ToolConfig, crateName string, ver cargoVersion) (*InstallResult, error) {
 	githubRepo := getStringParam(tool.InstallParams, "githubRepo", "")
 	if githubRepo == "" {
@@ -427,6 +432,11 @@ func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.Too
 	platform, arch, err := cargoTargetTriple(c.sysCtx)
 	if err != nil {
 		return nil, err
+	}
+
+	tags := []string{ver.tag}
+	if ver.tag == "" {
+		tags = releaseTagCandidates(ver.version)
 	}
 
 	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "{crateName}-{version}-{platform}-{arch}.tar.gz")
@@ -441,13 +451,21 @@ func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.Too
 	if c.BaseURL != "" {
 		baseURL = c.BaseURL
 	}
-	url := fmt.Sprintf("%s/%s/releases/download/%s/%s", baseURL, githubRepo, ver.releaseTag(), assetName)
 
-	binaries, err := c.installArchive(ctx, tool, url, tool.Name+"-gh-release.tar.gz", "")
-	if err != nil {
-		return nil, fmt.Errorf("github release: %w", err)
+	var notFound error
+	for _, tag := range tags {
+		url := fmt.Sprintf("%s/%s/releases/download/%s/%s", baseURL, githubRepo, tag, assetName)
+		binaries, err := c.installArchive(ctx, tool, url, tool.Name+"-gh-release.tar.gz", "")
+		if err == nil {
+			return &InstallResult{Binaries: binaries, Version: ver.bare()}, nil
+		}
+		var statusErr *downloader.StatusError
+		if !errors.As(err, &statusErr) || statusErr.StatusCode != http.StatusNotFound {
+			return nil, fmt.Errorf("github release: %w", err)
+		}
+		notFound = err
 	}
-	return &InstallResult{Binaries: binaries, Version: ver.bare()}, nil
+	return nil, fmt.Errorf("github release: %s not found in %s under tag %s: %w", assetName, githubRepo, strings.Join(tags, " or "), notFound)
 }
 
 // installPrebuilt resolves the version (unless pinned) and installs the

@@ -6,9 +6,11 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -621,19 +623,33 @@ func TestParseCargoTomlPackageVersion(t *testing.T) {
 	}
 }
 
-// newCargoGithubServer serves owner/mycrate's latest release (v1.2.3) and its
-// linux/amd64 asset, and refuses every other download.
+// cargoGithubReleaseTags are the releases newCargoGithubServer publishes, by
+// repository. owner/mycrate tags with a "v" and owner/bare without one, as
+// ripgrep does; the first tag of each is its latest release.
+var cargoGithubReleaseTags = map[string][]string{
+	"owner/mycrate": {"v1.2.3", "v0.10.1"},
+	"owner/bare":    {"14.1.1"},
+}
+
+// newCargoGithubServer serves the latest release of each repository in
+// cargoGithubReleaseTags and tarData as every asset of every tag listed. Every other
+// request, including a download from a tag the repository does not have, answers 404.
 func newCargoGithubServer(t *testing.T, tarData []byte) *recordingServer {
 	t.Helper()
 	return newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/repos/owner/mycrate/releases/latest":
-			_, _ = w.Write([]byte(`{"tag_name":"v1.2.3","assets":[]}`))
-		case strings.HasPrefix(r.URL.Path, "/owner/mycrate/releases/download/v1.2.3/") || strings.HasPrefix(r.URL.Path, "/owner/mycrate/releases/download/v0.10.1/"):
-			_, _ = w.Write(tarData)
-		default:
-			w.WriteHeader(http.StatusNotFound)
+		for repo, tags := range cargoGithubReleaseTags {
+			if r.URL.Path == "/repos/"+repo+"/releases/latest" {
+				fmt.Fprintf(w, `{"tag_name":%q,"assets":[]}`, tags[0])
+				return
+			}
+			for _, tag := range tags {
+				if strings.HasPrefix(r.URL.Path, "/"+repo+"/releases/download/"+tag+"/") {
+					_, _ = w.Write(tarData)
+					return
+				}
+			}
 		}
+		w.WriteHeader(http.StatusNotFound)
 	})
 }
 
@@ -688,34 +704,130 @@ func TestCargoGithubReleasesResolvesLatestTag(t *testing.T) {
 	}
 }
 
-func TestCargoGithubReleasesPinnedVersionSkipsResolution(t *testing.T) {
-	tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
-	if err != nil {
-		t.Fatalf("failed to create tar: %v", err)
-	}
-	server := newCargoGithubServer(t, tarData)
-	inst, _ := newCargoGithubInstaller(server, exec.NewMockRunner())
-
-	pinned := "0.10.1"
-	res, err := inst.Install(context.Background(), &config.ToolConfig{
-		Name:    "mycrate",
-		Version: &pinned,
-		InstallParams: map[string]interface{}{
-			"binarySource": "github-releases",
-			"githubRepo":   "owner/mycrate",
+// TestCargoGithubReleasesPinnedVersionFindsTag pins that a pinned version, whether
+// from .version() or from the version tool update found, downloads from the tag the
+// repository really has. A version carries no record of whether the tag has a "v", so
+// both spellings are tried against the download URL itself. The GitHub API is never
+// asked: release downloads are not rate limited and the API is.
+func TestCargoGithubReleasesPinnedVersionFindsTag(t *testing.T) {
+	tests := []struct {
+		name        string
+		repo        string
+		pinned      string
+		wantVersion string
+		wantPaths   []string
+	}{
+		{
+			name:        "a v-prefixed tag is tried first",
+			repo:        "owner/mycrate",
+			pinned:      "0.10.1",
+			wantVersion: "0.10.1",
+			wantPaths:   []string{"/owner/mycrate/releases/download/v0.10.1/mycrate-0.10.1-unknown-linux-gnu-x86_64.tar.gz"},
 		},
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		{
+			name:        "a pinned version written with its v",
+			repo:        "owner/mycrate",
+			pinned:      "v0.10.1",
+			wantVersion: "0.10.1",
+			wantPaths:   []string{"/owner/mycrate/releases/download/v0.10.1/mycrate-0.10.1-unknown-linux-gnu-x86_64.tar.gz"},
+		},
+		{
+			name:        "a tag without a v is tried after the v spelling is not found",
+			repo:        "owner/bare",
+			pinned:      "14.1.1",
+			wantVersion: "14.1.1",
+			wantPaths: []string{
+				"/owner/bare/releases/download/v14.1.1/mycrate-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
+				"/owner/bare/releases/download/14.1.1/mycrate-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
+			},
+		},
 	}
-	if res.Version != "0.10.1" {
-		t.Fatalf("expected pinned version 0.10.1, got %q", res.Version)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
+			if err != nil {
+				t.Fatalf("failed to create tar: %v", err)
+			}
+			server := newCargoGithubServer(t, tarData)
+			runner := exec.NewMockRunner()
+			inst, _ := newCargoGithubInstaller(server, runner)
+
+			pinned := tt.pinned
+			res, err := inst.Install(context.Background(), &config.ToolConfig{
+				Name:    "mycrate",
+				Version: &pinned,
+				InstallParams: map[string]interface{}{
+					"binarySource": "github-releases",
+					"githubRepo":   tt.repo,
+				},
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(runner.History) != 0 {
+				t.Fatalf("expected the prebuilt download, not a cargo fallback: %v", runner.History)
+			}
+			if res.Version != tt.wantVersion {
+				t.Fatalf("installed version %q, want %q", res.Version, tt.wantVersion)
+			}
+			if !slices.Equal(server.paths, tt.wantPaths) {
+				t.Fatalf("requests = %v, want exactly %v", server.paths, tt.wantPaths)
+			}
+			if server.requestedContaining("/repos/") {
+				t.Fatalf("a pinned version must not ask the GitHub API: %v", server.paths)
+			}
+		})
 	}
-	if server.requestedContaining("/repos/") {
-		t.Fatalf("a pinned version must not consult the GitHub API: %v", server.paths)
+}
+
+// TestCargoGithubReleasesPinnedTagFailures pins that a pinned version missing under
+// both spellings is an error naming both tags, and that a download failing for any
+// reason other than 404 is reported rather than retried under the other spelling.
+func TestCargoGithubReleasesPinnedTagFailures(t *testing.T) {
+	const asset = "mycrate-9.9.9-unknown-linux-gnu-x86_64.tar.gz"
+	tests := []struct {
+		name      string
+		status    int
+		wantErr   []string
+		wantPaths []string
+	}{
+		{
+			name:    "no release under either spelling",
+			status:  http.StatusNotFound,
+			wantErr: []string{"not found in owner/mycrate under tag v9.9.9 or 9.9.9", "status 404"},
+			wantPaths: []string{
+				"/owner/mycrate/releases/download/v9.9.9/" + asset,
+				"/owner/mycrate/releases/download/9.9.9/" + asset,
+			},
+		},
+		{
+			name:      "server error on the first spelling",
+			status:    http.StatusInternalServerError,
+			wantErr:   []string{"github release: downloading archive", "status 500"},
+			wantPaths: []string{"/owner/mycrate/releases/download/v9.9.9/" + asset},
+		},
 	}
-	if !server.requested("/owner/mycrate/releases/download/v0.10.1/mycrate-0.10.1-unknown-linux-gnu-x86_64.tar.gz") {
-		t.Fatalf("expected download from tag v0.10.1, got %v", server.paths)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(tt.status) })
+			inst, _ := newCargoGithubInstaller(server, exec.NewMockRunner())
+
+			_, err := inst.tryGithubReleases(context.Background(), &config.ToolConfig{
+				Name:          "mycrate",
+				InstallParams: map[string]interface{}{"githubRepo": "owner/mycrate"},
+			}, "mycrate", cargoVersion{version: "9.9.9"})
+			if err == nil {
+				t.Fatal("expected an error for a release that cannot be downloaded")
+			}
+			for _, want := range tt.wantErr {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error = %v, want it to contain %q", err, want)
+				}
+			}
+			if !slices.Equal(server.paths, tt.wantPaths) {
+				t.Fatalf("requests = %v, want exactly %v", server.paths, tt.wantPaths)
+			}
+		})
 	}
 }
 
@@ -851,6 +963,8 @@ func TestCargoGithubReleases(t *testing.T) {
 		for _, osName := range []string{"darwin", "windows"} {
 			sys := &SystemContext{OS: osName, Arch: "arm64"}
 			cInst := NewCargoInstaller(runner, testFsys, testDl, sys)
+			// Downloads go to the local server, which has no owner/crate release.
+			cInst.BaseURL = server.URL
 			_, _ = cInst.tryQuickinstall(context.Background(), &config.ToolConfig{Name: "crate"}, "crate", "1.0.0")
 			_, _ = cInst.tryGithubReleases(context.Background(), &config.ToolConfig{
 				Name:          "crate",
@@ -865,6 +979,9 @@ func TestCargoGithubReleases(t *testing.T) {
 		errDL := downloader.NewDownloader(errDLFS, nil)
 		errDL.RetryDelay = time.Millisecond
 		cInst := NewCargoInstaller(runner, errDLFS, errDL, &SystemContext{OS: "linux", Arch: "amd64"})
+		// owner/nonexistent has no releases, so both tag spellings fail to download.
+		missingServer := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) })
+		cInst.BaseURL = missingServer.URL
 		cInst.SetLogger(log)
 		cInst.BinDir = "/test/errbin"
 		_ = errDLFS.MkdirAll("/test/errbin/bin", 0755)

@@ -12,9 +12,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -2096,18 +2098,37 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 	}
 }
 
-// newCratesServer serves crates.io metadata (the max_version for each crate in latest)
-// and the cargo-quickinstall archive of every version, and points the real cargo
-// installer at it. Crates not listed answer 500 so a failed check can be exercised.
-// The cargo installer's endpoints are set directly because the project's cargo hosts
-// are not read by it (keysAwaitingRemoval in pkg/config), so MOCK_SERVER_PORT does not
-// reach it.
-func newCratesServer(t *testing.T, latest map[string]string) {
+// cargoUpstream is what newCratesServer publishes: the crates.io max_version of each
+// crate, and the latest GitHub release tag of each owner/repo.
+type cargoUpstream struct {
+	crates   map[string]string
+	releases map[string]string
+}
+
+// newCratesServer serves crates.io metadata and the cargo-quickinstall archive of
+// every crate version, plus each repository's latest GitHub release and its release
+// assets, and points the real cargo installer at it. Crates not listed answer 500 so
+// a failed check can be exercised; a download from another tag answers 404. The
+// returned function lists the paths requested so far.
+//
+// The crates.io and download endpoints are set on the installer directly because the
+// project's cargo hosts are not read by it (keysAwaitingRemoval in pkg/config), so
+// MOCK_SERVER_PORT reaches only its GitHub API host.
+func newCratesServer(t *testing.T, upstream cargoUpstream) func() []string {
 	t.Helper()
-	const cratesPrefix, quickinstallPrefix = "/api/v1/crates/", "/quickinstall/"
+	const cratesPrefix, downloadPrefix, reposPrefix = "/api/v1/crates/", "/dl/", "/repos/"
+	var mu sync.Mutex
+	var requested []string
+	archive := func(w http.ResponseWriter, binary, version string) {
+		w.Header().Set("Content-Type", "application/gzip")
+		_, _ = w.Write(createTestTarGz(t, map[string]string{binary: "#!/bin/sh\necho " + binary + " " + version + "\n"}))
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requested = append(requested, r.URL.Path)
+		mu.Unlock()
 		if crate, ok := strings.CutPrefix(r.URL.Path, cratesPrefix); ok {
-			version, known := latest[crate]
+			version, known := upstream.crates[crate]
 			if !known {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -2116,13 +2137,24 @@ func newCratesServer(t *testing.T, latest map[string]string) {
 			fmt.Fprintf(w, `{"crate": {"name": %q, "max_version": %q}}`, crate, version)
 			return
 		}
+		for repo, tag := range upstream.releases {
+			if r.URL.Path == reposPrefix+repo+"/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"tag_name": %q, "assets": []}`, tag)
+				return
+			}
+			// <owner>/<repo>/releases/download/<tag>/<asset>
+			if strings.HasPrefix(r.URL.Path, downloadPrefix+repo+"/releases/download/"+tag+"/") {
+				archive(w, path.Base(repo), tag)
+				return
+			}
+		}
 		// <crate>-<version>/<crate>-<version>-<arch>-<platform>.tar.gz
-		if release, ok := strings.CutPrefix(r.URL.Path, quickinstallPrefix); ok {
+		if release, ok := strings.CutPrefix(r.URL.Path, downloadPrefix); ok {
 			dir, _, _ := strings.Cut(release, "/")
-			for crate := range latest {
+			for crate := range upstream.crates {
 				if version, isCrate := strings.CutPrefix(dir, crate+"-"); isCrate {
-					w.Header().Set("Content-Type", "application/gzip")
-					_, _ = w.Write(createTestTarGz(t, map[string]string{crate: "#!/bin/sh\necho " + crate + " " + version + "\n"}))
+					archive(w, crate, version)
 					return
 				}
 			}
@@ -2130,6 +2162,11 @@ func newCratesServer(t *testing.T, latest map[string]string) {
 		http.NotFound(w, r)
 	}))
 	t.Cleanup(server.Close)
+	u, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatalf("parsing test server URL: %v", err)
+	}
+	t.Setenv("MOCK_SERVER_PORT", u.Port())
 
 	inst, err := installer.DefaultRegistry().Get("cargo")
 	if err != nil {
@@ -2139,12 +2176,55 @@ func newCratesServer(t *testing.T, latest map[string]string) {
 	if !ok {
 		t.Fatalf("cargo installer is %T, want *installer.CargoInstaller", inst)
 	}
-	prevCratesIO, prevBase := cargo.CratesIOURL, cargo.BaseURL
+	prevCratesIO, prevBase, prevAPI := cargo.CratesIOURL, cargo.BaseURL, cargo.GitHubAPIURL
 	cargo.CratesIOURL = server.URL + strings.TrimSuffix(cratesPrefix, "/")
-	cargo.BaseURL = server.URL + strings.TrimSuffix(quickinstallPrefix, "/")
+	cargo.BaseURL = server.URL + strings.TrimSuffix(downloadPrefix, "/")
 	t.Cleanup(func() {
-		cargo.CratesIOURL, cargo.BaseURL = prevCratesIO, prevBase
+		cargo.CratesIOURL, cargo.BaseURL, cargo.GitHubAPIURL = prevCratesIO, prevBase, prevAPI
 	})
+	return func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]string(nil), requested...)
+	}
+}
+
+// TestCargoUpdateInstallsReleaseTaggedWithoutV is the regression test for an update
+// pinning the version its check found: a GitHub release tagged 14.1.1, as ripgrep
+// tags them, must be downloaded from that tag, not from a v14.1.1 it does not have.
+func TestCargoUpdateInstallsReleaseTaggedWithoutV(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	requested := newCratesServer(t, cargoUpstream{releases: map[string]string{"acme/baretag": "14.1.1"}})
+
+	p := newE2EProject(t, `
+		"baretag": {"name": "baretag", "installationMethod": "cargo", "installParams": {"binarySource": "github-releases", "githubRepo": "acme/baretag"}}
+	`)
+	dir := filepath.Join(p.Root, "installed", "baretag")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("creating install dir: %v", err)
+	}
+	p.seedInstallation(t, "baretag", "14.0.0", dir)
+
+	out, err := p.run("--platform", "linux", "--arch", "amd64", "tool", "update", "baretag")
+	if err != nil {
+		t.Fatalf("tool update baretag: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "New version available: 14.0.0 -> 14.1.1", "Successfully updated to version 14.1.1")
+	mustNotContain(t, "stderr", out.Stderr, "falling back to local compilation")
+	if rec := p.installation(t, "baretag"); rec == nil || rec.Version != "14.1.1" {
+		t.Fatalf("installation record after update = %+v, want version 14.1.1", rec)
+	}
+
+	// The check asks the API for the latest release; the pinned install that follows
+	// tries both tag spellings against the download URL and never asks the API.
+	want := []string{
+		"/repos/acme/baretag/releases/latest",
+		"/dl/acme/baretag/releases/download/v14.1.1/baretag-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
+		"/dl/acme/baretag/releases/download/14.1.1/baretag-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
+	}
+	if paths := requested(); !slices.Equal(paths, want) {
+		t.Errorf("requests = %v, want exactly %v", paths, want)
+	}
 }
 
 // TestCargoUpdateChecks pins that cargo tools are checked against crates.io, as v1
@@ -2153,12 +2233,12 @@ func newCratesServer(t *testing.T, latest map[string]string) {
 // failed check rather than "up to date" or "not supported".
 func TestCargoUpdateChecks(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
-	newCratesServer(t, map[string]string{
+	newCratesServer(t, cargoUpstream{crates: map[string]string{
 		"crate-outdated": "2.0.0",
 		"crate-current":  "1.0.0",
 		"crate-bounded":  "2.0.0",
 		"crate-admitted": "1.2.9",
-	})
+	}})
 
 	p := newE2EProject(t, `
 		"outdated": {"name": "outdated", "installationMethod": "cargo", "installParams": {"crateName": "crate-outdated"}, "binaries": [{"name": "crate-outdated"}]},

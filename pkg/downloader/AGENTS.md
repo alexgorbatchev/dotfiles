@@ -9,6 +9,7 @@ File downloader with retry, caching, and progress reporting.
 ## Local conventions
 
 - Support download resumption, SHA256 integrity verification, HTTP retry logic, and persistent download caching under `.generated/cache/downloads/`.
+- A response status that carries no file is returned as `*StatusError` (wrapped by the retry loop), so callers branch on `StatusCode` with `errors.As` instead of parsing the message.
 
 ## Local gotchas
 

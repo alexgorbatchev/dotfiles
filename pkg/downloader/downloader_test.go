@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -1669,4 +1670,26 @@ func TestSettingsGovernDownloads(t *testing.T) {
 			t.Errorf("server was hit %d times, want 2", attempts)
 		}
 	})
+}
+
+// TestDownload_ReportsHTTPStatus pins that a download refused by the server carries
+// its status as a *StatusError through the retry wrapping, so a caller can tell a
+// file that does not exist (404) from a failed request without parsing the message.
+func TestDownload_ReportsHTTPStatus(t *testing.T) {
+	for _, status := range []int{http.StatusNotFound, http.StatusInternalServerError} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(status) }))
+			defer server.Close()
+			d := NewDownloader(fs.NewMemFS(), server.Client())
+
+			err := d.Download(context.Background(), server.URL+"/asset.tar.gz", "/asset.tar.gz", "")
+			var statusErr *StatusError
+			if !errors.As(err, &statusErr) || statusErr.StatusCode != status {
+				t.Fatalf("Download() error = %v, want a *StatusError with status %d", err, status)
+			}
+			if want := fmt.Sprintf("download failed with status %d", status); !strings.Contains(err.Error(), want) {
+				t.Errorf("Download() error = %v, want it to contain %q", err, want)
+			}
+		})
+	}
 }

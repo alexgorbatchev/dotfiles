@@ -157,6 +157,18 @@ func (d *Downloader) SetFS(fsys fs.FS) {
 	}
 }
 
+// StatusError is a download the server answered with a status that carries no file.
+// Download wraps it, so callers use errors.As to tell a file that does not exist
+// (http.StatusNotFound) from a failed request.
+type StatusError struct {
+	StatusCode int
+	Status     string
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("download failed with status %d: %s", e.StatusCode, e.Status)
+}
+
 // Download fetches a file from url and saves it to destPath, supporting options and retries with backoff.
 func (d *Downloader) Download(ctx context.Context, url string, destPath string, expectedSHA256 string, opts ...DownloadOptions) error {
 	if err := ctx.Err(); err != nil {
@@ -479,7 +491,7 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 		f.Close()
 
 	default:
-		return fmt.Errorf("download failed with status %d: %s", resp.StatusCode, resp.Status)
+		return &StatusError{StatusCode: resp.StatusCode, Status: resp.Status}
 	}
 
 	// Verify SHA256 signature if specified

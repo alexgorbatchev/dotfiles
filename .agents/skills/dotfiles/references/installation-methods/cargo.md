@@ -26,7 +26,7 @@ export default defineTool((install, ctx) =>
 | `cargoTomlUrl`  | `string`                                           | No       | Cargo.toml to read the version from with `versionSource: 'cargo-toml'` (default: `main` branch of `githubRepo` on raw.githubusercontent.com)                   |
 | `sha256`        | `string`                                           | No       | Expected checksum of the downloaded archive                                                                                                                    |
 
-The version to install comes from `.version()`. When the prebuilt download fails, the crate is compiled with `cargo install`. Binaries are declared with `.bin()`, as for every other method.
+The version to install comes from `.version()`. With `binarySource: 'github-releases'`, a pinned version is downloaded from the release the repository really tagged it with: the asset is fetched from tag `v<version>`, and from tag `<version>` when the first answers 404. No GitHub API request is made for it. When the prebuilt download fails, the crate is compiled with `cargo install`. Binaries are declared with `.bin()`, as for every other method.
 
 Update checks (`dotfiles tool check`, `dotfiles update`, the dashboard) ask the same `versionSource` for the latest version that an install without `.version()` would get, so the default is crates.io. A pinned `.version()` does not change what the check reports as the latest version. When the query fails, the check fails for that tool instead of reporting it as up to date.
 
