@@ -2096,6 +2096,157 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 	}
 }
 
+// newCratesServer serves crates.io metadata (the max_version for each crate in latest)
+// and the cargo-quickinstall archive of every version, and points the real cargo
+// installer at it. Crates not listed answer 500 so a failed check can be exercised.
+// The cargo installer's endpoints are set directly because the project's cargo hosts
+// are not read by it (keysAwaitingRemoval in pkg/config), so MOCK_SERVER_PORT does not
+// reach it.
+func newCratesServer(t *testing.T, latest map[string]string) {
+	t.Helper()
+	const cratesPrefix, quickinstallPrefix = "/api/v1/crates/", "/quickinstall/"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if crate, ok := strings.CutPrefix(r.URL.Path, cratesPrefix); ok {
+			version, known := latest[crate]
+			if !known {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"crate": {"name": %q, "max_version": %q}}`, crate, version)
+			return
+		}
+		// <crate>-<version>/<crate>-<version>-<arch>-<platform>.tar.gz
+		if release, ok := strings.CutPrefix(r.URL.Path, quickinstallPrefix); ok {
+			dir, _, _ := strings.Cut(release, "/")
+			for crate := range latest {
+				if version, isCrate := strings.CutPrefix(dir, crate+"-"); isCrate {
+					w.Header().Set("Content-Type", "application/gzip")
+					_, _ = w.Write(createTestTarGz(t, map[string]string{crate: "#!/bin/sh\necho " + crate + " " + version + "\n"}))
+					return
+				}
+			}
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+
+	inst, err := installer.DefaultRegistry().Get("cargo")
+	if err != nil {
+		t.Fatalf("resolving the cargo installer: %v", err)
+	}
+	cargo, ok := inst.(*installer.CargoInstaller)
+	if !ok {
+		t.Fatalf("cargo installer is %T, want *installer.CargoInstaller", inst)
+	}
+	prevCratesIO, prevBase := cargo.CratesIOURL, cargo.BaseURL
+	cargo.CratesIOURL = server.URL + strings.TrimSuffix(cratesPrefix, "/")
+	cargo.BaseURL = server.URL + strings.TrimSuffix(quickinstallPrefix, "/")
+	t.Cleanup(func() {
+		cargo.CratesIOURL, cargo.BaseURL = prevCratesIO, prevBase
+	})
+}
+
+// TestCargoUpdateChecks pins that cargo tools are checked against crates.io, as v1
+// did: tool check reports an outdated crate, tool update installs the newer build,
+// the tool's constraint bounds what counts as an update, and a failed query is a
+// failed check rather than "up to date" or "not supported".
+func TestCargoUpdateChecks(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	newCratesServer(t, map[string]string{
+		"crate-outdated": "2.0.0",
+		"crate-current":  "1.0.0",
+		"crate-bounded":  "2.0.0",
+		"crate-admitted": "1.2.9",
+	})
+
+	p := newE2EProject(t, `
+		"outdated": {"name": "outdated", "installationMethod": "cargo", "installParams": {"crateName": "crate-outdated"}, "binaries": [{"name": "crate-outdated"}]},
+		"current": {"name": "current", "installationMethod": "cargo", "installParams": {"crateName": "crate-current"}, "binaries": [{"name": "crate-current"}]},
+		"bounded": {"name": "bounded", "installationMethod": "cargo", "installParams": {"crateName": "crate-bounded"}, "binaries": [{"name": "crate-bounded"}], "updateCheck": {"constraint": "~1.2.0"}},
+		"admitted": {"name": "admitted", "installationMethod": "cargo", "installParams": {"crateName": "crate-admitted"}, "binaries": [{"name": "crate-admitted"}], "updateCheck": {"constraint": "~1.2.0"}},
+		"failing": {"name": "failing", "installationMethod": "cargo", "installParams": {"crateName": "crate-missing"}}
+	`)
+	for name, version := range map[string]string{
+		"outdated": "1.0.0",
+		"current":  "1.0.0",
+		"bounded":  "1.2.3",
+		"admitted": "1.2.3",
+		"failing":  "1.0.0",
+	} {
+		dir := filepath.Join(p.Root, "installed", name)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("creating install dir: %v", err)
+		}
+		p.seedInstallation(t, name, version, dir)
+	}
+
+	t.Run("tool check reports the latest crates.io version", func(t *testing.T) {
+		out, err := p.run("tool", "check", "--json")
+		if err != nil {
+			t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
+		}
+		var results []ToolUpdateResult
+		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+			t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
+		}
+		byName := map[string]ToolUpdateResult{}
+		for _, r := range results {
+			byName[r.ToolName] = r
+		}
+
+		want := map[string]ToolUpdateResult{
+			"outdated": {ToolName: "outdated", CurrentVersion: "1.0.0", LatestVersion: "2.0.0", HasUpdate: true, UpdateCheckSupported: true},
+			"current":  {ToolName: "current", CurrentVersion: "1.0.0", LatestVersion: "1.0.0", HasUpdate: false, UpdateCheckSupported: true},
+			// 2.0.0 is the latest upstream, but ~1.2.0 does not admit it as an update.
+			"bounded":  {ToolName: "bounded", CurrentVersion: "1.2.3", LatestVersion: "2.0.0", HasUpdate: false, UpdateCheckSupported: true},
+			"admitted": {ToolName: "admitted", CurrentVersion: "1.2.3", LatestVersion: "1.2.9", HasUpdate: true, UpdateCheckSupported: true},
+		}
+		for name, w := range want {
+			if got, ok := byName[name]; !ok || got != w {
+				t.Errorf("%s result = %+v (present: %t), want %+v", name, got, ok, w)
+			}
+		}
+		if r, ok := byName["failing"]; ok {
+			t.Errorf("failing result = %+v; a failed query must not be reported as a result", r)
+		}
+		mustContain(t, "stderr", out.Stderr, "[failing] Update check failed")
+		mustNotContain(t, "stderr", out.Stderr, "Update check not supported")
+	})
+
+	t.Run("tool update installs the newer crates.io version", func(t *testing.T) {
+		out, err := p.run("--platform", "linux", "--arch", "amd64", "tool", "update", "outdated")
+		if err != nil {
+			t.Fatalf("tool update outdated: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "New version available: 1.0.0 -> 2.0.0", "Successfully updated to version 2.0.0")
+		mustNotContain(t, "stderr", out.Stderr, "Update check not supported", "falling back to local compilation")
+		if rec := p.installation(t, "outdated"); rec == nil || rec.Version != "2.0.0" {
+			t.Fatalf("installation record after update = %+v, want version 2.0.0", rec)
+		}
+	})
+
+	t.Run("tool update leaves a current crate alone", func(t *testing.T) {
+		out, err := p.run("tool", "update", "current")
+		if err != nil {
+			t.Fatalf("tool update current: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Already up to date (1.0.0)")
+		mustNotContain(t, "stderr", out.Stderr, "performing regular install instead")
+	})
+
+	t.Run("tool update does not install a version the constraint excludes", func(t *testing.T) {
+		out, err := p.run("tool", "update", "bounded")
+		if err != nil {
+			t.Fatalf("tool update bounded: %v\n%s", err, out.Combined)
+		}
+		mustNotContain(t, "stderr", out.Stderr, "New version available", "Successfully updated")
+		if rec := p.installation(t, "bounded"); rec == nil || rec.Version != "1.2.3" {
+			t.Fatalf("installation record after update = %+v, want the untouched 1.2.3", rec)
+		}
+	})
+}
+
 func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
 
@@ -2519,7 +2670,7 @@ func TestMockInstaller_CheckUpdate(t *testing.T) {
 		"curl-binary":    true,
 		"curl-tar":       true,
 		"curl-script":    true,
-		"cargo":          true,
+		"cargo":          false,
 		"zsh-plugin":     true,
 		"github-release": false,
 		"gitea-release":  false,

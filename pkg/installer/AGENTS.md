@@ -18,6 +18,7 @@ Tool installer plugins (github-release, curl-script, cargo, brew, apt, dnf, pacm
 - `MatchAssetPattern` globs support minimatch-style brace alternation (`*.{tar.xz,zip}`) via `expandBraces` over `path.Match`, matching the v1 matcher.
 - Implement installer plugins by satisfying the `Installer` interface in `pkg/installer/installer.go`.
 - A `CheckUpdate` that has no way to learn the latest upstream version for the tool it was given returns `ErrUpdateCheckUnsupported`, never an empty `UpdateCheckResult`: callers report the sentinel as "update check not supported" (`tool update <tool>` then reinstalls, as v1 did, while updating everything skips unless `--force`; `tool check` and the dashboard say so), while an empty result reads as "up to date".
+- `CargoInstaller.CheckUpdate` resolves the latest version through `resolveVersion`, the same `versionSource` dispatch `Install` uses (crates.io by default), and wraps a failed query as an error naming the tool. Keep one resolution path so a check never reports a version the install would not fetch.
 
 ## Local gotchas
 

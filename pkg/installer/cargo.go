@@ -546,11 +546,19 @@ func (c *CargoInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig)
 	return cmd.Run()
 }
 
+// CheckUpdate reports the version an install of "latest" would resolve, asking the
+// same versionSource Install does (crates.io unless the tool says otherwise), so the
+// check and the update it leads to cannot disagree about which version exists. The
+// version the tool pins does not enter into it: the check is about what upstream
+// offers, and the caller compares that with what is installed.
 func (c *CargoInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	// Nothing here queries crates.io, so cargo cannot learn the latest version. It used
-	// to report "latest" as the latest version, which is a resolution strategy rather
-	// than a version and made every installed cargo tool look out of date.
-	return nil, ErrUpdateCheckUnsupported
+	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
+	binarySource := getStringParam(tool.InstallParams, "binarySource", cargoBinarySourceQuickinstall)
+	latest, err := c.resolveVersion(ctx, tool, crateName, binarySource)
+	if err != nil {
+		return nil, fmt.Errorf("checking %s for updates: %w", tool.Name, err)
+	}
+	return &UpdateCheckResult{LatestVersion: latest.bare()}, nil
 }
 
 func init() {

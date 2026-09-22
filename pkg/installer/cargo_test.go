@@ -420,6 +420,145 @@ func TestCargoResolveVersion(t *testing.T) {
 	}
 }
 
+// TestCargoCheckUpdate pins that an update check reports the version an install of
+// "latest" would resolve, from the same versionSource, as v1's checkUpdate did for
+// crates.io. The version the tool pins does not change what upstream offers.
+func TestCargoCheckUpdate(t *testing.T) {
+	pinned := "1.0.0"
+	tests := []struct {
+		name     string
+		tool     config.ToolConfig
+		want     string
+		wantPath string
+	}{
+		{
+			name:     "crates.io by default, with crateName defaulting to the tool name",
+			tool:     config.ToolConfig{Name: "mycrate"},
+			want:     "1.5.0",
+			wantPath: "/api/v1/crates/mycrate",
+		},
+		{
+			name:     "crates.io for a crate named differently from the tool",
+			tool:     config.ToolConfig{Name: "mc", InstallParams: map[string]interface{}{"crateName": "mycrate"}},
+			want:     "1.5.0",
+			wantPath: "/api/v1/crates/mycrate",
+		},
+		{
+			name:     "a pinned version still reports the latest upstream",
+			tool:     config.ToolConfig{Name: "mycrate", Version: &pinned},
+			want:     "1.5.0",
+			wantPath: "/api/v1/crates/mycrate",
+		},
+		{
+			name:     "cargo-toml version source",
+			tool:     config.ToolConfig{Name: "mycrate", InstallParams: map[string]interface{}{"versionSource": "cargo-toml", "githubRepo": "owner/repo"}},
+			want:     "2.0.0",
+			wantPath: "/raw/owner/repo/main/Cargo.toml",
+		},
+		{
+			name:     "github-releases binaries report the release tag without its v",
+			tool:     config.ToolConfig{Name: "mycrate", InstallParams: map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/repo"}},
+			want:     "4.0.0",
+			wantPath: "/repos/owner/repo/releases/latest",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newCargoResolutionServer(t)
+			inst := newCargoResolutionInstaller(server)
+			inst.SetLogger(logger.New(logger.Config{Writer: io.Discard}))
+
+			res, err := inst.CheckUpdate(context.Background(), &tt.tool)
+			if err != nil {
+				t.Fatalf("CheckUpdate() error = %v", err)
+			}
+			if res == nil || res.LatestVersion != tt.want {
+				t.Fatalf("CheckUpdate() = %+v, want LatestVersion %q", res, tt.want)
+			}
+			if res.Outdated != nil || res.LocalVersion != "" {
+				t.Errorf("CheckUpdate() = %+v; cargo has no local verdict, the versions decide", res)
+			}
+			if !server.requested(tt.wantPath) || len(server.paths) != 1 {
+				t.Fatalf("requests = %v, want exactly one to %s", server.paths, tt.wantPath)
+			}
+		})
+	}
+}
+
+// TestCargoCheckUpdateFailures pins that a query which cannot produce a version is a
+// failed check naming the tool, never an empty answer (read as "up to date") and never
+// ErrUpdateCheckUnsupported (read as "nothing to ask").
+func TestCargoCheckUpdateFailures(t *testing.T) {
+	tests := []struct {
+		name    string
+		handler func(w http.ResponseWriter, r *http.Request)
+		params  map[string]interface{}
+		wantErr string
+	}{
+		{
+			name:    "crates.io server error",
+			handler: func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) },
+			wantErr: "crates.io returned status: 500",
+		},
+		{
+			name:    "crate not found",
+			handler: func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) },
+			wantErr: "crates.io returned status: 404",
+		},
+		{
+			name:    "empty max_version",
+			handler: func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"crate":{}}`)) },
+			wantErr: "empty max_version",
+		},
+		{
+			name:    "malformed response",
+			handler: func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`not json`)) },
+			wantErr: "decoding crates.io response",
+		},
+		{
+			name:    "github-releases source without githubRepo",
+			handler: func(w http.ResponseWriter, r *http.Request) { t.Errorf("unexpected request to %s", r.URL.Path) },
+			params:  map[string]interface{}{"versionSource": "github-releases"},
+			wantErr: "githubRepo is required",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newRecordingServer(t, tt.handler)
+			inst := newCargoResolutionInstaller(server)
+
+			res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
+			if err == nil || res != nil {
+				t.Fatalf("CheckUpdate() = %+v, %v; want an error and no result", res, err)
+			}
+			if errors.Is(err, ErrUpdateCheckUnsupported) {
+				t.Fatalf("CheckUpdate() = %v; a failed query is not an unsupported check", err)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) || !strings.Contains(err.Error(), "mycrate") {
+				t.Fatalf("CheckUpdate() error = %v, want it to name mycrate and contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestCargoCheckUpdateSendsUserAgent pins the header crates.io requires: its data
+// access policy refuses requests without a User-Agent (v1 sent cargo.userAgent).
+func TestCargoCheckUpdateSendsUserAgent(t *testing.T) {
+	server := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("User-Agent") != cargoUserAgent {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0"}}`))
+	})
+	inst := newCargoResolutionInstaller(server)
+
+	res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "mycrate"})
+	if err != nil || res == nil || res.LatestVersion != "1.5.0" {
+		t.Fatalf("CheckUpdate() = %+v, %v; want 1.5.0 fetched with the cargo User-Agent", res, err)
+	}
+}
+
 func TestParseCargoTomlPackageVersion(t *testing.T) {
 	tests := []struct {
 		name    string

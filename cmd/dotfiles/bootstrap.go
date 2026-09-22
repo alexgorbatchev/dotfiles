@@ -430,7 +430,6 @@ var mockUpdateCheckUnsupported = map[string]bool{
 	"curl-binary": true,
 	"curl-tar":    true,
 	"curl-script": true,
-	"cargo":       true,
 	"zsh-plugin":  true,
 }
 

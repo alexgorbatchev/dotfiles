@@ -130,7 +130,6 @@ func TestCheckUpdate_Unsupported(t *testing.T) {
 		{"curl-script", NewCurlScriptInstaller(runner, fsys, dl, sysCtx), &config.ToolConfig{Name: "mytool"}},
 		// Reporting its own version leaves a script with nothing upstream to compare against.
 		{"curl-script with versionArgs", NewCurlScriptInstaller(runner, fsys, dl, sysCtx), &config.ToolConfig{Name: "chktool", InstallParams: map[string]interface{}{"versionArgs": []interface{}{"--version"}}}},
-		{"cargo", NewCargoInstaller(runner, fsys, dl, sysCtx), &config.ToolConfig{Name: "exa", InstallParams: map[string]interface{}{"crate": "exa"}}},
 		{"zsh-plugin", NewZshPluginInstaller(runner, fsys, sysCtx), &config.ToolConfig{Name: "zsh-autosuggestions"}},
 		{"dmg from a direct URL", NewDmgInstaller(runner, fsys, dl, macCtx), &config.ToolConfig{Name: "app", InstallParams: urlSource}},
 		{"pkg from a direct URL", NewPkgInstaller(runner, fsys, dl, macCtx), &config.ToolConfig{Name: "app", InstallParams: urlSource}},
