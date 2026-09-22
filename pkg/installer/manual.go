@@ -58,7 +58,7 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil
 	}
-	binaryPath, err := resolveBinaryPath(ctx, m.fsys, tool)
+	binaryPath, err := ResolveBinaryPath(m.fsys, tool, config.GetProjectConfig(ctx))
 	if err != nil {
 		return nil, err
 	}

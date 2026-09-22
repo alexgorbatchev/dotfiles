@@ -57,10 +57,23 @@ runs the script itself and links the binary to where the script put it; see
 
 ## Parameters
 
-| Parameter    | Type      | Required | Description                                                  |
-| ------------ | --------- | -------- | ------------------------------------------------------------ |
-| `binaryPath` | `string`  | No       | Path to binary relative to `.tool.ts` file, or absolute path |
-| `symlink`    | `boolean` | No       | If `true`, symlinks to `binaryPath` instead of copying files |
+| Parameter    | Type      | Required | Description                                                             |
+| ------------ | --------- | -------- | ----------------------------------------------------------------------- |
+| `binaryPath` | `string`  | No       | Path to the binary; see [binaryPath Resolution](#binarypath-resolution) |
+| `symlink`    | `boolean` | No       | If `true`, symlinks to `binaryPath` instead of copying files            |
+
+### binaryPath Resolution
+
+`binaryPath` is resolved in this order:
+
+1. Placeholders such as `{paths.homeDir}` are filled from the project configuration. A
+   placeholder nothing can fill fails the installation, naming the tool and the value.
+2. A leading `~` is the project's `paths.homeDir`.
+3. A path that is still relative is taken relative to the `.tool.ts` file, or to
+   `paths.dotfilesDir` for a configuration that has no tool file.
+
+Symlinks are not followed: the result is the path as written. The generated shim runs
+the same resolved path, so the installer and the shim cannot disagree about it.
 
 ## Examples
 

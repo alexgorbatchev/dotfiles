@@ -274,22 +274,26 @@ func TestShadowChecker_IntentionalDelegationExemption(t *testing.T) {
 		t.Errorf("expected no warnings for registry-delegated tool, got: %+v", warningsBrew)
 	}
 
-	// 5. Tool without ConfigFilePath falling back to BinariesDir
-	toolBinDir := &config.ToolConfig{
-		Name:               "bin-dir-tool",
+	// 5. Tool without ConfigFilePath: a relative binaryPath resolves against the dotfiles
+	// directory, as the installer resolves it, so a link there to the external git is
+	// recognised as intentional delegation.
+	dotfilesCfg := *projCfg
+	dotfilesCfg.Paths.DotfilesDir = "/home/user/dotfiles"
+	toolDotfilesRel := &config.ToolConfig{
+		Name:               "dotfiles-rel-tool",
 		InstallationMethod: "manual",
 		InstallParams: map[string]interface{}{
-			"binaryPath": "rel/bin",
+			"binaryPath": "rel/git",
 		},
 		Binaries: []interface{}{
-			config.BinaryConfig{Name: "bin"},
+			config.BinaryConfig{Name: "git"},
 		},
 	}
-	_ = memFS.MkdirAll("/home/user/.generated/binaries/bin-dir-tool/current/rel", 0755)
-	_ = memFS.WriteFile("/home/user/.generated/binaries/bin-dir-tool/current/rel/bin", []byte("echo bin"), 0755)
-	warningsBinDir := sc.CheckTool(ctx, toolBinDir, projCfg)
-	if len(warningsBinDir) != 0 {
-		t.Errorf("expected no warnings for binDir resolved tool, got: %+v", warningsBinDir)
+	_ = memFS.MkdirAll("/home/user/dotfiles/rel", 0755)
+	_ = memFS.Symlink("/usr/bin/git", "/home/user/dotfiles/rel/git")
+	warningsDotfilesRel := sc.CheckTool(ctx, toolDotfilesRel, &dotfilesCfg)
+	if len(warningsDotfilesRel) != 0 {
+		t.Errorf("expected no warnings for a binaryPath resolved against dotfilesDir, got: %+v", warningsDotfilesRel)
 	}
 }
 

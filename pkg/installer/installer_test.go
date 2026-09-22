@@ -430,7 +430,7 @@ func TestAllInstallers_SupportsSudo(t *testing.T) {
 }
 
 // faultyFS wraps a file system and fails one operation, named by failOp, to exercise the
-// error paths of binary promotion. ReadDir on ghostDir additionally reports an entry that
+// error paths of binary promotion and staging. ReadDir on ghostDir additionally reports an entry that
 // does not exist.
 type faultyFS struct {
 	fs.FS
@@ -483,6 +483,13 @@ func (f *faultyFS) Symlink(oldname, newname string) error {
 		return errors.New("symlink denied")
 	}
 	return f.FS.Symlink(oldname, newname)
+}
+
+func (f *faultyFS) Exists(path string) (bool, error) {
+	if f.fails("exists", path) {
+		return false, errors.New("exists denied")
+	}
+	return f.FS.Exists(path)
 }
 
 func (f *faultyFS) Lstat(path string) (os.FileInfo, error) {

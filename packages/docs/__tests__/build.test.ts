@@ -42,6 +42,7 @@ describe("site build", () => {
 
     expect(hrefs).toEqual([
       "/dotfiles/installation-methods/curl-script/#scripts-that-install-themselves",
+      "#binarypath-resolution",
       "/dotfiles/api-reference/lifecycle-hooks/",
     ]);
   });

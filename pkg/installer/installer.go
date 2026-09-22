@@ -485,6 +485,20 @@ func ValidateSudo(inst Installer, tool *config.ToolConfig) error {
 	return nil
 }
 
+// BinaryNotFoundError reports a declared binary that nothing in the directory it was
+// looked for in matches. Dir is already shortened for display. Its message describes an
+// extracted archive, which is where every installer but curl-script looks; curl-script
+// reads the fields to say what its install script failed to do instead.
+type BinaryNotFoundError struct {
+	Binary  string
+	Dir     string
+	Pattern string
+}
+
+func (e *BinaryNotFoundError) Error() string {
+	return fmt.Sprintf("binary %q not found in extracted archive under %q: nothing matches pattern %q", e.Binary, e.Dir, e.Pattern)
+}
+
 // PromoteBinaries makes every binary a tool declares with .bin() available at the root of
 // destDir under its declared name and returns the declared names. Each binary is located
 // by its .bin() pattern, or by the default pattern when none was given (see
@@ -510,8 +524,7 @@ func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries [
 			return nil, fmt.Errorf("searching for binary %q: %w", binName, err)
 		}
 		if foundPath == "" {
-			return nil, fmt.Errorf("binary %q not found in extracted archive under %q: nothing matches pattern %q",
-				binName, formatDisplayPath(fsys, destDir), pattern)
+			return nil, &BinaryNotFoundError{Binary: binName, Dir: formatDisplayPath(fsys, destDir), Pattern: pattern}
 		}
 		located[i] = foundPath
 	}

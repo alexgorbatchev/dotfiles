@@ -1694,6 +1694,84 @@ func TestShimBinaries(t *testing.T) {
 	}
 }
 
+// The shim and the installer read the same binaryPath and must agree on where it points.
+// A relative path with no tool file to be relative to falls back to the dotfiles
+// directory, as v1's expandToolConfigPath did, and "~" is the project's home directory
+// whichever filesystem the caller was handed.
+func TestManualBinaryPathResolvesLikeTheInstaller(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		binaryPath string
+		configFile string
+		want       string
+	}{
+		{name: "relative without a tool file", binaryPath: "scripts/probe.sh", want: "/home/user/dotfiles/scripts/probe.sh"},
+		{name: "relative to the tool file", binaryPath: "./probe.sh", configFile: "/home/user/dotfiles/tools/probe.tool.ts", want: "/home/user/dotfiles/tools/probe.sh"},
+		{name: "home", binaryPath: "~/opt/probe.sh", want: "/home/user/opt/probe.sh"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			memFS := fs.NewMemFS()
+			runner := exec.NewMockRunner()
+
+			sqlDB, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatalf("failed creating DB: %v", err)
+			}
+			defer sqlDB.Close()
+
+			manualInst := installer.NewManualInstaller(memFS, nil)
+			manualInst.BinDir = "/home/user/.generated/binaries/probe/current"
+			instReg := installer.NewRegistry()
+			instReg.Register(manualInst)
+
+			log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: io.Discard})
+			orch := NewOrchestrator(log, memFS, runner, registry.NewRegistry(sqlDB), instReg)
+			projCfg := &config.ProjectConfig{
+				Paths: config.PathsConfig{
+					HomeDir:         "/home/user",
+					DotfilesDir:     "/home/user/dotfiles",
+					TargetDir:       "/home/user/bin",
+					BinariesDir:     "/home/user/.generated/binaries",
+					ShellScriptsDir: "/home/user/.generated/shell-scripts",
+					GeneratedDir:    "/home/user/.generated",
+				},
+			}
+
+			_ = memFS.MkdirAll(filepath.Dir(tt.want), 0755)
+			_ = memFS.WriteFile(tt.want, []byte("#!/bin/sh\necho probe"), 0755)
+
+			tool := &config.ToolConfig{
+				Name:               "probe",
+				Binaries:           testutil.DeclaredBinaries("probe-bin-4f1d"),
+				ConfigFilePath:     tt.configFile,
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": tt.binaryPath},
+			}
+
+			if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+				t.Fatalf("GenerateTool failed: %v", err)
+			}
+			shim, err := memFS.ReadFile("/home/user/bin/probe-bin-4f1d")
+			if err != nil {
+				t.Fatalf("expected the shim to exist: %v", err)
+			}
+			if want := `TOOL_EXECUTABLE="` + tt.want + `"`; !strings.Contains(string(shim), want) {
+				t.Errorf("generated shim lacks %s:\n%s", want, shim)
+			}
+
+			if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+				t.Fatalf("InstallTool failed: %v", err)
+			}
+		})
+	}
+}
+
 func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

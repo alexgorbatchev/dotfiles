@@ -131,8 +131,11 @@ ${ctx.projectConfig.paths.binariesDir}/${ctx.toolName}/
 | `.symlink(src, dest)` | `src` with `./` | Relative to tool config directory |
 | `.symlink(src, dest)` | `dest`          | Absolute path (`~` expanded)      |
 | `.completions(path)`  | `path`          | Relative to tool config directory |
-| `binaryPath`          | github/cargo    | Relative to extracted archive     |
-| `binaryPath`          | manual          | Absolute path                     |
+
+`binaryPath` means something different to each installation method that reads it; its
+resolution is documented on each method's own page: [manual](../installation-methods/manual.md#binarypath-resolution),
+[curl-script](../installation-methods/curl-script.md#scripts-that-install-themselves),
+[dmg](../installation-methods/dmg.md) and [pkg](../installation-methods/pkg.md).
 
 ## Common Mistakes
 

@@ -11,6 +11,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 
 - Check binary existence ONLY in `targetDir` or `binariesDir` before executing completion commands (do NOT check or execute system `PATH` binaries).
 - Always use the injected `fs.FS` (`ResolvedFS.IsAbs()` / `ResolvedFS.Abs()`) for resolving user/tool paths (such as `binaryPath`, symlinks, completion sources) instead of raw stdlib `filepath.IsAbs`.
+- Resolve a manual tool's `binaryPath` (shim target, shadow-check delegation target) only through `installer.ResolveBinaryPath`, the helper the installers use, so a shim never points somewhere other than where the installer looked.
 - Skip missing completion binaries instantly in 0ms without spawning subprocesses or wasting timeouts.
 - Apply strict process-group timeouts (max 3s) for running completion commands (`cmdExec.SetProcessGroup(true)`).
 - Log `INFO [system] DONE` at the end of generation workflows.

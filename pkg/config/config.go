@@ -435,10 +435,6 @@ func (tc *ToolConfig) Validate() error {
 		return err
 	}
 
-	if err := tc.ValidateInstallParams(); err != nil {
-		return err
-	}
-
 	if tc.ShellConfigs != nil {
 		if err := tc.ShellConfigs.Validate(); err != nil {
 			return fmt.Errorf("invalid shell config in tool %q: %w", tc.Name, err)

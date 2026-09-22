@@ -245,28 +245,12 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
 
 		if tool.InstallationMethod == "manual" {
-			if manualPath := getStringParam(tool.InstallParams, "binaryPath", ""); manualPath != "" {
-				resolved, err := config.ResolvePathPlaceholders(manualPath, tool.Name, projCfg)
-				if err != nil {
-					return fmt.Errorf("%s: install parameter binaryPath %q: %w", tool.Name, manualPath, err)
-				}
-				manualPath = resolved
-				if o.fs.IsAbs(manualPath) {
-					if abs, err := o.fs.Abs(manualPath); err == nil {
-						binaryPath = abs
-					} else {
-						binaryPath = manualPath
-					}
-				} else if tool.ConfigFilePath != "" {
-					relPath := filepath.Join(filepath.Dir(tool.ConfigFilePath), manualPath)
-					if abs, err := o.fs.Abs(relPath); err == nil {
-						binaryPath = abs
-					} else {
-						binaryPath = relPath
-					}
-				} else {
-					binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", manualPath)
-				}
+			manualPath, err := installer.ResolveBinaryPath(o.fs, tool, projCfg)
+			if err != nil {
+				return err
+			}
+			if manualPath != "" {
+				binaryPath = manualPath
 			}
 		}
 

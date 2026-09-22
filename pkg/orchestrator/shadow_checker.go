@@ -684,27 +684,10 @@ func toolHasShellPath(tool *config.ToolConfig, extPath string, projCfg *config.P
 
 func (sc *ShadowChecker) resolveBinaryTarget(ctx context.Context, tool *config.ToolConfig, binName string, projCfg *config.ProjectConfig, extPath string) string {
 	if tool.InstallationMethod == "manual" {
-		if manualPath := getStringParam(tool.InstallParams, "binaryPath", ""); manualPath != "" {
-			resolved, err := config.ResolvePathPlaceholders(manualPath, tool.Name, projCfg)
-			if err == nil {
-				manualPath = resolved
-			}
-			if sc.fs.IsAbs(manualPath) {
-				if abs, err := sc.fs.Abs(manualPath); err == nil {
-					return abs
-				}
-				return manualPath
-			}
-			if tool.ConfigFilePath != "" {
-				relPath := filepath.Join(filepath.Dir(tool.ConfigFilePath), manualPath)
-				if abs, err := sc.fs.Abs(relPath); err == nil {
-					return abs
-				}
-				return relPath
-			}
-			if projCfg != nil {
-				return filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", manualPath)
-			}
+		// A binaryPath that cannot be resolved fails generate and install on its own;
+		// here it only means there is no declared target to compare against.
+		if manualPath, err := installer.ResolveBinaryPath(sc.fs, tool, projCfg); err == nil && manualPath != "" {
+			return manualPath
 		}
 	}
 

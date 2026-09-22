@@ -672,9 +672,6 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 					t.Errorf("ValidateInstallParams() = %v, want it to contain %s", err, want)
 				}
 			}
-			if validateErr := tt.tool.Validate(); validateErr == nil || validateErr.Error() != err.Error() {
-				t.Errorf("Validate() = %v, want the same error as ValidateInstallParams()", validateErr)
-			}
 		})
 	}
 }

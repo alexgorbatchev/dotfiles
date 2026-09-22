@@ -179,10 +179,11 @@ func TestCurlScriptInstaller(t *testing.T) {
 		if err == nil {
 			t.Fatal("Install() = nil, want it to fail when the staging directory has no binary")
 		}
-		for _, want := range []string{"mytool", "{stagingDir}", "args", "env", "binaryPath"} {
-			if !strings.Contains(err.Error(), want) {
-				t.Errorf("Install() = %v, want it to mention %q", err, want)
-			}
+		want := `mytool: the install script left no "mytool" in the staging directory /test/bin ` +
+			`(nothing matches pattern "{,*/}mytool"); point the script at {stagingDir} through args or env, ` +
+			`or set binaryPath to where it installs the binary`
+		if err.Error() != want {
+			t.Errorf("Install() error = %q, want %q", err, want)
 		}
 		if exists, _ := sysFsys.Exists("/test/bin/mytool"); exists {
 			t.Error("the system binary was copied into the staging directory")
@@ -512,34 +513,79 @@ func TestCurlScriptInstaller_BinaryPath(t *testing.T) {
 		}
 	})
 
-	// The loader rejects this combination; the installer does not link the first binary
-	// and drop the rest when handed a configuration that skipped the loader.
-	t.Run("more than one binary is rejected before the script runs", func(t *testing.T) {
-		inst, runner, _, ctx, url := newBinaryPathInstaller(t)
-		tool := &config.ToolConfig{
-			Name:               "uv",
-			InstallationMethod: "curl-script",
-			Binaries: []interface{}{
-				map[string]interface{}{"name": "uv"},
-				map[string]interface{}{"name": "uvx"},
-			},
-			InstallParams: map[string]interface{}{
-				"url":        url,
-				"binaryPath": "~/.local/bin/uv",
-			},
-		}
+	// A script that also drops a copy under the binary's name in the staging directory
+	// does not win over binaryPath: the entry is replaced by the link, so the managed
+	// binary still follows the launcher.
+	t.Run("replaces a file the script left under the binary's name", func(t *testing.T) {
+		inst, _, fsys, ctx, url := newBinaryPathInstaller(t)
+		writeLauncher(t, fsys)
+		_ = fsys.MkdirAll("/staging", 0755)
+		_ = fsys.WriteFile("/staging/claude", []byte("stale copy"), 0755)
 
-		_, err := inst.Install(ctx, tool)
-		if err == nil {
-			t.Fatal("Install() = nil, want binaryPath with two binaries to be rejected")
+		if _, err := inst.Install(ctx, binaryPathTool(url)); err != nil {
+			t.Fatalf("Install() error = %v", err)
 		}
-		if !strings.Contains(err.Error(), "binaryPath") || !strings.Contains(err.Error(), "uvx") {
-			t.Errorf("Install() = %v, want it to name binaryPath and the binaries", err)
+		target, err := fsys.Readlink("/staging/claude")
+		if err != nil {
+			t.Fatalf("the staging entry is not a symlink: %v", err)
 		}
-		if scriptRan(runner) {
-			t.Error("the install script ran for a configuration that cannot be installed")
+		if target != "/home/user/.local/bin/claude" {
+			t.Errorf("staging entry links to %q, want /home/user/.local/bin/claude", target)
 		}
 	})
+
+	// Each filesystem failure while staging the link stops the installation and says
+	// which step failed, rather than reporting a binary that is not there.
+	fsFailures := []struct {
+		name     string
+		failOp   string
+		failPath string
+		staged   bool
+		want     string
+	}{
+		{name: "binaryPath cannot be checked", failOp: "exists", failPath: "/home/user/.local/bin/claude", want: `claude: checking binaryPath "~/.local/bin/claude" (/home/user/.local/bin/claude): exists denied`},
+		{name: "staged entry cannot be cleared", failOp: "remove", failPath: "/staging/claude", staged: true, want: "claude: clearing /staging/claude for the binaryPath link: remove denied"},
+		{name: "link cannot be created", failOp: "symlink", failPath: "/staging/claude", want: "claude: linking /staging/claude to binaryPath /home/user/.local/bin/claude: symlink denied"},
+	}
+	for _, tt := range fsFailures {
+		t.Run(tt.name, func(t *testing.T) {
+			inst, _, fsys, ctx, url := newBinaryPathInstaller(t)
+			writeLauncher(t, fsys)
+			if tt.staged {
+				_ = fsys.MkdirAll("/staging", 0755)
+				_ = fsys.WriteFile("/staging/claude", []byte("stale copy"), 0755)
+			}
+			inst.SetFS(&faultyFS{FS: fsys, failOp: tt.failOp, failPath: tt.failPath})
+
+			_, err := inst.Install(ctx, binaryPathTool(url))
+			if err == nil || err.Error() != tt.want {
+				t.Fatalf("Install() error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// writeLauncher installs claude the way its script does: a versioned binary and a
+// launcher symlink in ~/.local/bin pointing at it.
+func writeLauncher(t *testing.T, fsys fs.FS) {
+	t.Helper()
+	_ = fsys.MkdirAll("/home/user/.local/share/claude/versions", 0755)
+	_ = fsys.WriteFile("/home/user/.local/share/claude/versions/2.1.0", []byte("claude"), 0755)
+	_ = fsys.MkdirAll("/home/user/.local/bin", 0755)
+	if err := fsys.Symlink("/home/user/.local/share/claude/versions/2.1.0", "/home/user/.local/bin/claude"); err != nil {
+		t.Fatalf("creating the launcher symlink: %v", err)
+	}
+}
+
+func binaryPathTool(url string) *config.ToolConfig {
+	return &config.ToolConfig{
+		Name:     "claude",
+		Binaries: []interface{}{map[string]interface{}{"name": "claude"}},
+		InstallParams: map[string]interface{}{
+			"url":        url,
+			"binaryPath": "~/.local/bin/claude",
+		},
+	}
 }
 
 type mockScriptErrorFS struct {

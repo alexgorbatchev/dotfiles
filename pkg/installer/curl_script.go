@@ -92,12 +92,9 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	if url == "" {
 		return nil, fmt.Errorf("URL or shell not specified in installParams")
 	}
-	if err := tool.ValidateInstallParams(); err != nil {
-		return nil, err
-	}
 	// Resolved before the script runs, so a path that cannot be resolved stops the
 	// installation before anything has been executed.
-	binaryPath, err := resolveBinaryPath(ctx, c.fsys, tool)
+	binaryPath, err := ResolveBinaryPath(c.fsys, tool, config.GetProjectConfig(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -283,10 +280,14 @@ func substituteStagingDir(values []string, stagingDir string) []string {
 func (c *CurlScriptInstaller) stageBinaries(tool *config.ToolConfig, stagingDir, binaryPath string) ([]string, error) {
 	if binaryPath == "" {
 		binaries, err := PromoteBinaries(c.fsys, stagingDir, tool.Name, tool.Binaries)
+		var notFound *BinaryNotFoundError
+		if errors.As(err, &notFound) {
+			return nil, fmt.Errorf("%s: the install script left no %q in the staging directory %s (nothing matches pattern %q); "+
+				"point the script at {stagingDir} through args or env, or set binaryPath to where it installs the binary",
+				tool.Name, notFound.Binary, notFound.Dir, notFound.Pattern)
+		}
 		if err != nil {
-			return nil, fmt.Errorf("%s: the install script did not leave the binary in the staging directory; "+
-				"point the script at {stagingDir} through args or env, or set binaryPath to where it installs the binary: %w",
-				tool.Name, err)
+			return nil, fmt.Errorf("%s: staging the binaries the install script left: %w", tool.Name, err)
 		}
 		return binaries, nil
 	}

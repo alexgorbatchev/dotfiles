@@ -39,7 +39,7 @@ When the curl-script installer runs, it creates a temporary **staging directory*
 
 3. **A script that can be redirected should be** - By default, installation scripts install to their own preferred locations (like `~/.local/bin` or `~/.<tool>`). When the script has an argument or environment variable for its install location, point it at `stagingDir`, as described below. When it has none, set [`binaryPath`](#scripts-that-install-themselves) instead.
 
-A binary missing from `stagingDir` fails with `<tool>: the install script did not leave the binary in the staging directory; point the script at {stagingDir} through args or env, or set binaryPath to where it installs the binary`, followed by the pattern that found nothing.
+A binary missing from `stagingDir` fails with `<tool>: the install script left no "<binary>" in the staging directory <stagingDir> (nothing matches pattern "<pattern>"); point the script at {stagingDir} through args or env, or set binaryPath to where it installs the binary`.
 
 ### How to Redirect Installation
 
@@ -97,10 +97,10 @@ export default defineTool((install) =>
 After the script succeeds, the declared binary in `stagingDir` becomes a symlink to
 `binaryPath`:
 
-- **Resolved like `manual`'s `binaryPath`.** `~` and path placeholders such as
-  `{paths.homeDir}` are expanded, and a relative path is taken relative to the `.tool.ts`
-  file. The path is resolved before the script runs, so a placeholder that cannot be filled
-  fails the installation without running anything.
+- **Resolved like `manual`'s `binaryPath`.** The rules are those of
+  [binaryPath Resolution](manual.md#binarypath-resolution). The path is resolved before
+  the script runs, so a placeholder that cannot be filled fails the installation without
+  running anything.
 - **Always a symlink to the path as written.** The link targets `~/.local/bin/claude`
   itself, not whatever that launcher points at today, and the binary is never copied. A
   tool that updates itself by repointing its launcher therefore keeps running the version
