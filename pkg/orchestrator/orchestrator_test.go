@@ -1710,7 +1710,7 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 	reg := registry.NewRegistry(sqlDB)
 
 	instReg := installer.NewRegistry()
-	manualInst := installer.NewManualInstaller(runner, rfs, nil)
+	manualInst := installer.NewManualInstaller(rfs, nil)
 	manualInst.BinDir = "/home/user/.generated/binaries/claude-code/current"
 	instReg.Register(manualInst)
 
@@ -1994,7 +1994,7 @@ func TestInstallTool_BeforeInstallHookStagesThePayload(t *testing.T) {
 			reg := registry.NewRegistry(sqlDB)
 
 			instReg := installer.NewRegistry()
-			_ = instReg.Register(installer.NewManualInstaller(runner, memFS, nil))
+			_ = instReg.Register(installer.NewManualInstaller(memFS, nil))
 			log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 			orch := NewOrchestrator(log, memFS, runner, reg, instReg)
 

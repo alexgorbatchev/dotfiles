@@ -46,7 +46,7 @@ func TestSetGitHubSettings(t *testing.T) {
 	}
 
 	// An installer that resolves nothing from GitHub simply ignores them.
-	SetGitHubSettings(NewManualInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil), settings)
+	SetGitHubSettings(NewManualInstaller(fs.NewMemFS(), nil), settings)
 }
 
 func TestIsMacPackageAsset(t *testing.T) {

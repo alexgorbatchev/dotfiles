@@ -335,7 +335,7 @@ func TestInstallersDryRunCoverage(t *testing.T) {
 		NewDnfInstaller(runner, memFS, sysCtx),
 		giteaInst,
 		NewGitHubInstaller(runner, memFS, dl, sysCtx),
-		NewManualInstaller(runner, memFS, sysCtx),
+		NewManualInstaller(memFS, sysCtx),
 		NewNpmInstaller(runner, memFS, sysCtx),
 		NewPacmanInstaller(runner, memFS, sysCtx),
 		NewPkgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"}),
@@ -487,7 +487,7 @@ func TestInstallerErrorAndCheckUpdatePaths(t *testing.T) {
 	_, _ = curlTar.CheckUpdate(ctx, badTool)
 
 	// Manual checkupdate
-	manual := NewManualInstaller(runner, memFS, sysCtx)
+	manual := NewManualInstaller(memFS, sysCtx)
 	_, _ = manual.CheckUpdate(ctx, badTool)
 
 	// ZshPlugin checkupdate
@@ -785,7 +785,7 @@ func TestMoreInstallerEdgeCases(t *testing.T) {
 	_ = curlBin.Uninstall(ctx, &config.ToolConfig{Name: "curlbin-tool"})
 
 	// 5. Manual Uninstall
-	manual := NewManualInstaller(runner, memFS, sysCtx)
+	manual := NewManualInstaller(memFS, sysCtx)
 	_ = manual.Uninstall(ctx, &config.ToolConfig{Name: "manual-tool"})
 
 	// 6. DryRun returns for all package installers
@@ -809,7 +809,7 @@ func TestMoreInstallerEdgeCases(t *testing.T) {
 	dnfInst := NewDnfInstaller(runner, memFS, sysCtx)
 	giteaInst := NewGiteaInstaller(runner, memFS, dl, sysCtx)
 	ghInst := NewGitHubInstaller(runner, memFS, dl, sysCtx)
-	manualInst := NewManualInstaller(runner, memFS, sysCtx)
+	manualInst := NewManualInstaller(memFS, sysCtx)
 	npmInst := NewNpmInstaller(runner, memFS, sysCtx)
 	pacmanInst := NewPacmanInstaller(runner, memFS, sysCtx)
 	pkgInst := NewPkgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
@@ -868,7 +868,7 @@ func TestPackageInstallersExtraCoverage(t *testing.T) {
 	// 1b. Manual with binaryPath and context projectConfig, and empty path
 	_ = memFS.MkdirAll("/src", 0755)
 	_ = memFS.WriteFile("/src/mybin", []byte("binary payload"), 0755)
-	manual := NewManualInstaller(runner, memFS, sysCtx)
+	manual := NewManualInstaller(memFS, sysCtx)
 	manual.BinDir = "/test/manual"
 
 	projCtx := config.WithProjectConfig(ctx, &config.ProjectConfig{
@@ -884,7 +884,7 @@ func TestPackageInstallersExtraCoverage(t *testing.T) {
 		t.Errorf("expected manual install with binaryPath to succeed: %v", errMan)
 	}
 
-	mEmpty := NewManualInstaller(runner, memFS, sysCtx)
+	mEmpty := NewManualInstaller(memFS, sysCtx)
 	_, _ = mEmpty.Install(ctx, &config.ToolConfig{Name: "no-path-manual"})
 	_, _ = mEmpty.Install(ctx, &config.ToolConfig{Name: "nonexist", InstallParams: map[string]interface{}{"binaryPath": "/nonexistent/path/bin"}})
 	_ = mEmpty.Uninstall(ctx, &config.ToolConfig{Name: "no-path-manual"})

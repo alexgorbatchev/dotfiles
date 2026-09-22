@@ -403,7 +403,7 @@ func TestAllInstallers_SupportsSudo(t *testing.T) {
 		{"dnf", NewDnfInstaller(nil, nil, nil), true},
 		{"pacman", NewPacmanInstaller(nil, nil, nil), true},
 		{"pkg", NewPkgInstaller(nil, nil, nil, nil), true},
-		{"manual", NewManualInstaller(nil, nil, nil), true},
+		{"manual", NewManualInstaller(nil, nil), true},
 		{"brew", NewBrewInstaller(nil, nil, nil), false},
 		{"cargo", NewCargoInstaller(nil, nil, nil, nil), false},
 		{"curl-binary", NewCurlBinaryInstaller(nil, nil, nil, nil), false},
@@ -448,6 +448,13 @@ func (f *faultyFS) Chmod(path string, perm os.FileMode) error {
 		return errors.New("chmod denied")
 	}
 	return f.FS.Chmod(path, perm)
+}
+
+func (f *faultyFS) CopyFile(src, dest string) error {
+	if f.fails("copyfile", dest) {
+		return errors.New("copyfile denied")
+	}
+	return f.FS.CopyFile(src, dest)
 }
 
 func (f *faultyFS) Remove(path string) error {

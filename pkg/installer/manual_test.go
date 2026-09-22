@@ -2,19 +2,19 @@ package installer
 
 import (
 	"context"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 func TestManualInstaller(t *testing.T) {
-	runner := exec.NewMockRunner()
 	fsys := fs.NewMemFS()
-	inst := NewManualInstaller(runner, fsys, nil)
+	inst := NewManualInstaller(fsys, nil)
 	inst.BinDir = "/test/bin"
 
 	if inst.Name() != "manual" {
@@ -26,7 +26,6 @@ func TestManualInstaller(t *testing.T) {
 	}
 
 	t.Run("Install success with binaryPath", func(t *testing.T) {
-		runner.Clear()
 		srcPath := "/src/mybinary"
 		_ = fsys.MkdirAll("/src", 0755)
 		_ = fsys.WriteFile(srcPath, []byte("manual-payload"), 0755)
@@ -60,7 +59,6 @@ func TestManualInstaller(t *testing.T) {
 	})
 
 	t.Run("Install success with binaryPath and symlink true", func(t *testing.T) {
-		runner.Clear()
 		srcPath := "/src/symlinked-binary"
 		_ = fsys.MkdirAll("/src", 0755)
 		_ = fsys.WriteFile(srcPath, []byte("symlink-payload"), 0755)
@@ -93,9 +91,8 @@ func TestManualInstaller(t *testing.T) {
 	})
 
 	t.Run("Install success with binaryPath containing tilde home path and symlink true", func(t *testing.T) {
-		runner.Clear()
 		homeFS := fs.NewResolvedFS(fs.NewMemFS(), "/home/user")
-		instHome := NewManualInstaller(runner, homeFS, nil)
+		instHome := NewManualInstaller(homeFS, nil)
 		instHome.BinDir = "/home/user/.generated/binaries/claude/current"
 
 		_ = homeFS.MkdirAll("/home/user/.local/bin", 0755)
@@ -148,7 +145,6 @@ func TestManualInstaller(t *testing.T) {
 	})
 
 	t.Run("Install success with binaryPath containing placeholder", func(t *testing.T) {
-		runner.Clear()
 		_ = fsys.MkdirAll("/home/user/.binaries/mytool/current", 0755)
 		_ = fsys.WriteFile("/home/user/.binaries/mytool/current/mybinary", []byte("manual-payload-placeholder"), 0755)
 
@@ -189,8 +185,6 @@ func TestManualInstaller(t *testing.T) {
 	// it makes binaryPath relative, and the installer would look for the binary under
 	// the directory the command was run from.
 	t.Run("Install fails on a binaryPath placeholder nothing can fill", func(t *testing.T) {
-		runner.Clear()
-
 		tool := &config.ToolConfig{
 			Name: "mytool",
 			InstallParams: map[string]interface{}{
@@ -254,4 +248,92 @@ func TestManualInstaller(t *testing.T) {
 			t.Errorf("unexpected: %v, %v", res, err)
 		}
 	})
+}
+
+// newManualCopyFixture seeds a non-executable source binary so that a copy which
+// merely preserves the source mode cannot pass for one that makes it executable.
+func newManualCopyFixture(t *testing.T) (*fs.MemFS, *config.ToolConfig) {
+	t.Helper()
+	fsys := fs.NewMemFS()
+	if err := fsys.MkdirAll("/src", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := fsys.WriteFile("/src/payload", []byte("copied-payload"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	tool := &config.ToolConfig{
+		Name:          "copytool",
+		Binaries:      []interface{}{map[string]interface{}{"name": "copytool"}, map[string]interface{}{"name": "copytool-alias"}},
+		InstallParams: map[string]interface{}{"binaryPath": "/src/payload"},
+	}
+	return fsys, tool
+}
+
+func TestManualInstallerCopiesExecutableBinary(t *testing.T) {
+	const binDir = "/test/bin"
+	fsys, tool := newManualCopyFixture(t)
+	inst := NewManualInstaller(fsys, nil)
+	inst.BinDir = binDir
+
+	res, err := inst.Install(context.Background(), tool)
+	if err != nil {
+		t.Fatalf("Install() error = %v", err)
+	}
+
+	for _, name := range []string{"copytool", "copytool-alias"} {
+		if !slices.Contains(res.Binaries, name) {
+			t.Errorf("Install() binaries = %v, want it to contain %q", res.Binaries, name)
+		}
+		destPath := filepath.Join(binDir, name)
+		data, err := fsys.ReadFile(destPath)
+		if err != nil {
+			t.Fatalf("reading %s: %v", destPath, err)
+		}
+		if string(data) != "copied-payload" {
+			t.Errorf("%s content = %q, want %q", destPath, data, "copied-payload")
+		}
+		info, err := fsys.Stat(destPath)
+		if err != nil {
+			t.Fatalf("stat %s: %v", destPath, err)
+		}
+		if got := info.Mode().Perm(); got != 0755 {
+			t.Errorf("%s mode = %v, want %v", destPath, got, os.FileMode(0755))
+		}
+	}
+}
+
+func TestManualInstallerCopyErrors(t *testing.T) {
+	const binDir = "/test/bin"
+	tests := []struct {
+		name    string
+		failOp  string
+		wantErr string
+	}{
+		{
+			name:    "copy fails",
+			failOp:  "copyfile",
+			wantErr: "copying binary copytool-alias from /src/payload: copyfile denied",
+		},
+		{
+			name:    "chmod fails",
+			failOp:  "chmod",
+			wantErr: "making binary copytool-alias executable: chmod denied",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS, tool := newManualCopyFixture(t)
+			fsys := &faultyFS{FS: memFS, failOp: tt.failOp, failPath: filepath.Join(binDir, "copytool-alias")}
+			inst := NewManualInstaller(fsys, nil)
+			inst.BinDir = binDir
+
+			_, err := inst.Install(context.Background(), tool)
+			if err == nil {
+				t.Fatalf("Install() = nil, want %q", tt.wantErr)
+			}
+			if err.Error() != tt.wantErr {
+				t.Errorf("Install() error = %q, want %q", err, tt.wantErr)
+			}
+		})
+	}
 }

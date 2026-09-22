@@ -172,7 +172,7 @@ func TestEveryInstallerTakesTheRunsTarget(t *testing.T) {
 		NewDnfInstaller(runner, memFS, nil),
 		NewGiteaInstaller(runner, memFS, dl, nil),
 		NewGitHubInstaller(runner, memFS, dl, nil),
-		NewManualInstaller(runner, memFS, nil),
+		NewManualInstaller(memFS, nil),
 		NewNpmInstaller(runner, memFS, nil),
 		NewPacmanInstaller(runner, memFS, nil),
 		NewPkgInstaller(runner, memFS, dl, nil),

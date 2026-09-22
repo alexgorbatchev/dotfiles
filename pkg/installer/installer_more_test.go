@@ -39,7 +39,7 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	dnf := NewDnfInstaller(runner, memFS, sysCtx)
 	gitea := NewGiteaInstaller(runner, memFS, dl, sysCtx)
 	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
-	manual := NewManualInstaller(runner, memFS, sysCtx)
+	manual := NewManualInstaller(memFS, sysCtx)
 	npm := NewNpmInstaller(runner, memFS, sysCtx)
 	pacman := NewPacmanInstaller(runner, memFS, sysCtx)
 	pkgInst := NewPkgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
@@ -418,7 +418,7 @@ func TestPackageManagerInstallers(t *testing.T) {
 	}
 
 	// Manual
-	manual := NewManualInstaller(runner, memFS, sysCtx)
+	manual := NewManualInstaller(memFS, sysCtx)
 	tManual := &config.ToolConfig{
 		Name:          "manual-tool",
 		InstallParams: map[string]interface{}{"script": "echo manual"},
@@ -746,7 +746,7 @@ func TestSetDownloadSettings_AllInstallers(t *testing.T) {
 		NewCargoInstaller(runner, memFS, dl, sysCtx),
 		NewDmgInstaller(runner, memFS, dl, sysCtx),
 		NewPkgInstaller(runner, memFS, dl, sysCtx),
-		NewManualInstaller(runner, memFS, nil),
+		NewManualInstaller(memFS, nil),
 		NewBrewInstaller(runner, memFS, nil),
 		NewAptInstaller(runner, memFS, nil),
 	}

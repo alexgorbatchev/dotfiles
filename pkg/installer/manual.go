@@ -7,25 +7,22 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 type ManualInstaller struct {
 	log    *logger.Logger
-	runner exec.CommandRunner
 	fsys   fs.FS
 	sysCtx *SystemContext
 	BinDir string // Destination directory for binaries
 }
 
-func NewManualInstaller(runner exec.CommandRunner, fsys fs.FS, sysCtx *SystemContext) *ManualInstaller {
+func NewManualInstaller(fsys fs.FS, sysCtx *SystemContext) *ManualInstaller {
 	if sysCtx == nil {
 		sysCtx = NewDefaultSystemContext()
 	}
 	return &ManualInstaller{
-		runner: runner,
 		fsys:   fsys,
 		sysCtx: sysCtx,
 	}
@@ -106,19 +103,16 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			}, nil
 		}
 
-		// Copy the binary file for each expected binary name
-		data, err := m.fsys.ReadFile(binaryPath)
-		if err != nil {
-			return nil, fmt.Errorf("reading source binary: %w", err)
-		}
-
+		// CopyFile streams the binary and keeps the source's mode, which may not be
+		// executable, so each copy is made executable explicitly.
 		for _, binName := range binNames {
 			destPath := filepath.Join(destDir, binName)
-			if err := m.fsys.WriteFile(destPath, data, 0755); err != nil {
-				return nil, fmt.Errorf("writing copied binary %s: %w", binName, err)
+			if err := m.fsys.CopyFile(binaryPath, destPath); err != nil {
+				return nil, fmt.Errorf("copying binary %s from %s: %w", binName, binaryPath, err)
 			}
-			chmodCmd := m.runner.CommandContext(ctx, "chmod", "+x", destPath)
-			_ = chmodCmd.Run()
+			if err := m.fsys.Chmod(destPath, 0755); err != nil {
+				return nil, fmt.Errorf("making binary %s executable: %w", binName, err)
+			}
 		}
 
 		return &InstallResult{
@@ -146,7 +140,6 @@ func (m *ManualInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 
 func init() {
 	_ = Register(&ManualInstaller{
-		runner: exec.NewOSRunner(),
-		fsys:   &fs.OSFS{},
+		fsys: &fs.OSFS{},
 	})
 }

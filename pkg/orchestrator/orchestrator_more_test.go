@@ -1191,7 +1191,7 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 	_ = allInstReg.Register(installer.NewCurlScriptInstaller(runner, memFS, dl, nil))
 	_ = allInstReg.Register(installer.NewCurlTarInstaller(runner, memFS, dl, nil))
 	_ = allInstReg.Register(installer.NewDmgInstaller(runner, memFS, dl, nil))
-	_ = allInstReg.Register(installer.NewManualInstaller(runner, memFS, nil))
+	_ = allInstReg.Register(installer.NewManualInstaller(memFS, nil))
 	_ = allInstReg.Register(installer.NewZshPluginInstaller(runner, memFS, nil))
 	_ = allInstReg.Register(installer.NewPkgInstaller(runner, memFS, dl, nil))
 	_ = allInstReg.Register(installer.NewBrewInstaller(runner, memFS, nil))
