@@ -171,6 +171,10 @@ func DedentString(s string) string {
 	return strings.TrimSpace(strings.Join(resultLines, "\n"))
 }
 
+// TimestampLayout is the time layout of the version GenerateTimestamp produces
+// (YYYY-MM-DD-HH-MM-SS).
+const TimestampLayout = "2006-01-02-15-04-05"
+
 // GenerateTimestamp returns a formatted timestamp string (YYYY-MM-DD-HH-MM-SS)
 // suitable for versioning and directory names when explicit versions are unavailable.
 func GenerateTimestamp(times ...time.Time) string {
@@ -178,5 +182,5 @@ func GenerateTimestamp(times ...time.Time) string {
 	if len(times) > 0 {
 		t = times[0]
 	}
-	return t.Format("2006-01-02-15-04-05")
+	return t.Format(TimestampLayout)
 }

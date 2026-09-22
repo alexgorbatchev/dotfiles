@@ -25,6 +25,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -1693,7 +1694,7 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		}
 		mustContain(t, "stderr", out.Stderr,
 			`Update check not supported for installer "manual", performing regular install instead`,
-			"Successfully updated to version v1.0.0",
+			"Successfully updated to version",
 		)
 	})
 
@@ -1754,8 +1755,205 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		mustContain(t, "stderr", out.Stderr,
 			"[same] Force updating: reinstalling version v0.1.0",
 			`[manual-versioned] Update check not supported for installer "manual", performing regular install instead`,
-			"[manual-versioned] Successfully updated to version v1.0.0",
+			"[manual-versioned] Successfully updated to version",
 		)
+	})
+}
+
+// TestResolveUpdate_TargetVersion pins which version an update installs. A tool whose
+// installer cannot check upstream has no version to ask for unless its configuration
+// pins one; the target is then empty, so the installation records what the installer
+// detects or a fresh timestamp, as v1's installer did, instead of the version recorded
+// by the previous installation.
+func TestResolveUpdate_TargetVersion(t *testing.T) {
+	pinned, latestTag, constraint := "v1.0.0", "latest", "<2.0.0"
+	tests := []struct {
+		name      string
+		tool      *config.ToolConfig
+		installed string
+		res       *installer.UpdateCheckResult
+		want      string
+	}{
+		{
+			name:      "an installable upstream release is installed",
+			tool:      &config.ToolConfig{Name: "gh"},
+			installed: "v1.0.0",
+			res:       &installer.UpdateCheckResult{LatestVersion: "v2.0.0"},
+			want:      "v2.0.0",
+		},
+		{
+			name:      "a release the constraint excludes reinstalls the installed one",
+			tool:      &config.ToolConfig{Name: "gh", UpdateCheck: &config.ToolConfigUpdateCheck{Constraint: &constraint}},
+			installed: "v1.0.0",
+			res:       &installer.UpdateCheckResult{LatestVersion: "v2.0.0"},
+			want:      "v1.0.0",
+		},
+		{
+			name:      "an unpinned tool nothing could check does not reuse its recorded timestamp",
+			tool:      &config.ToolConfig{Name: "stamped"},
+			installed: "2000-01-01-00-00-00",
+			want:      "",
+		},
+		{
+			name:      "an unpinned tool nothing could check does not reuse its recorded version",
+			tool:      &config.ToolConfig{Name: "detected"},
+			installed: "1.0.0",
+			want:      "",
+		},
+		{
+			name:      "latest is not a pin",
+			tool:      &config.ToolConfig{Name: "stamped", Version: &latestTag},
+			installed: "2000-01-01-00-00-00",
+			want:      "",
+		},
+		{
+			name:      "a pinned configured version is kept",
+			tool:      &config.ToolConfig{Name: "pinned", Version: &pinned},
+			installed: "v0.9.0",
+			want:      "v1.0.0",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, got := resolveUpdate(tt.tool, tt.installed, tt.res); got != tt.want {
+				t.Fatalf("resolveUpdate target = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestUpdateCommand_RecordedVersion checks what the installation record holds after
+// update reinstalls a tool whose installer cannot check upstream: a fresh timestamp
+// for a tool with no version of its own, the version its installer detects, or the
+// version its configuration pins -- never the version the previous installation left.
+func TestUpdateCommand_RecordedVersion(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const staleTimestamp = "2000-01-01-00-00-00"
+	manualBin := filepath.Join(t.TempDir(), "manual-bin")
+	if err := os.WriteFile(manualBin, []byte("#!/bin/sh\necho manual\n"), 0755); err != nil {
+		t.Fatalf("writing manual binary: %v", err)
+	}
+	// The install script leaves a binary that reports version 2.3.4 in the staging
+	// directory. Any other path is missing, so a script tool pointed there fails to install.
+	const scriptPath = "/install.sh"
+	script := "#!/bin/sh\nset -e\nprintf '#!/bin/sh\\necho \"detected 2.3.4\"\\n' > \"$INSTALL_DIR/detected\"\nchmod +x \"$INSTALL_DIR/detected\"\n"
+	scriptServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != scriptPath {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, script)
+	}))
+	t.Cleanup(scriptServer.Close)
+
+	p := newE2EProject(t, fmt.Sprintf(`
+		"stamped-forced": {"name": "stamped-forced", "installationMethod": "manual", "installParams": {"binaryPath": %[1]q}},
+		"stamped-named": {"name": "stamped-named", "installationMethod": "manual", "installParams": {"binaryPath": %[1]q}},
+		"stamped-batch": {"name": "stamped-batch", "installationMethod": "manual", "installParams": {"binaryPath": %[1]q}},
+		"pinned": {"name": "pinned", "version": "v1.0.0", "installationMethod": "manual", "installParams": {"binaryPath": %[1]q}},
+		"detected": {"name": "detected", "installationMethod": "curl-script", "installParams": {
+			"url": %[2]q, "shell": "sh", "env": {"INSTALL_DIR": "{stagingDir}"},
+			"versionArgs": ["--version"], "versionRegex": "detected (\\d+\\.\\d+\\.\\d+)"
+		}},
+		"broken": {"name": "broken", "installationMethod": "curl-script", "installParams": {"url": %[3]q}}
+	`, manualBin, scriptServer.URL+scriptPath, scriptServer.URL+"/missing.sh"))
+
+	// seed installs the tool for real, so the installation update finds is healthy and
+	// only a reinstall that is actually carried out can change the record, then
+	// rewrites the recorded version to what a previous installation left.
+	seed := func(t *testing.T, name, version string) {
+		t.Helper()
+		if out, err := p.run("tool", "install", name); err != nil {
+			t.Fatalf("tool install %s: %v\n%s", name, err, out.Combined)
+		}
+		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+			return reg.UpdateToolInstallation(ctx, tx, name, registry.ToolInstallationUpdate{Version: &version})
+		})
+	}
+	recorded := func(t *testing.T, name string) string {
+		t.Helper()
+		rec := p.installation(t, name)
+		if rec == nil {
+			t.Fatalf("no installation record for %s", name)
+		}
+		return rec.Version
+	}
+	mustBeFreshTimestamp := func(t *testing.T, name string) {
+		t.Helper()
+		got := recorded(t, name)
+		if got == staleTimestamp {
+			t.Fatalf("%s still records the previous installation's timestamp %q", name, got)
+		}
+		if _, err := time.Parse(utils.TimestampLayout, got); err != nil {
+			t.Fatalf("%s records %q, want a generated timestamp: %v", name, got, err)
+		}
+	}
+
+	t.Run("a forced reinstall of a timestamp-versioned tool records a new timestamp", func(t *testing.T) {
+		seed(t, "stamped-forced", staleTimestamp)
+		out, err := p.run("tool", "update", "--force", "stamped-forced")
+		if err != nil {
+			t.Fatalf("tool update --force stamped-forced: %v\n%s", err, out.Combined)
+		}
+		mustBeFreshTimestamp(t, "stamped-forced")
+		mustContain(t, "stderr", out.Stderr, "Successfully updated to version "+recorded(t, "stamped-forced"))
+	})
+
+	t.Run("reinstalling a named tool nothing could check records a new timestamp", func(t *testing.T) {
+		seed(t, "stamped-named", staleTimestamp)
+		out, err := p.run("tool", "update", "stamped-named")
+		if err != nil {
+			t.Fatalf("tool update stamped-named: %v\n%s", err, out.Combined)
+		}
+		mustBeFreshTimestamp(t, "stamped-named")
+	})
+
+	t.Run("a forced batch update records a new timestamp", func(t *testing.T) {
+		seed(t, "stamped-batch", staleTimestamp)
+		out, err := p.run("tool", "update", "--force")
+		if err != nil {
+			t.Fatalf("tool update --force: %v\n%s", err, out.Combined)
+		}
+		mustBeFreshTimestamp(t, "stamped-batch")
+	})
+
+	t.Run("a pinned configured version is recorded", func(t *testing.T) {
+		seed(t, "pinned", "v0.9.0")
+		out, err := p.run("tool", "update", "--force", "pinned")
+		if err != nil {
+			t.Fatalf("tool update --force pinned: %v\n%s", err, out.Combined)
+		}
+		if got := recorded(t, "pinned"); got != "v1.0.0" {
+			t.Fatalf("pinned records %q, want the configured v1.0.0", got)
+		}
+	})
+
+	t.Run("the version the installer detects is recorded", func(t *testing.T) {
+		seed(t, "detected", "1.0.0")
+		out, err := p.run("tool", "update", "detected")
+		if err != nil {
+			t.Fatalf("tool update detected: %v\n%s", err, out.Combined)
+		}
+		if got := recorded(t, "detected"); got != "2.3.4" {
+			t.Fatalf("detected records %q, want the detected 2.3.4", got)
+		}
+		mustContain(t, "stderr", out.Stderr, "Successfully updated to version 2.3.4")
+	})
+
+	t.Run("a failed reinstall names no version it never asked for", func(t *testing.T) {
+		dir := filepath.Join(p.Root, "installed", "broken")
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("creating install dir: %v", err)
+		}
+		p.seedInstallation(t, "broken", staleTimestamp, dir)
+		_, err := p.run("tool", "update", "broken")
+		if err == nil {
+			t.Fatal("expected tool update broken to fail")
+		}
+		mustContain(t, "error", err.Error(), `updating tool "broken" failed:`)
+		if got := recorded(t, "broken"); got != staleTimestamp {
+			t.Fatalf("broken records %q after a failed reinstall, want the untouched %q", got, staleTimestamp)
+		}
 	})
 }
 

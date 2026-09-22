@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -92,6 +93,49 @@ func (p updatePlan) announce(toolLog *logger.Logger, tool *config.ToolConfig) {
 	}
 }
 
+// targetDescription names what the reinstall installs, for messages about it: the
+// target version, or nothing when the installation decides which version it records.
+func (p updatePlan) targetDescription() string {
+	if p.targetVersion == "" {
+		return ""
+	}
+	return " to version " + p.targetVersion
+}
+
+// reinstallTool carries out plan for tool and returns the version the installation
+// recorded. Update has already decided the tool is installed again, so the
+// orchestrator is told to install it even when the existing installation is healthy,
+// as v1's update did by always installing with force. An empty target leaves the
+// configured version alone, so the installation records what the installer detects
+// or a fresh timestamp.
+func reinstallTool(ctx context.Context, services *Services, tool *config.ToolConfig, plan updatePlan) (string, error) {
+	if plan.targetVersion != "" {
+		targetVersion := plan.targetVersion
+		tool.Version = &targetVersion
+		if tool.InstallParams != nil {
+			tool.InstallParams["version"] = targetVersion
+		}
+	}
+	if err := services.Orchestrator.InstallTool(config.WithForce(ctx, true), tool, services.ProjectConfig); err != nil {
+		return "", err
+	}
+	recorded := plan.targetVersion
+	updatedRecord, err := services.Registry.GetToolInstallation(ctx, tool.Name)
+	if err == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
+		recorded = updatedRecord.Version
+	}
+	return recorded, nil
+}
+
+// configuredVersion returns the version tool's configuration pins, or "" when it
+// leaves the version to the installation ("latest" or no version at all).
+func configuredVersion(tool *config.ToolConfig) string {
+	if tool.Version == nil || *tool.Version == "latest" {
+		return ""
+	}
+	return *tool.Version
+}
+
 // planUpdate answers what update does for tool given its installer's answer. res is nil
 // when the installer cannot check, and the target version then comes from resolveUpdate
 // like any other reinstall's.
@@ -110,6 +154,14 @@ func planUpdate(tool *config.ToolConfig, installedVersion string, res *installer
 // update, or a forced reinstall, should install. res is nil when the installer answered
 // nothing. The availability decision is version.UpdateAvailable, the same one
 // check-updates and the dashboard make, so the three cannot disagree about a tool.
+//
+// An empty target means the reinstall asks for no particular version. That is the
+// answer for a tool whose installer cannot check upstream, unless its configuration
+// pins a version: such an installer has no version to be asked for, and the version
+// recorded by the previous installation is either one the installer detected then or a
+// timestamp generated then. Reusing it would override what the installer detects now
+// and freeze a generated timestamp at the first installation, so, as v1 did, the
+// installation records the detected version or a fresh timestamp instead.
 func resolveUpdate(tool *config.ToolConfig, installedVersion string, res *installer.UpdateCheckResult) (hasUpdate bool, targetVersion string) {
 	var latest string
 	var outdated *bool
@@ -131,6 +183,8 @@ func resolveUpdate(tool *config.ToolConfig, installedVersion string, res *instal
 	switch {
 	case installable:
 		targetVersion = latest
+	case res == nil:
+		targetVersion = configuredVersion(tool)
 	case installedVersion != "" && installedVersion != "unknown":
 		targetVersion = installedVersion
 	default:
@@ -210,21 +264,12 @@ When run without arguments, checks all installed tools for updates and installs 
 				plan := planUpdate(targetTool, installed.Version, res, unsupported, force)
 				if plan.reinstall() {
 					plan.announce(toolLog, targetTool)
-					targetVersion := plan.targetVersion
-					targetTool.Version = &targetVersion
-					if targetTool.InstallParams != nil {
-						targetTool.InstallParams["version"] = targetVersion
-					}
-					err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
+					recorded, err := reinstallTool(ctx, services, targetTool, plan)
 					if err != nil {
-						toolLog.Error(logger.Message(fmt.Sprintf("Updating to version %s failed", targetVersion)), err)
+						toolLog.Error(logger.Message("Updating"+plan.targetDescription()+" failed"), err)
 						continue
 					}
-					updatedRecord, errRec := services.Registry.GetToolInstallation(ctx, targetTool.Name)
-					if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
-						targetVersion = updatedRecord.Version
-					}
-					toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", targetVersion)))
+					toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
 				}
 			}
 			return nil
@@ -265,20 +310,11 @@ When run without arguments, checks all installed tools for updates and installs 
 			plan := planUpdate(targetTool, installed.Version, res, unsupported, force)
 			if plan.reinstall() {
 				plan.announce(toolLog, targetTool)
-				targetVersion := plan.targetVersion
-				targetTool.Version = &targetVersion
-				if targetTool.InstallParams != nil {
-					targetTool.InstallParams["version"] = targetVersion
-				}
-				err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
+				recorded, err := reinstallTool(ctx, services, targetTool, plan)
 				if err != nil {
-					return fmt.Errorf("updating tool %q to version %s failed: %w", targetTool.Name, targetVersion, err)
+					return fmt.Errorf("updating tool %q%s failed: %w", targetTool.Name, plan.targetDescription(), err)
 				}
-				updatedRecord, errRec := services.Registry.GetToolInstallation(ctx, targetTool.Name)
-				if errRec == nil && updatedRecord != nil && updatedRecord.Version != "" && updatedRecord.Version != "unknown" {
-					targetVersion = updatedRecord.Version
-				}
-				toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", targetVersion)))
+				toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
 			} else {
 				toolLog.Info(logger.Message("Already up to date" + versionSuffix(installed.Version, res != nil && res.Cached)))
 			}

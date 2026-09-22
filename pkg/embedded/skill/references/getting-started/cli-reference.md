@@ -123,6 +123,8 @@ Some installation methods have no way to learn the latest version upstream: `man
 - Named tools (`dotfiles tool update <tool>`, and `<binary> @update` from a shim): warns `Update check not supported for installer "<method>", performing regular install instead` and reinstalls the tool, with or without `--force`.
 - Updating everything (no tool names): warns `Update check not supported for installer "<method>"` and skips the tool. With `--force` it is reinstalled like every other installed tool.
 
+Reinstalling such a tool records the version its configuration pins with `.version()`. Without one, the reinstall records the version the installer detects, such as through the `versionArgs` of [`curl-script`](../installation-methods/curl-script.md). If the installer detects none, the reinstall records a new `YYYY-MM-DD-HH-MM-SS` timestamp. It never records the version the previous installation left.
+
 - `-f, --force`: Re-download and reinstall even if already up to date.
 - `--shim-mode`: Quiet output, used by generated shims running `<binary> @update`.
 
