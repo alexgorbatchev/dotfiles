@@ -21,6 +21,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Build / compile binaries: `just compile` (or `bun compile`)
 - CLI against fixture project: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts state generate`
 - Dashboard server against fixture: `just dashboard` (or `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard`)
+- Deploy local dev build into dotfiles directory: `just dev-bootstrap` (or `just dev-bootstrap /path/to/target`)
 
 ## Workspace map
 

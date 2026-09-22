@@ -89,6 +89,10 @@ build: compile
 dashboard:
     go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard
 
+# Compile and deploy local development build into a target dotfiles directory for offline testing
+dev-bootstrap target="~/.dotfiles":
+    go run ./scripts/dev-bootstrap {{ target }}
+
 # Run release pipeline
 release bump="patch":
     bun scripts/release.ts {{ bump }}
