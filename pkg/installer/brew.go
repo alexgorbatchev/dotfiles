@@ -341,6 +341,28 @@ func brewLinkArgs(link interface{}) []string {
 
 func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
+
+	if serviceVal, ok := tool.InstallParams["service"]; ok && serviceVal != nil {
+		hasService := false
+		switch v := serviceVal.(type) {
+		case bool:
+			hasService = v
+		case string:
+			hasService = v != ""
+		}
+		if hasService {
+			if b.log != nil {
+				b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services stop %s", formula)))
+			}
+			svcCmd := b.brewCommand(ctx, "services", "stop", formula)
+			if err := svcCmd.Run(); err != nil {
+				if b.log != nil {
+					b.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("brew services stop %s: %v", formula, err)))
+				}
+			}
+		}
+	}
+
 	cmd := b.brewCommand(ctx, "uninstall", formula)
 	return cmd.Run()
 }

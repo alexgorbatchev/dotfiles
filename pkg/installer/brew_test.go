@@ -320,6 +320,81 @@ func TestBrewInstaller(t *testing.T) {
 		}
 	})
 
+	t.Run("Uninstall with service stops service before uninstall", func(t *testing.T) {
+		testCases := []struct {
+			name       string
+			serviceVal interface{}
+		}{
+			{"service bool true", true},
+			{"service string start", "start"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				runner.Clear()
+				tool := &config.ToolConfig{
+					Name: "redis",
+					InstallParams: map[string]interface{}{
+						"service": tc.serviceVal,
+					},
+				}
+
+				err := inst.Uninstall(context.Background(), tool)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+
+				if len(runner.History) < 2 {
+					t.Fatalf("expected at least 2 commands, got %d", len(runner.History))
+				}
+
+				cmdStop := runner.History[0]
+				if filepath.Base(cmdStop.Name) != "brew" || len(cmdStop.Args) != 3 ||
+					cmdStop.Args[0] != "services" || cmdStop.Args[1] != "stop" || cmdStop.Args[2] != "redis" {
+					t.Errorf("expected brew services stop redis, got: %s %v", cmdStop.Name, cmdStop.Args)
+				}
+
+				cmdUninstall := runner.History[1]
+				if filepath.Base(cmdUninstall.Name) != "brew" || len(cmdUninstall.Args) != 2 ||
+					cmdUninstall.Args[0] != "uninstall" || cmdUninstall.Args[1] != "redis" {
+					t.Errorf("expected brew uninstall redis, got: %s %v", cmdUninstall.Name, cmdUninstall.Args)
+				}
+			})
+		}
+	})
+
+	t.Run("Uninstall tolerates service stop failure", func(t *testing.T) {
+		runner.Clear()
+		runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+			if len(c.Args) >= 2 && c.Args[0] == "services" && c.Args[1] == "stop" {
+				return errors.New("service not running")
+			}
+			return nil
+		})
+
+		tool := &config.ToolConfig{
+			Name: "redis",
+			InstallParams: map[string]interface{}{
+				"service": true,
+			},
+		}
+
+		err := inst.Uninstall(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("expected uninstall to succeed despite service stop error, got: %v", err)
+		}
+
+		if len(runner.History) < 2 {
+			t.Fatalf("expected at least 2 commands, got %d", len(runner.History))
+		}
+
+		cmdUninstall := runner.History[1]
+		if filepath.Base(cmdUninstall.Name) != "brew" || len(cmdUninstall.Args) != 2 ||
+			cmdUninstall.Args[0] != "uninstall" || cmdUninstall.Args[1] != "redis" {
+			t.Errorf("expected brew uninstall redis, got: %s %v", cmdUninstall.Name, cmdUninstall.Args)
+		}
+	})
+
 	t.Run("CheckUpdate success", func(t *testing.T) {
 		runner.Clear()
 		runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"}}]`), nil)
