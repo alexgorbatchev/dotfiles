@@ -47,6 +47,20 @@ func getRepoRoot() (string, error) {
 	return findRepoRootFrom(cwd)
 }
 
+func getGitShortSHA(dir string) string {
+	cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "unknown"
+	}
+	sha := strings.TrimSpace(string(out))
+	if sha == "" {
+		return "unknown"
+	}
+	return sha
+}
+
 func binName(base string) string {
 	if runtime.GOOS == "windows" {
 		return base + ".exe"
@@ -96,7 +110,11 @@ func Run(opts Options) error {
 		devBinName := binName("dotfiles-dev")
 		devBin = filepath.Join(tmpDir, devBinName)
 
-		compileCmd := exec.Command("go", "build", "-o", devBin, "./cmd/dotfiles")
+		shortSHA := getGitShortSHA(repoRoot)
+		devVersion := fmt.Sprintf("999.0.0-dev.%s", shortSHA)
+		ldflags := fmt.Sprintf("-s -w -X main.Version=%s", devVersion)
+
+		compileCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", devBin, "./cmd/dotfiles")
 		compileCmd.Dir = repoRoot
 		if out, err := compileCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("compiling dev binary: %w\n%s", err, string(out))

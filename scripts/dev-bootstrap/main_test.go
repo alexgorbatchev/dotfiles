@@ -214,7 +214,40 @@ export default defineConfig(({ configFileDir }) => ({
 		if !strings.Contains(outStr, "[dev-bootstrap] Compiling dev binary for") {
 			t.Errorf("expected output to mention compiling dev binary, got: %s", outStr)
 		}
+
+		binName := "dotfiles"
+		if runtime.GOOS == "windows" {
+			binName = "dotfiles.exe"
+		}
+		deployedBin := filepath.Join(tmpTarget, ".generated", "binaries", "dotfiles", "current", binName)
+		verCmd := exec.Command(deployedBin, "self", "version")
+		verOut, err := verCmd.Output()
+		if err != nil {
+			t.Fatalf("failed to run self version on deployed binary: %v", err)
+		}
+		verStr := strings.TrimSpace(string(verOut))
+		if !strings.HasPrefix(verStr, "999.0.0-dev.") {
+			t.Errorf("expected version to start with '999.0.0-dev.', got: %s", verStr)
+		}
 	})
+}
+
+func TestGetGitShortSHA(t *testing.T) {
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		t.Fatalf("failed to get repo root: %v", err)
+	}
+
+	sha := getGitShortSHA(repoRoot)
+	if sha == "" || sha == "unknown" {
+		t.Errorf("expected valid git SHA from repoRoot, got: %q", sha)
+	}
+
+	nonGit := t.TempDir()
+	shaNonGit := getGitShortSHA(nonGit)
+	if shaNonGit != "unknown" {
+		t.Errorf("expected 'unknown' from non-git dir, got: %q", shaNonGit)
+	}
 }
 
 func TestRunMain(t *testing.T) {
