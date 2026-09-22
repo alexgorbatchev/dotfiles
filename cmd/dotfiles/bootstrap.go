@@ -21,6 +21,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/proxy"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
@@ -123,12 +124,17 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		if !found {
 			return nil, fmt.Errorf("configuration file not specified and defaults not found")
 		}
-	} else if !filepath.IsAbs(configPath) {
-		cwdRel := filepath.Join(cwd, configPath)
-		if exists, _ := fileExists(cwdRel); exists {
-			configPath = cwdRel
-		} else {
-			configPath = filepath.Join(repoRoot, configPath)
+	} else {
+		if home, err := os.UserHomeDir(); err == nil {
+			configPath = utils.ExpandHomePath(home, configPath)
+		}
+		if !filepath.IsAbs(configPath) {
+			cwdRel := filepath.Join(cwd, configPath)
+			if exists, _ := fileExists(cwdRel); exists {
+				configPath = cwdRel
+			} else {
+				configPath = filepath.Join(repoRoot, configPath)
+			}
 		}
 	}
 

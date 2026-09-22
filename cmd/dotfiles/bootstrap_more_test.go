@@ -55,6 +55,29 @@ func TestBootstrapServicesValid(t *testing.T) {
 	}
 }
 
+func TestBootstrapServices_ExpandHomePath(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	cfgDir := filepath.Join(tmpHome, ".dotfiles")
+	if err := os.MkdirAll(cfgDir, 0755); err != nil {
+		t.Fatalf("failed to create cfgDir: %v", err)
+	}
+	cfgPath := filepath.Join(cfgDir, "dotfiles.config.ts")
+	_ = os.WriteFile(cfgPath, []byte(`export default { paths: { generatedDir: "./.generated" } };`), 0644)
+
+	ctx := context.Background()
+	services, err := BootstrapServices(ctx, "~/.dotfiles/dotfiles.config.ts")
+	if err != nil {
+		t.Fatalf("expected BootstrapServices to expand tilde and succeed, got error: %v", err)
+	}
+	defer services.Close()
+
+	if services.ConfigPath != cfgPath {
+		t.Errorf("expected services.ConfigPath %q, got %q", cfgPath, services.ConfigPath)
+	}
+}
+
 func TestBootstrapHelpersMore(t *testing.T) {
 	// fileExists
 	tmpDir := t.TempDir()
