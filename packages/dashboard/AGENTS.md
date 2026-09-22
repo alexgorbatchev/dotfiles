@@ -17,6 +17,7 @@ Dashboard Preact client and asset bundler for dotfiles state, health, and usage 
 - Drift inspection UI (`ToolDriftCard`): displays 3-way synchronization state and visual diffs for declared templates, symlinks, and managed comment blocks within the tool detail view.
 - `types.gen.ts` is generated from Go config structs only. REST response shapes are hand-written in `src/shared/types.ts`.
 - Install, update and check-for-updates run through the `useToolActions` hook and render through `ToolActionButtons`. Views differ only by the `size` prop, so extend the shared component rather than adding per-view buttons, and keep one hook instance per page so the result banner sees every action.
+- `Nav` displays the CLI release version next to the '⚡ Dotfiles' title using a secondary `Badge` sourced from `/api/config`.
 
 ## Local gotchas
 

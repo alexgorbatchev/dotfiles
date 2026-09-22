@@ -23,6 +23,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		"binariesDir":    paths.BinariesDir,
 		"targetDir":      paths.TargetDir,
 		"toolConfigsDir": paths.ToolConfigsDir,
+		"version":        s.version,
 	}
 	writeJSON(w, true, data, "")
 }

@@ -119,9 +119,15 @@ type Server struct {
 	githubRawBaseURL string
 	// httpClient fetches remote READMEs; nil means the default client with readmeFetchTimeout.
 	httpClient *http.Client
+	version    string
 }
 
 const readmeFetchTimeout = 10 * time.Second
+
+// SetVersion sets the release version reported by the dashboard server.
+func (s *Server) SetVersion(v string) {
+	s.version = v
+}
 
 // SetHTTPClient routes the dashboard's outbound GitHub requests through client.
 func (s *Server) SetHTTPClient(client *http.Client) {

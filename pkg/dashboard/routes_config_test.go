@@ -96,6 +96,45 @@ func TestDashboardAPIs(t *testing.T) {
 	}
 }
 
+func TestHandleConfig_Version(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    "/test/dotfiles",
+			GeneratedDir:   "/test/generated",
+			BinariesDir:    "/test/binaries",
+			TargetDir:      "/test/target",
+			ToolConfigsDir: t.TempDir(),
+		},
+	}
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", projCfg, nil, nil)
+	server.SetVersion("2.6.0")
+
+	recorder := httptest.NewRecorder()
+	server.handleConfig(recorder, httptest.NewRequest("GET", "/api/config", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+
+	var payload struct {
+		Success bool `json:"success"`
+		Data    struct {
+			DotfilesDir string `json:"dotfilesDir"`
+			Version     string `json:"version"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !payload.Success {
+		t.Fatalf("expected success, got body %s", recorder.Body.String())
+	}
+	if payload.Data.Version != "2.6.0" {
+		t.Errorf("expected version 2.6.0, got %q", payload.Data.Version)
+	}
+}
+
 func TestDashboardMoreRoutes(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 	ctx := context.Background()

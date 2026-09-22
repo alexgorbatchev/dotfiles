@@ -1,8 +1,11 @@
 import { type JSX } from "preact";
 import { useLocation } from "preact-iso";
+import { useFetch } from "../hooks/useFetch";
 import { Search } from "../icons";
+import type { IConfigSummary } from "../../shared/types";
 
 import { cn } from "../lib/utils";
+import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 
 const links = [
@@ -22,13 +25,30 @@ function openCommandPalette(): void {
 export function Nav(): JSX.Element {
   const { url } = useLocation();
   const pathname = getPathname(url);
+  const { data: config } = useFetch<IConfigSummary>("/config");
+
+  const formattedVersion = config?.version
+    ? config.version.startsWith("v")
+      ? config.version
+      : `v${config.version}`
+    : null;
 
   return (
     <nav data-testid="Nav" class="bg-card border-b border-border">
       <div class="max-w-7xl mx-auto px-4">
         <div class="flex items-center justify-between h-14">
           <div class="flex items-center space-x-4">
-            <span class="text-xl font-bold text-primary">⚡ Dotfiles</span>
+            <div class="flex items-baseline gap-2">
+              <span class="text-xl font-bold text-primary">⚡ Dotfiles</span>
+              {formattedVersion && (
+                <Badge
+                  variant="secondary"
+                  class="font-mono text-xs text-muted-foreground bg-muted-foreground/15 hover:bg-muted-foreground/20"
+                >
+                  {formattedVersion}
+                </Badge>
+              )}
+            </div>
             <div class="flex space-x-1">
               {links.map((link) => {
                 const isActive = pathname === link.path || (link.path !== "/" && pathname.startsWith(link.path));

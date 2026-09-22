@@ -200,6 +200,7 @@ export interface IConfigSummary {
   binariesDir: string;
   targetDir: string;
   toolConfigsDir: string | string[];
+  version?: string;
 }
 
 /**
