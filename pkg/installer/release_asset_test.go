@@ -230,6 +230,19 @@ func TestMatchReleaseAsset(t *testing.T) {
 			assetPattern: "*.tar.gz",
 			wantName:     "tool-linux-amd64.tar.gz",
 		},
+		{
+			name: "universal or architecture-agnostic asset matched without pattern (onefetch macOS)",
+			assets: []asset{
+				{Name: "onefetch-linux.tar.gz"},
+				{Name: "onefetch-mac.tar.gz"},
+				{Name: "onefetch-setup.exe"},
+				{Name: "onefetch-win.tar.gz"},
+				{Name: "onefetch_amd64.deb"},
+			},
+			sysInfo:      arch.SystemInfo{OS: "darwin", Arch: "arm64"},
+			assetPattern: "",
+			wantName:     "onefetch-mac.tar.gz",
+		},
 	}
 
 	for _, tt := range tests {

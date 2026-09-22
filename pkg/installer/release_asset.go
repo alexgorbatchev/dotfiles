@@ -46,34 +46,22 @@ func matchReleaseAsset[T any](assets []T, name func(T) string, sysInfo arch.Syst
 		return nil
 	}
 
-	archRegex := arch.GetArchitectureRegex(sysInfo)
-
-	var strictMatches []T
-	for _, c := range candidates {
-		if arch.MatchesArchitecture(name(c), archRegex) {
-			strictMatches = append(strictMatches, c)
-		}
+	candidateNames := make([]string, len(candidates))
+	for i, c := range candidates {
+		candidateNames[i] = name(c)
 	}
 
-	if len(strictMatches) > 0 {
-		strictNames := make([]string, len(strictMatches))
-		for i, sm := range strictMatches {
-			strictNames[i] = name(sm)
-		}
-		bestName := arch.SelectBestMatch(strictNames, sysInfo)
-		if bestName != "" {
-			for _, asset := range strictMatches {
-				if name(asset) == bestName {
-					assetCopy := asset
-					return &assetCopy
-				}
+	bestName := arch.SelectBestMatch(candidateNames, sysInfo)
+	if bestName != "" {
+		for _, asset := range candidates {
+			if name(asset) == bestName {
+				assetCopy := asset
+				return &assetCopy
 			}
 		}
-		assetCopy := strictMatches[0]
-		return &assetCopy
 	}
 
-	// Fallback if assetPattern was explicitly specified but no strict platform match was found
+	// Fallback if assetPattern was explicitly specified but no platform match was found
 	if assetPattern != "" && len(candidates) > 0 {
 		assetCopy := candidates[0]
 		return &assetCopy
