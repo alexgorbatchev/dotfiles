@@ -228,8 +228,9 @@ func (c *CurlTarInstaller) Uninstall(ctx context.Context, tool *config.ToolConfi
 	return nil
 }
 
+// CheckUpdate reports ErrUpdateCheckUnsupported. A fixed download URL carries no version information to compare against.
 func (c *CurlTarInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{}, nil
+	return nil, ErrUpdateCheckUnsupported
 }
 
 func init() {

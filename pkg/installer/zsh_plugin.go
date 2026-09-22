@@ -198,8 +198,9 @@ func (z *ZshPluginInstaller) Uninstall(ctx context.Context, tool *config.ToolCon
 	return nil
 }
 
+// CheckUpdate reports ErrUpdateCheckUnsupported. Nothing here asks the plugin's repository for a newer revision.
 func (z *ZshPluginInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{}, nil
+	return nil, ErrUpdateCheckUnsupported
 }
 
 func init() {

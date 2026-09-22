@@ -240,14 +240,6 @@ func TestManualInstaller(t *testing.T) {
 			t.Error("expected file to be removed")
 		}
 	})
-
-	t.Run("CheckUpdate success", func(t *testing.T) {
-		tool := &config.ToolConfig{Name: "mytool"}
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("unexpected: %v, %v", res, err)
-		}
-	})
 }
 
 // newManualCopyFixture seeds a non-executable source binary so that a copy which

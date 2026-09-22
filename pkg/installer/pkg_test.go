@@ -90,7 +90,7 @@ func TestPkgInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("Uninstall / Update and details", func(t *testing.T) {
+	t.Run("Uninstall and details", func(t *testing.T) {
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewPkgInstaller(runner, fsys, dl, sysCtx)
 
@@ -98,11 +98,6 @@ func TestPkgInstaller(t *testing.T) {
 		err := inst.Uninstall(context.Background(), tool)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
-		}
-
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("unexpected: %v, %v", res, err)
 		}
 	})
 

@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -683,12 +684,12 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 	// A tool with no installation method has nothing upstream to compare against, and one
 	// that turned update checks off with .updateCheck({ enabled: false }) asked not to be
 	// asked. Neither reaches the installer.
-	if targetTool.InstallationMethod == "" || !targetTool.UpdateCheckEnabled() {
-		writeJSON(w, true, map[string]any{
-			"hasUpdate":      false,
-			"currentVersion": "unknown",
-			"latestVersion":  "unknown",
-		}, "")
+	if targetTool.InstallationMethod == "" {
+		writeJSON(w, true, unsupportedCheckUpdate("unknown", "Update checking is not supported for a tool without an installation method"), "")
+		return
+	}
+	if !targetTool.UpdateCheckEnabled() {
+		writeJSON(w, true, unsupportedCheckUpdate("unknown", "Update checking is disabled by updateCheck.enabled"), "")
 		return
 	}
 
@@ -699,6 +700,11 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 	}
 
 	res, err := inst.CheckUpdate(ctx, targetTool)
+	if errors.Is(err, installer.ErrUpdateCheckUnsupported) {
+		reason := fmt.Sprintf("Update checking is not supported for installation method %q", targetTool.InstallationMethod)
+		writeJSON(w, true, unsupportedCheckUpdate(orUnknown(s.installedVersion(ctx, toolName)), reason), "")
+		return
+	}
 	if err != nil {
 		writeJSON(w, false, nil, fmt.Sprintf("Failed to check update for %s: %v", toolName, err))
 		return
@@ -709,9 +715,7 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 	// fallback, because "latest" is a resolution strategy rather than an installed version.
 	currentVer := res.LocalVersion
 	if currentVer == "" {
-		if installRecord, err := s.registry.GetToolInstallation(ctx, toolName); err == nil && installRecord != nil {
-			currentVer = installRecord.Version
-		}
+		currentVer = s.installedVersion(ctx, toolName)
 	}
 
 	// The same comparison check-updates makes, so the two cannot disagree about a tool.
@@ -726,7 +730,31 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		"hasUpdate":      hasUpdate,
 		"currentVersion": orUnknown(currentVer),
 		"latestVersion":  orUnknown(res.LatestVersion),
+		"supported":      true,
 	}, "")
+}
+
+// unsupportedCheckUpdate is the check-update answer for a tool nothing upstream was asked
+// about, in the shape v1's route used: hasUpdate false says nothing, so supported is
+// false and error says why.
+func unsupportedCheckUpdate(currentVersion, reason string) map[string]any {
+	return map[string]any{
+		"hasUpdate":      false,
+		"currentVersion": currentVersion,
+		"latestVersion":  "unknown",
+		"supported":      false,
+		"error":          reason,
+	}
+}
+
+// installedVersion is the version the registry recorded for toolName, or "" when it
+// has none.
+func (s *Server) installedVersion(ctx context.Context, toolName string) string {
+	installRecord, err := s.registry.GetToolInstallation(ctx, toolName)
+	if err != nil || installRecord == nil {
+		return ""
+	}
+	return installRecord.Version
 }
 
 // orUnknown renders a version the dashboard could not determine as the client's

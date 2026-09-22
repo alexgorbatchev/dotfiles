@@ -552,6 +552,8 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 		latestVersion: "1.1.0",
 	}
 	_ = installer.Register(mockInst)
+	unsupportedInst := &mockCheckUpdateInstaller{name: "mock-unsupported-inst", err: installer.ErrUpdateCheckUnsupported}
+	_ = installer.Register(unsupportedInst)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -573,6 +575,11 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 		{
 			Name:               "no-method-tool",
 			InstallationMethod: "",
+		},
+		{
+			Name:               "unsupported-tool",
+			Version:            &ver,
+			InstallationMethod: unsupportedInst.name,
 		},
 	}
 
@@ -617,6 +624,9 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 		if data["latestVersion"] != "1.1.0" {
 			t.Errorf("expected latestVersion '1.1.0', got %v", data["latestVersion"])
 		}
+		if data["supported"] != true {
+			t.Errorf("expected supported true for an installer that checked upstream, got %v", data["supported"])
+		}
 	})
 
 	t.Run("POST /api/tools/no-method-tool/check-update unsupported", func(t *testing.T) {
@@ -647,6 +657,46 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 
 		if data["currentVersion"] != "unknown" || data["latestVersion"] != "unknown" {
 			t.Errorf("expected unknown versions for a tool without an installation method, got %v", data)
+		}
+		if data["supported"] != false || data["error"] == nil {
+			t.Errorf("expected an unsupported check with a reason for a tool without an installation method, got %v", data)
+		}
+	})
+
+	// An installer that cannot learn the latest version must not be reported as up to
+	// date, which is what the client shows for any answer with hasUpdate false.
+	t.Run("POST /api/tools/unsupported-tool/check-update reports the check as unsupported", func(t *testing.T) {
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/unsupported-tool/check-update", server.Port())
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			t.Fatalf("failed to POST check-update: %v", err)
+		}
+		defer resp.Body.Close()
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("failed to decode JSON response: %v", err)
+		}
+		// The shape v1's tool-check-update route answered with.
+		if body["success"] != true {
+			t.Fatalf("expected success: true, got %v", body)
+		}
+		data, ok := body["data"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected data to be a map, got %T", body["data"])
+		}
+		want := map[string]any{
+			"hasUpdate": false,
+			// Only the registry says what is installed; the configured version is not a fallback.
+			"currentVersion": "unknown",
+			"latestVersion":  "unknown",
+			"supported":      false,
+			"error":          `Update checking is not supported for installation method "mock-unsupported-inst"`,
+		}
+		for key, value := range want {
+			if data[key] != value {
+				t.Errorf("data[%q] = %v, want %v", key, data[key], value)
+			}
 		}
 	})
 }
@@ -1553,12 +1603,17 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 	})
 
 	t.Run("check-update matches ICheckUpdateResponse", func(t *testing.T) {
-		for _, tool := range []string{"bat", "no-method-tool"} {
+		// A tool nothing upstream was asked about also says why, in the optional error.
+		wantKeys := map[string][]string{
+			"bat":            {"hasUpdate", "currentVersion", "latestVersion", "supported"},
+			"no-method-tool": {"hasUpdate", "currentVersion", "latestVersion", "supported", "error"},
+		}
+		for tool, keys := range wantKeys {
 			data, ok := getJSONData(t, http.MethodPost, base+"/api/tools/"+tool+"/check-update").(map[string]any)
 			if !ok {
 				t.Fatalf("%s: expected check-update object", tool)
 			}
-			assertExactKeys(t, tool+" check-update", data, "hasUpdate", "currentVersion", "latestVersion")
+			assertExactKeys(t, tool+" check-update", data, keys...)
 		}
 	})
 

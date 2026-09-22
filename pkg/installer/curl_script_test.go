@@ -119,42 +119,6 @@ func TestCurlScriptInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate success", func(t *testing.T) {
-		tool := &config.ToolConfig{Name: "mytool"}
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("an installer that cannot check must report no verdict and no version, got %+v", res)
-		}
-	})
-
-	t.Run("CheckUpdate with CLI version detection", func(t *testing.T) {
-		runner.Clear()
-		binPath := "/test/bin/mytool"
-		_ = fsys.WriteFile(binPath, []byte("dummy binary contents"), 0755)
-
-		runner.Register(binPath, []byte("mytool v2.1.4\n"), nil)
-
-		tool := &config.ToolConfig{
-			Name: "mytool",
-			InstallParams: map[string]interface{}{
-				"versionArgs":  []interface{}{"--version"},
-				"versionRegex": "v([0-9.]+)",
-			},
-		}
-
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		if res.LocalVersion != "2.1.4" {
-			t.Errorf("expected detected local version '2.1.4', got %q", res.LocalVersion)
-		}
-	})
-
 	// A binary the script left outside the staging directory is not guessed at: without
 	// binaryPath the installation fails and says how to point the script at the staging
 	// directory, and nothing is copied out of a system directory.
@@ -187,36 +151,6 @@ func TestCurlScriptInstaller(t *testing.T) {
 		}
 		if exists, _ := sysFsys.Exists("/test/bin/mytool"); exists {
 			t.Error("the system binary was copied into the staging directory")
-		}
-	})
-
-	t.Run("CheckUpdate with CLI version check", func(t *testing.T) {
-		runner.Clear()
-		cFS := fs.NewMemFS()
-		_ = cFS.MkdirAll("/test/bin", 0755)
-		_ = cFS.WriteFile("/test/bin/chktool", []byte("bin"), 0755)
-
-		cInst := NewCurlScriptInstaller(runner, cFS, downloader.NewDownloader(cFS, nil), nil)
-		cInst.BinDir = "/test/bin"
-
-		runner.Register("/test/bin/chktool", []byte("chktool v2.1.0\n"), nil)
-
-		currVer := "v1.0.0"
-		tool := &config.ToolConfig{
-			Name:    "chktool",
-			Version: &currVer,
-			InstallParams: map[string]interface{}{
-				"versionArgs":  []interface{}{"--version"},
-				"versionRegex": `(\d+\.\d+\.\d+)`,
-			},
-		}
-
-		res, err := cInst.CheckUpdate(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("unexpected CheckUpdate error: %v", err)
-		}
-		if res.LocalVersion != "2.1.0" {
-			t.Errorf("expected LocalVersion 2.1.0, got %q", res.LocalVersion)
 		}
 	})
 

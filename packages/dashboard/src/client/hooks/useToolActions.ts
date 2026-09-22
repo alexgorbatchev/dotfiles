@@ -9,6 +9,7 @@ import type {
 import { postApi } from "../api";
 
 const RELOAD_DELAY_MS = 1500;
+const UNSUPPORTED_CHECK_MESSAGE = "Update checking is not supported for this tool";
 
 export type ToolActionKind = "install" | "update" | "check";
 
@@ -127,7 +128,9 @@ export function useToolActions(): IUseToolActions {
     try {
       const response = await postApi<ICheckUpdateResponse>(`/tools/${encodeURIComponent(toolName)}/check-update`, {});
 
-      if (response.error) {
+      if (!response.supported) {
+        setOutcome({ toolName, kind: "check", message: response.error ?? UNSUPPORTED_CHECK_MESSAGE, tone: "error" });
+      } else if (response.error) {
         setOutcome({ toolName, kind: "check", message: response.error, tone: "error" });
       } else if (response.hasUpdate) {
         setOutcome({

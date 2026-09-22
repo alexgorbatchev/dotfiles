@@ -422,6 +422,21 @@ func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) 
 	return nil
 }
 
+// mockUpdateCheckUnsupported names the installers that answer every update check with
+// installer.ErrUpdateCheckUnsupported in production. dmg and pkg are left out because
+// theirs depends on the tool's source, which this stand-in does not model.
+var mockUpdateCheckUnsupported = map[string]bool{
+	"manual":      true,
+	"curl-binary": true,
+	"curl-tar":    true,
+	"curl-script": true,
+	"cargo":       true,
+	"zsh-plugin":  true,
+}
+
 func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
+	if mockUpdateCheckUnsupported[m.name] {
+		return nil, installer.ErrUpdateCheckUnsupported
+	}
 	return &installer.UpdateCheckResult{}, nil
 }

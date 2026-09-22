@@ -17,6 +17,7 @@ Tool installer plugins (github-release, curl-script, cargo, brew, apt, dnf, pacm
 - Decide whether a download is an archive with `archive.IsSupported` / `archive.Extension`; never keep a local list of archive suffixes. Release installers (github-release, gitea-release) hand the downloaded asset to `releaseAssetInstaller` in `release_asset.go`, which extracts archives, installs extensionless assets as the binary, and fails on anything else (unextractable archive formats, checksums, packages) instead of chmod-ing them.
 - `MatchAssetPattern` globs support minimatch-style brace alternation (`*.{tar.xz,zip}`) via `expandBraces` over `path.Match`, matching the v1 matcher.
 - Implement installer plugins by satisfying the `Installer` interface in `pkg/installer/installer.go`.
+- A `CheckUpdate` that has no way to learn the latest upstream version for the tool it was given returns `ErrUpdateCheckUnsupported`, never an empty `UpdateCheckResult`: callers report the sentinel as "update check not supported" (`tool update <tool>` then reinstalls, as v1 did, while updating everything skips unless `--force`; `tool check` and the dashboard say so), while an empty result reads as "up to date".
 
 ## Local gotchas
 

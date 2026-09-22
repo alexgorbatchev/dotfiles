@@ -324,38 +324,11 @@ func (c *CurlScriptInstaller) Uninstall(ctx context.Context, tool *config.ToolCo
 	return nil
 }
 
+// CheckUpdate reports ErrUpdateCheckUnsupported. An install script decides for itself
+// what it installs, so there is no upstream version to compare against; versionArgs
+// only tells what is installed, which the installation record already holds.
 func (c *CurlScriptInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
-	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
-
-	if len(versionArgs) == 0 {
-		return &UpdateCheckResult{}, nil
-	}
-
-	destDir := c.BinDir
-	if destDir == "" {
-		destDir = os.TempDir()
-	}
-
-	binNames := GetBinaryNames(tool.Name, tool.Binaries)
-	if len(binNames) == 0 {
-		return &UpdateCheckResult{}, nil
-	}
-
-	binaryPath := filepath.Join(destDir, binNames[0])
-	exists, err := c.fsys.Exists(binaryPath)
-	if err != nil || !exists {
-		return &UpdateCheckResult{}, nil
-	}
-
-	localVersion, err := detectVersionViaCli(ctx, c.runner, binaryPath, versionArgs, versionRegex)
-	if err != nil {
-		return nil, fmt.Errorf("detecting version: %w", err)
-	}
-
-	return &UpdateCheckResult{
-		LocalVersion: localVersion,
-	}, nil
+	return nil, ErrUpdateCheckUnsupported
 }
 
 func init() {

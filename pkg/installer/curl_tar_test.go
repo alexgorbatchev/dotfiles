@@ -106,17 +106,6 @@ func TestCurlTarInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate success", func(t *testing.T) {
-		tool := &config.ToolConfig{Name: "mytool"}
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("an installer that cannot check must report no verdict and no version, got %+v", res)
-		}
-	})
-
 	t.Run("Install fails missing URL", func(t *testing.T) {
 		tool := &config.ToolConfig{
 			Name: "mytool",

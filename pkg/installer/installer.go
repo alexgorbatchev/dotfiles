@@ -42,6 +42,13 @@ type UpdateCheckResult struct {
 	Cached        bool
 }
 
+// ErrUpdateCheckUnsupported is what CheckUpdate returns when the installer has no way to
+// learn the latest version upstream for the tool it was given: a manual installation, a
+// fixed download URL, a script, or a source nothing here queries. It is distinct from an
+// empty UpdateCheckResult so that "nothing was checked" can never be reported as "up to
+// date".
+var ErrUpdateCheckUnsupported = errors.New("update check not supported")
+
 // SystemContext is the target an installation is being carried out for: the platform
 // and architecture whose asset is selected, and the C library that decides between a
 // glibc and a musl build of it. It is the run's resolved target (--platform, --arch and

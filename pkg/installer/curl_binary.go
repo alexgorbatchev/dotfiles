@@ -138,8 +138,9 @@ func (c *CurlBinaryInstaller) Uninstall(ctx context.Context, tool *config.ToolCo
 	return nil
 }
 
+// CheckUpdate reports ErrUpdateCheckUnsupported. A fixed download URL carries no version information to compare against.
 func (c *CurlBinaryInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{}, nil
+	return nil, ErrUpdateCheckUnsupported
 }
 
 func init() {

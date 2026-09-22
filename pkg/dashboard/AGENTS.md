@@ -13,7 +13,8 @@ Go backend REST API routes and embedded dashboard client server.
 - `NewServer` accepts configurable `host` address (defaults to `127.0.0.1`, configurable via `--host` / `-H`).
 - `NewServer` also takes the shared `fs.FS` and the config file path, because route handlers need them to resolve paths the way the loader does.
 - Resolve tool configuration directories with `Server.toolConfigsDirs` (which calls `PathsConfig.GetToolConfigsDirs`), never by reading `Paths.ToolConfigsDir` directly: that value may be a string or a list. Placeholders, `~` and relative paths are already resolved by `ProjectConfig.ResolvePlaceholders` when the loader hands the configuration over.
-- Installers only receive a `ToolConfig`, so several hardcode `HasUpdate` and leave `LocalVersion` empty. Routes that report update state must compare against the installed version from the registry.
+- Installers only receive a `ToolConfig`, so most leave `LocalVersion` empty. Routes that report update state must compare against the installed version from the registry.
+- `check-update` answers `installer.ErrUpdateCheckUnsupported` (and a tool with no installation method or with update checks disabled) with `success: true` and `supported: false` plus an `error` saying why, the shape v1 used; `hasUpdate: false` then says nothing about the tool.
 - `Server.SetVersion` sets the CLI release version reported in the `/api/config` response (`version`).
 
 ## Local gotchas

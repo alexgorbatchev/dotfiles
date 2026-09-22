@@ -118,6 +118,11 @@ _(Alias: `u`, Root shortcuts: `dotfiles update`, `dotfiles u`)_
 
 Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed are skipped during batch updates.
 
+Some installation methods have no way to learn the latest version upstream: `manual`, `curl-binary`, `curl-tar`, `curl-script`, `cargo`, `zsh-plugin`, and `dmg`/`pkg` downloaded from a direct URL rather than a GitHub release. Nothing can tell whether such a tool is current, so `update` never reports it as up to date:
+
+- Named tools (`dotfiles tool update <tool>`, and `<binary> @update` from a shim): warns `Update check not supported for installer "<method>", performing regular install instead` and reinstalls the tool, with or without `--force`.
+- Updating everything (no tool names): warns `Update check not supported for installer "<method>"` and skips the tool. With `--force` it is reinstalled like every other installed tool.
+
 - `-f, --force`: Re-download and reinstall even if already up to date.
 - `--shim-mode`: Quiet output, used by generated shims running `<binary> @update`.
 
@@ -125,7 +130,9 @@ Updates installed tools to their latest available release. With no argument, upd
 
 Checks available updates from upstream releases without installing.
 
-- `--json`: Output update status in JSON format.
+Each tool is reported as having an update available, as up to date, or, when its installation method cannot check for updates (see [`tool update`](#dotfiles-tool-update-tool)), as `<tool>: update check not supported (<method>)`.
+
+- `--json`: Output update status in JSON format. Each entry carries `tool`, `currentVersion`, `latestVersion`, `hasUpdate`, `cached`, and `updateCheckSupported`; when `updateCheckSupported` is `false`, nothing upstream was asked and `hasUpdate` says nothing about whether the tool is current.
 
 #### `dotfiles tool validate [tool]`
 

@@ -124,8 +124,9 @@ func (m *ManualInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 	return nil
 }
 
+// CheckUpdate reports ErrUpdateCheckUnsupported. A manually installed binary has no upstream to ask for a newer version.
 func (m *ManualInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
-	return &UpdateCheckResult{}, nil
+	return nil, ErrUpdateCheckUnsupported
 }
 
 func init() {

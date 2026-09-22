@@ -23,12 +23,6 @@ func TestMockInstaller(t *testing.T) {
 	if err := mInst.Uninstall(ctx, tool); err != nil {
 		t.Errorf("expected nil error on Uninstall, got %v", err)
 	}
-
-	res, err := mInst.CheckUpdate(ctx, tool)
-	if err != nil || res == nil {
-		t.Errorf("CheckUpdate failed: %v, %v", err, res)
-	}
-
 }
 
 func TestBootstrapServicesValid(t *testing.T) {

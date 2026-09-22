@@ -478,22 +478,6 @@ func TestInstallerErrorAndCheckUpdatePaths(t *testing.T) {
 	pacman := NewPacmanInstaller(runner, memFS, sysCtx)
 	_, _ = pacman.CheckUpdate(ctx, badTool)
 
-	// CurlScript checkupdate
-	curlScript := NewCurlScriptInstaller(runner, memFS, dl, sysCtx)
-	_, _ = curlScript.CheckUpdate(ctx, &config.ToolConfig{Name: "script"})
-
-	// CurlTar checkupdate
-	curlTar := NewCurlTarInstaller(runner, memFS, dl, sysCtx)
-	_, _ = curlTar.CheckUpdate(ctx, badTool)
-
-	// Manual checkupdate
-	manual := NewManualInstaller(memFS, sysCtx)
-	_, _ = manual.CheckUpdate(ctx, badTool)
-
-	// ZshPlugin checkupdate
-	zsh := NewZshPluginInstaller(runner, memFS, sysCtx)
-	_, _ = zsh.CheckUpdate(ctx, badTool)
-
 	// 3. GitHub and Gitea matchAsset error paths
 	assets := []githubAsset{
 		{Name: "unrelated-windows-x86.exe"},
@@ -611,11 +595,6 @@ func TestInstallerDeepCoverage(t *testing.T) {
 	resCB, err := curlBin.Install(ctx, tCurlBin)
 	if err != nil || resCB == nil {
 		t.Fatalf("CurlBinary Install failed: %v", err)
-	}
-
-	resCBCheck, err := curlBin.CheckUpdate(ctx, tCurlBin)
-	if err != nil || resCBCheck == nil {
-		t.Errorf("CurlBinary CheckUpdate failed: %v", resCBCheck)
 	}
 
 	// 5. NpmInstaller Install & CheckUpdate

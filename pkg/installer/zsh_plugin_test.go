@@ -127,19 +127,6 @@ func TestZshPluginInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate success", func(t *testing.T) {
-		runner.Clear()
-		fsys = fs.NewMemFS()
-		inst = NewZshPluginInstaller(runner, fsys, nil)
-		inst.BinDir = "/test/plugins"
-
-		tool := &config.ToolConfig{Name: "zsh-autosuggestions"}
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("unexpected: %v, %v", res, err)
-		}
-	})
-
 	t.Run("Install fails missing repo and url", func(t *testing.T) {
 		runner.Clear()
 		fsys = fs.NewMemFS()

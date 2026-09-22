@@ -95,21 +95,6 @@ func TestCargoInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate success", func(t *testing.T) {
-		runner.Clear()
-		tool := &config.ToolConfig{
-			Name: "exa",
-		}
-
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.LatestVersion != "" || res.Outdated != nil {
-			t.Errorf("cargo does not query crates.io, so it must report nothing, got %+v", res)
-		}
-	})
-
 	t.Run("Install failure", func(t *testing.T) {
 		runner.Clear()
 		runner.Register("cargo", nil, errors.New("cargo error"))

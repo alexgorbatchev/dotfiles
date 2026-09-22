@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -51,6 +52,57 @@ func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, p
 		instInstance.BinDir = toolDestDir
 	case *installer.PkgInstaller:
 		instInstance.BinDir = toolDestDir
+	}
+}
+
+// updateCheckUnsupportedMessage is what update and check report for a tool whose
+// installer answered installer.ErrUpdateCheckUnsupported: nothing upstream was asked,
+// so the tool is neither up to date nor outdated as far as dotfiles knows.
+func updateCheckUnsupportedMessage(tool *config.ToolConfig) string {
+	return fmt.Sprintf("Update check not supported for installer %q", tool.InstallationMethod)
+}
+
+// updatePlan is what update decided for one installed tool, from its installer's
+// answer and the --force flag.
+type updatePlan struct {
+	// unsupported is set when the installer answered installer.ErrUpdateCheckUnsupported.
+	unsupported      bool
+	hasUpdate        bool
+	force            bool
+	installedVersion string
+	targetVersion    string
+}
+
+// reinstall reports whether the tool is installed again. A named tool whose installer
+// cannot check for updates is always reinstalled, as v1 did, since nothing else can
+// bring it up to date; updating everything skips such tools before planning.
+func (p updatePlan) reinstall() bool {
+	return p.unsupported || p.hasUpdate || p.force
+}
+
+// announce logs why the tool is about to be reinstalled.
+func (p updatePlan) announce(toolLog *logger.Logger, tool *config.ToolConfig) {
+	switch {
+	case p.unsupported:
+		toolLog.Warn(logger.Message(updateCheckUnsupportedMessage(tool) + ", performing regular install instead"))
+	case p.hasUpdate:
+		toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", p.installedVersion, p.targetVersion)))
+	default:
+		toolLog.Info(logger.Message(fmt.Sprintf("Force updating: reinstalling version %s", p.targetVersion)))
+	}
+}
+
+// planUpdate answers what update does for tool given its installer's answer. res is nil
+// when the installer cannot check, and the target version then comes from resolveUpdate
+// like any other reinstall's.
+func planUpdate(tool *config.ToolConfig, installedVersion string, res *installer.UpdateCheckResult, unsupported, force bool) updatePlan {
+	hasUpdate, targetVersion := resolveUpdate(tool, installedVersion, res)
+	return updatePlan{
+		unsupported:      unsupported,
+		hasUpdate:        hasUpdate,
+		force:            force,
+		installedVersion: installedVersion,
+		targetVersion:    targetVersion,
 	}
 }
 
@@ -143,19 +195,22 @@ When run without arguments, checks all installed tools for updates and installs 
 				configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
 				res, err := inst.CheckUpdate(ctx, targetTool)
-				if err != nil {
+				unsupported := errors.Is(err, installer.ErrUpdateCheckUnsupported)
+				if err != nil && !unsupported {
 					continue
 				}
 
-				hasUpdate, targetVersion := resolveUpdate(targetTool, installed.Version, res)
-
 				toolLog := log.WithTag(targetTool.Name)
-				if hasUpdate || force {
-					if hasUpdate {
-						toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
-					} else {
-						toolLog.Info(logger.Message(fmt.Sprintf("Force updating: reinstalling version %s", targetVersion)))
-					}
+				// Unlike updating one named tool, updating everything does not reinstall a
+				// tool nothing could check unless --force asks for it.
+				if unsupported && !force {
+					toolLog.Warn(logger.Message(updateCheckUnsupportedMessage(targetTool)))
+					continue
+				}
+				plan := planUpdate(targetTool, installed.Version, res, unsupported, force)
+				if plan.reinstall() {
+					plan.announce(toolLog, targetTool)
+					targetVersion := plan.targetVersion
 					targetTool.Version = &targetVersion
 					if targetTool.InstallParams != nil {
 						targetTool.InstallParams["version"] = targetVersion
@@ -203,19 +258,14 @@ When run without arguments, checks all installed tools for updates and installs 
 			toolLog := log.WithTag(targetTool.Name)
 			toolLog.Info(logger.Message("Checking for updates..."))
 			res, err := inst.CheckUpdate(ctx, targetTool)
-			if err != nil {
+			unsupported := errors.Is(err, installer.ErrUpdateCheckUnsupported)
+			if err != nil && !unsupported {
 				return fmt.Errorf("checking update for %q: %w", targetTool.Name, err)
 			}
-
-			hasUpdate, targetVersion := resolveUpdate(targetTool, installed.Version, res)
-
-			if hasUpdate || force {
-				if hasUpdate {
-					toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", installed.Version, targetVersion)))
-				} else {
-					toolLog.Info(logger.Message(fmt.Sprintf("Force updating: reinstalling version %s", targetVersion)))
-				}
-
+			plan := planUpdate(targetTool, installed.Version, res, unsupported, force)
+			if plan.reinstall() {
+				plan.announce(toolLog, targetTool)
+				targetVersion := plan.targetVersion
 				targetTool.Version = &targetVersion
 				if targetTool.InstallParams != nil {
 					targetTool.InstallParams["version"] = targetVersion
@@ -230,19 +280,7 @@ When run without arguments, checks all installed tools for updates and installs 
 				}
 				toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", targetVersion)))
 			} else {
-				if installed != nil && installed.Version != "" {
-					if res != nil && res.Cached {
-						toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s, cached)", installed.Version)))
-					} else {
-						toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s)", installed.Version)))
-					}
-				} else {
-					if res != nil && res.Cached {
-						toolLog.Info(logger.Message("Already up to date (cached)"))
-					} else {
-						toolLog.Info(logger.Message("Already up to date"))
-					}
-				}
+				toolLog.Info(logger.Message("Already up to date" + versionSuffix(installed.Version, res != nil && res.Cached)))
 			}
 		}
 

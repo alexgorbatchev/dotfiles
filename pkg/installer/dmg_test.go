@@ -165,17 +165,11 @@ func TestDmgInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate and basic details", func(t *testing.T) {
+	t.Run("basic details", func(t *testing.T) {
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		if inst.SupportsSudo() {
 			t.Error("expected SupportsSudo() to be false")
-		}
-
-		tool := &config.ToolConfig{Name: "slack"}
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("unexpected result: %v, %v", res, err)
 		}
 	})
 

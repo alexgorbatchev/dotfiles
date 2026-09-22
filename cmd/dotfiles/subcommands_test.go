@@ -1670,21 +1670,31 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		mustContain(t, "stderr", out.Stderr, "New version available: unknown -> v9.9.9")
 	})
 
-	t.Run("reports an installed tool without a version as up to date", func(t *testing.T) {
-		out, err := p.run("tool", "update", "manual-unversioned")
-		if err != nil {
-			t.Fatalf("tool update manual-unversioned: %v\n%s", err, out.Combined)
-		}
-		mustContain(t, "stderr", out.Stderr, "Already up to date")
-		mustNotContain(t, "stderr", out.Stderr, "Already up to date (")
-	})
+	// The manual installer has nothing upstream to ask, so, as in v1, update says so and
+	// reinstalls instead of describing the tool as up to date, with or without a version.
+	for _, name := range []string{"manual-versioned", "manual-unversioned"} {
+		t.Run("reinstalls "+name+" whose installer cannot check for updates", func(t *testing.T) {
+			out, err := p.run("tool", "update", name)
+			if err != nil {
+				t.Fatalf("tool update %s: %v\n%s", name, err, out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr,
+				fmt.Sprintf(`[%s] Update check not supported for installer "manual", performing regular install instead`, name),
+				fmt.Sprintf("[%s] Successfully updated to version", name),
+			)
+			mustNotContain(t, "stderr", out.Stderr, "up to date")
+		})
+	}
 
-	t.Run("force reinstalls the recorded version when nothing is newer", func(t *testing.T) {
+	t.Run("force reinstalls a tool whose installer cannot check for updates", func(t *testing.T) {
 		out, err := p.run("tool", "update", "--force", "manual-versioned")
 		if err != nil {
 			t.Fatalf("tool update --force manual-versioned: %v\n%s", err, out.Combined)
 		}
-		mustContain(t, "stderr", out.Stderr, "Force updating: reinstalling version v1.0.0", "Successfully updated to version v1.0.0")
+		mustContain(t, "stderr", out.Stderr,
+			`Update check not supported for installer "manual", performing regular install instead`,
+			"Successfully updated to version v1.0.0",
+		)
 	})
 
 	t.Run("shim mode is silent", func(t *testing.T) {
@@ -1727,8 +1737,13 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		mustContain(t, "stderr", out.Stderr,
 			"Checking all configured tools for updates...",
 			"[sudo-tool] Updating to version v9.9.9 failed",
+			// Updating everything leaves a tool nothing could check alone unless forced.
+			`[manual-versioned] Update check not supported for installer "manual"`,
 		)
-		mustNotContain(t, "stderr", out.Stderr, "[never-installed]", "[bogus]")
+		mustNotContain(t, "stderr", out.Stderr,
+			"[never-installed]", "[bogus]",
+			"performing regular install instead", "[manual-versioned] Successfully updated",
+		)
 	})
 
 	t.Run("force updating everything reinstalls each installed tool", func(t *testing.T) {
@@ -1738,7 +1753,8 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		}
 		mustContain(t, "stderr", out.Stderr,
 			"[same] Force updating: reinstalling version v0.1.0",
-			"[manual-versioned] Force updating: reinstalling version v1.0.0",
+			`[manual-versioned] Update check not supported for installer "manual", performing regular install instead`,
+			"[manual-versioned] Successfully updated to version v1.0.0",
 		)
 	})
 }
@@ -1756,9 +1772,11 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 		"fail": {"name": "fail", "installationMethod": "github-release", "installParams": {"repo": %q}},
 		"off": {"name": "off", "disabled": true, "installationMethod": "github-release", "installParams": {"repo": %q}},
 		"noinst": {"name": "noinst", "installationMethod": "bogus-installer"},
+		"hand": {"name": "hand", "installationMethod": "manual"},
 		"shell-only": {"name": "shell-only"}
 	`, repoAvail, repoUpd, repoSame, repoFail, repoAvail))
 	p.seedInstallation(t, "upd", "v0.1.0", filepath.Join(p.Root, "installed", "upd"))
+	p.seedInstallation(t, "hand", "v1.0.0", filepath.Join(p.Root, "installed", "hand"))
 
 	t.Run("human output on a fresh fetch", func(t *testing.T) {
 		out, err := p.run("tool", "check")
@@ -1769,15 +1787,18 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 			"avail: available (v9.9.9)\n",
 			"upd: update available (v0.1.0 -> v9.9.9)\n",
 			"same: up to date (v0.1.0)\n",
+			"hand: update check not supported (manual)\n",
 		)
-		mustNotContain(t, "stdout", out.Stdout, "off:", "noinst:", "shell-only:", "fail:")
+		mustNotContain(t, "stdout", out.Stdout, "off:", "noinst:", "shell-only:", "fail:", "hand: up to date")
 		mustContain(t, "stderr", out.Stderr,
 			`Installer "bogus-installer" not found`,
 			"[fail] Update check failed",
 			"[avail] Available: v9.9.9",
 			"[upd] Update available: v0.1.0 -> v9.9.9",
 			"[same] Up to date (v0.1.0)",
+			`[hand] Update check not supported for installer "manual"`,
 		)
+		mustNotContain(t, "stderr", out.Stderr, "[hand] Up to date", "[hand] Update check failed")
 	})
 
 	t.Run("human output from the cached releases", func(t *testing.T) {
@@ -1799,7 +1820,9 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 			"tool:avail current: latest:v9.9.9 update:true cached:true\n",
 			"tool:upd current:v0.1.0 latest:v9.9.9 update:true cached:true\n",
 			"tool:same current:v0.1.0 latest:v0.1.0 update:false cached:true\n",
+			"tool:hand current:v1.0.0 supported:false installer:manual\n",
 		)
+		mustNotContain(t, "stdout", out.Stdout, "tool:hand current:v1.0.0 latest:")
 	})
 
 	t.Run("json output", func(t *testing.T) {
@@ -1818,8 +1841,11 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 		if r := byName["upd"]; !r.HasUpdate || r.CurrentVersion != "v0.1.0" || r.LatestVersion != "v9.9.9" {
 			t.Errorf("upd result = %+v, want an update from v0.1.0 to v9.9.9", r)
 		}
-		if r := byName["same"]; r.HasUpdate || !r.Cached {
-			t.Errorf("same result = %+v, want no update from cache", r)
+		if r := byName["same"]; r.HasUpdate || !r.Cached || !r.UpdateCheckSupported {
+			t.Errorf("same result = %+v, want a supported check with no update from cache", r)
+		}
+		if r, ok := byName["hand"]; !ok || r.UpdateCheckSupported || r.HasUpdate || r.LatestVersion != "" || r.CurrentVersion != "v1.0.0" {
+			t.Errorf("hand result = %+v (present: %t), want an unsupported check at v1.0.0 with no latest version", r, ok)
 		}
 		if _, ok := byName["off"]; ok {
 			t.Errorf("disabled tool must not be checked: %+v", results)
@@ -2284,6 +2310,34 @@ func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
 			t.Fatalf("fileExists(child of a file) = (%v, %v), want (false, error)", exists, err)
 		}
 	})
+}
+
+// TestMockInstaller_CheckUpdate pins that the development stand-in answers an update
+// check the way the production installer of the same name does, so a dev-test run never
+// reports a tool nothing could have checked as up to date.
+func TestMockInstaller_CheckUpdate(t *testing.T) {
+	for name, wantUnsupported := range map[string]bool{
+		"manual":         true,
+		"curl-binary":    true,
+		"curl-tar":       true,
+		"curl-script":    true,
+		"cargo":          true,
+		"zsh-plugin":     true,
+		"github-release": false,
+		"gitea-release":  false,
+		"brew":           false,
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := &mockInstaller{name: name}
+			res, err := m.CheckUpdate(context.Background(), &config.ToolConfig{Name: "tool", InstallationMethod: name})
+			if got := errors.Is(err, installer.ErrUpdateCheckUnsupported); got != wantUnsupported {
+				t.Fatalf("CheckUpdate() = %+v, %v; unsupported = %t, want %t", res, err, got, wantUnsupported)
+			}
+			if !wantUnsupported && (err != nil || res == nil) {
+				t.Fatalf("CheckUpdate() = %+v, %v; want an answer", res, err)
+			}
+		})
+	}
 }
 
 func TestMockInstaller_ObjectBinaries(t *testing.T) {

@@ -145,6 +145,21 @@ describe("useToolActions", () => {
     });
   });
 
+  // An unsupported check answers hasUpdate:false, which must never read as "Up to date".
+  test("reports an unsupported update check that gives no reason as unsupported", async () => {
+    mockApiData({ hasUpdate: false, currentVersion: "0.2.0", latestVersion: "unknown", supported: false });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.checkTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "check",
+      message: "Update checking is not supported for this tool",
+      tone: "error",
+    });
+  });
+
   test("dismisses outcome when dismissOutcome is called", async () => {
     mockApiData({ hasUpdate: false, currentVersion: "0.2.0", latestVersion: "0.2.0", supported: true });
 

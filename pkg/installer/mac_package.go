@@ -188,12 +188,15 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 	return payload, nil
 }
 
-// checkUpdate reports the latest release tag of a GitHub-backed source. A
-// direct URL carries no version information, so it never has an update.
+// checkUpdate reports the latest release tag of a GitHub-backed source. A direct
+// URL carries no version information, so its update check is unsupported.
 func (f macPackageFetcher) checkUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	src, err := parseMacPackageSource(tool.InstallParams)
-	if err != nil || src.repo == "" {
-		return &UpdateCheckResult{}, nil
+	if err != nil {
+		return nil, fmt.Errorf("reading %s source: %w", tool.Name, err)
+	}
+	if src.repo == "" {
+		return nil, ErrUpdateCheckUnsupported
 	}
 	release, _, err := f.releaseClient().fetch(ctx, githubReleaseRequest{
 		repo:       src.repo,

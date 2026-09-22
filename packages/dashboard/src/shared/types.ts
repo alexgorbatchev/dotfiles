@@ -293,7 +293,9 @@ export interface ICheckUpdateResponse {
   currentVersion: string;
   /** Latest available version */
   latestVersion: string;
-  /** Error message when check fails */
+  /** Whether an upstream check was possible; when false, hasUpdate says nothing about the tool */
+  supported: boolean;
+  /** Error message when check fails, or why it is unsupported */
   error?: string;
 }
 
