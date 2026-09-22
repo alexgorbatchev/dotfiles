@@ -36,6 +36,7 @@ Enables testing feature changes, bug fixes, or TypeScript declaration updates ag
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).
 - Always: maintain a minimum of 90% statement/line coverage across `scripts/dev-bootstrap`.
 - Always: clean up temporary test directories created during unit test execution (`t.TempDir()`).
+- Never: publish releases automatically without explicit user authorization.
 - Never: modify or delete existing user tool configuration files in the target directory unless provisioning starter configurations in an empty directory.
 
 ## References

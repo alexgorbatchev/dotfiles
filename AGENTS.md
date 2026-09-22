@@ -64,7 +64,12 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Go E2E test suite: `tests/e2e/`
 - Verification fixture: `test-project/`
 - Isolated installer test workspace: `test-install/` -> `test-install/AGENTS.md`
+- Repository automation & scripts: `scripts/` -> `scripts/AGENTS.md`
+- Build & packaging orchestration: `scripts/build/` -> `scripts/build/AGENTS.md`
 - Dev bootstrap script: `scripts/dev-bootstrap/` -> `scripts/dev-bootstrap/AGENTS.md`
+- Documentation link verification: `scripts/docs-links/` -> `scripts/docs-links/AGENTS.md`
+- Hosted bootstrap installer: `scripts/managed-installer/` -> `scripts/managed-installer/AGENTS.md`
+- Go-to-TypeScript type generator: `scripts/typegen/` -> `scripts/typegen/AGENTS.md`
 
 ## Shared gotchas
 
