@@ -2082,3 +2082,46 @@ export default defineTool((install) =>
 		})
 	}
 }
+
+// A curl-script binaryPath is one path, so it can only stand for one binary. A tool that
+// declares several is rejected while the configuration loads, naming its file, rather
+// than installing with every binary but the first missing.
+func TestLoaderRejectsCurlScriptBinaryPathWithSeveralBinaries(t *testing.T) {
+	tests := []struct {
+		name    string
+		bins    string
+		wantErr bool
+	}{
+		{name: "one binary", bins: `.bin("uv")`},
+		{name: "two binaries", bins: `.bin("uv").bin("uvx")`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tool := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+				"export default defineTool((install) => install(\"curl-script\", {\n" +
+				"  url: \"https://astral.sh/uv/install.sh\",\n" +
+				"  binaryPath: \"~/.local/bin/uv\",\n" +
+				"})" + tt.bins + ");"
+
+			toolConfigs, err := loadToolSource(t, tool)
+			if !tt.wantErr {
+				if err != nil {
+					t.Fatalf("load failed: %v", err)
+				}
+				if _, ok := toolConfigs["probe"]; !ok {
+					t.Fatalf("expected the probe tool to be loaded, got %v", toolConfigs)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("expected loading to fail")
+			}
+			for _, want := range []string{"probe.tool.ts", "binaryPath", `"uvx"`} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected the error to mention %q, got: %v", want, err)
+				}
+			}
+		})
+	}
+}

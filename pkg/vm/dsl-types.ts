@@ -1060,6 +1060,17 @@ export interface ICurlScriptInstallParams extends ICommonInstallParams {
    */
   env?: Resolvable<ICurlScriptResolverContext, Record<string, string>>;
   /**
+   * Where the script installs the binary, for a script that picks its own location
+   * instead of installing into `stagingDir`, e.g. `"~/.local/bin/claude"`. Relative to
+   * the `.tool.ts` file or absolute; `~` and path placeholders are expanded.
+   *
+   * After the script runs, the declared binary is always a symlink to this path as
+   * written, never a copy and never the path's own resolved target, so a tool that
+   * updates itself by repointing its launcher stays current. Installation fails if
+   * nothing exists at the path. Only one `.bin()` may be declared alongside it.
+   */
+  binaryPath?: string;
+  /**
    * CLI flags passed to detect binary version (e.g. "--version").
    */
   versionArgs?: VersionArgs;

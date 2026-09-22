@@ -48,6 +48,23 @@ defineTool((install) =>
   }).bin("fnm"),
 );
 
+// A script that installs itself where it chooses is followed there through binaryPath.
+defineTool((install) =>
+  install("curl-script", {
+    url: "https://claude.ai/install.sh",
+    shell: "bash",
+    binaryPath: "~/.local/bin/claude",
+    versionArgs: ["--version"],
+  }).bin("claude"),
+);
+
+// binaryPath is a single path, never a list or a resolver.
+expectError(() =>
+  defineTool((install) =>
+    install("curl-script", { url: "https://example.com/install.sh", binaryPath: ["~/.local/bin/tool"] }),
+  ),
+);
+
 // A resolver runs when the script is about to be executed, so it is given the script's
 // own path on top of the tool context.
 defineTool((install) =>

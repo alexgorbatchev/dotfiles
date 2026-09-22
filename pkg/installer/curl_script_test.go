@@ -155,11 +155,13 @@ func TestCurlScriptInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("Install success with system binary directory search", func(t *testing.T) {
+	// A binary the script left outside the staging directory is not guessed at: without
+	// binaryPath the installation fails and says how to point the script at the staging
+	// directory, and nothing is copied out of a system directory.
+	t.Run("Install fails when the binary is only in a system directory", func(t *testing.T) {
 		runner.Clear()
 		sysFsys := fs.NewMemFS()
-		sysDl := downloader.NewDownloader(sysFsys, nil)
-		sysInst := NewCurlScriptInstaller(runner, sysFsys, sysDl, nil)
+		sysInst := NewCurlScriptInstaller(runner, sysFsys, downloader.NewDownloader(sysFsys, nil), nil)
 		sysInst.BinDir = "/test/bin"
 
 		_ = sysFsys.MkdirAll("/usr/local/bin", 0755)
@@ -173,47 +175,17 @@ func TestCurlScriptInstaller(t *testing.T) {
 			},
 		}
 
-		res, err := sysInst.Install(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		_, err := sysInst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("Install() = nil, want it to fail when the staging directory has no binary")
 		}
-
-		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
-			t.Errorf("expected mytool, got %v", res.Binaries)
+		for _, want := range []string{"mytool", "{stagingDir}", "args", "env", "binaryPath"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("Install() = %v, want it to mention %q", err, want)
+			}
 		}
-
-		exists, _ := sysFsys.Exists("/test/bin/mytool")
-		if !exists {
-			t.Errorf("expected binary to be promoted to /test/bin/mytool")
-		}
-	})
-
-	t.Run("Install fallback to system binary dir and detect version", func(t *testing.T) {
-		runner.Clear()
-		sysFsys := fs.NewMemFS()
-		_ = sysFsys.MkdirAll("/usr/local/bin", 0755)
-		_ = sysFsys.WriteFile("/usr/local/bin/sysbin", []byte("system binary"), 0755)
-
-		sysInst := NewCurlScriptInstaller(runner, sysFsys, downloader.NewDownloader(sysFsys, nil), nil)
-		sysInst.BinDir = "/test/bin"
-
-		runner.Register("/test/bin/sysbin", []byte("sysbin version 2.4.0\n"), nil)
-
-		tool := &config.ToolConfig{
-			Name: "sysbin",
-			InstallParams: map[string]interface{}{
-				"url":          server.URL,
-				"versionArgs":  []interface{}{"--version"},
-				"versionRegex": `(\d+\.\d+\.\d+)`,
-			},
-		}
-
-		res, err := sysInst.Install(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if res.Version != "2.4.0" {
-			t.Errorf("expected version 2.4.0, got %q", res.Version)
+		if exists, _ := sysFsys.Exists("/test/bin/mytool"); exists {
+			t.Error("the system binary was copied into the staging directory")
 		}
 	})
 
@@ -408,6 +380,166 @@ func TestCurlScriptInstaller_ResolverFailureStopsInstall(t *testing.T) {
 			t.Errorf("the install script ran despite the resolver failing: %+v", cmd)
 		}
 	}
+}
+
+// newBinaryPathInstaller returns a curl-script installer staging into /staging, whose
+// filesystem expands "~" to /home/user as the CLI's does, and a project configuration
+// with that home directory.
+func newBinaryPathInstaller(t *testing.T) (*CurlScriptInstaller, *exec.MockRunner, fs.FS, context.Context, string) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("#!/bin/sh\n"))
+	}))
+	t.Cleanup(server.Close)
+
+	runner := exec.NewMockRunner()
+	fsys := fs.NewResolvedFS(fs.NewMemFS(), "/home/user")
+	inst := NewCurlScriptInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), nil)
+	inst.BinDir = "/staging"
+
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.HomeDir = "/home/user"
+	projCfg.Paths.BinariesDir = "/home/user/.generated/binaries"
+	return inst, runner, fsys, config.WithProjectConfig(context.Background(), projCfg), server.URL
+}
+
+func scriptRan(runner *exec.MockRunner) bool {
+	for _, cmd := range runner.History {
+		if cmd.Name == "sh" || cmd.Name == "bash" {
+			return true
+		}
+	}
+	return false
+}
+
+// A script that installs itself somewhere of its own choosing, as claude.ai/install.sh
+// does, is followed there through binaryPath. The staging entry links to the path as
+// written rather than to what that path currently resolves to, so when the tool updates
+// itself and repoints its launcher, the managed binary follows.
+func TestCurlScriptInstaller_BinaryPath(t *testing.T) {
+	t.Run("links the declared binary to binaryPath as written", func(t *testing.T) {
+		inst, runner, fsys, ctx, url := newBinaryPathInstaller(t)
+		_ = fsys.MkdirAll("/home/user/.local/share/claude/versions", 0755)
+		_ = fsys.WriteFile("/home/user/.local/share/claude/versions/2.1.0", []byte("claude"), 0755)
+		_ = fsys.MkdirAll("/home/user/.local/bin", 0755)
+		if err := fsys.Symlink("/home/user/.local/share/claude/versions/2.1.0", "/home/user/.local/bin/claude"); err != nil {
+			t.Fatalf("creating the launcher symlink: %v", err)
+		}
+		runner.Register("/staging/claude", []byte("2.1.0 (Claude Code)\n"), nil)
+
+		tool := &config.ToolConfig{
+			Name:     "claude",
+			Binaries: []interface{}{map[string]interface{}{"name": "claude"}},
+			InstallParams: map[string]interface{}{
+				"url":          url,
+				"shell":        "bash",
+				"binaryPath":   "~/.local/bin/claude",
+				"versionArgs":  []interface{}{"--version"},
+				"versionRegex": `(\d+\.\d+\.\d+)`,
+			},
+		}
+
+		res, err := inst.Install(ctx, tool)
+		if err != nil {
+			t.Fatalf("Install() error = %v", err)
+		}
+		if !scriptRan(runner) {
+			t.Error("the install script was never run")
+		}
+		if !slices.Equal(res.Binaries, []string{"claude"}) {
+			t.Errorf("Binaries = %v, want [claude]", res.Binaries)
+		}
+		target, err := fsys.Readlink("/staging/claude")
+		if err != nil {
+			t.Fatalf("the staging entry is not a symlink: %v", err)
+		}
+		if target != "/home/user/.local/bin/claude" {
+			t.Errorf("staging entry links to %q, want the path as written, /home/user/.local/bin/claude", target)
+		}
+		if res.Version != "2.1.0" {
+			t.Errorf("Version = %q, want 2.1.0 detected through the staging link", res.Version)
+		}
+	})
+
+	t.Run("fails naming the tool and the path when nothing is there", func(t *testing.T) {
+		inst, _, fsys, ctx, url := newBinaryPathInstaller(t)
+		tool := &config.ToolConfig{
+			Name: "claude",
+			InstallParams: map[string]interface{}{
+				"url":        url,
+				"binaryPath": "~/.local/bin/claude",
+			},
+		}
+
+		_, err := inst.Install(ctx, tool)
+		if err == nil {
+			t.Fatal("Install() = nil, want it to fail when binaryPath names nothing")
+		}
+		for _, want := range []string{"claude", "~/.local/bin/claude", "/home/user/.local/bin/claude"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("Install() = %v, want it to name %q", err, want)
+			}
+		}
+		if _, err := fsys.Lstat("/staging/claude"); err == nil {
+			t.Error("a staging entry was created for a binary that does not exist")
+		}
+	})
+
+	// A path that cannot be resolved is known to be wrong before anything runs, so the
+	// script is not executed only for its result to be thrown away.
+	t.Run("an unresolvable placeholder fails before the script runs", func(t *testing.T) {
+		inst, runner, _, ctx, url := newBinaryPathInstaller(t)
+		tool := &config.ToolConfig{
+			Name: "claude",
+			InstallParams: map[string]interface{}{
+				"url":        url,
+				"binaryPath": "{configFileDir}/claude",
+			},
+		}
+
+		_, err := inst.Install(ctx, tool)
+		if err == nil {
+			t.Fatal("Install() = nil, want it to fail on the unresolvable placeholder")
+		}
+		for _, want := range []string{"claude", "binaryPath", "{configFileDir}"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("Install() = %v, want it to name %q", err, want)
+			}
+		}
+		if scriptRan(runner) {
+			t.Error("the install script ran although binaryPath could not be resolved")
+		}
+	})
+
+	// The loader rejects this combination; the installer does not link the first binary
+	// and drop the rest when handed a configuration that skipped the loader.
+	t.Run("more than one binary is rejected before the script runs", func(t *testing.T) {
+		inst, runner, _, ctx, url := newBinaryPathInstaller(t)
+		tool := &config.ToolConfig{
+			Name:               "uv",
+			InstallationMethod: "curl-script",
+			Binaries: []interface{}{
+				map[string]interface{}{"name": "uv"},
+				map[string]interface{}{"name": "uvx"},
+			},
+			InstallParams: map[string]interface{}{
+				"url":        url,
+				"binaryPath": "~/.local/bin/uv",
+			},
+		}
+
+		_, err := inst.Install(ctx, tool)
+		if err == nil {
+			t.Fatal("Install() = nil, want binaryPath with two binaries to be rejected")
+		}
+		if !strings.Contains(err.Error(), "binaryPath") || !strings.Contains(err.Error(), "uvx") {
+			t.Errorf("Install() = %v, want it to name binaryPath and the binaries", err)
+		}
+		if scriptRan(runner) {
+			t.Error("the install script ran for a configuration that cannot be installed")
+		}
+	})
 }
 
 type mockScriptErrorFS struct {

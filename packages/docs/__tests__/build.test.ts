@@ -40,7 +40,10 @@ describe("site build", () => {
   test("rewrites a parent-relative link to another section", async () => {
     const hrefs = await collectHrefs(await readPage("installation-methods/manual"), CONTENT_LINK_SELECTOR);
 
-    expect(hrefs).toEqual(["/dotfiles/api-reference/lifecycle-hooks/"]);
+    expect(hrefs).toEqual([
+      "/dotfiles/installation-methods/curl-script/#scripts-that-install-themselves",
+      "/dotfiles/api-reference/lifecycle-hooks/",
+    ]);
   });
 
   test("rewrites current-directory and parent-relative links on the same page", async () => {

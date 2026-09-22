@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -186,8 +187,30 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	if err := fullConfig.ProjectConfig.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
 	}
+	if err := validateToolInstallParams(fullConfig.ToolConfigs); err != nil {
+		return nil, nil, err
+	}
 
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil
+}
+
+// validateToolInstallParams reports the first tool, in name order so the same
+// configuration always fails the same way, whose install parameters cannot be
+// installed as written, naming the tool file it came from.
+func validateToolInstallParams(toolConfigs map[string]*config.ToolConfig) error {
+	names := make([]string, 0, len(toolConfigs))
+	for name := range toolConfigs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		tool := toolConfigs[name]
+		if err := tool.ValidateInstallParams(); err != nil {
+			return fmt.Errorf("invalid tool configuration in %q: %w", tool.ConfigFilePath, err)
+		}
+	}
+	return nil
 }
 
 func compileFile(entryPath string) (string, error) {

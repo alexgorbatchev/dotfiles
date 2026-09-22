@@ -58,21 +58,11 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil
 	}
-	binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
+	binaryPath, err := resolveBinaryPath(ctx, m.fsys, tool)
+	if err != nil {
+		return nil, err
+	}
 	if binaryPath != "" {
-		resolved, err := config.ResolvePathPlaceholders(binaryPath, tool.Name, config.GetProjectConfig(ctx))
-		if err != nil {
-			return nil, fmt.Errorf("%s: install parameter binaryPath %q: %w", tool.Name, binaryPath, err)
-		}
-		binaryPath = resolved
-
-		if !m.fsys.IsAbs(binaryPath) && tool.ConfigFilePath != "" {
-			binaryPath = filepath.Join(filepath.Dir(tool.ConfigFilePath), binaryPath)
-		}
-		if abs, err := m.fsys.Abs(binaryPath); err == nil {
-			binaryPath = abs
-		}
-
 		exists, err := m.fsys.Exists(binaryPath)
 		if err != nil || !exists {
 			return nil, fmt.Errorf("binary not found at %s", binaryPath)

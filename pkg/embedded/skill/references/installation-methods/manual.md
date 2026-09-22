@@ -49,6 +49,12 @@ Use `install()` with no arguments for configuration-only tools:
 - Tools are managed entirely outside the dotfiles system
 - You don't want any binary installation or management
 
+A tool installed by a script that picks its own location (such as
+`https://claude.ai/install.sh`, which installs into `~/.local/bin`) is not a `manual` tool
+with the script run from a hook. Use `curl-script` with `binaryPath`, which downloads and
+runs the script itself and links the binary to where the script put it; see
+[Scripts That Install Themselves](curl-script.md#scripts-that-install-themselves).
+
 ## Parameters
 
 | Parameter    | Type      | Required | Description                                                  |

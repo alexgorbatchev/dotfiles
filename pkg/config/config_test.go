@@ -599,3 +599,82 @@ func TestPathsConfig_GetToolConfigsDirs(t *testing.T) {
 		})
 	}
 }
+
+func TestToolConfigValidateInstallParams(t *testing.T) {
+	bin := func(name string) interface{} { return map[string]interface{}{"name": name} }
+
+	tests := []struct {
+		name     string
+		tool     ToolConfig
+		wantErrs []string
+	}{
+		{
+			name: "curl-script binaryPath with one binary",
+			tool: ToolConfig{
+				Name:               "claude",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"binaryPath": "~/.local/bin/claude"},
+				Binaries:           []interface{}{bin("claude")},
+			},
+		},
+		{
+			name: "curl-script binaryPath with no .bin() names the tool itself",
+			tool: ToolConfig{
+				Name:               "claude",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"binaryPath": "~/.local/bin/claude"},
+			},
+		},
+		{
+			name: "curl-script with several binaries and no binaryPath",
+			tool: ToolConfig{
+				Name:               "uv",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"env": map[string]interface{}{"UV_INSTALL_DIR": "{stagingDir}"}},
+				Binaries:           []interface{}{bin("uv"), bin("uvx")},
+			},
+		},
+		{
+			name: "manual copies one binaryPath to several names",
+			tool: ToolConfig{
+				Name:               "alpha",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": "alpha"},
+				Binaries:           []interface{}{bin("alpha"), bin("alpha-extra")},
+			},
+		},
+		{
+			name: "curl-script binaryPath with two binaries",
+			tool: ToolConfig{
+				Name:               "uv",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"binaryPath": "~/.local/bin/uv"},
+				Binaries:           []interface{}{bin("uv"), bin("uvx")},
+			},
+			wantErrs: []string{`"uv"`, "binaryPath", `"~/.local/bin/uv"`, `"uvx"`, "{stagingDir}"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.tool.ValidateInstallParams()
+			if len(tt.wantErrs) == 0 {
+				if err != nil {
+					t.Fatalf("ValidateInstallParams() = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("ValidateInstallParams() = nil, want an error")
+			}
+			for _, want := range tt.wantErrs {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("ValidateInstallParams() = %v, want it to contain %s", err, want)
+				}
+			}
+			if validateErr := tt.tool.Validate(); validateErr == nil || validateErr.Error() != err.Error() {
+				t.Errorf("Validate() = %v, want the same error as ValidateInstallParams()", validateErr)
+			}
+		})
+	}
+}

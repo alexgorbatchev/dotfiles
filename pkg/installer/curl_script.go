@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -91,6 +92,15 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	if url == "" {
 		return nil, fmt.Errorf("URL or shell not specified in installParams")
 	}
+	if err := tool.ValidateInstallParams(); err != nil {
+		return nil, err
+	}
+	// Resolved before the script runs, so a path that cannot be resolved stops the
+	// installation before anything has been executed.
+	binaryPath, err := resolveBinaryPath(ctx, c.fsys, tool)
+	if err != nil {
+		return nil, err
+	}
 
 	destDir := c.BinDir
 	if destDir == "" {
@@ -157,43 +167,9 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	// Clean up script
 	_ = c.fsys.Remove(scriptPath)
 
-	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries)
+	promotedBinaries, err := c.stageBinaries(tool, destDir, binaryPath)
 	if err != nil {
-		// If PromoteBinaries failed in destDir, search system binary directories
-		sysDirs := getSystemBinaryDirs()
-		binNames := GetBinaryNames(tool.Name, tool.Binaries)
-		allFound := true
-		for _, binName := range binNames {
-			targetPath := filepath.Join(destDir, binName)
-			exists, existErr := c.fsys.Exists(targetPath)
-			if existErr == nil && exists {
-				continue
-			}
-
-			foundInSys := false
-			for _, sysDir := range sysDirs {
-				sysPath := filepath.Join(sysDir, binName)
-				sysExists, sysErr := c.fsys.Exists(sysPath)
-				if sysErr == nil && sysExists {
-					_ = c.fsys.MkdirAll(filepath.Dir(targetPath), 0755)
-					if copyErr := c.fsys.CopyFile(sysPath, targetPath); copyErr == nil {
-						_ = c.fsys.Chmod(targetPath, 0755)
-						foundInSys = true
-						break
-					}
-				}
-			}
-			if !foundInSys {
-				allFound = false
-				break
-			}
-		}
-
-		if allFound {
-			promotedBinaries = binNames
-		} else {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	var installedVersion string
@@ -295,21 +271,44 @@ func substituteStagingDir(values []string, stagingDir string) []string {
 	return values
 }
 
-func getSystemBinaryDirs() []string {
-	dirs := []string{
-		"/opt/homebrew/bin",
-		"/opt/homebrew/sbin",
-		"/usr/local/bin",
-		"/usr/local/sbin",
-		"/home/linuxbrew/.linuxbrew/bin",
+// stageBinaries exposes the tool's binaries in the staging directory once the script
+// has run.
+//
+// Without binaryPath the script must have installed them there, and a binary it put
+// anywhere else is not searched for: guessing a directory would pick up whichever
+// binary of that name happens to be installed, and copying it would freeze a tool that
+// updates itself. With binaryPath, the one declared binary becomes a symlink to that
+// path as written -- not to what it resolves to -- so the tool's own updater, which
+// repoints its launcher, keeps the managed binary current.
+func (c *CurlScriptInstaller) stageBinaries(tool *config.ToolConfig, stagingDir, binaryPath string) ([]string, error) {
+	if binaryPath == "" {
+		binaries, err := PromoteBinaries(c.fsys, stagingDir, tool.Name, tool.Binaries)
+		if err != nil {
+			return nil, fmt.Errorf("%s: the install script did not leave the binary in the staging directory; "+
+				"point the script at {stagingDir} through args or env, or set binaryPath to where it installs the binary: %w",
+				tool.Name, err)
+		}
+		return binaries, nil
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		dirs = append(dirs, filepath.Join(home, ".local", "bin"))
-		dirs = append(dirs, filepath.Join(home, ".cargo", "bin"))
-		dirs = append(dirs, filepath.Join(home, ".bun", "bin"))
+
+	written := getStringParam(tool.InstallParams, "binaryPath", "")
+	exists, err := c.fsys.Exists(binaryPath)
+	if err != nil {
+		return nil, fmt.Errorf("%s: checking binaryPath %q (%s): %w", tool.Name, written, binaryPath, err)
 	}
-	dirs = append(dirs, "/usr/bin", "/bin")
-	return dirs
+	if !exists {
+		return nil, fmt.Errorf("%s: nothing exists at binaryPath %q (%s) after the install script ran", tool.Name, written, binaryPath)
+	}
+
+	binName := GetBinaryNames(tool.Name, tool.Binaries)[0]
+	linkPath := filepath.Join(stagingDir, binName)
+	if err := c.fsys.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("%s: clearing %s for the binaryPath link: %w", tool.Name, linkPath, err)
+	}
+	if err := c.fsys.Symlink(binaryPath, linkPath); err != nil {
+		return nil, fmt.Errorf("%s: linking %s to binaryPath %s: %w", tool.Name, linkPath, binaryPath, err)
+	}
+	return []string{binName}, nil
 }
 
 func (c *CurlScriptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {

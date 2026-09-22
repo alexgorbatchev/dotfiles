@@ -17,14 +17,15 @@ export default defineTool((install, ctx) =>
 
 ## Parameters
 
-| Parameter      | Type                                                  | Required | Description                                 |
-| -------------- | ----------------------------------------------------- | -------- | ------------------------------------------- |
-| `url`          | `string`                                              | Yes      | URL of the installation script              |
-| `shell`        | `'bash' \| 'sh'`                                      | No       | Shell interpreter to use (defaults to `sh`) |
-| `args`         | `string[]`, or a function returning one               | No       | Arguments passed to the script              |
-| `env`          | `Record<string, string>`, or a function returning one | No       | Environment variables set for the script    |
-| `versionArgs`  | `string[]`                                            | No       | Args to pass to binary for version check    |
-| `versionRegex` | `string \| RegExp`                                    | No       | Regex to extract version from output        |
+| Parameter      | Type                                                  | Required | Description                                                                                                                             |
+| -------------- | ----------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`          | `string`                                              | Yes      | URL of the installation script                                                                                                          |
+| `shell`        | `'bash' \| 'sh'`                                      | No       | Shell interpreter to use (defaults to `sh`)                                                                                             |
+| `args`         | `string[]`, or a function returning one               | No       | Arguments passed to the script                                                                                                          |
+| `env`          | `Record<string, string>`, or a function returning one | No       | Environment variables set for the script                                                                                                |
+| `binaryPath`   | `string`                                              | No       | Where a script that picks its own location installs the binary; see [Scripts That Install Themselves](#scripts-that-install-themselves) |
+| `versionArgs`  | `string[]`                                            | No       | Args to pass to binary for version check                                                                                                |
+| `versionRegex` | `string \| RegExp`                                    | No       | Regex to extract version from output                                                                                                    |
 
 `env` is honoured only by `curl-script`; every other installation method ignores it. The parameter every method shares, `auto`, is documented under [Base Install Parameters](../api-reference/core-api.md#base-install-parameters).
 
@@ -32,11 +33,13 @@ export default defineTool((install, ctx) =>
 
 When the curl-script installer runs, it creates a temporary **staging directory** where the installation takes place. This is critical to understand because:
 
-1. **The system expects binaries in `stagingDir`** - After your installation script completes, the tool installer looks for the declared binaries (from `.bin()`) inside `stagingDir`. If they are not there, installation fails.
+1. **The system expects binaries in `stagingDir`** - After your installation script completes, the tool installer looks for the declared binaries (from `.bin()`) inside `stagingDir`. If they are not there and `binaryPath` is not set, installation fails. Nothing else is searched: a binary the script put in `~/.local/bin`, `/usr/local/bin` or any other directory is not picked up.
 
 2. **`stagingDir` becomes the versioned directory** - After successful installation, the entire staging directory is renamed to the final versioned path (e.g., `~/.dotfiles/tools/fnm/1.2.3`). All files in `stagingDir` are preserved.
 
-3. **Most scripts need to be redirected** - By default, installation scripts install to their own preferred locations (like `~/.local/bin` or `~/.<tool>`). You must redirect them to `stagingDir` using the script's configuration options.
+3. **A script that can be redirected should be** - By default, installation scripts install to their own preferred locations (like `~/.local/bin` or `~/.<tool>`). When the script has an argument or environment variable for its install location, point it at `stagingDir`, as described below. When it has none, set [`binaryPath`](#scripts-that-install-themselves) instead.
+
+A binary missing from `stagingDir` fails with `<tool>: the install script did not leave the binary in the staging directory; point the script at {stagingDir} through args or env, or set binaryPath to where it installs the binary`, followed by the pattern that found nothing.
 
 ### How to Redirect Installation
 
@@ -71,6 +74,50 @@ install("curl-script", {
 A literal `args` entry or `env` value may write `{stagingDir}` instead, and the runtime
 substitutes the real directory before the script runs. That is the only placeholder; a
 resolver is what you reach for when the value depends on anything else.
+
+## Scripts That Install Themselves
+
+Some scripts cannot be redirected. `https://claude.ai/install.sh` takes only a version or
+channel, downloads the binary into a directory of its own choosing and places a launcher at
+`~/.local/bin/claude`. For such a script, `binaryPath` says where the binary ends up:
+
+```typescript
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) =>
+  install("curl-script", {
+    url: "https://claude.ai/install.sh",
+    shell: "bash",
+    binaryPath: "~/.local/bin/claude",
+    versionArgs: ["--version"],
+  }).bin("claude"),
+);
+```
+
+After the script succeeds, the declared binary in `stagingDir` becomes a symlink to
+`binaryPath`:
+
+- **Resolved like `manual`'s `binaryPath`.** `~` and path placeholders such as
+  `{paths.homeDir}` are expanded, and a relative path is taken relative to the `.tool.ts`
+  file. The path is resolved before the script runs, so a placeholder that cannot be filled
+  fails the installation without running anything.
+- **Always a symlink to the path as written.** The link targets `~/.local/bin/claude`
+  itself, not whatever that launcher points at today, and the binary is never copied. A
+  tool that updates itself by repointing its launcher therefore keeps running the version
+  it updated to.
+- **The path must exist.** If nothing is at `binaryPath` once the script has run, the
+  installation fails with an error naming the tool, the path as written and the path it
+  resolved to:
+  `<tool>: nothing exists at binaryPath "<as written>" (<resolved>) after the install script ran`.
+- **One binary only.** A single path cannot say which of several binaries it belongs to,
+  so a tool that sets `binaryPath` and declares more than one `.bin()` is rejected when the
+  configuration loads. Scripts that ship several binaries can usually be redirected
+  instead: `https://astral.sh/uv/install.sh` honours `UV_INSTALL_DIR`, and
+  `https://deno.land/install.sh` honours `DENO_INSTALL`.
+
+Everything else `curl-script` does still applies: the script is downloaded through the
+configured downloader, its output is logged, `args` and `env` are resolved, and
+`versionArgs` runs through the link.
 
 ## Resolver Context
 
