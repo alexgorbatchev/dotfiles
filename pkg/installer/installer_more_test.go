@@ -517,7 +517,7 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 		t.Errorf("downloadAssetViaGhCli failed: %v", err)
 	}
 
-	// 5. findFileWithExtension & copyDir
+	// 5. findFileWithExtension & installAppBundle
 	_ = memFS.MkdirAll("/dmg/vol/App.app/Contents", 0755)
 	_ = memFS.WriteFile("/dmg/vol/App.app/Contents/PkgInfo", []byte("APPL"), 0644)
 	appPath, err := findFileWithExtension(memFS, "/dmg/vol", ".app")
@@ -535,11 +535,11 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 		t.Errorf("expected findFileWithExtension on bad directory to return error")
 	}
 
-	if err := copyDir(memFS, "/dmg/vol/App.app", "/dest/App.app"); err != nil {
-		t.Fatalf("copyDir failed: %v", err)
+	if err := installAppBundle(memFS, nil, "/dmg/vol/App.app", "/dest/App.app"); err != nil {
+		t.Fatalf("installAppBundle failed: %v", err)
 	}
 	if exists, _ := memFS.Exists("/dest/App.app/Contents/PkgInfo"); !exists {
-		t.Errorf("copyDir failed to copy file")
+		t.Errorf("installAppBundle failed to copy file")
 	}
 
 	// 6. ZshPluginInstaller Install error & success branches

@@ -615,10 +615,32 @@ func (e *Extractor) extractDmg(ctx context.Context, src string, dest string) err
 		_ = os.RemoveAll(mountPoint)
 	}()
 
-	if err := e.copyDir(mountPoint, dest); err != nil {
+	if err := e.copyVolume(mountPoint, dest); err != nil {
 		return fmt.Errorf("copying DMG files: %w", err)
 	}
 
+	return nil
+}
+
+// copyVolume copies the entries of a mounted volume into dest, symlinks included (see
+// fs.CopyTree). The volume root itself is not copied, so dest keeps the mode its caller
+// created it with instead of taking the root's, which may deny writing. Whatever dest
+// already holds at a volume entry's path is removed first and replaced wholesale,
+// directories included (tar and zip merge into an existing directory instead), so a
+// symlink never collides with an earlier extraction.
+func (e *Extractor) copyVolume(volume, dest string) error {
+	names, err := e.fsys.ReadDir(volume)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		if err := e.fsys.RemoveAll(filepath.Join(dest, name)); err != nil {
+			return err
+		}
+		if err := fs.CopyTree(e.fsys, filepath.Join(volume, name), filepath.Join(dest, name)); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -634,66 +656,6 @@ func (e *Extractor) extractPkg(ctx context.Context, src string, dest string) err
 	if err != nil {
 		return fmt.Errorf("pkgutil expand failed: %w", err)
 	}
-	return nil
-}
-
-// copyDir recursively copies files from a source directory (on e.fsys) to a destination directory (on e.fsys).
-func (e *Extractor) copyDir(srcDir, destDir string) error {
-	return walkFS(e.fsys, srcDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		rel, err := filepath.Rel(srcDir, path)
-		if err != nil {
-			return err
-		}
-
-		destPath := filepath.Join(destDir, rel)
-		if info.IsDir() {
-			return e.fsys.MkdirAll(destPath, info.Mode())
-		}
-
-		srcFile, err := e.fsys.Open(path)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
-		return e.writeFile(destPath, srcFile)
-	})
-}
-
-func walkFS(fsys fs.FS, path string, walkFn func(path string, info os.FileInfo, err error) error) error {
-	info, err := fsys.Lstat(path)
-	if err != nil {
-		return walkFn(path, nil, err)
-	}
-
-	err = walkFn(path, info, nil)
-	if err != nil {
-		if info.IsDir() && err == filepath.SkipDir {
-			return nil
-		}
-		return err
-	}
-
-	if !info.IsDir() {
-		return nil
-	}
-
-	entries, err := fsys.ReadDir(path)
-	if err != nil {
-		return walkFn(path, info, err)
-	}
-
-	for _, entry := range entries {
-		subPath := filepath.Join(path, entry)
-		err = walkFS(fsys, subPath, walkFn)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
