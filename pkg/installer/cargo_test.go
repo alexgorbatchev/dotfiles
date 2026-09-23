@@ -399,7 +399,7 @@ func TestCargoResolveVersion(t *testing.T) {
 				params["cargoTomlUrl"] = server.URL + "/custom/Cargo.toml"
 			}
 
-			got, err := inst.resolveVersion(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params}, "mycrate", tt.binarySource)
+			got, err := inst.resolveVersion(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params}, "mycrate", tt.binarySource, false)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
@@ -994,6 +994,117 @@ func TestCargoCompileFallbackKeepsPrereleaseOptIn(t *testing.T) {
 	}
 }
 
+// TestCargoCompileFallbackWarningNamesFailedStep is the regression test for issue #126.
+// The prebuilt path fails either while resolving the version or while downloading from
+// the binary source, and the warning announcing the compile fallback names the step
+// that failed and prints its cause in the default (non-trace) output. A resolution
+// failure used to be reported as a failure of the binary source it never reached, and
+// the cause was passed as a slog key/value pair the logger drops.
+func TestCargoCompileFallbackWarningNamesFailedStep(t *testing.T) {
+	tarless := func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/crates/mycrate":
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0","max_stable_version":"1.5.0"}}`))
+		case "/repos/owner/mycrate/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"v1.5.0","assets":[]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
+	tests := []struct {
+		name      string
+		params    func(serverURL string) map[string]interface{}
+		handler   func(w http.ResponseWriter, r *http.Request)
+		want      []string
+		notWanted string
+	}{
+		{
+			name:   "crates.io failure is a version resolution failure",
+			params: func(string) map[string]interface{} { return map[string]interface{}{} },
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusServiceUnavailable)
+			},
+			want:      []string{"[mycrate] version resolution failed, falling back to local compilation: ", "crates.io returned status: 503"},
+			notWanted: cargoBinarySourceQuickinstall,
+		},
+		{
+			name: "Cargo.toml failure is a version resolution failure",
+			params: func(serverURL string) map[string]interface{} {
+				return map[string]interface{}{"versionSource": "cargo-toml", "cargoTomlUrl": serverURL + "/missing/Cargo.toml"}
+			},
+			handler:   func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNotFound) },
+			want:      []string{"[mycrate] version resolution failed, falling back to local compilation: ", "/missing/Cargo.toml", "Cargo.toml returned status: 404"},
+			notWanted: cargoBinarySourceQuickinstall,
+		},
+		{
+			name: "GitHub API failure is a version resolution failure",
+			params: func(string) map[string]interface{} {
+				return map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/mycrate"}
+			},
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusServiceUnavailable)
+			},
+			want:      []string{"[mycrate] version resolution failed, falling back to local compilation: ", "from GitHub releases", "503"},
+			notWanted: "github-releases download",
+		},
+		{
+			name:    "quickinstall download failure names cargo-quickinstall",
+			params:  func(string) map[string]interface{} { return map[string]interface{}{} },
+			handler: tarless,
+			want:    []string{"[mycrate] cargo-quickinstall download failed, falling back to local compilation: ", "status 404"},
+		},
+		{
+			name: "github-releases download failure names github-releases",
+			params: func(string) map[string]interface{} {
+				return map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/mycrate"}
+			},
+			handler: tarless,
+			want:    []string{"[mycrate] github-releases download failed, falling back to local compilation: ", "status 404"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newRecordingServer(t, tt.handler)
+			runner := exec.NewMockRunner()
+			inst, fsys := newCargoGithubInstaller(server, runner)
+			inst.Cargo.CratesIO.Host = server.URL
+			var out bytes.Buffer
+			inst.SetLogger(logger.New(logger.Config{Writer: &out}))
+			_ = fsys.MkdirAll("/test/bin/bin", 0755)
+			_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
+
+			if _, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params(server.URL)}); err != nil {
+				t.Fatalf("Install() error = %v", err)
+			}
+			if len(runner.History) != 1 {
+				t.Fatalf("cargo runs = %v, want exactly one cargo install", runner.History)
+			}
+
+			var warnings []string
+			for _, line := range strings.Split(out.String(), "\n") {
+				if strings.HasPrefix(line, "WARN") {
+					warnings = append(warnings, line)
+				}
+			}
+			if len(warnings) != 1 {
+				t.Fatalf("warnings = %q, want exactly one; output:\n%s", warnings, out.String())
+			}
+			warning := warnings[0]
+			for _, want := range tt.want {
+				if !strings.Contains(warning, want) {
+					t.Errorf("warning = %q, want it to contain %q", warning, want)
+				}
+			}
+			if tt.notWanted != "" && strings.Contains(warning, tt.notWanted) {
+				t.Errorf("warning = %q blames %s, which was never contacted", warning, tt.notWanted)
+			}
+			if strings.HasSuffix(warning, "\terror") {
+				t.Errorf("warning = %q ends in a dangling slog key", warning)
+			}
+		})
+	}
+}
+
 // TestCargoOnlyPrereleasesPublished pins that a crate without a stable release is an
 // error naming the crate unless the tool opts into prereleases, never a silent
 // prerelease and never an empty version.
@@ -1022,7 +1133,7 @@ func TestCargoOnlyPrereleasesPublished(t *testing.T) {
 		server := newCargoPrereleaseServer(t, tarData)
 		inst := newCargoResolutionInstaller(server)
 
-		_, err := inst.resolveVersion(context.Background(), &config.ToolConfig{Name: "early"}, "early", cargoBinarySourceQuickinstall)
+		_, err := inst.resolveVersion(context.Background(), &config.ToolConfig{Name: "early"}, "early", cargoBinarySourceQuickinstall, false)
 		if err == nil || !strings.Contains(err.Error(), "early has published only prereleases") {
 			t.Fatalf("resolveVersion() error = %v, want it to name early and its missing stable release", err)
 		}
@@ -1523,7 +1634,7 @@ func TestCargoGithubReleases(t *testing.T) {
 
 		cInst.Cargo.CratesIO.Host = cratesIOServer.URL
 		cInst.httpClient = cratesIOServer.Client()
-		ver, err := cInst.resolveVersion(context.Background(), &config.ToolConfig{Name: "latestcrate"}, "latestcrate", cargoBinarySourceQuickinstall)
+		ver, err := cInst.resolveVersion(context.Background(), &config.ToolConfig{Name: "latestcrate"}, "latestcrate", cargoBinarySourceQuickinstall, false)
 		if err != nil || ver.version != "2.5.0" {
 			t.Fatalf("expected crates.io to resolve 2.5.0, got %+v, %v", ver, err)
 		}
