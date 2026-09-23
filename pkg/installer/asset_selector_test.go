@@ -321,3 +321,76 @@ func TestMacPackageFetcher_FallsBackToTheBuiltInMatcher(t *testing.T) {
 		t.Errorf("selected asset = %q, want the arm64 build", matched.Name)
 	}
 }
+
+// syswatchSelectorTool carries the assetSelector of a real v1 tool file (repository
+// matthart1983/syswatch, issue #182): it compares systemInfo against the Platform and
+// Architecture members, and prefers the static build where the release ships one.
+const syswatchSelectorTool = `
+	import { defineTool, Platform, Architecture } from "@alexgorbatchev/dotfiles";
+	export default defineTool((install) =>
+		install("github-release", {
+			repo: "matthart1983/syswatch",
+			assetSelector: ({ assets, systemInfo }) => {
+				const platformName = systemInfo.platform === Platform.MacOS ? "macos"
+					: systemInfo.platform === Platform.Linux ? "linux" : undefined;
+				const archName = systemInfo.arch === Architecture.Arm64 ? "aarch64"
+					: systemInfo.arch === Architecture.X86_64 ? "x86_64" : undefined;
+				if (!platformName || !archName) return undefined;
+				const prefix = "syswatch-" + platformName + "-" + archName;
+				return assets.find((asset) => asset.name === prefix + "-static.tar.gz")
+					?? assets.find((asset) => asset.name === prefix + ".tar.gz");
+			},
+		}).bin("syswatch"),
+	);
+`
+
+// syswatchAssets is what the syswatch release offers.
+var syswatchAssets = []string{
+	"syswatch-linux-aarch64-static.tar.gz",
+	"syswatch-linux-aarch64.tar.gz",
+	"syswatch-linux-armv5te-static.tar.gz",
+	"syswatch-linux-x86_64-static.tar.gz",
+	"syswatch-linux-x86_64.tar.gz",
+	"syswatch-macos-aarch64.tar.gz",
+	"syswatch-macos-x86_64.tar.gz",
+}
+
+// An assetSelector's systemInfo describes the target the run was invoked for, in the
+// Platform and Architecture members v1 tool files compare it against. The target is
+// injected rather than read from the host, so every case runs on every machine.
+func TestGitHubInstaller_AssetSelectorSeesTheTargetPlatformAndArchitecture(t *testing.T) {
+	tool := writeSelectorTool(t, "syswatch", syswatchSelectorTool, assetSelectorParam, map[string]any{"repo": "matthart1983/syswatch"})
+
+	release := &githubRelease{TagName: "v0.1.0"}
+	for i, name := range syswatchAssets {
+		release.Assets = append(release.Assets, githubAsset{ID: int64(i + 1), Name: name})
+	}
+
+	tests := []struct {
+		os   string
+		arch string
+		want string
+	}{
+		{os: "darwin", arch: "arm64", want: "syswatch-macos-aarch64.tar.gz"},
+		{os: "darwin", arch: "amd64", want: "syswatch-macos-x86_64.tar.gz"},
+		{os: "linux", arch: "arm64", want: "syswatch-linux-aarch64-static.tar.gz"},
+		{os: "linux", arch: "amd64", want: "syswatch-linux-x86_64-static.tar.gz"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.os+"/"+tt.arch, func(t *testing.T) {
+			inst := &GitHubInstaller{
+				runner: exec.NewMockRunner(),
+				fsys:   fs.NewMemFS(),
+				sysCtx: &SystemContext{OS: tt.os, Arch: tt.arch},
+			}
+			chosen, err := inst.selectAsset(context.Background(), tool, release, "")
+			if err != nil {
+				t.Fatalf("selecting the asset for %s/%s failed: %v", tt.os, tt.arch, err)
+			}
+			if chosen.Name != tt.want {
+				t.Errorf("selector chose %q for %s/%s, want %q", chosen.Name, tt.os, tt.arch, tt.want)
+			}
+		})
+	}
+}

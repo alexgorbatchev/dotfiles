@@ -135,11 +135,23 @@ func TestInstallToolGivesTheInstallerTheRunsTarget(t *testing.T) {
 func TestRunHooksUsesTheRunsTarget(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name   string
-		target vm.Target
+		name         string
+		target       vm.Target
+		wantPlatform int
+		wantArch     int
 	}{
-		{name: "linux arm64 musl", target: vm.Target{OS: "linux", Arch: "arm64", Libc: "musl"}},
-		{name: "darwin amd64", target: vm.Target{OS: "darwin", Arch: "amd64", Libc: "unknown"}},
+		{
+			name:         "linux arm64 musl",
+			target:       vm.Target{OS: "linux", Arch: "arm64", Libc: "musl"},
+			wantPlatform: config.PlatformLinux,
+			wantArch:     config.ArchArm64,
+		},
+		{
+			name:         "darwin amd64",
+			target:       vm.Target{OS: "darwin", Arch: "amd64", Libc: "unknown"},
+			wantPlatform: config.PlatformMacOS,
+			wantArch:     config.ArchX86_64,
+		},
 	}
 
 	for _, tt := range tests {
@@ -163,19 +175,23 @@ func TestRunHooksUsesTheRunsTarget(t *testing.T) {
 			if err != nil {
 				t.Fatalf("the hook wrote nothing: %v", err)
 			}
-			var got map[string]string
+			var got struct {
+				Platform int    `json:"platform"`
+				Arch     int    `json:"arch"`
+				Libc     string `json:"libc"`
+			}
 			if err := json.Unmarshal(captured, &got); err != nil {
 				t.Fatalf("the hook wrote %q, which is not JSON: %v", captured, err)
 			}
 
-			for field, want := range map[string]string{
-				"os":   tt.target.OS,
-				"arch": tt.target.Arch,
-				"libc": tt.target.Libc,
-			} {
-				if got[field] != want {
-					t.Errorf("systemInfo.%s = %q, want %q", field, got[field], want)
-				}
+			if got.Platform != tt.wantPlatform {
+				t.Errorf("systemInfo.platform = %d, want the Platform member %d", got.Platform, tt.wantPlatform)
+			}
+			if got.Arch != tt.wantArch {
+				t.Errorf("systemInfo.arch = %d, want the Architecture member %d", got.Arch, tt.wantArch)
+			}
+			if got.Libc != tt.target.Libc {
+				t.Errorf("systemInfo.libc = %q, want %q", got.Libc, tt.target.Libc)
 			}
 		})
 	}

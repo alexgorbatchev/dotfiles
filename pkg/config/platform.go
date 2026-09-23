@@ -43,36 +43,49 @@ func ArchitectureNames(architectures int) []string {
 	return names
 }
 
+// PlatformOf returns the Platform member for an OS name ("linux", "darwin", "windows"),
+// the value systemInfo.platform reports. It is the one mapping from the Go spelling to
+// the bit, so what a configuration compares against and what .platform() blocks match
+// cannot disagree. An OS with no member is 0, which v1 called Platform.None
+// (platformFromNodeJS in packages/core/src/common/platform.types.ts) and which equals no
+// member and selects nothing.
+func PlatformOf(osName string) int {
+	switch osName {
+	case "linux":
+		return PlatformLinux
+	case "darwin":
+		return PlatformMacOS
+	case "windows":
+		return PlatformWindows
+	default:
+		return 0
+	}
+}
+
+// ArchitectureOf returns the Architecture member for an arch name ("amd64", "x86_64",
+// "arm64"), the value systemInfo.arch reports. It mirrors PlatformOf: an architecture
+// with no member is 0, v1's Architecture.None.
+func ArchitectureOf(archName string) int {
+	switch archName {
+	case "amd64", "x86_64":
+		return ArchX86_64
+	case "arm64":
+		return ArchArm64
+	default:
+		return 0
+	}
+}
+
 // MatchesPlatform reports whether a platform bitmask selects the given OS name
 // ("linux", "darwin", "windows"). An empty bitmask selects nothing; callers express
 // "unconstrained" with a nil *int rather than with zero.
 func MatchesPlatform(platforms int, osName string) bool {
-	var mask int
-	switch osName {
-	case "linux":
-		mask = PlatformLinux
-	case "darwin":
-		mask = PlatformMacOS
-	case "windows":
-		mask = PlatformWindows
-	default:
-		return false
-	}
-	return platforms&mask != 0
+	return platforms&PlatformOf(osName) != 0
 }
 
 // MatchesArch reports whether an architecture bitmask selects the given arch name
 // ("amd64", "x86_64", "arm64"). It mirrors MatchesPlatform: an empty bitmask selects
 // nothing, and "unconstrained" is expressed with a nil *int.
 func MatchesArch(architectures int, archName string) bool {
-	var mask int
-	switch archName {
-	case "amd64", "x86_64":
-		mask = ArchX86_64
-	case "arm64":
-		mask = ArchArm64
-	default:
-		return false
-	}
-	return architectures&mask != 0
+	return architectures&ArchitectureOf(archName) != 0
 }
