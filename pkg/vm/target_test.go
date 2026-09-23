@@ -25,14 +25,23 @@ func loadToolSource(t *testing.T, tool string, opts ...Option) (map[string]*conf
 // depends on the name the tool falls back to.
 func loadToolFile(t *testing.T, fileName, tool string, opts ...Option) (map[string]*config.ToolConfig, error) {
 	t.Helper()
+	return loadToolFiles(t, map[string]string{fileName: tool}, opts...)
+}
+
+// loadToolFiles is loadToolSource with several tool files, keyed by file name, for
+// behavior that depends on more than one tool.
+func loadToolFiles(t *testing.T, tools map[string]string, opts ...Option) (map[string]*config.ToolConfig, error) {
+	t.Helper()
 
 	tmpDir := t.TempDir()
 	toolsDir := filepath.Join(tmpDir, "tools")
 	if err := os.MkdirAll(toolsDir, 0755); err != nil {
 		t.Fatalf("creating tools dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(toolsDir, fileName), []byte(tool), 0644); err != nil {
-		t.Fatalf("writing tool: %v", err)
+	for fileName, tool := range tools {
+		if err := os.WriteFile(filepath.Join(toolsDir, fileName), []byte(tool), 0644); err != nil {
+			t.Fatalf("writing tool: %v", err)
+		}
 	}
 
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")

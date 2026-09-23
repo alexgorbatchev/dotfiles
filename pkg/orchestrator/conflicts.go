@@ -86,7 +86,7 @@ func DetectConflicts(tools []*config.ToolConfig, dotfilesDir ...string) []Confli
 	shells := []string{"zsh", "bash", "powershell"}
 
 	for _, tool := range tools {
-		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+		if !tool.IsActive() {
 			continue
 		}
 

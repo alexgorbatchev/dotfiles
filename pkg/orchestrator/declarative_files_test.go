@@ -757,26 +757,21 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 		t.Errorf("resolveSourcePath no config path = %q, want %q", got, "rel/file.txt")
 	}
 
-	// 2. resolveTargetPath error with unknown placeholder
-	if _, err := orch.resolveTargetPath(tool, declProjectConfig(), "{unknown_placeholder}"); err == nil {
-		t.Error("expected resolveTargetPath error for unknown placeholder")
-	}
-
-	// 3. ensureDeclaredDirectories error with unknown placeholder in path
+	// 2. ensureDeclaredDirectories error with unknown placeholder in path
 	toolBadDirPlaceholder := newDeclTool()
 	toolBadDirPlaceholder.Directories = []config.DirectoryConfig{{Path: "{unknown_placeholder}"}}
 	if err := orch.ensureDeclaredDirectories(ctx, toolBadDirPlaceholder, declProjectConfig()); err == nil {
 		t.Error("expected ensureDeclaredDirectories error for bad placeholder")
 	}
 
-	// 4. applyTemplates error with unknown placeholder in target
+	// 3. applyTemplates error with unknown placeholder in target
 	toolBadTmplPlaceholder := newDeclTool()
 	toolBadTmplPlaceholder.Templates = []config.TemplateConfig{{Source: "./src.tmpl", Target: "{unknown_placeholder}"}}
 	if err := orch.applyTemplates(ctx, toolBadTmplPlaceholder, declProjectConfig()); err == nil {
 		t.Error("expected applyTemplates error for bad placeholder in target")
 	}
 
-	// 5. enforceMode edge cases
+	// 4. enforceMode edge cases
 	tracked := orch.getTrackedFS(ctx, nil, "decl-tool", "test")
 	writeDecl(t, memFS, "/home/user/mode-test.txt", "content")
 	// empty mode is a no-op
@@ -797,13 +792,13 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 		t.Error("expected enforceMode error on non-existent file")
 	}
 
-	// 6. contract with non-TrackedFileSystem
+	// 5. contract with non-TrackedFileSystem
 	orchPlain := &Orchestrator{fs: fs.NewMemFS()}
 	if got := orchPlain.contract("/home/user/test.txt"); got != "/home/user/test.txt" {
 		t.Errorf("contract with MemFS = %q, want %q", got, "/home/user/test.txt")
 	}
 
-	// 7. applyBlocks with bad placeholder in target
+	// 6. applyBlocks with bad placeholder in target
 	toolBadBlockTarget := newDeclTool()
 	toolBadBlockTarget.Blocks = []config.BlockConfig{{
 		Target:  "{unknown_placeholder}",
@@ -814,7 +809,7 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 		t.Error("expected applyBlocks to fail on bad target placeholder")
 	}
 
-	// 8. applyBlocks with bad mode
+	// 7. applyBlocks with bad mode
 	writeDecl(t, memFS, "/home/user/bad-mode-block.txt", "existing content\n")
 	toolBadModeBlock := newDeclTool()
 	toolBadModeBlock.Blocks = []config.BlockConfig{{
@@ -827,7 +822,7 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 		t.Error("expected applyBlocks to fail on invalid block mode")
 	}
 
-	// 9. applyBlocks when in-sync (!shouldWrite) and mode needs enforcing
+	// 8. applyBlocks when in-sync (!shouldWrite) and mode needs enforcing
 	writeDecl(t, memFS, "/home/user/sync-block.txt", "# >>> dotfiles:sync\nsync body\n# <<< dotfiles:sync\n")
 	_ = memFS.Chmod("/home/user/sync-block.txt", 0644)
 	toolSyncBlock := newDeclTool()
@@ -849,7 +844,7 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 		t.Errorf("mode = %04o, want 0600", info.Mode().Perm())
 	}
 
-	// 10. cleanupStaleBlocks with stale block where file does not exist on disk
+	// 9. cleanupStaleBlocks with stale block where file does not exist on disk
 	_ = orch.reg.WithTx(ctx, func(tx *sql.Tx) error {
 		tracked := orch.getTrackedFS(ctx, tx, "decl-tool", "block").WithBlock("old-deleted-block")
 		id := "old-deleted-block"
@@ -868,7 +863,7 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 		t.Errorf("cleanupStaleBlocks with non-existent target error: %v", err)
 	}
 
-	// 11. contentForAction branches (Overwrite, Merge with conflict, Prompt)
+	// 10. contentForAction branches (Overwrite, Merge with conflict, Prompt)
 	writeDecl(t, memFS, "/home/user/action-file.txt", "current")
 	// ActionOverwrite
 	content, write, err := orch.contentForAction(actionRequest{

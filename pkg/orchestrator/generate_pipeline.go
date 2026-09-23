@@ -108,7 +108,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 			continue
 		}
 
-		if tool.Hostname != "" && !matchesHostname(tool.Hostname) {
+		if tool.Hostname != "" && !config.MatchesHostname(tool.Hostname) {
 			continue
 		}
 
@@ -350,12 +350,9 @@ var symlinkOptions = symlink.Options{Overwrite: true, Backup: true}
 func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	symEvaluator := o.getSymlinkEvaluator()
 	for _, sym := range tool.Symlinks {
-		target, err := config.ResolvePathPlaceholders(sym.Target, tool.Name, projCfg)
+		target, err := config.ResolveTargetPath(sym.Target, tool.Name, projCfg)
 		if err != nil {
 			return fmt.Errorf("tool %q: symlink target %q: %w", tool.Name, sym.Target, err)
-		}
-		if projCfg != nil {
-			target = utils.ExpandHomePath(projCfg.Paths.HomeDir, target)
 		}
 
 		src := sym.Source
@@ -405,12 +402,9 @@ func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConf
 // CleanupStaleCopies reaps once a declaration disappears.
 func (o *Orchestrator) applyCopies(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	for _, cp := range tool.Copies {
-		target, err := config.ResolvePathPlaceholders(cp.Target, tool.Name, projCfg)
+		target, err := config.ResolveTargetPath(cp.Target, tool.Name, projCfg)
 		if err != nil {
 			return fmt.Errorf("tool %q: copy target %q: %w", tool.Name, cp.Target, err)
-		}
-		if projCfg != nil {
-			target = utils.ExpandHomePath(projCfg.Paths.HomeDir, target)
 		}
 
 		src := cp.Source
@@ -617,7 +611,7 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 	shimDir := projCfg.Paths.TargetDir
 
 	for _, tool := range tools {
-		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+		if !tool.IsActive() {
 			continue
 		}
 
@@ -690,7 +684,7 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 	}
 
 	for _, tool := range tools {
-		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+		if !tool.IsActive() {
 			continue
 		}
 
@@ -765,7 +759,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 	}
 
 	for _, tool := range tools {
-		if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+		if !tool.IsActive() {
 			continue
 		}
 

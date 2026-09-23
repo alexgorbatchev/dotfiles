@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -108,27 +107,6 @@ func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
 		return symlink.NewEvaluatorWithFS(o.symlinkFS)
 	}
 	return symlink.NewEvaluatorWithFS(o.fs)
-}
-
-func matchesHostname(pattern string) bool {
-	current, err := os.Hostname()
-	if err != nil {
-		return false
-	}
-	if pattern == "" {
-		return true
-	}
-
-	if len(pattern) >= 2 && strings.HasPrefix(pattern, "/") && strings.HasSuffix(pattern, "/") {
-		body := pattern[1 : len(pattern)-1]
-		re, err := regexp.Compile(body)
-		if err != nil {
-			return current == pattern
-		}
-		return re.MatchString(current)
-	}
-
-	return current == pattern || strings.Contains(current, pattern)
 }
 
 // getBinaryNames returns the name of every binary a tool declares. `.bin()` records one

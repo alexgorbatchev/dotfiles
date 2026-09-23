@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 // placeholderPattern matches a single {placeholder} token.
@@ -141,6 +143,23 @@ func ResolvePathPlaceholders(val string, toolName string, projCfg *ProjectConfig
 	}
 	if tokens := unresolvedTokens(resolved); len(tokens) > 0 {
 		return "", fmt.Errorf("unknown placeholder %s", tokens[0])
+	}
+	return resolved, nil
+}
+
+// ResolveTargetPath turns the target of a file declaration (.symlink(), .copy(),
+// .template(), .block(), .ensureDir()) into the path it names: placeholders
+// resolved, then a leading "~", $HOME or ${HOME} expanded to the configured home
+// directory. It is the one reading of a declared target, shared by the engine that
+// writes the file and the load-time check that no two declarations write the same
+// one, so the two can never disagree about which file a spelling names.
+func ResolveTargetPath(target string, toolName string, projCfg *ProjectConfig) (string, error) {
+	resolved, err := ResolvePathPlaceholders(target, toolName, projCfg)
+	if err != nil {
+		return "", err
+	}
+	if projCfg != nil {
+		resolved = utils.ExpandHomePath(projCfg.Paths.HomeDir, resolved)
 	}
 	return resolved, nil
 }

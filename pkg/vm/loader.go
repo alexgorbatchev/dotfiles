@@ -188,7 +188,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	if err := fullConfig.ProjectConfig.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
 	}
-	if err := config.ValidateToolConfigs(slices.Collect(maps.Values(fullConfig.ToolConfigs))); err != nil {
+	if err := config.ValidateToolConfigs(slices.Collect(maps.Values(fullConfig.ToolConfigs)), fullConfig.ProjectConfig); err != nil {
 		return nil, nil, err
 	}
 
