@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -553,6 +554,88 @@ func TestCargoResponseCache(t *testing.T) {
 		}
 		if n := len(host.received()); n != 2 {
 			t.Fatalf("host received %d requests, want 2: the failure must not be cached, the success must", n)
+		}
+	})
+
+	// A crate that has published only prereleases: a prerelease lookup and a stable one
+	// share its one cached description, and "no stable version" is as definitive an
+	// answer as a version, so it is reused from the cache and still stops Install from
+	// compiling the crate.
+	t.Run("a prerelease-only crate is answered from one cached description", func(t *testing.T) {
+		host := newCargoHost(t, func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"3.0.0-alpha.1","max_stable_version":null}}`))
+		})
+		runner := exec.NewMockRunner()
+		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{
+			Paths: config.PathsConfig{GeneratedDir: t.TempDir()},
+			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
+		}))
+		inst.runner = runner
+
+		if got, err := inst.fetchCratesIOVersion(context.Background(), "mycrate", true); err != nil || got != "3.0.0-alpha.1" {
+			t.Fatalf("prerelease lookup = %q, %v; want 3.0.0-alpha.1", got, err)
+		}
+		for range 2 {
+			if _, err := inst.fetchCratesIOVersion(context.Background(), "mycrate", false); !errors.Is(err, errNoCrateVersion) {
+				t.Fatalf("stable lookup error = %v, want errNoCrateVersion", err)
+			}
+		}
+		if _, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate"}); !errors.Is(err, errNoCrateVersion) {
+			t.Fatalf("Install() error = %v, want errNoCrateVersion", err)
+		}
+		if len(runner.History) != 0 {
+			t.Fatalf("Install() ran %v; a crate with no stable version must not be compiled", runner.History)
+		}
+		if n := len(host.received()); n != 1 {
+			t.Fatalf("host received %d requests, want 1: every lookup after the first reads the cached description", n)
+		}
+	})
+
+	t.Run("a crate with no stable version is cached when first seen by a stable lookup", func(t *testing.T) {
+		host := newCargoHost(t, func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"3.0.0-alpha.1","max_stable_version":null}}`))
+		})
+		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{
+			Paths: config.PathsConfig{GeneratedDir: t.TempDir()},
+			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
+		}))
+		for range 2 {
+			if _, err := inst.fetchCratesIOVersion(context.Background(), "mycrate", false); !errors.Is(err, errNoCrateVersion) {
+				t.Fatalf("stable lookup error = %v, want errNoCrateVersion", err)
+			}
+		}
+		if n := len(host.received()); n != 1 {
+			t.Fatalf("host received %d requests, want 1: the definitive answer must be cached", n)
+		}
+	})
+
+	// A 200 answer without max_version is not the shape crates.io answers in, so it
+	// fails the run that saw it but is not kept for the next one.
+	t.Run("a response with no max_version is not cached", func(t *testing.T) {
+		var mu sync.Mutex
+		served := 0
+		host := newCargoHost(t, func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			served++
+			if served == 1 {
+				_, _ = w.Write([]byte(`{}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0","max_stable_version":"1.5.0"}}`))
+		})
+		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{
+			Paths: config.PathsConfig{GeneratedDir: t.TempDir()},
+			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
+		}))
+		if _, err := inst.fetchCratesIOVersion(context.Background(), "mycrate", false); !errors.Is(err, errNoCrateVersion) {
+			t.Fatalf("first lookup error = %v, want errNoCrateVersion", err)
+		}
+		if got, err := inst.fetchCratesIOVersion(context.Background(), "mycrate", false); err != nil || got != "1.5.0" {
+			t.Fatalf("second lookup = %q, %v; want 1.5.0 fetched again", got, err)
+		}
+		if n := len(host.received()); n != 2 {
+			t.Fatalf("host received %d requests, want 2", n)
 		}
 	})
 

@@ -44,6 +44,18 @@ const (
 // can install. The answer is definitive, so Install reports it instead of compiling.
 var errNoCrateVersion = errors.New("no crate version to install")
 
+// errNoCrateDescription marks a response with no max_version at all. It is still
+// errNoCrateVersion for the run that saw it, but a real crates.io answer always carries
+// max_version ("0.0.0" when nothing parses), so such a body may come from a mirror or
+// proxy answering in another shape and is never cached as a definitive answer.
+var errNoCrateDescription = errors.New("the response has no max_version")
+
+// cacheableAnswer reports whether a response that parsed to err answers the question
+// definitively: with a version, or with a crates.io max_version saying there is none.
+func cacheableAnswer(err error) bool {
+	return err == nil || (errors.Is(err, errNoCrateVersion) && !errors.Is(err, errNoCrateDescription))
+}
+
 type CargoInstaller struct {
 	log          *logger.Logger
 	runner       exec.CommandRunner
@@ -222,12 +234,16 @@ type cargoRequest struct {
 }
 
 // fetchVersion answers req with the version parse reads from the response, reusing a
-// cached response while it is fresh. Only a response that parses is stored, so a
-// failed or unreadable one is asked for again next time.
+// cached response while it is fresh. A response is stored when it answers the
+// question (cacheableAnswer): with a version, or with a crates.io max_version saying
+// there is none, which is as definitive as a version and is reused the same way. A
+// failed, unreadable or incomplete response is not stored,
+// and a cached one that no longer reads is asked for again.
 func (c *CargoInstaller) fetchVersion(ctx context.Context, req cargoRequest, parse func([]byte) (string, error)) (string, error) {
 	if body, ok := req.cache.load(ctx, c.fsys, req.url); ok {
-		if version, err := parse(body); err == nil {
-			return version, nil
+		version, err := parse(body)
+		if cacheableAnswer(err) {
+			return version, err
 		}
 	}
 
@@ -255,11 +271,11 @@ func (c *CargoInstaller) fetchVersion(ctx context.Context, req cargoRequest, par
 		return "", fmt.Errorf("reading %s response: %w", req.service, err)
 	}
 	version, err := parse(body)
-	if err != nil {
+	if !cacheableAnswer(err) {
 		return "", err
 	}
 	req.cache.store(c.fsys, req.url, body)
-	return version, nil
+	return version, err
 }
 
 // cargoTargetTriple maps the system context onto the platform and architecture
@@ -391,7 +407,10 @@ func parseCratesIOVersion(body []byte, crateName string, prerelease bool) (strin
 	crate := apiResp.Crate
 	// crates.io reports max_version "0.0.0" for a crate with no version it can parse. A
 	// crate that really published 0.0.0 has it as its max_stable_version as well.
-	if crate.MaxVersion == "" || (crate.MaxVersion == cratesIONoVersion && crate.MaxStableVersion == "") {
+	if crate.MaxVersion == "" {
+		return "", fmt.Errorf("%w: crates.io lists no installable version of %s (%w)", errNoCrateVersion, crateName, errNoCrateDescription)
+	}
+	if crate.MaxVersion == cratesIONoVersion && crate.MaxStableVersion == "" {
 		return "", fmt.Errorf("%w: crates.io lists no installable version of %s", errNoCrateVersion, crateName)
 	}
 	if prerelease {
