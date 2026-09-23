@@ -1,9 +1,12 @@
 package fs
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -525,4 +528,357 @@ func TestMemFS_IsIsolatedFromTheHostByDefault(t *testing.T) {
 	if _, err := hostVisible.ReadFile(hostFile); err == nil {
 		t.Error("ReadFile returned host contents; the fallback must expose metadata only")
 	}
+}
+
+// copyFileImplementations pins OSFS and MemFS to one CopyFile behaviour: each entry
+// returns a filesystem and an existing directory to work in.
+var copyFileImplementations = []struct {
+	name  string
+	setup func(t *testing.T) (FS, string)
+}{
+	{"OSFS", func(t *testing.T) (FS, string) { return NewOSFS(), t.TempDir() }},
+	{"MemFS", func(t *testing.T) (FS, string) {
+		memFS := NewMemFS()
+		if err := memFS.MkdirAll("/workspace", 0755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		return memFS, "/workspace"
+	}},
+}
+
+const copySourceContent = "source-binary-content"
+
+func writeCopySource(t *testing.T, filesystem FS, dir string) string {
+	t.Helper()
+	src := filepath.Join(dir, "tool-bin")
+	if err := filesystem.WriteFile(src, []byte(copySourceContent), 0644); err != nil {
+		t.Fatalf("WriteFile(%s): %v", src, err)
+	}
+	return src
+}
+
+func assertFileContent(t *testing.T, filesystem FS, path, want string) {
+	t.Helper()
+	data, err := filesystem.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s): %v", path, err)
+	}
+	if string(data) != want {
+		t.Errorf("%s holds %q, want %q", path, data, want)
+	}
+}
+
+// TestCopyFileReplacesDestinationSymlink covers a destination that is a symlink to the
+// source: the copy replaces the link with a regular file and never writes through it.
+func TestCopyFileReplacesDestinationSymlink(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := writeCopySource(t, filesystem, dir)
+			dest := filepath.Join(dir, "staged-tool")
+			if err := filesystem.Symlink(src, dest); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+
+			if err := filesystem.CopyFile(src, dest); err != nil {
+				t.Fatalf("CopyFile(%s, %s) = %v, want nil", src, dest, err)
+			}
+
+			assertFileContent(t, filesystem, src, copySourceContent)
+			info, err := filesystem.Lstat(dest)
+			if err != nil {
+				t.Fatalf("Lstat(%s): %v", dest, err)
+			}
+			if !info.Mode().IsRegular() {
+				t.Errorf("Lstat(%s) mode = %v, want a regular file", dest, info.Mode())
+			}
+			assertFileContent(t, filesystem, dest, copySourceContent)
+		})
+	}
+}
+
+// TestCopyFileReplacesExistingDestination covers an existing regular destination: its
+// content and mode are replaced by the source's.
+func TestCopyFileReplacesExistingDestination(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := writeCopySource(t, filesystem, dir)
+			if err := filesystem.Chmod(src, 0750); err != nil {
+				t.Fatalf("Chmod: %v", err)
+			}
+			dest := filepath.Join(dir, "existing")
+			if err := filesystem.WriteFile(dest, []byte("a much longer previous destination content"), 0600); err != nil {
+				t.Fatalf("WriteFile: %v", err)
+			}
+
+			if err := filesystem.CopyFile(src, dest); err != nil {
+				t.Fatalf("CopyFile = %v, want nil", err)
+			}
+
+			assertFileContent(t, filesystem, dest, copySourceContent)
+			info, err := filesystem.Stat(dest)
+			if err != nil {
+				t.Fatalf("Stat(%s): %v", dest, err)
+			}
+			if got := info.Mode().Perm(); got != 0750 {
+				t.Errorf("%s mode = %v, want %v", dest, got, os.FileMode(0750))
+			}
+		})
+	}
+}
+
+// TestCopyFileRefusesToCopyAFileOntoItself covers a source and destination that name
+// the same file, directly or through the source being a symlink to the destination.
+func TestCopyFileRefusesToCopyAFileOntoItself(t *testing.T) {
+	cases := []struct {
+		name string
+		// arrange returns the source to copy onto dest, the file the source resolves to.
+		arrange func(t *testing.T, filesystem FS, dir, dest string) string
+	}{
+		{"same path", func(t *testing.T, filesystem FS, dir, dest string) string { return dest }},
+		{"source is a symlink to the destination", func(t *testing.T, filesystem FS, dir, dest string) string {
+			link := filepath.Join(dir, "link-to-dest")
+			if err := filesystem.Symlink(dest, link); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+			return link
+		}},
+	}
+	for _, impl := range copyFileImplementations {
+		for _, tc := range cases {
+			t.Run(impl.name+"/"+tc.name, func(t *testing.T) {
+				filesystem, dir := impl.setup(t)
+				dest := writeCopySource(t, filesystem, dir)
+				src := tc.arrange(t, filesystem, dir, dest)
+
+				err := filesystem.CopyFile(src, dest)
+				if !errors.Is(err, errSameFile) {
+					t.Errorf("CopyFile(%s, %s) = %v, want %v", src, dest, err, errSameFile)
+				}
+				assertFileContent(t, filesystem, dest, copySourceContent)
+			})
+		}
+	}
+}
+
+// TestCopyFileRefusesToCopyASymlinkOntoItself covers a source and destination that are
+// the same symlink: replacing dest would turn the source's own entry into a regular file.
+func TestCopyFileRefusesToCopyASymlinkOntoItself(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			target := writeCopySource(t, filesystem, dir)
+			link := filepath.Join(dir, "link")
+			if err := filesystem.Symlink(target, link); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+
+			err := filesystem.CopyFile(link, link)
+			if !errors.Is(err, errSameFile) {
+				t.Errorf("CopyFile(%s, %s) = %v, want %v", link, link, err, errSameFile)
+			}
+			info, err := filesystem.Lstat(link)
+			if err != nil {
+				t.Fatalf("Lstat(%s): %v", link, err)
+			}
+			if info.Mode()&os.ModeSymlink == 0 {
+				t.Errorf("Lstat(%s) mode = %v, want the symlink kept", link, info.Mode())
+			}
+			assertFileContent(t, filesystem, target, copySourceContent)
+		})
+	}
+}
+
+// TestCopyFileLeavesTheDestinationUntouchedWhenTheCopyFails covers a source that cannot
+// be read as a file: the existing destination keeps its content.
+func TestCopyFileLeavesTheDestinationUntouchedWhenTheCopyFails(t *testing.T) {
+	const previous = "previous destination"
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := filepath.Join(dir, "a-directory")
+			if err := filesystem.MkdirAll(src, 0755); err != nil {
+				t.Fatalf("MkdirAll: %v", err)
+			}
+			dest := filepath.Join(dir, "dest")
+			if err := filesystem.WriteFile(dest, []byte(previous), 0644); err != nil {
+				t.Fatalf("WriteFile: %v", err)
+			}
+
+			if err := filesystem.CopyFile(src, dest); !errors.Is(err, os.ErrInvalid) {
+				t.Fatalf("CopyFile(%s, %s) = %v, want %v", src, dest, err, os.ErrInvalid)
+			}
+
+			assertFileContent(t, filesystem, dest, previous)
+			entries, err := filesystem.ReadDir(dir)
+			if err != nil {
+				t.Fatalf("ReadDir: %v", err)
+			}
+			if len(entries) != 2 {
+				t.Errorf("%s holds %v, want only the source and the destination", dir, entries)
+			}
+		})
+	}
+}
+
+// TestOSFSCopyFileErrors covers the operating system refusing a step of the copy: each
+// failure is reported and no temporary file is left beside the destination.
+func TestOSFSCopyFileErrors(t *testing.T) {
+	// Each case names its source and destination relative to a directory holding the
+	// regular file "tool-bin" and the directory "dir".
+	cases := []struct {
+		name, src, dest string
+	}{
+		{"source is missing", "missing", "dir/unused"},
+		{"destination is a directory", "tool-bin", "dir"},
+		{"destination parent is a file", "tool-bin", "tool-bin/child"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			filesystem, root := NewOSFS(), t.TempDir()
+			writeCopySource(t, filesystem, root)
+			dir := filepath.Join(root, "dir")
+			if err := filesystem.MkdirAll(dir, 0755); err != nil {
+				t.Fatalf("MkdirAll: %v", err)
+			}
+			src := filepath.Join(root, filepath.FromSlash(tc.src))
+			dest := filepath.Join(root, filepath.FromSlash(tc.dest))
+
+			if err := filesystem.CopyFile(src, dest); err == nil {
+				t.Fatalf("CopyFile(%s, %s) = nil, want an error", src, dest)
+			}
+
+			for _, d := range []string{root, dir} {
+				entries, err := filesystem.ReadDir(d)
+				if err != nil {
+					t.Fatalf("ReadDir(%s): %v", d, err)
+				}
+				for _, name := range entries {
+					if name != "tool-bin" && name != "dir" {
+						t.Errorf("%s holds unexpected %s", d, name)
+					}
+				}
+			}
+		})
+	}
+}
+
+// failingCloseWriter closes the file it wraps and then reports errClose, the way a
+// write that fails only once the file is closed (EIO, a quota, NFS) surfaces.
+type failingCloseWriter struct{ *os.File }
+
+var errClose = errors.New("close failed")
+
+func (w failingCloseWriter) Close() error {
+	_ = w.File.Close() // the error under test is errClose, not this one
+	return errClose
+}
+
+// TestOSFSCopyFileReportsACloseFailure covers a destination whose close fails: the copy
+// is reported as failed, no temporary file is left behind, and the destination is
+// either still absent or keeps its previous content.
+func TestOSFSCopyFileReportsACloseFailure(t *testing.T) {
+	const previous = "previous destination"
+	cases := []struct {
+		name       string
+		destExists bool
+	}{
+		{"new destination", false},
+		{"existing destination", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			destExists := tc.destExists
+			filesystem, dir := NewOSFS(), t.TempDir()
+			src := writeCopySource(t, filesystem, dir)
+			dest := filepath.Join(dir, "dest")
+			want := []string{filepath.Base(src)}
+			if destExists {
+				if err := filesystem.WriteFile(dest, []byte(previous), 0644); err != nil {
+					t.Fatalf("WriteFile: %v", err)
+				}
+				want = append(want, filepath.Base(dest))
+			}
+
+			err := copyFile(src, dest, func(f *os.File) io.WriteCloser { return failingCloseWriter{f} })
+			if !errors.Is(err, errClose) {
+				t.Fatalf("copyFile = %v, want %v", err, errClose)
+			}
+
+			entries, err := filesystem.ReadDir(dir)
+			if err != nil {
+				t.Fatalf("ReadDir: %v", err)
+			}
+			slices.Sort(entries)
+			slices.Sort(want)
+			if !slices.Equal(entries, want) {
+				t.Errorf("%s holds %v, want %v", dir, entries, want)
+			}
+			assertFileContent(t, filesystem, src, copySourceContent)
+			if destExists {
+				assertFileContent(t, filesystem, dest, previous)
+			}
+		})
+	}
+}
+
+// TestCopyErrorNamesTheDestination covers the error a failed copy step reports: it
+// names dest, drops the temporary file's name, and keeps an error about src whole.
+func TestCopyErrorNamesTheDestination(t *testing.T) {
+	const dest, tmpPath, src = "/bin/tool", "/bin/.dotfiles-copy-1", "/src/tool"
+	srcErr := &os.PathError{Op: "read", Path: src, Err: errClose}
+	cases := []struct {
+		name string
+		err  error
+		want error
+	}{
+		{"temporary file error", &os.PathError{Op: "chmod", Path: tmpPath, Err: os.ErrPermission}, os.ErrPermission},
+		{"rename error", &os.LinkError{Op: "rename", Old: tmpPath, New: dest, Err: os.ErrPermission}, os.ErrPermission},
+		{"source error", srcErr, srcErr},
+		{"plain error", errClose, errClose},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := copyError(dest, tmpPath, tc.err)
+			want := (&os.PathError{Op: "copyfile", Path: dest, Err: tc.want}).Error()
+			if err.Error() != want {
+				t.Errorf("copyError = %q, want %q", err, want)
+			}
+			if !errors.Is(err, tc.want) {
+				t.Errorf("copyError = %v, want it to wrap %v", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestOSFSCopyFileToADestinationAtTheNameLengthLimit covers a destination whose name is
+// as long as most file systems allow (NAME_MAX, 255 bytes): the temporary file beside
+// it must not need a longer name.
+func TestOSFSCopyFileToADestinationAtTheNameLengthLimit(t *testing.T) {
+	filesystem, dir := NewOSFS(), t.TempDir()
+	src := writeCopySource(t, filesystem, dir)
+	dest := filepath.Join(dir, strings.Repeat("n", 255))
+
+	if err := filesystem.CopyFile(src, dest); err != nil {
+		t.Fatalf("CopyFile = %v, want nil", err)
+	}
+	assertFileContent(t, filesystem, dest, copySourceContent)
+}
+
+// TestOSFSCopyFileRefusesAHardLinkToTheSource covers a destination that is another
+// name for the source's inode, which only a real filesystem can have.
+func TestOSFSCopyFileRefusesAHardLinkToTheSource(t *testing.T) {
+	filesystem, dir := NewOSFS(), t.TempDir()
+	src := writeCopySource(t, filesystem, dir)
+	dest := filepath.Join(dir, "hard-link")
+	if err := os.Link(src, dest); err != nil {
+		t.Fatalf("Link: %v", err)
+	}
+
+	err := filesystem.CopyFile(src, dest)
+	if !errors.Is(err, errSameFile) {
+		t.Errorf("CopyFile(%s, %s) = %v, want %v", src, dest, err, errSameFile)
+	}
+	assertFileContent(t, filesystem, src, copySourceContent)
 }

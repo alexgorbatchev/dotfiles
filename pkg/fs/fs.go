@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"errors"
 	"io"
 	"os"
 )
@@ -27,5 +28,11 @@ type FS interface {
 	RemoveAll(path string) error
 	Abs(path string) (string, error)
 	IsAbs(path string) bool
+	// CopyFile replaces dest with a copy of src, keeping src's permission bits. A dest
+	// that already exists, including a symlink, is replaced rather than written
+	// through, and src is never modified. Copying a file onto itself fails.
 	CopyFile(src, dest string) error
 }
+
+// errSameFile reports a CopyFile whose source and destination are the same file.
+var errSameFile = errors.New("source and destination are the same file")
