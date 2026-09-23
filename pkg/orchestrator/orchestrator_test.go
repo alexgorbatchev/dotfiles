@@ -61,48 +61,6 @@ func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig
 	return &installer.UpdateCheckResult{}, nil
 }
 
-func TestMatchesHostname(t *testing.T) {
-	t.Parallel()
-	if !matchesHostname("") {
-		t.Error("expected empty hostname pattern to match")
-	}
-
-	// Test regex hostname
-	if !matchesHostname("/.*/") {
-		t.Error("expected wild regex pattern to match")
-	}
-
-	// Test invalid regex fallback
-	if matchesHostname("/[invalid/") {
-		// Should do exact match, which should be false for any realistic hostname
-	}
-
-	// Test exact and substring match using actual hostname
-	current, err := os.Hostname()
-	if err == nil && current != "" {
-		if !matchesHostname(current) {
-			t.Errorf("expected exact match for current hostname %q", current)
-		}
-		if len(current) > 2 {
-			substr := current[:len(current)-1]
-			if !matchesHostname(substr) {
-				// matchesHostname returns strings.Contains(current, pattern) so pattern is substr, current should contain pattern
-				t.Errorf("expected substring match for %q in %q", substr, current)
-			}
-		}
-	}
-
-	// Test regex succeeding but failing to match target
-	if matchesHostname("/^non_matching_regex_pattern_xyz_123$/") {
-		t.Error("expected regex that compiles but mismatch to return false")
-	}
-
-	// Test very short slash pattern to prevent slicing panic (DUE_DILIGENCE)
-	if matchesHostname("/") {
-		// should safely return false and not panic
-	}
-}
-
 func TestGetBinaryNames(t *testing.T) {
 	t.Parallel()
 	// A bare string is not a shape .bin() records, so it names no binary; the map is

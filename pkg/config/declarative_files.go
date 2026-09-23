@@ -176,19 +176,3 @@ func RenderTemplate(content string, variables map[string]any, toolName string, p
 	}
 	return rendered, nil
 }
-
-// validateUniqueBlocks reports two declarations claiming the same region of the same
-// file. The block engine refuses to act on a file whose markers appear twice, so two
-// tools racing for one id would leave the file unwritable from then on; catching it
-// here names both declarations instead.
-func (tc *ToolConfig) validateUniqueBlocks() error {
-	seen := make(map[string]bool, len(tc.Blocks))
-	for _, blk := range tc.Blocks {
-		key := blk.Target + "\x00" + blk.ID
-		if seen[key] {
-			return fmt.Errorf("tool %q declares the block %q of %q twice", tc.Name, blk.ID, blk.Target)
-		}
-		seen[key] = true
-	}
-	return nil
-}

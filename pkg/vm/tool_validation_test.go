@@ -101,7 +101,22 @@ func TestLoaderRejectsInvalidToolDeclarations(t *testing.T) {
 			name: "two blocks with the same target and id",
 			declaration: `.block("~/.ssh/config", { id: "main", content: "a" })` +
 				`.block("~/.ssh/config", { id: "main", content: "b" })`,
-			want: []string{`declares the block "main" of "~/.ssh/config" twice`},
+			want: []string{`.block() "main" targeting "~/.ssh/config"`, filepath.Join(".ssh", "config")},
+		},
+		{
+			name: "one block's file spelled two ways",
+			declaration: `.block("~/.ssh/config", { id: "main", content: "one" })` +
+				`.block("{paths.homeDir}/.ssh/config", { id: "main", content: "two" })`,
+			want: []string{
+				`.block() "main" targeting "~/.ssh/config"`,
+				`.block() "main" targeting "{paths.homeDir}/.ssh/config"`,
+			},
+		},
+		{
+			name: "a block in the file a template renders",
+			declaration: `.template("./gitconfig.template", "~/.gitconfig")` +
+				`.block("~/.gitconfig", { id: "main", content: "x" })`,
+			want: []string{`.template() targeting "~/.gitconfig"`, `.block() "main" targeting "~/.gitconfig"`},
 		},
 		{
 			name:        "template with a blank source",
@@ -154,6 +169,58 @@ func TestLoaderRejectsInvalidToolDeclarations(t *testing.T) {
 				t.Fatal("expected loading to fail")
 			}
 			for _, want := range append([]string{"probe.tool.ts", `tool "probe"`}, tt.want...) {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected the error to mention %q, got: %v", want, err)
+				}
+			}
+		})
+	}
+}
+
+// Two tools whose declarations resolve to the same file fail the load, naming both
+// tools and both tool files, before anything is written: whichever was applied last
+// would otherwise replace the other's content on every run without a message.
+func TestLoaderRejectsFilesClaimedByTwoTools(t *testing.T) {
+	tests := []struct {
+		name  string
+		alpha string
+		beta  string
+		want  []string
+	}{
+		{
+			name:  "one block",
+			alpha: `.block("~/shared.conf", { id: "main", content: "from alpha" })`,
+			beta:  `.block("{paths.homeDir}/shared.conf", { id: "main", content: "from beta" })`,
+			want:  []string{`.block() "main" targeting "~/shared.conf"`, `.block() "main" targeting "{paths.homeDir}/shared.conf"`},
+		},
+		{
+			name:  "one copied file",
+			alpha: `.copy("./alpha.conf", "~/shared-copy.conf")`,
+			beta:  `.copy("./beta.conf", "~/shared-copy.conf")`,
+			want:  []string{`.copy() targeting "~/shared-copy.conf"`},
+		},
+		{
+			name:  "one rendered file",
+			alpha: `.template("./alpha.tmpl", "~/shared-template.conf")`,
+			beta:  `.template("./beta.tmpl", "~/shared-template.conf")`,
+			want:  []string{`.template() targeting "~/shared-template.conf"`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			toolFile := func(declaration string) string {
+				return "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+					"export default defineTool((install) => install(\"manual\")" + declaration + ");"
+			}
+			_, err := loadToolFiles(t, map[string]string{
+				"alpha.tool.ts": toolFile(tt.alpha),
+				"beta.tool.ts":  toolFile(tt.beta),
+			})
+			if err == nil {
+				t.Fatal("expected loading to fail")
+			}
+			for _, want := range append([]string{`tool "alpha"`, "alpha.tool.ts", `tool "beta"`, "beta.tool.ts"}, tt.want...) {
 				if !strings.Contains(err.Error(), want) {
 					t.Errorf("expected the error to mention %q, got: %v", want, err)
 				}

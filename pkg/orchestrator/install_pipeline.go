@@ -67,7 +67,7 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 			continue
 		}
 
-		if tool.Hostname != "" && !matchesHostname(tool.Hostname) {
+		if tool.Hostname != "" && !config.MatchesHostname(tool.Hostname) {
 			continue
 		}
 
@@ -565,7 +565,7 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 
 	activeTools := make(map[string]bool)
 	for _, tool := range tools {
-		if !tool.Disabled && (tool.Hostname == "" || matchesHostname(tool.Hostname)) {
+		if tool.IsActive() {
 			activeTools[tool.Name] = true
 		}
 	}

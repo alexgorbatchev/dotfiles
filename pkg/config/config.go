@@ -428,9 +428,16 @@ func (tc *ToolConfig) applyInstallParamDefaults() {
 // one that fails, in name order and then tool file order, naming the tool file it came
 // from when there is one. The sort is stable, so tools that tie on both keep the order
 // the caller gave them: a caller that passes its tools in a fixed order gets the same
-// failure for the same configuration every time. Every configuration loader
-// calls it before returning its tools, so nothing downstream sees a tool that fails.
-func ValidateToolConfigs(tools []*ToolConfig) error {
+// failure for the same configuration every time.
+//
+// Once every tool passes on its own, it checks what no single tool can: that no two
+// declarations, of one tool or of two, write the same file (validateFileClaims). That
+// check reads targets the way the engine resolves them, which needs projCfg with its
+// paths already resolved; nil leaves every target as written.
+//
+// Every configuration loader calls it before returning its tools, so nothing
+// downstream sees a tool that fails.
+func ValidateToolConfigs(tools []*ToolConfig, projCfg *ProjectConfig) error {
 	sorted := slices.Clone(tools)
 	slices.SortStableFunc(sorted, func(a, b *ToolConfig) int {
 		if byName := strings.Compare(a.Name, b.Name); byName != 0 {
@@ -448,6 +455,10 @@ func ValidateToolConfigs(tools []*ToolConfig) error {
 			return fmt.Errorf("invalid tool configuration: %w", err)
 		}
 		return fmt.Errorf("invalid tool configuration in %q: %w", tool.ConfigFilePath, err)
+	}
+
+	if err := validateFileClaims(sorted, projCfg); err != nil {
+		return fmt.Errorf("conflicting tool configurations: %w", err)
 	}
 	return nil
 }
@@ -495,10 +506,6 @@ func (tc *ToolConfig) Validate() error {
 		if err := tmpl.Validate(); err != nil {
 			return fmt.Errorf("invalid template in tool %q: %w", tc.Name, err)
 		}
-	}
-
-	if err := tc.validateUniqueBlocks(); err != nil {
-		return err
 	}
 
 	if tc.ShellConfigs != nil {

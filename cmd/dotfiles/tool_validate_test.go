@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -187,6 +188,38 @@ func TestValidateCommand_InvalidMethod(t *testing.T) {
 		t.Fatalf("expected validate with invalid installer method to fail, got out:\n%s", out)
 	}
 	for _, want := range []string{filepath.Base(configPath), `unknown installation method "invalid-installer-method"`, strings.Join(config.InstallMethods(), ", ")} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("expected the error to mention %q, got: %v", want, err)
+		}
+	}
+}
+
+// The JSON configuration is checked for two tools claiming one file against its
+// resolved paths, like a TypeScript one: the home directory here is itself a
+// placeholder, so the two spellings only meet once the project paths are resolved.
+func TestValidateCommand_JSONToolsSharingABlock(t *testing.T) {
+	tmpDir := t.TempDir()
+	configContent := `{
+	"projectConfig": {"paths": {
+		"generatedDir": ` + strconv.Quote(filepath.Join(tmpDir, "generated")) + `,
+		"homeDir": "{paths.generatedDir}/home",
+		"targetDir": ` + strconv.Quote(filepath.Join(tmpDir, "target")) + `
+	}},
+	"toolConfigs": {
+		"alpha": {"name": "alpha", "blocks": [{"target": "~/shared.conf", "id": "main", "content": "from alpha"}]},
+		"beta": {"name": "beta", "blocks": [{"target": "{paths.homeDir}/shared.conf", "id": "main", "content": "from beta"}]}
+	}
+}`
+	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing config failed: %v", err)
+	}
+
+	out, err := executeCommand("-c", configPath, "tool", "validate")
+	if err == nil {
+		t.Fatalf("expected validate with two tools sharing a block to fail, got out:\n%s", out)
+	}
+	for _, want := range []string{filepath.Base(configPath), `tool "alpha"`, `tool "beta"`, filepath.Join(tmpDir, "generated", "home", "shared.conf")} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("expected the error to mention %q, got: %v", want, err)
 		}

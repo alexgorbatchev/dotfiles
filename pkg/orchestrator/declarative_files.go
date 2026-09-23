@@ -14,7 +14,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
-	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 // defaultFileMode and defaultDirMode are what a declaration that states no mode gets.
@@ -26,9 +25,10 @@ const (
 // applyDeclarativeFiles carries out the file declarations of a tool: the directories
 // it needs, the templates it renders, and the regions of shared files it owns.
 //
-// Directories come first because a template or a block may write into one of them,
-// and blocks come last because a block's file is the one most likely to be shared
-// with something a template just wrote.
+// Directories come first because a template or a block may write into one of them.
+// A template and a block never share a file: the load rejects it
+// (config.ValidateToolConfigs), since the template would take the block for a local
+// edit.
 func (o *Orchestrator) applyDeclarativeFiles(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if err := o.ensureDeclaredDirectories(ctx, tool, projCfg); err != nil {
 		return err
@@ -37,20 +37,6 @@ func (o *Orchestrator) applyDeclarativeFiles(ctx context.Context, tool *config.T
 		return err
 	}
 	return o.applyBlocks(ctx, tool, projCfg)
-}
-
-// resolveTargetPath turns a declared target into the absolute path it names,
-// resolving {placeholders} and a leading "~" the same way every other declaration in
-// a tool configuration does.
-func (o *Orchestrator) resolveTargetPath(tool *config.ToolConfig, projCfg *config.ProjectConfig, target string) (string, error) {
-	resolved, err := config.ResolvePathPlaceholders(target, tool.Name, projCfg)
-	if err != nil {
-		return "", err
-	}
-	if projCfg != nil {
-		resolved = utils.ExpandHomePath(projCfg.Paths.HomeDir, resolved)
-	}
-	return resolved, nil
 }
 
 // resolveSourcePath turns a declared source into an absolute path, resolving a
@@ -71,7 +57,7 @@ func (o *Orchestrator) resolveSourcePath(tool *config.ToolConfig, source string)
 // users can read.
 func (o *Orchestrator) ensureDeclaredDirectories(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	for _, dir := range tool.Directories {
-		path, err := o.resolveTargetPath(tool, projCfg, dir.Path)
+		path, err := config.ResolveTargetPath(dir.Path, tool.Name, projCfg)
 		if err != nil {
 			return fmt.Errorf("tool %q: directory %q: %w", tool.Name, dir.Path, err)
 		}
@@ -125,7 +111,7 @@ func (o *Orchestrator) enforceMode(tracked *fs.TrackedFileSystem, path, declared
 // whatever is at the target, through the drift engine rather than by overwriting.
 func (o *Orchestrator) applyTemplates(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	for _, tmpl := range tool.Templates {
-		target, err := o.resolveTargetPath(tool, projCfg, tmpl.Target)
+		target, err := config.ResolveTargetPath(tmpl.Target, tool.Name, projCfg)
 		if err != nil {
 			return fmt.Errorf("tool %q: template target %q: %w", tool.Name, tmpl.Target, err)
 		}
@@ -383,7 +369,7 @@ func (o *Orchestrator) applyBlocks(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	for _, blk := range tool.Blocks {
-		target, err := o.resolveTargetPath(tool, projCfg, blk.Target)
+		target, err := config.ResolveTargetPath(blk.Target, tool.Name, projCfg)
 		if err != nil {
 			return fmt.Errorf("tool %q: block target %q: %w", tool.Name, blk.Target, err)
 		}
@@ -531,7 +517,7 @@ func (o *Orchestrator) cleanupStaleBlocks(ctx context.Context, tool *config.Tool
 
 	activeBlocks := make(map[string]bool)
 	for _, blk := range tool.Blocks {
-		target, err := o.resolveTargetPath(tool, projCfg, blk.Target)
+		target, err := config.ResolveTargetPath(blk.Target, tool.Name, projCfg)
 		if err == nil {
 			activeBlocks[target+"::"+blk.ID] = true
 		}
