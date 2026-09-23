@@ -231,6 +231,49 @@ func TestCargoInstaller(t *testing.T) {
 			t.Errorf("expected cargo install command, got %s %v", cmd.Name, cmd.Args)
 		}
 	})
+
+	t.Run("Install compile fallback strips v from pinned version", func(t *testing.T) {
+		runner.Clear()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		testFsys := fs.NewMemFS()
+		_ = testFsys.MkdirAll("/test/bin/bin", 0755)
+		_ = testFsys.WriteFile("/test/bin/bin/exa", []byte("compiled exa"), 0755)
+		testDl := downloader.NewDownloader(testFsys, server.Client())
+		testInst := NewCargoInstaller(runner, testFsys, testDl, &SystemContext{OS: "linux", Arch: "amd64"})
+		testInst.httpClient = server.Client()
+		testInst.BaseURL = server.URL + "/releases/download"
+		testInst.CratesIOURL = server.URL + "/api/v1/crates"
+		testInst.BinDir = "/test/bin"
+		pinned := "v1.2.3"
+		tool := &config.ToolConfig{
+			Name:    "exa",
+			Version: &pinned,
+			InstallParams: map[string]interface{}{
+				"crateName": "exa",
+			},
+		}
+
+		res, err := testInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "1.2.3" {
+			t.Fatalf("expected version 1.2.3, got %q", res.Version)
+		}
+		if len(runner.History) != 1 {
+			t.Fatalf("expected one cargo command, got %v", runner.History)
+		}
+		cmd := runner.History[0]
+		expectedArgs := []string{"install", "--root", "/test/bin", "--version", "1.2.3", "exa"}
+		if cmd.Name != "cargo" || !slices.Equal(cmd.Args, expectedArgs) {
+			t.Fatalf("cargo command = %s %v, want cargo %v", cmd.Name, cmd.Args, expectedArgs)
+		}
+	})
 }
 
 // recordingServer is an httptest server that remembers every requested path.

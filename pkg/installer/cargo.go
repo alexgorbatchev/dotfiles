@@ -517,7 +517,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		args = append(args, "--root", c.BinDir)
 	}
 	if pinned != "" {
-		args = append(args, "--version", pinned)
+		args = append(args, "--version", (cargoVersion{version: pinned}).bare())
 	}
 	args = append(args, crateName)
 
@@ -548,7 +548,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 
 	return &InstallResult{
 		Binaries: promotedBinaries,
-		Version:  pinned,
+		Version:  (cargoVersion{version: pinned}).bare(),
 	}, nil
 }
 
