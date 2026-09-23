@@ -141,6 +141,7 @@ func (c *CargoInstaller) SetLogger(log *logger.Logger) {
 	c.log = log
 	if c.dl != nil && log != nil {
 		c.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+		c.dl.SetLogger(log)
 	}
 }
 

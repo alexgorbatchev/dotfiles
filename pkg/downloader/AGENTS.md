@@ -11,6 +11,7 @@ File downloader with retry, caching, and progress reporting.
 - Support download resumption, SHA256 integrity verification, HTTP retry logic, and persistent download caching under `.generated/cache/downloads/`.
 - A response status that carries no file is returned as `*StatusError` (wrapped by the retry loop), so callers branch on `StatusCode` with `errors.As` instead of parsing the message.
 - A download authenticated for one host sets `HostScopedHeaders`, and a direct request carrying such a token goes through `HostScopedClient`: net/http keeps `Authorization` on redirects to the same domain or a subdomain (and to another port of the same address), so only an explicit host check keeps the token on the host it was configured for.
+- The download cache (`cache.go`) keeps `<entry>.json` (`sha256`, `size`, `url`) beside each entry. A hit verifies the copy it wrote to the destination, not the entry, against that record and any `expectedSHA256`; an entry that fails, or has no valid record, is evicted with a warning through the logger installers pass to `SetLogger`. A store removes the old record first and writes the new one last, so a failed store leaves nothing to serve; it is logged and never fails the download.
 
 ## Local gotchas
 
