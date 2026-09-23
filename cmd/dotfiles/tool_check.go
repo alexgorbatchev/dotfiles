@@ -11,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -140,7 +141,7 @@ func checkedLocalVersion(ctx context.Context, services *Services, tool *config.T
 func logCheckResult(toolLog *logger.Logger, tool *config.ToolConfig, r ToolUpdateResult) {
 	switch {
 	case !r.UpdateCheckSupported:
-		toolLog.Info(logger.Message(updateCheckUnsupportedMessage(tool)))
+		toolLog.Info(logger.Message(orchestrator.UpdateCheckUnsupportedMessage(tool)))
 	case r.HasUpdate && r.CurrentVersion != "":
 		toolLog.Info(logger.Message(fmt.Sprintf("Update available: %s -> %s", r.CurrentVersion, r.LatestVersion)))
 	case r.HasUpdate:

@@ -303,12 +303,14 @@ export interface ICheckUpdateResponse {
  * Response for POST /api/tools/:name/update
  */
 export interface IUpdateToolResponse {
-  /** Whether the update was successful */
+  /** Whether the installation now records a different version than before the update */
   updated: boolean;
-  /** The old version before update */
-  oldVersion?: string;
-  /** The new version after update */
-  newVersion?: string;
-  /** Error message when update fails */
-  error?: string;
+  /** The version the installation recorded before the update */
+  oldVersion: string;
+  /** The version the installation records after the update; oldVersion when nothing was reinstalled */
+  newVersion: string;
+  /** Whether the installer could check upstream; when false, the tool was reinstalled unchecked */
+  supported: boolean;
+  /** Whether the tool was installed again; false means the check found no newer release */
+  reinstalled: boolean;
 }

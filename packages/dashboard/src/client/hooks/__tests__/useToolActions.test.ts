@@ -83,8 +83,8 @@ describe("useToolActions", () => {
     });
   });
 
-  test("reports the update error when the update is unsupported", async () => {
-    mockApiData({ updated: false, supported: false, error: "Update not supported" });
+  test("reports an update with the versions installed before and after", async () => {
+    mockApiData({ updated: true, oldVersion: "0.1.0", newVersion: "0.2.0", supported: true, reinstalled: true });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.updateTool("eza"));
@@ -92,7 +92,87 @@ describe("useToolActions", () => {
     expect(result.current.outcome).toEqual({
       toolName: "eza",
       kind: "update",
-      message: "Update not supported",
+      message: "Updated 0.1.0 → 0.2.0",
+      tone: "success",
+    });
+  });
+
+  // An update that found nothing newer installed nothing, which is not a failure.
+  test("reports a tool with no newer release as up to date", async () => {
+    mockApiData({ updated: false, oldVersion: "0.2.0", newVersion: "0.2.0", supported: true, reinstalled: false });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.updateTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "update",
+      message: "Already up to date (0.2.0)",
+      tone: "success",
+    });
+  });
+
+  // An installer that cannot check upstream is reinstalled unchecked, which must not read as "up to date".
+  test("reports an unchecked reinstall that kept the version as a reinstall", async () => {
+    mockApiData({ updated: false, oldVersion: "0.2.0", newVersion: "0.2.0", supported: false, reinstalled: true });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.updateTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "update",
+      message: "Reinstalled 0.2.0; update checking is not supported for this tool",
+      tone: "info",
+    });
+  });
+
+  // With no version to detect, an unchecked reinstall records a fresh timestamp, which is no evidence of a newer release.
+  test("reports an unchecked reinstall that recorded a new version as a reinstall", async () => {
+    mockApiData({
+      updated: true,
+      oldVersion: "2026-01-01-00-00-00",
+      newVersion: "2026-09-23-00-00-00",
+      supported: false,
+      reinstalled: true,
+    });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.updateTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "update",
+      message: "Reinstalled 2026-09-23-00-00-00; update checking is not supported for this tool",
+      tone: "info",
+    });
+  });
+
+  // A package manager can report the tool outdated and still leave the recorded version unchanged.
+  test("reports a checked reinstall that kept the version as a reinstall", async () => {
+    mockApiData({ updated: false, oldVersion: "0.2.0", newVersion: "0.2.0", supported: true, reinstalled: true });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.updateTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "update",
+      message: "Reinstalled 0.2.0",
+      tone: "success",
+    });
+  });
+
+  test("surfaces a failed update as an update error", async () => {
+    mockApiFailure('Update failed: checking update for "eza": API rate limit exceeded');
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.updateTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "update",
+      message: 'Update failed: checking update for "eza": API rate limit exceeded',
       tone: "error",
     });
   });
