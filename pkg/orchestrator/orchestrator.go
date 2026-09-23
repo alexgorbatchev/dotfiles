@@ -407,21 +407,29 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 }
 
 func (o *Orchestrator) getTargetVersion(tool *config.ToolConfig) string {
-	switch tool.InstallationMethod {
-	case "apt", "dnf", "pacman":
-		if tool.InstallParams != nil {
-			if v, ok := tool.InstallParams["version"].(string); ok && v != "latest" {
-				return version.CleanVersion(v)
-			}
-		}
+	// The version the installer installs, so an installed tool counts as current only
+	// at the pin its configuration names, wherever that pin is written.
+	if target := exactRequestedVersion(tool); target != "" {
+		return version.CleanVersion(target)
+	}
+	return ""
+}
+
+// exactRequestedVersion returns the exact version tool's installation asks for
+// (config.ToolConfig.RequestedVersion), or "" when it asks for none, for "latest" or
+// for a range, none of which names the version that ends up installed. A system
+// package version is always exact, and Debian's often contains "~" (1.0~rc1-1), so
+// only the other methods' versions can be ranges.
+func exactRequestedVersion(tool *config.ToolConfig) string {
+	target := tool.RequestedVersion()
+	if target == "" || target == "latest" || target == "unknown" {
 		return ""
 	}
-
-	if tool.Version != nil && *tool.Version != "" && *tool.Version != "latest" && isExactTopLevelVersion(*tool.Version) {
-		return version.CleanVersion(*tool.Version)
+	systemPackage := tool.InstallationMethod == "apt" || tool.InstallationMethod == "dnf" || tool.InstallationMethod == "pacman"
+	if !systemPackage && !isExactTopLevelVersion(target) {
+		return ""
 	}
-
-	return ""
+	return target
 }
 
 func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) (bool, error) {

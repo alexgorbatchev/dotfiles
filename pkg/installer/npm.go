@@ -64,10 +64,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
 	force := getBoolParam(tool.InstallParams, "force", false)
 
-	version := getStringParam(tool.InstallParams, "version", "")
-	if version == "" && tool.Version != nil {
-		version = *tool.Version
-	}
+	version := tool.RequestedVersion()
 
 	packageSpec := pkgName
 	if version != "" && version != "latest" {

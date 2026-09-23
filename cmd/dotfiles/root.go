@@ -173,6 +173,13 @@ func GetLogger(name string, w io.Writer) *logger.Logger {
 	if err != nil {
 		lvl = logger.LogLevelDefault
 	}
+	return newLogger(name, w, lvl)
+}
+
+// newLogger returns a Logger at lvl, honouring --trace, writing to w and tagged with
+// name when it is not empty. GetLogger derives lvl from the global flags; a command
+// that reports at a level of its own choosing, as shim mode does, passes it here.
+func newLogger(name string, w io.Writer, lvl logger.LogLevel) *logger.Logger {
 	l := logger.New(logger.Config{
 		Level:  lvl,
 		Trace:  trace,

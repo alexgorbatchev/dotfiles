@@ -651,11 +651,12 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 	}
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Installation completed successfully\n", toolName))
 
-	var toolVer string
-	if targetTool.Version != nil {
-		toolVer = *targetTool.Version
-	} else {
-		toolVer = "latest"
+	// The version the installation recorded, as v1 answered with the installed
+	// version; the configuration's .version() may be overridden by an install
+	// parameter, or say only "latest".
+	toolVer := "latest"
+	if rec, err := s.registry.GetToolInstallation(ctx, targetTool.Name); err == nil && rec != nil && rec.Version != "" {
+		toolVer = rec.Version
 	}
 
 	writeJSON(w, true, map[string]any{
@@ -821,9 +822,10 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	ctx := context.Background()
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
 
-	// The release this picks is set on a copy: the server keeps the configuration for
-	// its lifetime, and a version written into it would read as a pin to the next update.
-	updateTarget := *targetTool
+	// The release this picks is set on a copy (WithRequestedVersion): the server keeps
+	// the configuration for its lifetime, and a version written into it would read as a
+	// pin to the next update.
+	updateTarget := targetTool
 	if targetTool.InstallationMethod != "" {
 		if inst, err := installer.Get(targetTool.InstallationMethod); err == nil {
 			// Only the update check runs here, with the settings configureInstallers
@@ -833,12 +835,12 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 			// endpoint may install, however new it is.
 			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" &&
 				version.MatchesConstraint(res.LatestVersion, targetTool.UpdateCheckConstraint()) {
-				updateTarget.Version = &res.LatestVersion
+				updateTarget = targetTool.WithRequestedVersion(res.LatestVersion)
 			}
 		}
 	}
 
-	err := s.orchestrator.InstallTool(ctx, &updateTarget, s.projectConfig)
+	err := s.orchestrator.InstallTool(ctx, updateTarget, s.projectConfig)
 	if err != nil {
 		s.logger.WithTag(toolName).Error("Update failed", err)
 		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))

@@ -271,10 +271,11 @@ func TestGiteaGetCachedRelease(t *testing.T) {
 func TestAptInstall(t *testing.T) {
 	newTool := func(sudo, update bool) *config.ToolConfig {
 		return &config.ToolConfig{
-			Name:          "ripgrep",
-			Sudo:          sudo,
-			Binaries:      []any{map[string]any{"name": "rg"}},
-			InstallParams: map[string]any{"package": "ripgrep", "update": update},
+			Name:               "ripgrep",
+			InstallationMethod: "apt",
+			Sudo:               sudo,
+			Binaries:           []any{map[string]any{"name": "rg"}},
+			InstallParams:      map[string]any{"package": "ripgrep", "update": update},
 		}
 	}
 
@@ -350,10 +351,11 @@ func TestAptInstall(t *testing.T) {
 func TestDnfInstall(t *testing.T) {
 	newTool := func(sudo, refresh bool) *config.ToolConfig {
 		return &config.ToolConfig{
-			Name:          "ripgrep",
-			Sudo:          sudo,
-			Binaries:      []any{map[string]any{"name": "rg"}},
-			InstallParams: map[string]any{"package": "ripgrep", "refresh": refresh},
+			Name:               "ripgrep",
+			InstallationMethod: "dnf",
+			Sudo:               sudo,
+			Binaries:           []any{map[string]any{"name": "rg"}},
+			InstallParams:      map[string]any{"package": "ripgrep", "refresh": refresh},
 		}
 	}
 

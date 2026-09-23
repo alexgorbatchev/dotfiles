@@ -79,17 +79,15 @@ type giteaReleaseTarget struct {
 }
 
 // giteaTarget reads the release-selection parameters of a gitea-release tool. The
-// `version` install parameter wins over `.version()`, which is the fallback, and a
-// missing version selects the latest release.
+// `version` install parameter wins over `.version()`, which is the fallback
+// (config.ToolConfig.RequestedVersion), and a missing version selects the latest
+// release.
 func giteaTarget(tool *config.ToolConfig) (giteaReleaseTarget, error) {
 	instanceURL, err := giteaInstanceURL(tool.InstallParams)
 	if err != nil {
 		return giteaReleaseTarget{}, err
 	}
-	version := getStringParam(tool.InstallParams, "version", "")
-	if version == "" && tool.Version != nil {
-		version = *tool.Version
-	}
+	version := tool.RequestedVersion()
 	if version == "" {
 		version = "latest"
 	}

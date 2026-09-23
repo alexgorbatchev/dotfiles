@@ -45,6 +45,15 @@ func TestGitHubInstaller(t *testing.T) {
 			return
 		}
 
+		if r.URL.Path == "/repos/myowner/mytool/releases/tags/v1.5.0" {
+			tagged := mockRelease
+			tagged.TagName = "v1.5.0"
+			tagged.Assets = []githubAsset{{ID: 445, Name: "mytool-linux-amd64", BrowserDownloadURL: "http://" + r.Host + "/download/mytool"}}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(tagged)
+			return
+		}
+
 		if r.URL.Path == "/download/mytool" {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("github-binary-payload"))
@@ -99,6 +108,30 @@ func TestGitHubInstaller(t *testing.T) {
 		}
 		if string(data) != "github-binary-payload" {
 			t.Errorf("unexpected content: %s", string(data))
+		}
+	})
+
+	// The version install parameter is the pin config.ToolConfig.RequestedVersion names
+	// for github-release, and the one update refuses to move, so it must be what the
+	// installation fetches, whatever .version() says.
+	t.Run("the version install parameter selects the release by tag over .version()", func(t *testing.T) {
+		dotVersion := "v2.0.0"
+		tool := &config.ToolConfig{
+			Name:               "mytool",
+			InstallationMethod: "github-release",
+			Version:            &dotVersion,
+			InstallParams: map[string]interface{}{
+				"repo":    "myowner/mytool",
+				"version": "v1.5.0",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "v1.5.0" {
+			t.Errorf("Version = %q, want the v1.5.0 the install parameter names", res.Version)
 		}
 	})
 

@@ -496,6 +496,27 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 	if err := instReg.Register(mockInst); err != nil {
 		t.Fatalf("registering mock installer with the orchestrator: %v", err)
 	}
+	// The `version` install parameter pins only for the methods whose installers read
+	// it, so that pin is exercised on github-release: the route asks the real
+	// github-release installer, pointed at githubAPI, and the orchestrator installs
+	// through githubInst.
+	githubInst := &mockCheckUpdateInstaller{name: "github-release", latestVersion: "v9.9.9"}
+	if err := instReg.Register(githubInst); err != nil {
+		t.Fatalf("registering mock github-release installer with the orchestrator: %v", err)
+	}
+	var githubRequests atomic.Int32
+	var upstreamTag atomic.Value
+	upstreamTag.Store("v9.9.9")
+	githubAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		githubRequests.Add(1)
+		if r.URL.Path == "/repos/acme/param-latest/releases/latest" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"tag_name": %q, "assets": []}`, upstreamTag.Load())
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer githubAPI.Close()
 	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
 
 	tempDir := t.TempDir()
@@ -507,11 +528,24 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 			TargetDir:      filepath.Join(tempDir, "bin"),
 			ToolConfigsDir: tempDir,
 		},
+		Github: config.HostConfig{Host: githubAPI.URL, Cache: config.CacheConfig{Enabled: new(false)}},
 	}
 	pinned, latest := "v1.0.0", "latest"
 	toolConfigs := []*config.ToolConfig{
 		{Name: "pinned", Version: &pinned, InstallationMethod: mockInst.name},
 		{Name: "unpinned", Version: &latest, InstallationMethod: mockInst.name},
+		{
+			Name:               "param-pinned",
+			Version:            &latest,
+			InstallationMethod: githubInst.name,
+			InstallParams:      map[string]any{"repo": "acme/param-pinned", "version": "v2.1.0"},
+		},
+		{
+			Name:               "param-latest",
+			Version:            &latest,
+			InstallationMethod: githubInst.name,
+			InstallParams:      map[string]any{"repo": "acme/param-latest", "version": "latest"},
+		},
 	}
 
 	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
@@ -559,6 +593,30 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		}
 	})
 
+	t.Run("a tool pinned by its version install parameter is refused without asking upstream or installing", func(t *testing.T) {
+		requests, installs := githubRequests.Load(), githubInst.installs.Load()
+		status, body := update(t, "param-pinned")
+		if status != http.StatusOK {
+			t.Errorf("status = %d, want %d, the status every refusal from this route carries", status, http.StatusOK)
+		}
+		if body["success"] != false {
+			t.Errorf("success = %v, want false for a refused update", body["success"])
+		}
+		want := "Tool \"param-pinned\" is pinned to version `v2.1.0` by its \"version\" install parameter. Set \"version\" to \"latest\" in the tool config to enable updates"
+		if body["error"] != want {
+			t.Errorf("error = %v, want %q", body["error"], want)
+		}
+		if got := githubRequests.Load() - requests; got != 0 {
+			t.Errorf("GitHub was asked %d time(s); a pinned tool is refused before its check", got)
+		}
+		if got := githubInst.installs.Load() - installs; got != 0 {
+			t.Errorf("the installer installed %d time(s); a pinned tool must not be installed", got)
+		}
+		if got := toolConfigs[2].InstallParams["version"]; got != "v2.1.0" {
+			t.Errorf("the pinned tool's version install parameter = %v, want the configured v2.1.0", got)
+		}
+	})
+
 	t.Run("an unpinned tool is checked and installed", func(t *testing.T) {
 		checks, installs := mockInst.calls.Load(), mockInst.installs.Load()
 		_, body := update(t, "unpinned")
@@ -568,6 +626,54 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		if mockInst.calls.Load() == checks || mockInst.installs.Load() == installs {
 			t.Errorf("checks %d -> %d, installs %d -> %d; an unpinned tool must be checked and installed",
 				checks, mockInst.calls.Load(), installs, mockInst.installs.Load())
+		}
+	})
+
+	// The install route answers with the version the installation recorded, which for
+	// a tool pinned by its version install parameter is that pin, not the .version()
+	// of "latest" the parameter overrides.
+	t.Run("the install route reports the version a version install parameter pins", func(t *testing.T) {
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/param-pinned/install", server.Port())
+		resp, err := http.Post(url, "application/json", strings.NewReader(`{"force": true}`))
+		if err != nil {
+			t.Fatalf("POST install for param-pinned: %v", err)
+		}
+		defer resp.Body.Close()
+		var body struct {
+			Success bool           `json:"success"`
+			Data    map[string]any `json:"data"`
+			Error   string         `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding install response: %v", err)
+		}
+		if !body.Success || body.Data["version"] != "v2.1.0" {
+			t.Errorf("install response = %+v, want success with version v2.1.0", body)
+		}
+	})
+
+	// A `version: "latest"` install parameter wins over .version(), so the release the
+	// route picks must be written where the installer reads it; otherwise the
+	// installation asks for "latest" again, counts the installed tool as current and
+	// installs nothing, while the route reports an update.
+	t.Run("a tool whose version install parameter is latest installs each new release", func(t *testing.T) {
+		for _, tag := range []string{"v9.9.9", "v10.0.0"} {
+			upstreamTag.Store(tag)
+			installs := githubInst.installs.Load()
+			_, body := update(t, "param-latest")
+			if body["success"] != true {
+				t.Fatalf("update to %s: success = %v, error = %v, want the update to succeed", tag, body["success"], body["error"])
+			}
+			if got := githubInst.installs.Load() - installs; got != 1 {
+				t.Errorf("update to %s installed %d time(s), want 1", tag, got)
+			}
+			rec, err := reg.GetToolInstallation(ctx, "param-latest")
+			if err != nil || rec == nil || rec.Version != tag {
+				t.Errorf("installation record after the update to %s = %+v, %v; want version %s", tag, rec, err, tag)
+			}
+		}
+		if got := toolConfigs[3].InstallParams["version"]; got != "latest" {
+			t.Errorf("the server's configuration now says version %v, want the configured latest", got)
 		}
 	})
 

@@ -160,8 +160,9 @@ reported as the latest version upstream, but not as an update: with `~1.2.0` ins
 `1.2.3`, `1.2.9` is an update and `1.3.0` is not.
 
 Neither setting changes which version `dotfiles install` or `dotfiles update` installs.
-To hold a tool at one version, pin it with `.version()`: `dotfiles install` installs that
-version, and `dotfiles update` refuses the tool
+To hold a tool at one version, pin it with `.version()`, or with the version install
+parameter of a method that takes one: `dotfiles install` installs that version, and
+`dotfiles update` refuses the tool
 ([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
 
 ### Base Install Parameters

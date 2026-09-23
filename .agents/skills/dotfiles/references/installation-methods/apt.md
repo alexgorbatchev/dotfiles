@@ -37,6 +37,8 @@ install("apt", {
 }).bin("rg");
 ```
 
+The `version` parameter takes precedence over `.version()`, and `dotfiles update` refuses a tool it pins ([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
+
 ### Refresh Package Lists First
 
 ```typescript body

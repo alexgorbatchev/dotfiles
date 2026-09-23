@@ -34,6 +34,8 @@ export default defineTool((install) =>
 );
 ```
 
+The `version` parameter takes precedence over `.version()`, and `dotfiles update` refuses a tool it pins ([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
+
 ### Using Bun
 
 ```typescript
