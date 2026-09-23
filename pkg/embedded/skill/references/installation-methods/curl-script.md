@@ -114,6 +114,11 @@ After the script succeeds, the declared binary in `stagingDir` becomes a symlink
   configuration loads. Scripts that ship several binaries can usually be redirected
   instead: `https://astral.sh/uv/install.sh` honours `UV_INSTALL_DIR`, and
   `https://deno.land/install.sh` honours `DENO_INSTALL`.
+- **No binary pattern.** `binaryPath` already names the file, so a `.bin()` pattern
+  alongside it is rejected when the configuration loads; see
+  [binaryPath and Binary Patterns](manual.md#binarypath-and-binary-patterns). To pick the
+  binary out of the script's output with a pattern, drop `binaryPath` and point the script
+  at `stagingDir`.
 
 Everything else `curl-script` does still applies: the script is downloaded through the
 configured downloader, its output is logged, `args` and `env` are resolved, and
