@@ -590,35 +590,27 @@ func (e *Extractor) walkFiles(dir string) ([]string, error) {
 	return files, nil
 }
 
-// extractDmg mounts a macOS DMG file and copies its contents to the destination folder using standard command tools.
-func (e *Extractor) extractDmg(ctx context.Context, src string, dest string) error {
+// extractDmg mounts a macOS DMG file with MountDmg, at dmgMountPoint(dest), and
+// copies the volume's contents into dest. An image that cannot be detached fails the
+// extraction.
+func (e *Extractor) extractDmg(ctx context.Context, src string, dest string) (err error) {
 	exists, err := e.fsys.Exists(src)
 	if err != nil || !exists {
 		return fmt.Errorf("dmg file does not exist: %s", src)
 	}
 
-	mountPoint, err := os.MkdirTemp("", "dotfiles-dmg-mount-*")
+	mountPoint := dmgMountPoint(dest)
+	detach, err := MountDmg(ctx, e.runner, e.fsys, src, mountPoint)
 	if err != nil {
-		return fmt.Errorf("creating temporary mount point: %w", err)
+		return fmt.Errorf("mounting DMG: %w", err)
 	}
-
-	attachCmd := e.runner.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-readonly", "-mountpoint", mountPoint, src)
-	err = attachCmd.Run()
-	if err != nil {
-		_ = os.RemoveAll(mountPoint)
-		return fmt.Errorf("hdiutil attach failed: %w", err)
-	}
-
 	defer func() {
-		detachCmd := e.runner.CommandContext(context.Background(), "hdiutil", "detach", mountPoint)
-		_ = detachCmd.Run()
-		_ = os.RemoveAll(mountPoint)
+		err = errors.Join(err, detach())
 	}()
 
 	if err := e.copyVolume(mountPoint, dest); err != nil {
 		return fmt.Errorf("copying DMG files: %w", err)
 	}
-
 	return nil
 }
 
