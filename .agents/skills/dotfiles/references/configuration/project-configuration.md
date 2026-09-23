@@ -123,8 +123,9 @@ catalog file; both keys default to empty.
 
 `host` applies to every method that resolves GitHub releases -- `github-release`,
 `cargo`, `dmg` and `pkg` -- and to the dashboard's README lookup. It is the API root
-only; the hosts a `cargo` crate's version and archive come from are set by the
-[`cargo`](#cargo) section.
+only: a `cargo` crate's version is looked up here only with
+`versionSource: 'github-releases'`, while its crates.io metadata, its `Cargo.toml` and
+its archive come from the hosts of the [`cargo`](#cargo) section.
 
 `token` is the project-wide default. A tool that sets the `token` parameter of its
 installation method overrides it, and when neither names one the `GITHUB_TOKEN` and
