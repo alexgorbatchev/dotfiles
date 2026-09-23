@@ -185,8 +185,7 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	appSource := filepath.Join(mountPoint, appName)
 	appDest := "/Applications/" + appName
 
-	// Copy App bundle to /Applications
-	if err := copyDir(d.fsys, appSource, appDest); err != nil {
+	if err := installAppBundle(d.fsys, toolLogger(d.log, tool.Name), appSource, appDest); err != nil {
 		return nil, fmt.Errorf("copying App bundle to %s: %w", appDest, err)
 	}
 
@@ -211,7 +210,10 @@ func (d *DmgInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) e
 	}
 	appName := getStringParam(tool.InstallParams, "appName", tool.Name+".app")
 	appDest := "/Applications/" + appName
-	rmCmd := d.runner.CommandContext(ctx, "rm", "-rf", appDest)
+	// installAppBundle can leave either sibling behind (an interrupted copy, or a
+	// replaced bundle it could not remove); an uninstall takes them with the app.
+	rmCmd := d.runner.CommandContext(ctx, "rm", "-rf", appDest,
+		bundleSibling(appDest, stagingBundlePrefix), bundleSibling(appDest, previousBundlePrefix))
 	return rmCmd.Run()
 }
 
@@ -219,6 +221,10 @@ func (d *DmgInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 	return d.fetcher(tool.Name).checkUpdate(ctx, tool)
 }
 
+// findFileWithExtension returns the first entry under dir, depth first in name order,
+// whose name ends in ext. It descends only into real directories, never through a
+// symlink: an extracted .dmg volume keeps its links, such as the drag-to-install link to
+// /Applications, and following one would search outside the extraction or loop.
 func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {
 	entries, err := fsys.ReadDir(dir)
 	if err != nil {
@@ -229,41 +235,19 @@ func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {
 		if strings.HasSuffix(strings.ToLower(entry), ext) {
 			return fullPath, nil
 		}
-		_, subErr := fsys.ReadDir(fullPath)
-		if subErr == nil {
-			found, _ := findFileWithExtension(fsys, fullPath, ext)
-			if found != "" {
-				return found, nil
-			}
+		info, err := fsys.Lstat(fullPath)
+		if err != nil {
+			return "", err
+		}
+		if !info.IsDir() {
+			continue
+		}
+		found, err := findFileWithExtension(fsys, fullPath, ext)
+		if err != nil || found != "" {
+			return found, err
 		}
 	}
 	return "", nil
-}
-
-func copyDir(fsys fs.FS, src, dest string) error {
-	info, err := fsys.Lstat(src)
-	if err != nil {
-		return err
-	}
-
-	if info.IsDir() {
-		if err := fsys.MkdirAll(dest, info.Mode()); err != nil {
-			return err
-		}
-		entries, err := fsys.ReadDir(src)
-		if err != nil {
-			return err
-		}
-		for _, entry := range entries {
-			err = copyDir(fsys, filepath.Join(src, entry), filepath.Join(dest, entry))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	return fsys.CopyFile(src, dest)
 }
 
 func init() {
