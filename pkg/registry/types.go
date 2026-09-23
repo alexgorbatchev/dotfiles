@@ -43,6 +43,10 @@ type ToolInstallationRecord struct {
 	ConfiguredVersion *string `db:"configured_version"`
 	OriginalTag       *string `db:"original_tag"`
 	InstallMethod     *string `db:"install_method"`
+	// AppBundlePath is the application bundle the install placed in /Applications,
+	// nil for an installer that places none. It is what an uninstall removes, since a
+	// bundle's name can come from the disk image rather than the configuration.
+	AppBundlePath *string `db:"app_bundle_path"`
 }
 
 type ToolUsageRecord struct {

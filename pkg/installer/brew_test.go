@@ -308,7 +308,7 @@ func TestBrewInstaller(t *testing.T) {
 			Name: "jq",
 		}
 
-		err := inst.Uninstall(context.Background(), tool)
+		err := inst.Uninstall(context.Background(), tool, Installation{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -341,7 +341,7 @@ func TestBrewInstaller(t *testing.T) {
 					},
 				}
 
-				err := inst.Uninstall(context.Background(), tool)
+				err := inst.Uninstall(context.Background(), tool, Installation{})
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
@@ -381,7 +381,7 @@ func TestBrewInstaller(t *testing.T) {
 			},
 		}
 
-		err := inst.Uninstall(context.Background(), tool)
+		err := inst.Uninstall(context.Background(), tool, Installation{})
 		if err != nil {
 			t.Fatalf("expected uninstall to succeed despite service stop error, got: %v", err)
 		}

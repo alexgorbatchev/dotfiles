@@ -188,7 +188,7 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	}, nil
 }
 
-func (z *ZshPluginInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (z *ZshPluginInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	pluginName := getStringParam(tool.InstallParams, "pluginName", tool.Name)
 	destDir := z.BinDir
 	if destDir != "" {

@@ -2068,7 +2068,9 @@ func (c *cacheSpyInstaller) Install(ctx context.Context, tool *config.ToolConfig
 		Binaries: []string{"spybin"},
 	}, nil
 }
-func (c *cacheSpyInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error { return nil }
+func (c *cacheSpyInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
+	return nil
+}
 func (c *cacheSpyInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
 	return &installer.UpdateCheckResult{}, nil
 }

@@ -30,7 +30,7 @@ func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	return &InstallResult{}, nil
 }
 
-func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	return nil
 }
 

@@ -2,6 +2,8 @@
 
 Install macOS applications distributed as DMG disk images. The plugin mounts the DMG read-only and hidden from the Finder, copies the `.app` bundle to `/Applications`, and is silently skipped on non-macOS platforms. The copy keeps the bundle's directory structure, file contents and permission bits, and recreates every symlink with its original target (extended attributes and resource forks are not copied). It replaces a bundle of the same name that is already installed rather than merging into it; the installed bundle stays in place until the new copy is complete. When the image cannot be detached afterwards, even with `hdiutil detach -force` (a process can hold a file on the volume open), the install fails with an error naming the mount point, which is left in place; detach the image yourself before installing again.
 
+Without `appName`, the bundle installed is the first `.app` at the root of the volume, and a volume that holds none fails the install. The bundle installed is recorded, so [`dotfiles tool uninstall`](../getting-started/cli-reference.md#dotfiles-tool-uninstall-tool) removes that bundle (with the hidden `.dotfiles-new-` and `.dotfiles-old-` copies an interrupted install can leave beside it) even when its name is not the tool's. A tool with no recorded installation is uninstalled by `appName`; with neither, it removes nothing from `/Applications` rather than a guessed bundle.
+
 The DMG source is configured via a required `source` object. Sources can be direct URLs or GitHub releases.
 
 If the resolved source points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
@@ -25,15 +27,15 @@ export default defineTool((install) =>
 
 ## Parameters
 
-| Parameter      | Description                                                                             |
-| -------------- | --------------------------------------------------------------------------------------- |
-| `source`       | **Required**. DMG source definition (see source variants below)                         |
-| `appName`      | Name of the `.app` bundle (e.g., `'MyApp.app'`). Auto-detected if omitted               |
-| `binaryName`   | Executable inside `Contents/MacOS` of the bundle. Defaults to the tool name             |
-| `binaryPath`   | Relative path to the binary inside `.app`, when it is not `Contents/MacOS/{binaryName}` |
-| `versionArgs`  | Arguments for version check (e.g., `['--version']`)                                     |
-| `versionRegex` | Regex to extract version from output (`string` or `RegExp`)                             |
-| `token`        | GitHub API token for a `github-release` source                                          |
+| Parameter      | Description                                                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source`       | **Required**. DMG source definition (see source variants below)                                                                              |
+| `appName`      | Name of the `.app` bundle (e.g., `'MyApp.app'`). Defaults to the first `.app` at the volume's root; it must end in `.app` and contain no `/` |
+| `binaryName`   | Executable inside `Contents/MacOS` of the bundle. Defaults to the tool name                                                                  |
+| `binaryPath`   | Relative path to the binary inside `.app`, when it is not `Contents/MacOS/{binaryName}`                                                      |
+| `versionArgs`  | Arguments for version check (e.g., `['--version']`)                                                                                          |
+| `versionRegex` | Regex to extract version from output (`string` or `RegExp`)                                                                                  |
+| `token`        | GitHub API token for a `github-release` source                                                                                               |
 
 ### Source Variants
 

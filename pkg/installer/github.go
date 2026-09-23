@@ -316,7 +316,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}, nil
 }
 
-func (g *GitHubInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (g *GitHubInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	destDir := g.BinDir
 	if destDir != "" {
 		destPath := filepath.Join(destDir, tool.Name)

@@ -950,3 +950,50 @@ func TestGetFileStates_ClosedDB(t *testing.T) {
 		t.Fatal("expected error from GetFileStates with closed DB")
 	}
 }
+
+// TestToolInstallationRecordsTheAppBundle pins the app_bundle_path column: an
+// uninstall reads the bundle a dmg installed from it, since the bundle's name came
+// from the volume rather than the configuration (issue #174).
+func TestToolInstallationRecordsTheAppBundle(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	records := []*ToolInstallationRecord{
+		{ToolName: "vscode", Version: "1.0.0", InstallPath: "/b/vscode", Timestamp: "now", BinaryPaths: "[]", AppBundlePath: ptr("/Applications/Visual Studio Code.app")},
+		{ToolName: "bat", Version: "1.0.0", InstallPath: "/b/bat", Timestamp: "now", BinaryPaths: "[]"},
+	}
+	err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		for _, rec := range records {
+			if err := reg.RecordToolInstallation(ctx, tx, rec); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("RecordToolInstallation: %v", err)
+	}
+
+	got, err := reg.GetToolInstallation(ctx, "vscode")
+	if err != nil || got == nil {
+		t.Fatalf("GetToolInstallation = %v, %v", got, err)
+	}
+	if got.AppBundlePath == nil || *got.AppBundlePath != "/Applications/Visual Studio Code.app" {
+		t.Errorf("GetToolInstallation AppBundlePath = %v, want /Applications/Visual Studio Code.app", got.AppBundlePath)
+	}
+
+	all, err := reg.GetAllToolInstallations(ctx)
+	if err != nil {
+		t.Fatalf("GetAllToolInstallations: %v", err)
+	}
+	bundles := map[string]*string{}
+	for _, rec := range all {
+		bundles[rec.ToolName] = rec.AppBundlePath
+	}
+	if b := bundles["vscode"]; b == nil || *b != "/Applications/Visual Studio Code.app" {
+		t.Errorf("GetAllToolInstallations vscode AppBundlePath = %v", b)
+	}
+	if b, ok := bundles["bat"]; !ok || b != nil {
+		t.Errorf("GetAllToolInstallations bat AppBundlePath = %v, present %v; want a nil bundle", b, ok)
+	}
+}

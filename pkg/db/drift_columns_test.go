@@ -99,6 +99,26 @@ func TestInitializeSchemaMigratesLegacyTables(t *testing.T) {
 			table:   "tool_installations",
 			columns: []string{"install_method"},
 		},
+		{
+			name: "tool_installations gains app_bundle_path",
+			legacy: `
+			CREATE TABLE tool_installations (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				tool_name TEXT NOT NULL UNIQUE,
+				version TEXT NOT NULL,
+				install_path TEXT NOT NULL,
+				timestamp TEXT NOT NULL,
+				installed_at INTEGER NOT NULL,
+				binary_paths TEXT NOT NULL,
+				download_url TEXT,
+				asset_name TEXT,
+				configured_version TEXT,
+				original_tag TEXT,
+				install_method TEXT
+			);`,
+			table:   "tool_installations",
+			columns: []string{"app_bundle_path"},
+		},
 	}
 
 	for _, tt := range tests {

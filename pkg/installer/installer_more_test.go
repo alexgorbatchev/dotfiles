@@ -73,7 +73,7 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	}
 
 	for _, inst := range installers {
-		_ = inst.Uninstall(context.Background(), tool)
+		_ = inst.Uninstall(context.Background(), tool, Installation{})
 	}
 
 	// 4. findBinaryByPattern & getPatternForBinary

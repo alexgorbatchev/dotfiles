@@ -348,7 +348,7 @@ func brewLinkArgs(link interface{}) []string {
 	return nil
 }
 
-func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
 
 	if serviceVal, ok := tool.InstallParams["service"]; ok && serviceVal != nil {

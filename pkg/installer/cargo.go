@@ -777,7 +777,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	}, nil
 }
 
-func (c *CargoInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (c *CargoInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
 	args := []string{"uninstall"}
 	if c.BinDir != "" {

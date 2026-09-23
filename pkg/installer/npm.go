@@ -148,7 +148,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}, nil
 }
 
-func (n *NpmInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (n *NpmInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	pkgManager := getStringParam(tool.InstallParams, "packageManager", "npm")
 	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
 

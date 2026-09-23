@@ -110,7 +110,7 @@ func (m *mockInstallerForTest) Install(ctx context.Context, tool *config.ToolCon
 	}, nil
 }
 
-func (m *mockInstallerForTest) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (m *mockInstallerForTest) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	return nil
 }
 
@@ -338,7 +338,7 @@ func (m *mockInstallerWithCallback) Install(ctx context.Context, tool *config.To
 	}, nil
 }
 
-func (m *mockInstallerWithCallback) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (m *mockInstallerWithCallback) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	return nil
 }
 
@@ -365,7 +365,7 @@ func (m *mockCheckUpdateInstaller) Install(ctx context.Context, tool *config.Too
 	m.installs.Add(1)
 	return &installer.InstallResult{Version: m.detectedVersion}, nil
 }
-func (m *mockCheckUpdateInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (m *mockCheckUpdateInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	return nil
 }
 func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
@@ -1742,7 +1742,7 @@ func (m *mockFailingInstaller) SupportsSudo() bool { return false }
 func (m *mockFailingInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
 	return nil, fmt.Errorf("mock download error")
 }
-func (m *mockFailingInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (m *mockFailingInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	return nil
 }
 func (m *mockFailingInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {

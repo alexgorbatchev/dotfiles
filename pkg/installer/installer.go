@@ -27,6 +27,18 @@ type InstallResult struct {
 	ShellEnv  map[string]string
 	ShellInit string
 	Version   string
+	// AppBundlePath is the application bundle the install placed in /Applications,
+	// empty for an installer that places none. It is recorded with the installation
+	// because the bundle's name comes from the volume, not the configuration, so an
+	// uninstall has no other way to know it.
+	AppBundlePath string
+}
+
+// Installation is what the registry recorded about an earlier Install of the tool
+// being uninstalled. Its zero value means dotfiles holds no record of one.
+type Installation struct {
+	// AppBundlePath is InstallResult.AppBundlePath as that install reported it.
+	AppBundlePath string
 }
 
 // UpdateCheckResult is what an installer observed, not what it concluded. Whether an
@@ -93,7 +105,7 @@ type Installer interface {
 	Name() string
 	SupportsSudo() bool
 	Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error)
-	Uninstall(ctx context.Context, tool *config.ToolConfig) error
+	Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error
 	CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error)
 }
 

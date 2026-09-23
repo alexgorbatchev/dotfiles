@@ -438,15 +438,15 @@ func TestInstallerDetailedBranches(t *testing.T) {
 	// 5. Apt & Dnf & Pacman Uninstall and CheckUpdate
 	apt := NewAptInstaller(runner, memFS, sysCtx)
 	runner.Register("apt-get", []byte("ok"), nil)
-	_ = apt.Uninstall(ctx, &config.ToolConfig{Name: "pkg", Sudo: true, InstallParams: map[string]interface{}{"pkgName": "pkg"}})
+	_ = apt.Uninstall(ctx, &config.ToolConfig{Name: "pkg", Sudo: true, InstallParams: map[string]interface{}{"pkgName": "pkg"}}, Installation{})
 
 	dnf := NewDnfInstaller(runner, memFS, sysCtx)
 	runner.Register("dnf", []byte("ok"), nil)
-	_ = dnf.Uninstall(ctx, &config.ToolConfig{Name: "pkg", Sudo: true, InstallParams: map[string]interface{}{"pkgName": "pkg"}})
+	_ = dnf.Uninstall(ctx, &config.ToolConfig{Name: "pkg", Sudo: true, InstallParams: map[string]interface{}{"pkgName": "pkg"}}, Installation{})
 
 	pacman := NewPacmanInstaller(runner, memFS, sysCtx)
 	runner.Register("pacman", []byte("ok"), nil)
-	_ = pacman.Uninstall(ctx, &config.ToolConfig{Name: "pkg", Sudo: true, InstallParams: map[string]interface{}{"pkgName": "pkg"}})
+	_ = pacman.Uninstall(ctx, &config.ToolConfig{Name: "pkg", Sudo: true, InstallParams: map[string]interface{}{"pkgName": "pkg"}}, Installation{})
 }
 
 func TestInstallerErrorAndCheckUpdatePaths(t *testing.T) {
@@ -715,7 +715,7 @@ func TestMoreInstallerEdgeCases(t *testing.T) {
 
 	// 1. GitHub Uninstall & CheckUpdate edge cases
 	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
-	_ = gh.Uninstall(ctx, &config.ToolConfig{Name: "gh-tool"})
+	_ = gh.Uninstall(ctx, &config.ToolConfig{Name: "gh-tool"}, Installation{})
 
 	errServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -734,7 +734,7 @@ func TestMoreInstallerEdgeCases(t *testing.T) {
 
 	// 2. Gitea Uninstall & CheckUpdate edge cases
 	gt := NewGiteaInstaller(runner, memFS, dl, sysCtx)
-	_ = gt.Uninstall(ctx, &config.ToolConfig{Name: "gt-tool"})
+	_ = gt.Uninstall(ctx, &config.ToolConfig{Name: "gt-tool"}, Installation{})
 	gt.httpClient = errServer.Client()
 	_, err = gt.CheckUpdate(ctx, &config.ToolConfig{
 		Name:          "gt-404",
@@ -756,11 +756,11 @@ func TestMoreInstallerEdgeCases(t *testing.T) {
 
 	// 4. CurlBinary Uninstall & CheckUpdate
 	curlBin := NewCurlBinaryInstaller(runner, memFS, dl, sysCtx)
-	_ = curlBin.Uninstall(ctx, &config.ToolConfig{Name: "curlbin-tool"})
+	_ = curlBin.Uninstall(ctx, &config.ToolConfig{Name: "curlbin-tool"}, Installation{})
 
 	// 5. Manual Uninstall
 	manual := NewManualInstaller(memFS, sysCtx)
-	_ = manual.Uninstall(ctx, &config.ToolConfig{Name: "manual-tool"})
+	_ = manual.Uninstall(ctx, &config.ToolConfig{Name: "manual-tool"}, Installation{})
 
 	// 6. DryRun returns for all package installers
 	dryParams := map[string]interface{}{
@@ -861,7 +861,7 @@ func TestPackageInstallersExtraCoverage(t *testing.T) {
 	mEmpty := NewManualInstaller(memFS, sysCtx)
 	_, _ = mEmpty.Install(ctx, &config.ToolConfig{Name: "no-path-manual"})
 	_, _ = mEmpty.Install(ctx, &config.ToolConfig{Name: "nonexist", InstallParams: map[string]interface{}{"binaryPath": "/nonexistent/path/bin"}})
-	_ = mEmpty.Uninstall(ctx, &config.ToolConfig{Name: "no-path-manual"})
+	_ = mEmpty.Uninstall(ctx, &config.ToolConfig{Name: "no-path-manual"}, Installation{})
 
 	// 2. Brew with cask
 	brew := NewBrewInstaller(runner, memFS, &SystemContext{OS: "darwin", Arch: "arm64"})

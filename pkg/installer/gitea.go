@@ -246,7 +246,7 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	}, nil
 }
 
-func (g *GiteaInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (g *GiteaInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	destDir := g.BinDir
 	if destDir != "" {
 		destPath := filepath.Join(destDir, tool.Name)

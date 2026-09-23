@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 )
 
 func TestMockInstaller(t *testing.T) {
@@ -20,7 +21,7 @@ func TestMockInstaller(t *testing.T) {
 	ctx := context.Background()
 	tool := &config.ToolConfig{Name: "btool"}
 
-	if err := mInst.Uninstall(ctx, tool); err != nil {
+	if err := mInst.Uninstall(ctx, tool, installer.Installation{}); err != nil {
 		t.Errorf("expected nil error on Uninstall, got %v", err)
 	}
 }

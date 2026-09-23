@@ -163,7 +163,7 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}, nil
 }
 
-func (a *AptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (a *AptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	var cmd exec.Cmd
 	if tool.Sudo {

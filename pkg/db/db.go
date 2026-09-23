@@ -146,16 +146,17 @@ func InitializeSchema(ctx context.Context, db *sql.DB) error {
 		asset_name TEXT,
 		configured_version TEXT,
 		original_tag TEXT,
-		install_method TEXT
+		install_method TEXT,
+		app_bundle_path TEXT
 	);`
 
 	if _, err := db.ExecContext(ctx, toolInstsSchema); err != nil {
 		return fmt.Errorf("failed to create tool_installations table: %w", err)
 	}
 
-	// Run migration to add install_method if not present
-	if err := ensureColumns(ctx, db, "tool_installations", installMethodColumns); err != nil {
-		return fmt.Errorf("failed to migrate install_method column: %w", err)
+	// An older database has the table without the columns added since.
+	if err := ensureColumns(ctx, db, "tool_installations", toolInstallationColumns); err != nil {
+		return fmt.Errorf("failed to migrate tool_installations columns: %w", err)
 	}
 
 	// 3. Create tool_usage table
@@ -203,9 +204,14 @@ var driftColumns = []column{
 	{name: "target_mode", definition: "TEXT"},
 }
 
-// installMethodColumns is the older migration, kept in the same form as the rest.
-var installMethodColumns = []column{
+// toolInstallationColumns are what tool_installations gained after it was created.
+//
+// app_bundle_path is the application bundle an install placed in /Applications. A
+// dmg takes the bundle's name from the volume, not the configuration, so this is the
+// only place an uninstall can learn which bundle to remove.
+var toolInstallationColumns = []column{
 	{name: "install_method", definition: "TEXT"},
+	{name: "app_bundle_path", definition: "TEXT"},
 }
 
 // ensureColumns adds every column the table is missing, and leaves the ones it

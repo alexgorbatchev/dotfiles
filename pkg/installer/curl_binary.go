@@ -129,7 +129,7 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 	}, nil
 }
 
-func (c *CurlBinaryInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (c *CurlBinaryInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	destDir := c.BinDir
 	if destDir != "" {
 		binNames := GetBinaryNames(tool.Name, tool.Binaries)

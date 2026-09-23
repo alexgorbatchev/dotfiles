@@ -62,7 +62,7 @@ func (r *targetRecordingInstaller) Install(ctx context.Context, tool *config.Too
 	return &installer.InstallResult{}, nil
 }
 
-func (r *targetRecordingInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (r *targetRecordingInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	return nil
 }
 

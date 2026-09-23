@@ -141,7 +141,7 @@ func TestDmgInstaller(t *testing.T) {
 			},
 		}
 
-		err := inst.Uninstall(context.Background(), tool)
+		err := inst.Uninstall(context.Background(), tool, Installation{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

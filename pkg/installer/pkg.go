@@ -232,7 +232,7 @@ func (p *PkgInstaller) resolveBinaries(ctx context.Context, tool *config.ToolCon
 	return resolved, nil
 }
 
-func (p *PkgInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (p *PkgInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	return nil
 }
 

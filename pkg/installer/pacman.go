@@ -140,7 +140,7 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}, nil
 }
 
-func (p *PacmanInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (p *PacmanInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	localPackageName := packageName
 	if idx := strings.LastIndex(packageName, "/"); idx >= 0 {

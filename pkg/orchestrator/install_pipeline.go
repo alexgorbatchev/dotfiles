@@ -452,6 +452,9 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 				ConfiguredVersion: tool.Version,
 				InstallMethod:     &tool.InstallationMethod,
 			}
+			if res != nil && res.AppBundlePath != "" {
+				instRecord.AppBundlePath = &res.AppBundlePath
+			}
 			return o.reg.RecordToolInstallation(ctx, tx, instRecord)
 		})
 		if err != nil {
@@ -523,12 +526,30 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 	// 1. Invoke the native installer plugin's Uninstall method if it exists
 	if tool.InstallationMethod != "" && o.instRegistry != nil {
 		if inst, err := o.instRegistry.Get(tool.InstallationMethod); err == nil && inst != nil {
-			_ = inst.Uninstall(ctx, tool)
+			installed, err := o.recordedInstallation(ctx, tool.Name)
+			if err != nil {
+				return err
+			}
+			_ = inst.Uninstall(ctx, tool, installed)
 		}
 	}
 
 	// 2. Purge file operations, shims, symlinks, binaries dir, and DB entries
 	return o.purgeToolState(ctx, tool.Name, projCfg)
+}
+
+// recordedInstallation reads what the registry recorded about the tool's install, for
+// its installer's Uninstall. It is the zero Installation when there is no record.
+func (o *Orchestrator) recordedInstallation(ctx context.Context, toolName string) (installer.Installation, error) {
+	rec, err := o.reg.GetToolInstallation(ctx, toolName)
+	if err != nil {
+		return installer.Installation{}, fmt.Errorf("reading the installation record of %s: %w", toolName, err)
+	}
+	var installed installer.Installation
+	if rec != nil && rec.AppBundlePath != nil {
+		installed.AppBundlePath = *rec.AppBundlePath
+	}
+	return installed, nil
 }
 
 func (o *Orchestrator) purgeToolState(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {

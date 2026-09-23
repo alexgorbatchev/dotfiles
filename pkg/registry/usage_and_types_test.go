@@ -139,6 +139,7 @@ func TestUpdateToolInstallationAllFields(t *testing.T) {
 	newConfiguredVersion := "1.1.0"
 	newOriginalTag := "v1.1.0"
 	newInstallMethod := "cargo"
+	newAppBundlePath := "/Applications/Eza.app"
 
 	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
 		return reg.UpdateToolInstallation(ctx, tx, "eza", ToolInstallationUpdate{
@@ -150,6 +151,7 @@ func TestUpdateToolInstallationAllFields(t *testing.T) {
 			ConfiguredVersion: &newConfiguredVersion,
 			OriginalTag:       &newOriginalTag,
 			InstallMethod:     &newInstallMethod,
+			AppBundlePath:     &newAppBundlePath,
 		})
 	})
 	if err != nil {
@@ -160,7 +162,7 @@ func TestUpdateToolInstallationAllFields(t *testing.T) {
 	if err != nil || updated == nil {
 		t.Fatalf("GetToolInstallation failed: %v", err)
 	}
-	if updated.Version != "1.1.0" || updated.InstallPath != "/opt/bin/eza" || *updated.DownloadURL != newDownloadURL || *updated.InstallMethod != "cargo" {
+	if updated.Version != "1.1.0" || updated.InstallPath != "/opt/bin/eza" || *updated.DownloadURL != newDownloadURL || *updated.InstallMethod != "cargo" || updated.AppBundlePath == nil || *updated.AppBundlePath != newAppBundlePath {
 		t.Errorf("unexpected updated record: %+v", updated)
 	}
 }

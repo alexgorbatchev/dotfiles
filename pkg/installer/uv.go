@@ -164,7 +164,7 @@ func (u *UvInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*In
 }
 
 // Uninstall runs `uv tool uninstall <package>`.
-func (u *UvInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (u *UvInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	pkgName := strings.Split(uvPackageName(tool), "[")[0]
 	args := []string{"tool", "uninstall", pkgName}
 

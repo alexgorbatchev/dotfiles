@@ -422,7 +422,7 @@ func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}, nil
 }
 
-func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	return nil
 }
 

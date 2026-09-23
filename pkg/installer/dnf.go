@@ -161,7 +161,7 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}, nil
 }
 
-func (d *DnfInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (d *DnfInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	var cmd exec.Cmd
 	if tool.Sudo {

@@ -220,7 +220,7 @@ func (c *CurlTarInstaller) Install(ctx context.Context, tool *config.ToolConfig)
 	}, nil
 }
 
-func (c *CurlTarInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
+func (c *CurlTarInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	destDir := c.BinDir
 	if destDir != "" {
 		destPath := filepath.Join(destDir, tool.Name)

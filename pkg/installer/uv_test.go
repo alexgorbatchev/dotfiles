@@ -348,7 +348,7 @@ func TestUvInstaller_Uninstall(t *testing.T) {
 		},
 	}
 
-	if err := inst.Uninstall(context.Background(), tool); err != nil {
+	if err := inst.Uninstall(context.Background(), tool, Installation{}); err != nil {
 		t.Fatalf("Uninstall failed: %v", err)
 	}
 
@@ -373,7 +373,7 @@ func TestUvInstaller_Uninstall(t *testing.T) {
 			"package": "httpie[jwt]",
 		},
 	}
-	if err := inst.Uninstall(context.Background(), extrasTool); err != nil {
+	if err := inst.Uninstall(context.Background(), extrasTool, Installation{}); err != nil {
 		t.Fatalf("Uninstall failed: %v", err)
 	}
 	if len(runner.History) == 0 {
@@ -393,7 +393,7 @@ func TestUvInstaller_Uninstall(t *testing.T) {
 	runner.RegisterFunc("uv", func(c *exec.MockCmd) error {
 		return errors.New("uninstall error")
 	})
-	if err := inst.Uninstall(context.Background(), tool); err == nil {
+	if err := inst.Uninstall(context.Background(), tool, Installation{}); err == nil {
 		t.Fatal("expected error on uninstall failure, got nil")
 	}
 	if !strings.Contains(logBuf.String(), "| uninstall error") {
@@ -402,7 +402,7 @@ func TestUvInstaller_Uninstall(t *testing.T) {
 
 	// Test uninstall failure without logger (lw is nil)
 	inst.SetLogger(nil)
-	if err := inst.Uninstall(context.Background(), tool); err == nil {
+	if err := inst.Uninstall(context.Background(), tool, Installation{}); err == nil {
 		t.Fatal("expected error on uninstall failure, got nil")
 	}
 }
@@ -708,7 +708,7 @@ func TestUvInstaller_PackageName_EmptyStringFallback(t *testing.T) {
 
 	// Test uninstall fallback
 	runner.Clear()
-	if err := inst.Uninstall(context.Background(), tool); err != nil {
+	if err := inst.Uninstall(context.Background(), tool, Installation{}); err != nil {
 		t.Fatalf("Uninstall failed: %v", err)
 	}
 	uninstallCmd := runner.History[0]
