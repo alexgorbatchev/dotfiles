@@ -122,47 +122,51 @@ func TestMatchesConstraint(t *testing.T) {
 	}
 }
 
-func TestUpdateAvailable(t *testing.T) {
+func TestUpdateStatus(t *testing.T) {
+	const newer, current, ahead = StatusNewerAvailable, StatusUpToDate, StatusAheadOfLatest
 	tests := []struct {
 		name  string
 		query UpdateQuery
-		want  bool
+		want  VersionComparisonStatus
 	}{
-		{"no latest version resolved", UpdateQuery{Installed: "1.2.3"}, false},
-		{"nothing installed and a latest version", UpdateQuery{Latest: "1.2.3"}, true},
-		{"installed behind latest", UpdateQuery{Installed: "1.2.3", Latest: "1.3.0"}, true},
-		{"installed equal to latest", UpdateQuery{Installed: "1.2.3", Latest: "1.2.3"}, false},
-		{"installed equal to latest ignoring the v prefix", UpdateQuery{Installed: "v1.2.3", Latest: "1.2.3"}, false},
-		{"installed ahead of latest", UpdateQuery{Installed: "2.0.0", Latest: "1.2.3"}, false},
-		{"unparseable installed differing from latest", UpdateQuery{Installed: "nightly", Latest: "1.2.3"}, true},
-		{"unparseable installed equal to latest", UpdateQuery{Installed: "nightly", Latest: "nightly"}, false},
-		{"unparseable latest differing from installed", UpdateQuery{Installed: "1.2.3", Latest: "nightly"}, true},
+		{"no latest version resolved", UpdateQuery{Installed: "1.2.3"}, current},
+		{"nothing installed and a latest version", UpdateQuery{Latest: "1.2.3"}, newer},
+		{"installed behind latest", UpdateQuery{Installed: "1.2.3", Latest: "1.3.0"}, newer},
+		{"installed equal to latest", UpdateQuery{Installed: "1.2.3", Latest: "1.2.3"}, current},
+		{"installed equal to latest ignoring the v prefix", UpdateQuery{Installed: "v1.2.3", Latest: "1.2.3"}, current},
+		{"installed ahead of latest", UpdateQuery{Installed: "2.0.0", Latest: "1.2.3"}, ahead},
+		// A cargo tool the old max_version resolution moved onto a prerelease (#130).
+		{"installed prerelease ahead of the latest stable release", UpdateQuery{Installed: "3.0.0-alpha.2", Latest: "2.11.6"}, ahead},
+		{"installed ahead of a latest version the constraint admits", UpdateQuery{Installed: "2.0.0", Latest: "1.2.3", Constraint: "^1.0.0"}, ahead},
+		{"unparseable installed differing from latest", UpdateQuery{Installed: "nightly", Latest: "1.2.3"}, newer},
+		{"unparseable installed equal to latest", UpdateQuery{Installed: "nightly", Latest: "nightly"}, current},
+		{"unparseable latest differing from installed", UpdateQuery{Installed: "1.2.3", Latest: "nightly"}, newer},
 
-		{"constraint admits the latest version", UpdateQuery{Installed: "1.2.3", Latest: "1.2.4", Constraint: "~1.2.0"}, true},
-		{"constraint excludes the latest version", UpdateQuery{Installed: "1.2.3", Latest: "1.3.0", Constraint: "~1.2.0"}, false},
-		{"caret constraint admits a minor bump", UpdateQuery{Installed: "1.2.3", Latest: "1.3.0", Constraint: "^1.2.3"}, true},
-		{"caret constraint excludes a major bump", UpdateQuery{Installed: "1.2.3", Latest: "2.0.0", Constraint: "^1.2.3"}, false},
-		{"constraint with nothing installed", UpdateQuery{Latest: "2.0.0", Constraint: "^1.2.3"}, false},
-		{"constraint cannot admit an unparseable latest version", UpdateQuery{Installed: "1.2.3", Latest: "nightly", Constraint: "^1.2.3"}, false},
-		{"wildcard constraint admits anything", UpdateQuery{Installed: "1.2.3", Latest: "9.9.9", Constraint: "*"}, true},
+		{"constraint admits the latest version", UpdateQuery{Installed: "1.2.3", Latest: "1.2.4", Constraint: "~1.2.0"}, newer},
+		{"constraint excludes the latest version", UpdateQuery{Installed: "1.2.3", Latest: "1.3.0", Constraint: "~1.2.0"}, current},
+		{"caret constraint admits a minor bump", UpdateQuery{Installed: "1.2.3", Latest: "1.3.0", Constraint: "^1.2.3"}, newer},
+		{"caret constraint excludes a major bump", UpdateQuery{Installed: "1.2.3", Latest: "2.0.0", Constraint: "^1.2.3"}, current},
+		{"constraint with nothing installed", UpdateQuery{Latest: "2.0.0", Constraint: "^1.2.3"}, current},
+		{"constraint cannot admit an unparseable latest version", UpdateQuery{Installed: "1.2.3", Latest: "nightly", Constraint: "^1.2.3"}, current},
+		{"wildcard constraint admits anything", UpdateQuery{Installed: "1.2.3", Latest: "9.9.9", Constraint: "*"}, newer},
 
 		// An installed v0.26.1 against an upstream tag of v0.26.1 was once reported as an
 		// update by the dashboard, and date-stamped versions as a permanent update.
-		{"identical tags", UpdateQuery{Installed: "v0.26.1", Latest: "v0.26.1"}, false},
-		{"v prefix only upstream", UpdateQuery{Installed: "0.26.1", Latest: "v0.26.1"}, false},
-		{"v prefix only local", UpdateQuery{Installed: "v0.26.1", Latest: "0.26.1"}, false},
-		{"identical date stamps", UpdateQuery{Installed: "2026-09-17-09-18-10", Latest: "2026-09-17-09-18-10"}, false},
-		{"differing date stamps", UpdateQuery{Installed: "2026-09-16-00-00-00", Latest: "2026-09-17-09-18-10"}, true},
+		{"identical tags", UpdateQuery{Installed: "v0.26.1", Latest: "v0.26.1"}, current},
+		{"v prefix only upstream", UpdateQuery{Installed: "0.26.1", Latest: "v0.26.1"}, current},
+		{"v prefix only local", UpdateQuery{Installed: "v0.26.1", Latest: "0.26.1"}, current},
+		{"identical date stamps", UpdateQuery{Installed: "2026-09-17-09-18-10", Latest: "2026-09-17-09-18-10"}, current},
+		{"differing date stamps", UpdateQuery{Installed: "2026-09-16-00-00-00", Latest: "2026-09-17-09-18-10"}, newer},
 
-		{"outdated override wins over equal versions", UpdateQuery{Installed: "1.2.3_1", Latest: "1.2.3_1", Outdated: boolPtr(true)}, true},
-		{"outdated override wins over a newer latest", UpdateQuery{Installed: "1.2.3", Latest: "9.9.9", Outdated: boolPtr(false)}, false},
-		{"outdated override answers without a latest version", UpdateQuery{Installed: "1:8.2-1", Outdated: boolPtr(true)}, true},
-		{"constraint still bounds the outdated override", UpdateQuery{Installed: "1.2.3", Latest: "2.0.0", Constraint: "^1.2.3", Outdated: boolPtr(true)}, false},
+		{"outdated override wins over equal versions", UpdateQuery{Installed: "1.2.3_1", Latest: "1.2.3_1", Outdated: boolPtr(true)}, newer},
+		{"outdated override wins over a newer latest", UpdateQuery{Installed: "1.2.3", Latest: "9.9.9", Outdated: boolPtr(false)}, current},
+		{"outdated override answers without a latest version", UpdateQuery{Installed: "1:8.2-1", Outdated: boolPtr(true)}, newer},
+		{"constraint still bounds the outdated override", UpdateQuery{Installed: "1.2.3", Latest: "2.0.0", Constraint: "^1.2.3", Outdated: boolPtr(true)}, current},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := UpdateAvailable(tt.query); got != tt.want {
-				t.Errorf("UpdateAvailable(%+v) = %t, want %t", tt.query, got, tt.want)
+			if got := UpdateStatus(tt.query); got != tt.want {
+				t.Errorf("UpdateStatus(%+v) = %v, want %v", tt.query, got, tt.want)
 			}
 		})
 	}
