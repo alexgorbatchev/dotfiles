@@ -18,11 +18,19 @@ type MockServer struct {
 	ProjectRoot string
 	versions    map[string]string
 	versionsMu  sync.Mutex
-	// downloads records the release assets that were actually fetched, in order. It
-	// is how a test tells which asset an installer selected: by the time the file is
-	// on disk it has been extracted and renamed to the binary's name.
+	// downloads records the release assets that were actually fetched, in order, by
+	// file name, and the crates.io and cargo-quickinstall requests by path. It is how a
+	// test tells which asset an installer selected: by the time the file is on disk it
+	// has been extracted and renamed to the binary's name.
 	downloads   []string
 	downloadsMu sync.Mutex
+}
+
+// recordDownload notes a request a test asserts was made.
+func (ms *MockServer) recordDownload(entry string) {
+	ms.downloadsMu.Lock()
+	defer ms.downloadsMu.Unlock()
+	ms.downloads = append(ms.downloads, entry)
 }
 
 // Downloads reports the release assets fetched from the server so far.
@@ -288,9 +296,7 @@ func (ms *MockServer) serveGitHubRelease(w http.ResponseWriter, r *http.Request,
 }
 
 func (ms *MockServer) serveGitHubDownload(w http.ResponseWriter, r *http.Request, repo, version, filename string) {
-	ms.downloadsMu.Lock()
-	ms.downloads = append(ms.downloads, filename)
-	ms.downloadsMu.Unlock()
+	ms.recordDownload(filename)
 
 	toolName := filepath.Base(repo)
 	filePath := filepath.Join(ms.FixtureDir, "tools", toolName, filename)
@@ -381,8 +387,17 @@ func (ms *MockServer) serveCargoCrate(w http.ResponseWriter, r *http.Request, cr
 		return
 	}
 
+	ms.recordDownload(r.URL.Path)
+
+	// The shape of a real crates.io crate response: the installer reads
+	// max_stable_version, or max_version when prereleases are requested.
 	res := map[string]any{
-		"crate": map[string]any{"name": crateName},
+		"crate": map[string]any{
+			"name":               crateName,
+			"max_version":        "1.0.0",
+			"max_stable_version": "1.0.0",
+			"newest_version":     "1.0.0",
+		},
 		"versions": []map[string]any{
 			{
 				"num":     "1.0.0",
@@ -396,6 +411,7 @@ func (ms *MockServer) serveCargoCrate(w http.ResponseWriter, r *http.Request, cr
 }
 
 func (ms *MockServer) serveCargoQuickinstall(w http.ResponseWriter, r *http.Request, filename string) {
+	ms.recordDownload(r.URL.Path)
 	var fixtureName string
 	if strings.Contains(filename, "apple-darwin") {
 		fixtureName = "cargo-quickinstall-tool-1.0.0-aarch64-apple-darwin.tar.gz"
