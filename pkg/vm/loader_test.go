@@ -2209,6 +2209,60 @@ func TestLoaderAcceptsEveryInstallationMethod(t *testing.T) {
 	}
 }
 
+// A cargo tool whose source settings can never install as written fails the load,
+// naming the tool file, the value and what would make it valid, even in a file that is
+// never type-checked (#127). Otherwise a misspelt binarySource compiled cargo's own
+// newest stable release from source, and a broken versionSource did the same once its
+// resolution failed.
+func TestLoaderRejectsInvalidCargoSources(t *testing.T) {
+	tests := []struct {
+		name     string
+		params   string
+		wantErrs []string
+	}{
+		{
+			name:     "misspelt binarySource",
+			params:   `{ binarySource: "quickinstall" }`,
+			wantErrs: []string{`unknown cargo binarySource "quickinstall"`, "cargo-quickinstall, github-releases"},
+		},
+		{
+			name:     "unknown versionSource",
+			params:   `{ versionSource: "npm" }`,
+			wantErrs: []string{`unknown cargo versionSource "npm"`, "cargo-toml, crates-io, github-releases"},
+		},
+		{
+			name:     "cargo-toml without githubRepo or cargoTomlUrl",
+			params:   `{ versionSource: "cargo-toml" }`,
+			wantErrs: []string{`cargo versionSource "cargo-toml" requires githubRepo or cargoTomlUrl`},
+		},
+		{
+			name:     "github-releases binaries without githubRepo",
+			params:   `{ binarySource: "github-releases" }`,
+			wantErrs: []string{`cargo binarySource "github-releases" requires githubRepo`},
+		},
+		{
+			name:     "github-releases versions without githubRepo",
+			params:   `{ versionSource: "github-releases" }`,
+			wantErrs: []string{`cargo versionSource "github-releases" requires githubRepo`},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tool := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+				"export default defineTool((install) => install(\"cargo\", " + tt.params + ").bin(\"probe\"));"
+			_, err := loadToolSource(t, tool)
+			if err == nil {
+				t.Fatal("expected loading to fail")
+			}
+			for _, want := range append([]string{"probe.tool.ts", `tool "probe"`}, tt.wantErrs...) {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected the error to mention %q, got: %v", want, err)
+				}
+			}
+		})
+	}
+}
+
 func TestLoaderRejectsBinaryPatternWithBinaryPath(t *testing.T) {
 	tests := []struct {
 		name    string

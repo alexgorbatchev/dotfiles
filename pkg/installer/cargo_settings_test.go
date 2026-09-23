@@ -198,10 +198,10 @@ func TestCargoSettingsTokensStayOnTheirHost(t *testing.T) {
 		})
 		inst := newCargoSettingsInstaller(t, fs.NewMemFS(), NewCargoSettings(&config.ProjectConfig{Cargo: hosts.cargoConfig()}))
 
-		got, err := inst.resolveVersion(context.Background(), &config.ToolConfig{
+		got, err := resolveToolVersion(t, inst, context.Background(), &config.ToolConfig{
 			Name:          "mycrate",
 			InstallParams: map[string]interface{}{"cargoTomlUrl": elsewhere.URL + "/owner/repo/main/Cargo.toml"},
-		}, "mycrate", cargoBinarySourceQuickinstall, false)
+		}, "mycrate")
 		if err != nil || got.version != "3.0.0" {
 			t.Fatalf("resolveVersion() = %+v, %v; want 3.0.0 from the cargoTomlUrl", got, err)
 		}
@@ -215,10 +215,10 @@ func TestCargoSettingsTokensStayOnTheirHost(t *testing.T) {
 		hosts := newCargoHosts(t)
 		inst := newCargoSettingsInstaller(t, fs.NewMemFS(), NewCargoSettings(&config.ProjectConfig{Cargo: hosts.cargoConfig()}))
 
-		_, err := inst.resolveVersion(context.Background(), &config.ToolConfig{
+		_, err := resolveToolVersion(t, inst, context.Background(), &config.ToolConfig{
 			Name:          "mycrate",
 			InstallParams: map[string]interface{}{"cargoTomlUrl": hosts.raw.URL + "/owner/repo/v2/Cargo.toml"},
-		}, "mycrate", cargoBinarySourceQuickinstall, false)
+		}, "mycrate")
 		if err != nil {
 			t.Fatalf("resolveVersion() error = %v", err)
 		}
@@ -467,7 +467,7 @@ func TestCargoResponseCache(t *testing.T) {
 		}
 		resolve := func(t *testing.T, ctx context.Context, inst *CargoInstaller) {
 			t.Helper()
-			got, err := inst.resolveVersion(ctx, &config.ToolConfig{Name: "mycrate", InstallParams: src.params}, "mycrate", cargoBinarySourceQuickinstall, false)
+			got, err := resolveToolVersion(t, inst, ctx, &config.ToolConfig{Name: "mycrate", InstallParams: src.params}, "mycrate")
 			if err != nil || got.version != src.want {
 				t.Fatalf("resolveVersion() = %+v, %v; want %s", got, err, src.want)
 			}
@@ -544,11 +544,11 @@ func TestCargoResponseCache(t *testing.T) {
 			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
 		}))
 		tool := &config.ToolConfig{Name: "mycrate"}
-		if _, err := inst.resolveVersion(context.Background(), tool, "mycrate", cargoBinarySourceQuickinstall, false); err == nil {
+		if _, err := resolveToolVersion(t, inst, context.Background(), tool, "mycrate"); err == nil {
 			t.Fatal("resolveVersion() succeeded against a failing host")
 		}
 		for range 2 {
-			if got, err := inst.resolveVersion(context.Background(), tool, "mycrate", cargoBinarySourceQuickinstall, false); err != nil || got.version != "1.5.0" {
+			if got, err := resolveToolVersion(t, inst, context.Background(), tool, "mycrate"); err != nil || got.version != "1.5.0" {
 				t.Fatalf("resolveVersion() = %+v, %v; want 1.5.0", got, err)
 			}
 		}
@@ -644,7 +644,7 @@ func TestCargoResponseCache(t *testing.T) {
 		generated := t.TempDir()
 		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: generated}, Cargo: hosts.cargoConfig()}))
 		tool := &config.ToolConfig{Name: "mycrate"}
-		if _, err := inst.resolveVersion(context.Background(), tool, "mycrate", cargoBinarySourceQuickinstall, false); err != nil {
+		if _, err := resolveToolVersion(t, inst, context.Background(), tool, "mycrate"); err != nil {
 			t.Fatalf("resolveVersion() error = %v", err)
 		}
 		if !strings.HasPrefix(inst.Cargo.CratesIOCache.Dir, generated) {
@@ -654,7 +654,7 @@ func TestCargoResponseCache(t *testing.T) {
 		if err := os.WriteFile(entry, []byte("not json"), 0644); err != nil {
 			t.Fatalf("corrupting the cache entry: %v", err)
 		}
-		if got, err := inst.resolveVersion(context.Background(), tool, "mycrate", cargoBinarySourceQuickinstall, false); err != nil || got.version != "1.5.0" {
+		if got, err := resolveToolVersion(t, inst, context.Background(), tool, "mycrate"); err != nil || got.version != "1.5.0" {
 			t.Fatalf("resolveVersion() = %+v, %v; want 1.5.0 fetched again", got, err)
 		}
 		if n := len(hosts.cratesIO.received()); n != 2 {

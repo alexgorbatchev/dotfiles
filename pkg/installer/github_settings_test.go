@@ -115,9 +115,9 @@ func TestGitHubHostReachesEveryReleaseInstaller(t *testing.T) {
 				inst.SetHTTPClient(client)
 				tool := &config.ToolConfig{
 					Name:          "tool",
-					InstallParams: map[string]interface{}{"githubRepo": "owner/tool"},
+					InstallParams: map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/tool"},
 				}
-				_, err := inst.resolveVersion(context.Background(), tool, "tool", cargoBinarySourceGitHub, false)
+				_, err := resolveToolVersion(t, inst, context.Background(), tool, "tool")
 				return err
 			},
 		},
