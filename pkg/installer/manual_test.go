@@ -329,3 +329,50 @@ func TestManualInstallerCopyErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestManualInstallerLeavesBinaryPathIntactWhenAHookLinkedItIntoTheStagingDir reproduces a
+// before-install hook that symlinks binaryPath into the staging directory: the install
+// must replace the link with a copy, never write through it into the user's file.
+func TestManualInstallerLeavesBinaryPathIntactWhenAHookLinkedItIntoTheStagingDir(t *testing.T) {
+	const payload = "user-owned-binary"
+	root := t.TempDir()
+	fsys := &fs.OSFS{}
+	binaryPath := filepath.Join(root, "dotfiles", "mytool")
+	binDir := filepath.Join(root, "staging")
+	for _, dir := range []string{filepath.Dir(binaryPath), binDir} {
+		if err := fsys.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := fsys.WriteFile(binaryPath, []byte(payload), 0644); err != nil {
+		t.Fatal(err)
+	}
+	destPath := filepath.Join(binDir, "mytool")
+	if err := fsys.Symlink(binaryPath, destPath); err != nil {
+		t.Fatal(err)
+	}
+	inst := NewManualInstaller(fsys, nil)
+	inst.BinDir = binDir
+	tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"binaryPath": binaryPath}}
+
+	if _, err := inst.Install(context.Background(), tool); err != nil {
+		t.Fatalf("Install() error = %v", err)
+	}
+
+	for path, wantMode := range map[string]os.FileMode{binaryPath: 0644, destPath: 0755} {
+		info, err := fsys.Lstat(path)
+		if err != nil {
+			t.Fatalf("Lstat(%s): %v", path, err)
+		}
+		if !info.Mode().IsRegular() || info.Mode().Perm() != wantMode {
+			t.Errorf("%s mode = %v, want a regular file with mode %v", path, info.Mode(), wantMode)
+		}
+		data, err := fsys.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ReadFile(%s): %v", path, err)
+		}
+		if string(data) != payload {
+			t.Errorf("%s holds %q, want %q", path, data, payload)
+		}
+	}
+}

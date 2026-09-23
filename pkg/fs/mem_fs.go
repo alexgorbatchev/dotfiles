@@ -652,6 +652,11 @@ func (m *MemFS) CopyFile(src, dest string) error {
 	if srcNode.isDir {
 		return &os.PathError{Op: "copyfile", Path: src, Err: os.ErrInvalid}
 	}
+	// curr is the regular file src resolves to; a dest symlink is replaced below,
+	// but dest naming that file, or src's own entry, is a copy onto itself.
+	if curr == cleanDest || cleanSrc == cleanDest {
+		return &os.PathError{Op: "copyfile", Path: dest, Err: errSameFile}
+	}
 
 	parent := filepath.Dir(cleanDest)
 	if filepath.Dir(parent) != parent {

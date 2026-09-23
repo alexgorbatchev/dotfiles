@@ -114,7 +114,7 @@ export interface IFileSystem {
    */
   chmod(path: string, mode: number): Promise<void>;
   /**
-   * Copies a file, replacing the destination if it already exists.
+   * Copies a file, replacing the destination if it already exists: a symbolic link there is replaced, not written through.
    */
   copyFile(source: string, destination: string): Promise<void>;
   /**
