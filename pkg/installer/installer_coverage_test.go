@@ -15,6 +15,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
+	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -209,16 +210,7 @@ func TestDmgAndPkgInstallSuccess(t *testing.T) {
 	defer server.Close()
 
 	// Mock hdiutil for DMG
-	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-		if len(c.Args) > 0 && c.Args[0] == "attach" {
-			_ = memFS.MkdirAll("/Applications/Sample-mount/Sample.app/Contents", 0755)
-			_ = memFS.WriteFile("/Applications/Sample-mount/Sample.app/Contents/PkgInfo", []byte("APPL"), 0644)
-			if w := c.Stdout(); w != nil {
-				_, _ = w.Write([]byte("/dev/disk2 \tApple_HFS\t/Applications/Sample-mount\n"))
-			}
-		}
-		return nil
-	})
+	archivetest.Hdiutil{FS: memFS, Volume: archivetest.VolumeFile(memFS, "Sample.app/Contents/PkgInfo", "APPL")}.Register(runner)
 
 	dmgInst := NewDmgInstaller(runner, memFS, dl, sysCtx)
 	dmgInst.httpClient = server.Client()

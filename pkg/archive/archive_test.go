@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
@@ -266,18 +267,9 @@ func TestExtractorDmg(t *testing.T) {
 	runner := exec.NewMockRunner()
 	ext := NewExtractor(memFS, runner)
 
-	// Intercept the mountpoint argument dynamically to write mock files
-	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-		if len(c.Args) > 4 && c.Args[0] == "attach" {
-			mountPoint := c.Args[4]
-			if err := memFS.MkdirAll(mountPoint, 0755); err != nil {
-				return err
-			}
-			err := memFS.WriteFile(filepath.Join(mountPoint, "hello-dmg.txt"), []byte("hello from dmg"), 0644)
-			return err
-		}
-		return nil
-	})
+	archivetest.Hdiutil{FS: memFS, Volume: func(mountPoint string) error {
+		return memFS.WriteFile(filepath.Join(mountPoint, "hello-dmg.txt"), []byte("hello from dmg"), 0644)
+	}}.Register(runner)
 
 	err := memFS.WriteFile("/test.dmg", []byte("dmg header"), 0644)
 	if err != nil {
@@ -1184,18 +1176,12 @@ func TestExtractDmgReproducesSymlinks(t *testing.T) {
 		"App.app/Contents/Frameworks/Sparkle.framework/Dangling":         "Versions/B/Missing",
 	}
 	runner := exec.NewMockRunner()
-	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-		switch c.Args[0] {
-		case "attach":
-			writeDmgVolume(t, osFS, c.Args[4], links)
-			// A volume root can deny writing; the extraction directory must not
-			// take its mode.
-			return osFS.Chmod(c.Args[4], 0o555)
-		case "detach":
-			return osFS.Chmod(c.Args[1], 0o755)
-		}
-		return nil
-	})
+	archivetest.Hdiutil{FS: osFS, Volume: func(mountPoint string) error {
+		writeDmgVolume(t, osFS, mountPoint, links)
+		// A volume root can deny writing; the extraction directory must not take
+		// its mode.
+		return osFS.Chmod(mountPoint, 0o555)
+	}}.Register(runner)
 
 	if err := NewExtractor(osFS, runner).Extract(context.Background(), dmg, dest); err != nil {
 		t.Fatalf("Extract(%s) = %v, want nil", dmg, err)
@@ -1317,5 +1303,288 @@ func TestCopyVolumeReportsEachFailure(t *testing.T) {
 				t.Errorf("copyVolume = %v, want %v", err, errVolumeFault)
 			}
 		})
+	}
+}
+
+// TestExtractDmgMountLifecycle is the regression test for issue #173: the image is
+// attached read-only at a mount point created through fs.FS next to dest, a failed
+// detach is retried with -force and otherwise fails the extraction, and the mount point
+// is removed only once it is empty, never recursively.
+func TestExtractDmgMountLifecycle(t *testing.T) {
+	const (
+		image      = "/stage/app.dmg"
+		dest       = "/stage/out"
+		mountPoint = "/stage/.out.dmg-mount"
+		volumeFile = mountPoint + "/App.app/Contents/Info.plist"
+	)
+	attach := []string{"attach", "-readonly", "-nobrowse", "-noautoopen", "-mountpoint", mountPoint, image}
+	detach := []string{"detach", mountPoint}
+	forceDetach := []string{"detach", mountPoint, "-force"}
+
+	tests := []struct {
+		name  string
+		fake  archivetest.Hdiutil
+		calls [][]string
+		// wantErr is a substring of the error Extract must return, or "" for success.
+		wantErr string
+		// keepsVolume reports whether the volume's files must still be at the mount point.
+		keepsVolume bool
+	}{
+		{
+			name:  "a detach that succeeds removes the empty mount point",
+			calls: [][]string{attach, detach},
+		},
+		{
+			name:  "a mount point the unmount already removed needs no removing",
+			fake:  archivetest.Hdiutil{RemoveMountPoint: true},
+			calls: [][]string{attach, detach},
+		},
+		{
+			name:  "a failed detach is retried with -force",
+			fake:  archivetest.Hdiutil{Detach: archivetest.RefuseUnlessForced},
+			calls: [][]string{attach, detach, forceDetach},
+		},
+		{
+			name:        "a detach that fails even with -force fails the extraction and leaves the volume",
+			fake:        archivetest.Hdiutil{Detach: func(bool) error { return archivetest.ErrResourceBusy }},
+			calls:       [][]string{attach, detach, forceDetach},
+			wantErr:     mountPoint,
+			keepsVolume: true,
+		},
+		{
+			name:        "a mount point that still holds files after a detach is not removed recursively",
+			fake:        archivetest.Hdiutil{StayMounted: true},
+			calls:       [][]string{attach, detach},
+			wantErr:     mountPoint,
+			keepsVolume: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS := newDmgStage(t)
+			runner := exec.NewMockRunner()
+			fake := tt.fake
+			fake.FS = memFS
+			fake.Volume = func(mountPoint string) error {
+				if err := memFS.MkdirAll(filepath.Dir(volumeFile), 0o755); err != nil {
+					return err
+				}
+				return memFS.WriteFile(volumeFile, []byte("plist"), 0o644)
+			}
+			fake.Register(runner)
+
+			err := NewExtractor(memFS, runner).Extract(context.Background(), image, dest)
+			if tt.wantErr == "" && err != nil {
+				t.Fatalf("Extract = %v, want nil", err)
+			}
+			if tt.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErr)) {
+				t.Fatalf("Extract = %v, want an error naming %q", err, tt.wantErr)
+			}
+			if got := archivetest.Calls(runner); !slices.EqualFunc(got, tt.calls, slices.Equal) {
+				t.Errorf("hdiutil calls = %q, want %q", got, tt.calls)
+			}
+			if data, err := memFS.ReadFile(filepath.Join(dest, "App.app/Contents/Info.plist")); err != nil || string(data) != "plist" {
+				t.Errorf("dest holds %q (err %v), want the volume's copied file", data, err)
+			}
+			volumeExists, _ := memFS.Exists(volumeFile)
+			if volumeExists != tt.keepsVolume {
+				t.Errorf("volume file present after Extract = %v, want %v", volumeExists, tt.keepsVolume)
+			}
+			mountPointExists, _ := memFS.Exists(mountPoint)
+			if mountPointExists != tt.keepsVolume {
+				t.Errorf("mount point present after Extract = %v, want %v", mountPointExists, tt.keepsVolume)
+			}
+		})
+	}
+}
+
+// mountFaultFS fails the one operation op names on the mount point /stage/mnt.
+type mountFaultFS struct {
+	fs.FS
+	op string
+}
+
+func (m mountFaultFS) fault(op, path string) error {
+	if m.op == op && path == "/stage/mnt" {
+		return errVolumeFault
+	}
+	return nil
+}
+
+func (m mountFaultFS) Lstat(path string) (os.FileInfo, error) {
+	if err := m.fault("lstat", path); err != nil {
+		return nil, err
+	}
+	return m.FS.Lstat(path)
+}
+
+func (m mountFaultFS) MkdirAll(path string, perm os.FileMode) error {
+	if err := m.fault("mkdir", path); err != nil {
+		return err
+	}
+	return m.FS.MkdirAll(path, perm)
+}
+
+func (m mountFaultFS) ReadDir(path string) ([]string, error) {
+	if err := m.fault("readdir", path); err != nil {
+		return nil, err
+	}
+	return m.FS.ReadDir(path)
+}
+
+func (m mountFaultFS) Remove(path string) error {
+	if err := m.fault("remove", path); err != nil {
+		return err
+	}
+	return m.FS.Remove(path)
+}
+
+// TestMountDmgReportsEachFailure covers the file system and hdiutil failures MountDmg
+// reports: each fails the mount, names the mount point, and carries its cause,
+// including what hdiutil printed.
+func TestMountDmgReportsEachFailure(t *testing.T) {
+	const mountPoint = "/stage/mnt"
+	errAttach := errors.New("exit status 1")
+	tests := []struct {
+		name string
+		op   string
+		// existing creates the mount point before MountDmg runs.
+		existing bool
+		// attachErr fails hdiutil attach, which prints attachOutput.
+		attachErr    error
+		attachOutput string
+		want         []error
+		wantText     string
+	}{
+		{name: "inspecting the mount point", op: "lstat", want: []error{errVolumeFault}},
+		{name: "creating the mount point", op: "mkdir", want: []error{errVolumeFault}},
+		{name: "listing an existing mount point", op: "readdir", existing: true, want: []error{errVolumeFault}},
+		{
+			name: "an attach that fails with a mount point that cannot be removed", op: "remove",
+			attachErr: errAttach, want: []error{errAttach, errVolumeFault},
+		},
+		{
+			name: "an attach that fails printing why", attachErr: errAttach,
+			attachOutput: "hdiutil: attach failed - no mountable file systems\n",
+			want:         []error{errAttach}, wantText: "no mountable file systems",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS := newDmgStage(t)
+			if tt.existing {
+				if err := memFS.MkdirAll(mountPoint, 0o755); err != nil {
+					t.Fatalf("MkdirAll: %v", err)
+				}
+			}
+			runner := exec.NewMockRunner()
+			archivetest.Hdiutil{
+				FS:           memFS,
+				Volume:       func(string) error { return tt.attachErr },
+				AttachOutput: tt.attachOutput,
+			}.Register(runner)
+
+			detach, err := MountDmg(context.Background(), runner, mountFaultFS{FS: memFS, op: tt.op}, "/stage/app.dmg", mountPoint)
+			if detach != nil {
+				t.Errorf("MountDmg returned a detach function along with error %v", err)
+			}
+			if err == nil || !strings.Contains(err.Error(), mountPoint) || !strings.Contains(err.Error(), tt.wantText) {
+				t.Fatalf("MountDmg = %v, want an error naming %s and %q", err, mountPoint, tt.wantText)
+			}
+			for _, want := range tt.want {
+				if !errors.Is(err, want) {
+					t.Errorf("MountDmg = %v, want it to wrap %v", err, want)
+				}
+			}
+		})
+	}
+}
+
+// newDmgStage returns a MemFS whose staging directory /stage holds the image app.dmg.
+func newDmgStage(t *testing.T) fs.FS {
+	t.Helper()
+	memFS := fs.NewMemFS()
+	if err := memFS.MkdirAll("/stage", 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := memFS.WriteFile("/stage/app.dmg", []byte("dmg"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	return memFS
+}
+
+// TestExtractDmgRefusesOccupiedMountPoint covers a mount point that is not an empty
+// directory, such as one a previous image is still attached at: the image is never
+// attached over it, and what it holds is left alone.
+func TestExtractDmgRefusesOccupiedMountPoint(t *testing.T) {
+	const (
+		image      = "/stage/app.dmg"
+		dest       = "/stage/out"
+		mountPoint = "/stage/.out.dmg-mount"
+	)
+	tests := []struct {
+		name   string
+		occupy func(fsys fs.FS) error
+		// left is the path that must still exist afterwards.
+		left string
+	}{
+		{
+			name: "a directory holding files",
+			occupy: func(fsys fs.FS) error {
+				if err := fsys.MkdirAll(mountPoint, 0o755); err != nil {
+					return err
+				}
+				return fsys.WriteFile(mountPoint+"/Stale.app", []byte("stale"), 0o644)
+			},
+			left: mountPoint + "/Stale.app",
+		},
+		{
+			name:   "a file",
+			occupy: func(fsys fs.FS) error { return fsys.WriteFile(mountPoint, []byte("file"), 0o644) },
+			left:   mountPoint,
+		},
+		{
+			name:   "a symlink",
+			occupy: func(fsys fs.FS) error { return fsys.Symlink("/elsewhere", mountPoint) },
+			left:   mountPoint,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS := newDmgStage(t)
+			if err := tt.occupy(memFS); err != nil {
+				t.Fatalf("occupying %s: %v", mountPoint, err)
+			}
+			runner := exec.NewMockRunner()
+			archivetest.Hdiutil{FS: memFS}.Register(runner)
+
+			err := NewExtractor(memFS, runner).Extract(context.Background(), image, dest)
+			if err == nil || !strings.Contains(err.Error(), mountPoint) {
+				t.Fatalf("Extract = %v, want an error naming %s", err, mountPoint)
+			}
+			if calls := archivetest.Calls(runner); len(calls) != 0 {
+				t.Errorf("hdiutil calls = %q, want none", calls)
+			}
+			if _, err := memFS.Lstat(tt.left); err != nil {
+				t.Errorf("Lstat(%s) = %v, want it left in place", tt.left, err)
+			}
+		})
+	}
+}
+
+// TestExtractDmgAttachFailureRemovesMountPoint covers an image hdiutil cannot attach:
+// the extraction fails and the empty mount point it created is removed.
+func TestExtractDmgAttachFailureRemovesMountPoint(t *testing.T) {
+	const mountPoint = "/stage/.out.dmg-mount"
+	memFS := newDmgStage(t)
+	runner := exec.NewMockRunner()
+	archivetest.Hdiutil{FS: memFS, Volume: func(string) error { return errors.New("hdiutil: attach failed - image not recognized") }}.Register(runner)
+
+	err := NewExtractor(memFS, runner).Extract(context.Background(), "/stage/app.dmg", "/stage/out")
+	if err == nil || !strings.Contains(err.Error(), "image not recognized") {
+		t.Fatalf("Extract = %v, want the attach failure", err)
+	}
+	if exists, _ := memFS.Exists(mountPoint); exists {
+		t.Errorf("mount point %s left behind after a failed attach", mountPoint)
 	}
 }

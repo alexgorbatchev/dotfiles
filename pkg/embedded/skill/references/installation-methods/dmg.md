@@ -1,6 +1,6 @@
 # dmg
 
-Install macOS applications distributed as DMG disk images. The plugin mounts the DMG, copies the `.app` bundle to `/Applications`, and is silently skipped on non-macOS platforms. The copy keeps the bundle's directory structure, file contents and permission bits, and recreates every symlink with its original target (extended attributes and resource forks are not copied). It replaces a bundle of the same name that is already installed rather than merging into it; the installed bundle stays in place until the new copy is complete.
+Install macOS applications distributed as DMG disk images. The plugin mounts the DMG read-only and hidden from the Finder, copies the `.app` bundle to `/Applications`, and is silently skipped on non-macOS platforms. The copy keeps the bundle's directory structure, file contents and permission bits, and recreates every symlink with its original target (extended attributes and resource forks are not copied). It replaces a bundle of the same name that is already installed rather than merging into it; the installed bundle stays in place until the new copy is complete. When the image cannot be detached afterwards, even with `hdiutil detach -force` (a process can hold a file on the volume open), the install fails with an error naming the mount point, which is left in place; detach the image yourself before installing again.
 
 The DMG source is configured via a required `source` object. Sources can be direct URLs or GitHub releases.
 
