@@ -311,6 +311,11 @@ func (m *MemFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteClose
 	if ok && node.isDir {
 		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrExist}
 	}
+	// Like os.OpenFile, only O_CREATE creates a missing file. Host fallback never
+	// applies here: MemFS cannot write through to host content.
+	if !ok && flag&os.O_CREATE == 0 {
+		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	}
 
 	filePerm := perm
 	if filePerm == 0 {

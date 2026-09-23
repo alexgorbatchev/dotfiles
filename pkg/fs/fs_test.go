@@ -473,6 +473,65 @@ func TestMemFS_ModTime(t *testing.T) {
 	}
 }
 
+// os.OpenFile creates a missing file only when O_CREATE is set. MemFS stands in
+// for the real file system in tests and dry runs, so an append to a file it does
+// not hold must fail the same way instead of quietly starting a new one.
+func TestMemFS_OpenFile_MissingFileRequiresCreate(t *testing.T) {
+	tests := []struct {
+		name       string
+		flag       int
+		wantErr    error
+		wantExists bool
+	}{
+		{"append without create", os.O_WRONLY | os.O_APPEND, os.ErrNotExist, false},
+		{"write without create", os.O_WRONLY, os.ErrNotExist, false},
+		{"append with create", os.O_WRONLY | os.O_APPEND | os.O_CREATE, nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS := NewMemFS()
+			w, err := memFS.OpenFile("/missing.txt", tt.flag, 0644)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("OpenFile error = %v, want %v", err, tt.wantErr)
+			}
+			if err == nil {
+				if err := w.Close(); err != nil {
+					t.Fatalf("Close failed: %v", err)
+				}
+			}
+			exists, err := memFS.Exists("/missing.txt")
+			if err != nil {
+				t.Fatalf("Exists failed: %v", err)
+			}
+			if exists != tt.wantExists {
+				t.Errorf("file exists = %v, want %v", exists, tt.wantExists)
+			}
+		})
+	}
+}
+
+// Host fallback answers metadata from the host but never serves or writes host
+// content, so appending to a file that only the host has must fail rather than
+// create a MemFS file holding just the appended bytes.
+func TestMemFS_HostFallback_OpenFileAppendToHostOnlyFile(t *testing.T) {
+	hostPath := filepath.Join(t.TempDir(), "partial.bin")
+	if err := os.WriteFile(hostPath, []byte("host bytes"), 0644); err != nil {
+		t.Fatalf("writing host file: %v", err)
+	}
+	memFS := NewMemFSWithHostFallback()
+	if err := memFS.MkdirAll(filepath.Dir(hostPath), 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	_, err := memFS.OpenFile(hostPath, os.O_WRONLY|os.O_APPEND, 0644)
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("OpenFile error = %v, want %v", err, os.ErrNotExist)
+	}
+	if _, err := memFS.ReadFile(hostPath); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("expected no MemFS file at %s, ReadFile error = %v", hostPath, err)
+	}
+}
+
 func TestMemFS_OpenFile_PreservesPermission(t *testing.T) {
 	memFS := NewMemFS()
 

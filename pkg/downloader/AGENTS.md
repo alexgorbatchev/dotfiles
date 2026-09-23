@@ -15,6 +15,7 @@ File downloader with retry, caching, and progress reporting.
 ## Local gotchas
 
 - Unlogged downloads cause user-perceived freezes -> log download URLs and progress events.
+- A resumed download takes its offset from `fs.FS.Stat` and streams onto the partial file through `OpenFile(O_APPEND)`; when that open fails, the wrapped error is returned. Every production `fs.FS` implements both, so a test simulates a failure with the `errorFS` wrapper in `downloader_test.go` rather than a production branch that buffers the file for a fake.
 
 ## Boundaries
 

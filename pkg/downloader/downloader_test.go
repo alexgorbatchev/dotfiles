@@ -182,46 +182,55 @@ func TestDownloader(t *testing.T) {
 		}
 	})
 
-	t.Run("Filesystem Exists Error", func(t *testing.T) {
+	t.Run("Partial Download Stat Error", func(t *testing.T) {
 		memFS := fs.NewMemFS()
-		errFS := &errorFS{FS: memFS, existsErr: fmt.Errorf("exists failed")}
+		statErr := &os.PathError{Op: "stat", Path: "/test-file", Err: os.ErrPermission}
+		errFS := &errorFS{FS: memFS, statErr: statErr}
 		d := NewDownloader(errFS, nil)
 
 		err := d.Download(context.Background(), server.URL, "/test-file", "")
-		if err == nil {
-			t.Fatal("expected exists error, got nil")
+		if !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("expected the stat error to be returned, got %v", err)
 		}
-		if !strings.Contains(err.Error(), "exists failed") {
-			t.Errorf("expected exists failed error, got %v", err)
+		if !strings.Contains(err.Error(), "checking partial download size") {
+			t.Errorf("expected the stat error to carry its context, got %v", err)
 		}
 	})
 
-	t.Run("Filesystem ReadFile Error", func(t *testing.T) {
+	t.Run("Partial Download Append Open Error", func(t *testing.T) {
 		memFS := fs.NewMemFS()
-		_ = memFS.WriteFile("/test-file", []byte("some data"), 0644)
-		errFS := &errorFS{FS: memFS, readFileErr: fmt.Errorf("readfile failed")}
+		prefix := "Hello, dotfiles"
+		_ = memFS.WriteFile("/test-file", []byte(prefix), 0644)
+		openErr := &os.PathError{Op: "open", Path: "/test-file", Err: os.ErrPermission}
+		errFS := &errorFS{FS: memFS, openFileErr: openErr}
 		d := NewDownloader(errFS, nil)
 
-		err := d.Download(context.Background(), server.URL, "/test-file", "")
-		if err == nil {
-			t.Fatal("expected readfile error, got nil")
+		err := d.Download(context.Background(), server.URL, "/test-file", correctHash)
+		if !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("expected the append-open error to be returned, got %v", err)
 		}
-		if !strings.Contains(err.Error(), "readfile failed") {
-			t.Errorf("expected readfile failed error, got %v", err)
+		if !strings.Contains(err.Error(), "opening partial download for append") {
+			t.Errorf("expected the append-open error to carry its context, got %v", err)
+		}
+
+		data, readErr := memFS.ReadFile("/test-file")
+		if readErr != nil {
+			t.Fatalf("unexpected readFile error: %v", readErr)
+		}
+		if string(data) != prefix {
+			t.Errorf("expected the partial file to stay %q, got %q", prefix, string(data))
 		}
 	})
 
-	t.Run("Filesystem WriteFile Error", func(t *testing.T) {
+	t.Run("Filesystem Create Error", func(t *testing.T) {
 		memFS := fs.NewMemFS()
-		errFS := &errorFS{FS: memFS, writeFileErr: fmt.Errorf("writefile failed")}
+		createErr := errors.New("create failed")
+		errFS := &errorFS{FS: memFS, createErr: createErr}
 		d := NewDownloader(errFS, nil)
 
 		err := d.Download(context.Background(), server.URL, "/test-file", "")
-		if err == nil {
-			t.Fatal("expected writefile error, got nil")
-		}
-		if !strings.Contains(err.Error(), "writefile failed") {
-			t.Errorf("expected writefile failed error, got %v", err)
+		if !errors.Is(err, createErr) {
+			t.Fatalf("expected the create error to be returned, got %v", err)
 		}
 	})
 
@@ -242,47 +251,31 @@ func TestDownloader(t *testing.T) {
 	})
 }
 
+// errorFS wraps a real file system and fails the one operation a test names.
 type errorFS struct {
 	fs.FS
-	existsErr    error
-	readFileErr  error
-	writeFileErr error
+	statErr     error
+	openFileErr error
+	createErr   error
 }
 
-func (e *errorFS) Exists(path string) (bool, error) {
-	if e.existsErr != nil {
-		return false, e.existsErr
+func (e *errorFS) Stat(path string) (os.FileInfo, error) {
+	if e.statErr != nil {
+		return nil, e.statErr
 	}
-	return e.FS.Exists(path)
-}
-
-func (e *errorFS) ReadFile(path string) ([]byte, error) {
-	if e.readFileErr != nil {
-		return nil, e.readFileErr
-	}
-	return e.FS.ReadFile(path)
-}
-
-func (e *errorFS) WriteFile(path string, data []byte, perm os.FileMode) error {
-	if e.writeFileErr != nil {
-		return e.writeFileErr
-	}
-	return e.FS.WriteFile(path, data, perm)
+	return e.FS.Stat(path)
 }
 
 func (e *errorFS) Create(path string) (io.WriteCloser, error) {
-	if e.writeFileErr != nil {
-		return nil, e.writeFileErr
+	if e.createErr != nil {
+		return nil, e.createErr
 	}
 	return e.FS.Create(path)
 }
 
 func (e *errorFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
-	if e.readFileErr != nil {
-		return nil, e.readFileErr
-	}
-	if e.writeFileErr != nil {
-		return nil, e.writeFileErr
+	if e.openFileErr != nil {
+		return nil, e.openFileErr
 	}
 	return e.FS.OpenFile(path, flag, perm)
 }
@@ -899,7 +892,7 @@ func TestNewDownloaderNilTransportAndVerifyHash(t *testing.T) {
 	}
 }
 
-func TestPartialContentFallbackBranch(t *testing.T) {
+func TestDownloaderResumesPartialContentByAppending(t *testing.T) {
 	memFS := fs.NewMemFS()
 	_ = memFS.WriteFile("/partial.txt", []byte("part1-"), 0644)
 
@@ -924,7 +917,7 @@ func TestPartialContentFallbackBranch(t *testing.T) {
 
 	err := d.Download(context.Background(), serverPartial.URL, "/partial.txt", "", opts)
 	if err != nil || !progressCalled {
-		t.Fatalf("partial content fallback download failed: %v, progressCalled=%v", err, progressCalled)
+		t.Fatalf("resumed partial download failed: %v, progressCalled=%v", err, progressCalled)
 	}
 
 	data, err := memFS.ReadFile("/partial.txt")
@@ -1178,95 +1171,68 @@ func TestDownloaderEdgeCases(t *testing.T) {
 	}
 }
 
-type failOpenFileFS struct {
-	fs.FS
-}
+// A dry run's MemFS reports the size of a partial file that exists only on the
+// host, but it cannot append to host content. The resume must fail on the append
+// open instead of leaving a MemFS file that holds only the tail of the download.
+func TestDownloaderResumeOfHostOnlyPartialUnderHostFallback(t *testing.T) {
+	const fullContent = "Hello, host fallback resume"
+	const prefix = "Hello, "
+	destPath := filepath.Join(t.TempDir(), "partial.bin")
+	if err := os.WriteFile(destPath, []byte(prefix), 0644); err != nil {
+		t.Fatalf("writing host partial file: %v", err)
+	}
 
-func (f *failOpenFileFS) OpenFile(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
-	return nil, fmt.Errorf("openfile not supported")
-}
-
-func TestDownloaderFallbackFS(t *testing.T) {
-	memFS := fs.NewMemFS()
-	failFS := &failOpenFileFS{FS: memFS}
-
-	fullContent := "Hello, partial fallback!"
-	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(fullContent)))
-
+	var gotRange string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRange = r.Header.Get("Range")
 		w.WriteHeader(http.StatusPartialContent)
-		_, _ = w.Write([]byte(fullContent[5:]))
+		_, _ = w.Write([]byte(fullContent[len(prefix):]))
 	}))
 	defer server.Close()
 
-	_ = memFS.WriteFile("/fallback.txt", []byte("Hello"), 0644)
-	d := NewDownloader(failFS, nil)
-
-	var progressCalled bool
-	err := d.Download(context.Background(), server.URL, "/fallback.txt", hash, DownloadOptions{
-		OnProgress: func(downloaded, total int64) {
-			progressCalled = true
-		},
-	})
-	if err != nil {
-		t.Fatalf("unexpected error in fallback FS: %v", err)
+	memFS := fs.NewMemFSWithHostFallback()
+	if err := memFS.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
 	}
+	d := NewDownloader(memFS, nil)
 
-	data, err := memFS.ReadFile("/fallback.txt")
-	if err != nil || string(data) != fullContent {
-		t.Errorf("expected %q, got %q", fullContent, string(data))
+	err := d.Download(context.Background(), server.URL, destPath, "")
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected the append open to fail with %v, got %v", os.ErrNotExist, err)
 	}
-	if !progressCalled {
-		t.Errorf("expected progress callback to be called")
+	if !strings.Contains(err.Error(), "opening partial download for append") {
+		t.Errorf("expected the append-open context, got %v", err)
 	}
+	if wantRange := fmt.Sprintf("bytes=%d-", len(prefix)); gotRange != wantRange {
+		t.Errorf("Range = %q, want %q", gotRange, wantRange)
+	}
+	if _, err := memFS.ReadFile(destPath); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("expected no MemFS file at %s, ReadFile error = %v", destPath, err)
+	}
+}
 
-	// Cache with empty CacheDir
-	serverNormal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestDownloaderEmptyCacheDirFallsBackToGeneratedCache(t *testing.T) {
+	memFS := fs.NewMemFS()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("cached"))
 	}))
-	defer serverNormal.Close()
-
-	dEmptyCacheDir := NewDownloader(memFS, nil)
-	dEmptyCacheDir.CacheEnabled = true
-	dEmptyCacheDir.CacheDir = ""
-	_ = dEmptyCacheDir.Download(context.Background(), serverNormal.URL, "/empty-cachedir.txt", "")
-}
-
-type readOnlyCloser struct {
-	io.Reader
-}
-
-func (r *readOnlyCloser) Close() error { return nil }
-
-type mockOnlyReadCloserFS struct {
-	fs.FS
-}
-
-func (m *mockOnlyReadCloserFS) Open(name string) (io.ReadCloser, error) {
-	data, _ := m.FS.ReadFile(name)
-	return &readOnlyCloser{Reader: strings.NewReader(string(data))}, nil
-}
-
-func TestDownloaderReadOnlyCloserFS(t *testing.T) {
-	memFS := fs.NewMemFS()
-	mockFS := &mockOnlyReadCloserFS{FS: memFS}
-
-	fullContent := "Read closer fallback test"
-	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(fullContent)))
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(fullContent))
-	}))
 	defer server.Close()
 
-	_ = memFS.WriteFile("/ro.txt", []byte("old"), 0644)
-	d := NewDownloader(mockFS, nil)
+	d := NewDownloader(memFS, nil)
+	d.CacheEnabled = true
+	d.CacheDir = ""
+	if err := d.Download(context.Background(), server.URL, "/empty-cachedir.txt", ""); err != nil {
+		t.Fatalf("unexpected download error: %v", err)
+	}
 
-	err := d.Download(context.Background(), server.URL, "/ro.txt", hash)
+	cachePath := filepath.Join(".generated", "cache", getCacheKey(server.URL, nil))
+	data, err := memFS.ReadFile(cachePath)
 	if err != nil {
-		t.Fatalf("unexpected error with readOnlyCloserFS: %v", err)
+		t.Fatalf("expected the download to be cached at %s: %v", cachePath, err)
+	}
+	if string(data) != "cached" {
+		t.Errorf("expected cached content %q, got %q", "cached", string(data))
 	}
 }
 

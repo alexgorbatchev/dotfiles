@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -308,43 +309,9 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 		defer cancel()
 	}
 
-	// Check if file exists to compute offset for range requests
-	exists, err := d.fsys.Exists(destPath)
+	localSize, err := d.partialDownloadSize(destPath)
 	if err != nil {
-		return fmt.Errorf("checking file existence: %w", err)
-	}
-
-	var localSize int
-	if exists {
-		rc, err := d.fsys.Open(destPath)
-		if err != nil {
-			return fmt.Errorf("opening file to check size: %w", err)
-		}
-
-		if stater, ok := rc.(interface{ Stat() (os.FileInfo, error) }); ok {
-			info, err := stater.Stat()
-			if err != nil {
-				rc.Close()
-				return fmt.Errorf("stating file: %w", err)
-			}
-			localSize = int(info.Size())
-		} else if seeker, ok := rc.(io.Seeker); ok {
-			size, err := seeker.Seek(0, io.SeekEnd)
-			if err != nil {
-				rc.Close()
-				return fmt.Errorf("seeking file end: %w", err)
-			}
-			localSize = int(size)
-		} else {
-			// Fallback: read all (only for mocks/fakes that don't support Stat/Seek)
-			data, err := io.ReadAll(rc)
-			if err != nil {
-				rc.Close()
-				return fmt.Errorf("reading file fallback: %w", err)
-			}
-			localSize = len(data)
-		}
-		rc.Close()
+		return err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -376,46 +343,29 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 
 	switch resp.StatusCode {
 	case http.StatusPartialContent: // 206
-		totalBytes += int64(localSize)
-		downloadedBytes = int64(localSize)
+		totalBytes += localSize
+		downloadedBytes = localSize
 
-		// Stream directly using the filesystem's OpenFile implementation in append mode
 		f, err := d.fsys.OpenFile(destPath, os.O_WRONLY|os.O_APPEND, 0644)
-		if err == nil {
-			var writer io.Writer = f
-			if len(opts) > 0 && opts[0].OnProgress != nil {
-				writer = &progressWriter{
-					writer:     f,
-					onProgress: opts[0].OnProgress,
-					total:      totalBytes,
-					downloaded: downloadedBytes,
-				}
-			}
+		if err != nil {
+			return fmt.Errorf("opening partial download for append: %w", err)
+		}
 
-			if _, err := io.Copy(writer, resp.Body); err != nil {
-				f.Close()
-				return fmt.Errorf("writing partial stream to file: %w", err)
-			}
-			f.Close()
-		} else {
-			// Fallback for custom/mock filesystems in tests (tiny payloads)
-			existingData, err := d.fsys.ReadFile(destPath)
-			if err != nil {
-				return fmt.Errorf("reading existing download file for fallback: %w", err)
-			}
-			bodyBytes, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return fmt.Errorf("reading partial body: %w", err)
-			}
-			combined := append(existingData, bodyBytes...)
-			if err := d.fsys.WriteFile(destPath, combined, 0644); err != nil {
-				return fmt.Errorf("writing fallback data: %w", err)
-			}
-
-			if len(opts) > 0 && opts[0].OnProgress != nil {
-				opts[0].OnProgress(int64(len(combined)), totalBytes)
+		var writer io.Writer = f
+		if len(opts) > 0 && opts[0].OnProgress != nil {
+			writer = &progressWriter{
+				writer:     f,
+				onProgress: opts[0].OnProgress,
+				total:      totalBytes,
+				downloaded: downloadedBytes,
 			}
 		}
+
+		if _, err := io.Copy(writer, resp.Body); err != nil {
+			f.Close()
+			return fmt.Errorf("writing partial stream to file: %w", err)
+		}
+		f.Close()
 
 	case http.StatusOK: // 200
 		f, err := d.fsys.Create(destPath)
@@ -510,6 +460,20 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 	}
 
 	return nil
+}
+
+// partialDownloadSize reports how many bytes of an interrupted earlier download are
+// already at destPath, so the request can resume after them. No file means nothing
+// to resume.
+func (d *Downloader) partialDownloadSize(destPath string) (int64, error) {
+	info, err := d.fsys.Stat(destPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("checking partial download size: %w", err)
+	}
+	return info.Size(), nil
 }
 
 type progressWriter struct {
