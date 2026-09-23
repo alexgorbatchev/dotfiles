@@ -167,6 +167,8 @@ A tool is reported as up to date only when its installation method's query says 
 
 Validates tool configuration files for syntax, schema, or structural errors, then type-checks the TypeScript configuration.
 
+A tool that breaks a [load-time check](../api-reference/core-api.md#naming-and-load-time-checks) fails the configuration load, as it does for every other command, so `validate` exits non-zero with that error instead of listing it among its findings (and prints no JSON under `--json`).
+
 The type-check runs the TypeScript compiler over the CLI-owned `.generated/tsconfig.json` (regenerated first, so the bin-name registry is current) and reports each diagnostic as a validation error attributed to the tool whose `.tool.ts` it is in, with the file, line, and column. The compiler is the `tsc` binary declared by a configured tool -- the scaffolded `typescript.tool.ts` installs `microsoft/typescript-go` pinned to `typescript/v7.0.2` -- and is run from that tool's `current` directory; it is deliberately not exposed on PATH, so it never shadows another project's TypeScript. When no tool declares `tsc`, or the tool is not installed yet, `validate` fails with a message naming `dotfiles tool scaffold` and `dotfiles tool install typescript`; it never skips silently. A JSON-configured project has nothing to type-check, and `--dry-run` skips the step because the generated program is not written to disk; both are announced.
 
 - `--json`: Output validation results in JSON format (type-check diagnostics appear in `errors`).

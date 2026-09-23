@@ -7,9 +7,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -194,12 +196,17 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		}
 
 		projCfg = &bResult.ProjectConfig
-		for name, tc := range bResult.ToolConfigs {
-			localTC := tc
+		// Sorted map-key order, so ValidateToolConfigs reports the same tool on every run even
+		// when two entries declare the same name.
+		for _, name := range slices.Sorted(maps.Keys(bResult.ToolConfigs)) {
+			localTC := bResult.ToolConfigs[name]
 			if localTC.Name == "" {
 				localTC.Name = name
 			}
 			toolConfigs = append(toolConfigs, &localTC)
+		}
+		if err := config.ValidateToolConfigs(toolConfigs); err != nil {
+			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
 		}
 	}
 

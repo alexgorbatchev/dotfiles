@@ -424,10 +424,47 @@ func (tc *ToolConfig) applyInstallParamDefaults() {
 	}
 }
 
-// Validate asserts the tool configurations correctness.
+// ValidateToolConfigs runs ToolConfig.Validate on every tool and reports the first
+// one that fails, in name order and then tool file order, naming the tool file it came
+// from when there is one. The sort is stable, so tools that tie on both keep the order
+// the caller gave them: a caller that passes its tools in a fixed order gets the same
+// failure for the same configuration every time. Every configuration loader
+// calls it before returning its tools, so nothing downstream sees a tool that fails.
+func ValidateToolConfigs(tools []*ToolConfig) error {
+	sorted := slices.Clone(tools)
+	slices.SortStableFunc(sorted, func(a, b *ToolConfig) int {
+		if byName := strings.Compare(a.Name, b.Name); byName != 0 {
+			return byName
+		}
+		return strings.Compare(a.ConfigFilePath, b.ConfigFilePath)
+	})
+
+	for _, tool := range sorted {
+		err := tool.Validate()
+		if err == nil {
+			continue
+		}
+		if tool.ConfigFilePath == "" {
+			return fmt.Errorf("invalid tool configuration: %w", err)
+		}
+		return fmt.Errorf("invalid tool configuration in %q: %w", tool.ConfigFilePath, err)
+	}
+	return nil
+}
+
+// Validate is the one check every tool configuration passes before a load returns
+// it, through ValidateToolConfigs. It rejects what the engine cannot carry out as
+// written — install parameters no installation could honour, and declarations whose
+// mode, position or conflict policy would otherwise fall back to a default the author
+// did not ask for. A new per-tool rule belongs here rather than in a second pass
+// over the tools.
 func (tc *ToolConfig) Validate() error {
 	if strings.TrimSpace(tc.Name) == "" {
 		return fmt.Errorf("tool name is required")
+	}
+
+	if err := tc.validateInstallParams(); err != nil {
+		return err
 	}
 
 	for _, sym := range tc.Symlinks {
