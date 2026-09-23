@@ -592,8 +592,9 @@ export interface ICargoInstallParams extends ICommonInstallParams {
    */
   binarySource?: "cargo-quickinstall" | "github-releases";
   /**
-   * GitHub repository in "owner/repo" format to fetch a prebuilt release binary from,
-   * used with `binarySource: "github-releases"`.
+   * GitHub repository in "owner/repo" format. Required by `binarySource: "github-releases"`
+   * and `versionSource: "github-releases"`, and by `versionSource: "cargo-toml"` without
+   * cargoTomlUrl; the configuration fails to load without it.
    */
   githubRepo?: string;
   /**
