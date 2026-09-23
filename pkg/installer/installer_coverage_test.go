@@ -386,7 +386,13 @@ func TestInstallerDetailedBranches(t *testing.T) {
 	}
 
 	// 2. Cargo standard install branch
-	cargo := NewCargoInstaller(runner, memFS, dl, sysCtx)
+	// No prebuilt binary is available, so the install compiles with cargo install.
+	unavailable := httptest.NewServer(http.NotFoundHandler())
+	defer unavailable.Close()
+	cargo := NewCargoInstaller(runner, memFS, downloader.NewDownloader(memFS, unavailable.Client()), sysCtx)
+	cargo.httpClient = unavailable.Client()
+	cargo.Cargo.CratesIO.Host = unavailable.URL
+	cargo.Cargo.GitHubRelease.Host = unavailable.URL
 	cargo.BinDir = "/test/cargobin"
 	runner.RegisterFunc("cargo", func(c *exec.MockCmd) error {
 		_ = memFS.MkdirAll("/test/cargobin/bin", 0755)
@@ -395,7 +401,7 @@ func TestInstallerDetailedBranches(t *testing.T) {
 	})
 	tCargoStd := &config.ToolConfig{
 		Name:          "cargocrate",
-		InstallParams: map[string]interface{}{"crate": "cargocrate", "binarySource": "cargo"},
+		InstallParams: map[string]interface{}{"crate": "cargocrate"},
 	}
 	resCargoStd, err := cargo.Install(ctx, tCargoStd)
 	if err != nil || resCargoStd == nil {
@@ -496,16 +502,11 @@ func TestInstallerErrorAndCheckUpdatePaths(t *testing.T) {
 		t.Errorf("gitea matchAsset expected nil for unmatched asset")
 	}
 
-	// 4. Cargo tryQuickinstall & tryGithubReleases fail
+	// 4. Cargo tryQuickinstall fails
 	cargo := NewCargoInstaller(runner, memFS, dl, sysCtx)
 	_, errQ := cargo.tryQuickinstall(ctx, badTool, "crate", "1.0.0")
 	if errQ == nil {
 		t.Errorf("tryQuickinstall expected error on missing download")
-	}
-
-	_, errGH := cargo.tryGithubReleases(ctx, badTool, "crate", cargoVersion{version: "1.0.0"})
-	if errGH == nil {
-		t.Errorf("tryGithubReleases expected error on missing repo")
 	}
 }
 
@@ -705,7 +706,7 @@ func TestCargoQuickinstallAndGithubReleasesSuccess(t *testing.T) {
 	}
 
 	// tryGithubReleases success
-	resGH, errGH := cargo.tryGithubReleases(ctx, tCargo, "cargocrate", cargoVersion{version: "1.0.0"})
+	resGH, errGH := cargo.tryGithubReleases(ctx, tCargo, "cargocrate", "owner/cargocrate", cargoVersion{version: "1.0.0"})
 	if errGH != nil || resGH == nil {
 		t.Fatalf("tryGithubReleases success failed: %v", errGH)
 	}

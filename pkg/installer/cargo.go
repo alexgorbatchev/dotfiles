@@ -22,13 +22,6 @@ import (
 )
 
 const (
-	cargoBinarySourceQuickinstall = "cargo-quickinstall"
-	cargoBinarySourceGitHub       = "github-releases"
-
-	cargoVersionSourceCargoToml = "cargo-toml"
-	cargoVersionSourceCratesIO  = "crates-io"
-	cargoVersionSourceGitHub    = "github-releases"
-
 	// cratesIONoVersion is the max_version crates.io reports for a crate with no
 	// version it can parse.
 	cratesIONoVersion = "0.0.0"
@@ -307,72 +300,57 @@ func cargoTargetTriple(sysCtx *SystemContext) (platform string, arch string, err
 	return platform, arch, nil
 }
 
-// defaultCargoVersionSource picks where a version comes from when the tool does
-// not say. A Cargo.toml URL is only ever given to be read, a GitHub release
-// download can only succeed with a tag the repository really has, and
-// quickinstall builds what crates.io publishes.
-func defaultCargoVersionSource(binarySource, cargoTomlURL string) string {
-	switch {
-	case cargoTomlURL != "":
-		return cargoVersionSourceCargoToml
-	case binarySource == cargoBinarySourceGitHub:
-		return cargoVersionSourceGitHub
-	default:
-		return cargoVersionSourceCratesIO
-	}
-}
-
-// resolveVersion determines the crate version to install from the configured
-// versionSource (cargo-toml, crates-io or github-releases).
+// resolveVersion determines the crate version to install from sources.Version
+// (cargo-toml, crates-io or github-releases). sources comes from tool.CargoSources,
+// which has already rejected an unknown source and a source without the parameter it
+// reads, so every failure here is one of fetching the version.
 //
 // Prereleases are excluded unless prerelease is set, as github-release does and as
 // cargo's own version requirements do. cargo-toml has no choice to make: it reads the
 // one version the Cargo.toml declares. The caller reads the tool's prerelease option
 // once (cargoPrerelease), so an install's compile fallback decides with the very value
 // its resolution used.
-func (c *CargoInstaller) resolveVersion(ctx context.Context, tool *config.ToolConfig, crateName, binarySource string, prerelease bool) (cargoVersion, error) {
-	githubRepo := getStringParam(tool.InstallParams, "githubRepo", "")
-	cargoTomlURL := getStringParam(tool.InstallParams, "cargoTomlUrl", "")
-	source := getStringParam(tool.InstallParams, "versionSource", "")
-	if source == "" {
-		source = defaultCargoVersionSource(binarySource, cargoTomlURL)
-	}
-
+func (c *CargoInstaller) resolveVersion(ctx context.Context, tool *config.ToolConfig, crateName string, sources config.CargoSources, prerelease bool) (cargoVersion, error) {
 	if toolLog := toolLogger(c.log, tool.Name); toolLog != nil {
-		toolLog.Info(logger.Message(fmt.Sprintf("Resolving %s version from %s...", crateName, source)))
+		toolLog.Info(logger.Message(fmt.Sprintf("Resolving %s version from %s...", crateName, sources.Version)))
 	}
 
-	switch source {
-	case cargoVersionSourceCratesIO:
+	switch sources.Version {
+	case config.CargoVersionSourceCratesIO:
 		version, err := c.fetchCratesIOVersion(ctx, crateName, prerelease)
 		if err != nil {
 			return cargoVersion{}, fmt.Errorf("resolving %s version from crates.io: %w", crateName, err)
 		}
 		return cargoVersion{version: version, published: true}, nil
-	case cargoVersionSourceCargoToml:
+	case config.CargoVersionSourceCargoToml:
+		cargoTomlURL := sources.CargoTomlURL
 		if cargoTomlURL == "" {
-			if githubRepo == "" {
-				return cargoVersion{}, fmt.Errorf("versionSource %q requires githubRepo or cargoTomlUrl", source)
-			}
-			cargoTomlURL = c.cargoTomlURL(githubRepo)
+			cargoTomlURL = c.cargoTomlURL(sources.GitHubRepo)
 		}
 		version, err := c.fetchCargoTomlVersion(ctx, cargoTomlURL)
 		if err != nil {
 			return cargoVersion{}, fmt.Errorf("resolving %s version from %s: %w", crateName, cargoTomlURL, err)
 		}
 		return cargoVersion{version: version}, nil
-	case cargoVersionSourceGitHub:
-		if githubRepo == "" {
-			return cargoVersion{}, fmt.Errorf("githubRepo is required when versionSource is %q", source)
-		}
-		tag, err := c.fetchGitHubReleaseTag(ctx, tool, githubRepo, prerelease)
+	case config.CargoVersionSourceGitHubReleases:
+		tag, err := c.fetchGitHubReleaseTag(ctx, tool, sources.GitHubRepo, prerelease)
 		if err != nil {
 			return cargoVersion{}, fmt.Errorf("resolving %s version from GitHub releases: %w", crateName, err)
 		}
 		return cargoVersion{version: strings.TrimPrefix(tag, "v"), tag: tag}, nil
 	default:
-		return cargoVersion{}, fmt.Errorf("unknown versionSource %q (expected %s, %s or %s)", source, cargoVersionSourceCargoToml, cargoVersionSourceCratesIO, cargoVersionSourceGitHub)
+		return cargoVersion{}, unhandledCargoSource("versionSource", sources.Version)
 	}
+}
+
+// errUnhandledCargoSource marks a binary or version source the installer has no case
+// for. tool.CargoSources accepts only sources the installer handles (a test pins the
+// two to each other), so this is an internal error, and Install fails with it instead
+// of compiling: it says nothing about whether a prebuilt binary is available.
+var errUnhandledCargoSource = errors.New("cargo installer has no case for the source")
+
+func unhandledCargoSource(param, value string) error {
+	return fmt.Errorf("%w: %s %q", errUnhandledCargoSource, param, value)
 }
 
 // fetchCratesIOVersion returns the newest version of the crate from the crates.io API
@@ -553,18 +531,14 @@ func (c *CargoInstaller) tryQuickinstall(ctx context.Context, tool *config.ToolC
 	return &InstallResult{Binaries: binaries, Version: version}, nil
 }
 
-// tryGithubReleases downloads the asset assetPattern names from the release
-// tagged for ver in githubRepo. A pinned version, from .version() or from the
-// version an update check found, arrives without the tag it was released under, so
-// each spelling of it is tried against the download URL itself. Release downloads
-// are not rate limited the way the GitHub API is, so this needs no API request. Only
-// a 404 moves on to the next spelling; any other failure is reported as it is.
-func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.ToolConfig, crateName string, ver cargoVersion) (*InstallResult, error) {
-	githubRepo := getStringParam(tool.InstallParams, "githubRepo", "")
-	if githubRepo == "" {
-		return nil, fmt.Errorf("githubRepo is required for github-releases binarySource")
-	}
-
+// tryGithubReleases downloads the asset assetPattern names from the release tagged for
+// ver in githubRepo, which tool.CargoSources has checked is set. A pinned version, from
+// .version() or from the version an update check found, arrives without the tag it was
+// released under, so each spelling of it is tried against the download URL itself.
+// Release downloads are not rate limited the way the GitHub API is, so this needs no
+// API request. Only a 404 moves on to the next spelling; any other failure is reported
+// as it is.
+func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.ToolConfig, crateName, githubRepo string, ver cargoVersion) (*InstallResult, error) {
 	platform, arch, err := cargoTargetTriple(c.sysCtx)
 	if err != nil {
 		return nil, err
@@ -618,10 +592,10 @@ type prebuiltFailure struct {
 // for the compile fallback to choose from; the version is empty when resolution itself
 // failed. The failure is a plain struct rather than an error, so the compiler ensures
 // that every failure Install sees carries a step to name.
-func (c *CargoInstaller) installPrebuilt(ctx context.Context, tool *config.ToolConfig, crateName, binarySource, pinned string, prerelease bool) (*InstallResult, cargoVersion, *prebuiltFailure) {
+func (c *CargoInstaller) installPrebuilt(ctx context.Context, tool *config.ToolConfig, crateName string, sources config.CargoSources, pinned string, prerelease bool) (*InstallResult, cargoVersion, *prebuiltFailure) {
 	ver := cargoVersion{version: pinned}
 	if pinned == "" {
-		resolved, err := c.resolveVersion(ctx, tool, crateName, binarySource, prerelease)
+		resolved, err := c.resolveVersion(ctx, tool, crateName, sources, prerelease)
 		if err != nil {
 			return nil, cargoVersion{}, &prebuiltFailure{step: "version resolution", err: err}
 		}
@@ -629,15 +603,33 @@ func (c *CargoInstaller) installPrebuilt(ctx context.Context, tool *config.ToolC
 	}
 	var res *InstallResult
 	var err error
-	if binarySource == cargoBinarySourceGitHub {
-		res, err = c.tryGithubReleases(ctx, tool, crateName, ver)
-	} else {
+	switch sources.Binary {
+	case config.CargoBinarySourceGitHubReleases:
+		res, err = c.tryGithubReleases(ctx, tool, crateName, sources.GitHubRepo, ver)
+	case config.CargoBinarySourceQuickinstall:
 		res, err = c.tryQuickinstall(ctx, tool, crateName, ver.bare())
+	default:
+		err = unhandledCargoSource("binarySource", sources.Binary)
 	}
 	if err != nil {
-		return nil, ver, &prebuiltFailure{step: binarySource + " download", err: err}
+		return nil, ver, &prebuiltFailure{step: sources.Binary + " download", err: err}
 	}
 	return res, ver, nil
+}
+
+// compileFallbackVersion decides whether a failed prebuilt install (prebuiltErr) may
+// fall back to cargo install, and which version that compiles: the pin when there is
+// one, otherwise what cargoFallbackVersion picks from the resolved version. A source
+// the installer has no case for is an error either way, since it says nothing about
+// whether a prebuilt binary is available.
+func compileFallbackVersion(crateName, pinned string, resolved cargoVersion, prerelease bool, prebuiltErr error) (string, error) {
+	if errors.Is(prebuiltErr, errUnhandledCargoSource) {
+		return "", fmt.Errorf("installing %s: %w", crateName, prebuiltErr)
+	}
+	if pinned != "" {
+		return pinned, nil
+	}
+	return cargoFallbackVersion(crateName, resolved, prerelease, prebuiltErr)
 }
 
 // cargoFallbackVersion picks the version cargo install compiles when the prebuilt
@@ -709,6 +701,14 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 			return nil, fmt.Errorf("cargo version pin %q of %s is not a version", requested, tool.Name)
 		}
 	}
+	// A source configuration that can never install as written is an error, in a dry
+	// run too, and never a reason to compile: the compile fallback is for a prebuilt
+	// binary that is unavailable, and would install cargo's own newest stable release
+	// whatever the tool asked for.
+	sources, err := tool.CargoSources()
+	if err != nil {
+		return nil, err
+	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
@@ -718,21 +718,17 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 
 	// version is what cargo install compiles; empty lets cargo pick its newest stable.
 	version := pinned
-	binarySource := getStringParam(tool.InstallParams, "binarySource", cargoBinarySourceQuickinstall)
-	prebuilt := binarySource == cargoBinarySourceQuickinstall || binarySource == cargoBinarySourceGitHub
-	if prebuilt && c.dl != nil && c.extractor != nil {
+	if c.dl != nil && c.extractor != nil {
 		prerelease := cargoPrerelease(tool)
-		res, resolved, failure := c.installPrebuilt(ctx, tool, crateName, binarySource, pinned, prerelease)
+		res, resolved, failure := c.installPrebuilt(ctx, tool, crateName, sources, pinned, prerelease)
 		if failure == nil {
 			return res, nil
 		}
-		if pinned == "" {
-			fallback, fallbackErr := cargoFallbackVersion(crateName, resolved, prerelease, failure.err)
-			if fallbackErr != nil {
-				return nil, fallbackErr
-			}
-			version = fallback
+		fallback, fallbackErr := compileFallbackVersion(crateName, pinned, resolved, prerelease, failure.err)
+		if fallbackErr != nil {
+			return nil, fallbackErr
 		}
+		version = fallback
 		// The cause is part of the message: the logger prints an error argument outside
 		// --trace only for the .tool.ts location it names, and this one names none.
 		if toolLog := toolLogger(c.log, tool.Name); toolLog != nil {
@@ -798,9 +794,13 @@ func (c *CargoInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig)
 // version the tool pins does not enter into it: the check is about what upstream
 // offers, and the caller compares that with what is installed.
 func (c *CargoInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
+	// A configuration error already names the tool.
+	sources, err := tool.CargoSources()
+	if err != nil {
+		return nil, err
+	}
 	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
-	binarySource := getStringParam(tool.InstallParams, "binarySource", cargoBinarySourceQuickinstall)
-	latest, err := c.resolveVersion(ctx, tool, crateName, binarySource, cargoPrerelease(tool))
+	latest, err := c.resolveVersion(ctx, tool, crateName, sources, cargoPrerelease(tool))
 	if err != nil {
 		return nil, fmt.Errorf("checking %s for updates: %w", tool.Name, err)
 	}

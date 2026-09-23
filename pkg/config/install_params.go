@@ -53,6 +53,9 @@ func (tc *ToolConfig) validateInstallParams() error {
 		return tc.validateBinaryPathPatterns()
 	case "manual":
 		return tc.validateBinaryPathPatterns()
+	case "cargo":
+		_, err := tc.CargoSources()
+		return err
 	}
 	return nil
 }
