@@ -28,12 +28,14 @@ const (
 	cargoVersionSourceCratesIO  = "crates-io"
 	cargoVersionSourceGitHub    = "github-releases"
 
-	cratesIOAPIURL          = "https://crates.io/api/v1/crates"
-	cratesIONoVersion       = "0.0.0"
-	githubRawBaseURL        = "https://raw.githubusercontent.com"
-	githubDownloadBaseURL   = "https://github.com"
-	quickinstallReleasesURL = "https://github.com/cargo-bins/cargo-quickinstall/releases/download"
-	cargoUserAgent          = "dotfiles-installer (github.com/alexgorbatchev/dotfiles)"
+	cratesIONoVersion = "0.0.0"
+
+	// cratesIOAPIPath is where a crates.io host serves its crate API, below the site
+	// root cargo.cratesIo.host names.
+	cratesIOAPIPath = "/api/v1/crates"
+	// quickinstallReleasesPath is the cargo-quickinstall repository's release
+	// downloads, below the host cargo.githubRelease.host names.
+	quickinstallReleasesPath = "/cargo-bins/cargo-quickinstall/releases/download"
 )
 
 // errNoCrateVersion marks crates.io answering that a crate has no version the tool
@@ -49,23 +51,29 @@ type CargoInstaller struct {
 	sysCtx       *SystemContext
 	httpClient   *http.Client
 	BinDir       string // Optional destination directory
-	BaseURL      string // Override for testing quickinstall and GitHub release downloads
-	CratesIOURL  string // Override for testing the crates.io API
 	GitHubAPIURL string // GitHub API root; empty selects api.github.com
-	GitHubRawURL string // Override for testing raw Cargo.toml fetches
 	// GitHub holds the project configuration's github section, which applies when a
-	// crate's version or binary comes from a GitHub release.
+	// crate's version is resolved from the GitHub release API.
 	GitHub GitHubSettings
+	// Cargo holds the project configuration's cargo section: the crates.io, Cargo.toml
+	// and release download hosts. The zero value addresses the public hosts and caches
+	// nothing.
+	Cargo CargoSettings
 }
 
 // SetGitHubSettings applies the project configuration's github section. The host
 // governs the release API only: the hosts a crate's archive is downloaded from are
-// the cargo section's own githubRelease and githubRaw settings.
+// the cargo section's own githubRelease and githubRaw settings (SetCargoSettings).
 func (c *CargoInstaller) SetGitHubSettings(settings GitHubSettings) {
 	c.GitHub = settings
 	if settings.Host != "" {
 		c.GitHubAPIURL = settings.Host
 	}
+}
+
+// SetCargoSettings applies the project configuration's cargo section.
+func (c *CargoInstaller) SetCargoSettings(settings CargoSettings) {
+	c.Cargo = settings
 }
 
 // cargoVersion is a resolved crate version. tag is set when a GitHub release
@@ -148,18 +156,99 @@ func (c *CargoInstaller) client() *http.Client {
 	return c.httpClient
 }
 
-func (c *CargoInstaller) cratesIOURL() string {
-	if c.CratesIOURL != "" {
-		return c.CratesIOURL
+func (c *CargoInstaller) userAgent() string {
+	if c.Cargo.UserAgent != "" {
+		return c.Cargo.UserAgent
 	}
-	return cratesIOAPIURL
+	return defaultCargoUserAgent
 }
 
-func (c *CargoInstaller) githubRawURL() string {
-	if c.GitHubRawURL != "" {
-		return strings.TrimSuffix(c.GitHubRawURL, "/")
+// cratesIOCrateURL is the crates.io API address of a crate on the configured host.
+func (c *CargoInstaller) cratesIOCrateURL(crateName string) string {
+	return fmt.Sprintf("%s%s/%s", hostOrDefault(c.Cargo.CratesIO.Host, defaultCratesIOHost), cratesIOAPIPath, crateName)
+}
+
+// cargoTomlURL is the Cargo.toml on the main branch of githubRepo on the configured
+// raw host.
+func (c *CargoInstaller) cargoTomlURL(githubRepo string) string {
+	return fmt.Sprintf("%s/%s/main/Cargo.toml", hostOrDefault(c.Cargo.GitHubRaw.Host, defaultGitHubRawHost), githubRepo)
+}
+
+// quickinstallURL is the cargo-quickinstall archive of a crate version on the
+// configured release host.
+func (c *CargoInstaller) quickinstallURL(crateName, version, arch, platform string) string {
+	return fmt.Sprintf("%s%s/%s-%s/%s-%s-%s-%s.tar.gz", c.releaseHost(), quickinstallReleasesPath, crateName, version, crateName, version, arch, platform)
+}
+
+// githubReleaseURL is a release asset of githubRepo on the configured release host.
+func (c *CargoInstaller) githubReleaseURL(githubRepo, tag, assetName string) string {
+	return fmt.Sprintf("%s/%s/releases/download/%s/%s", c.releaseHost(), githubRepo, tag, assetName)
+}
+
+func (c *CargoInstaller) releaseHost() string {
+	return hostOrDefault(c.Cargo.GitHubRelease.Host, defaultGitHubReleaseHost)
+}
+
+// releaseDownloadOptions authenticates an archive download from the release host with
+// cargo.githubRelease.token. Every archive URL is built on that host, so the token
+// cannot reach another one; the HTTP client drops it when GitHub redirects the
+// download to its asset storage on another domain.
+func (c *CargoInstaller) releaseDownloadOptions() []downloader.DownloadOptions {
+	authorization := githubAuthorization(c.Cargo.GitHubRelease.Token)
+	if authorization == "" {
+		return nil
 	}
-	return githubRawBaseURL
+	return []downloader.DownloadOptions{{Headers: map[string]string{"Authorization": authorization}}}
+}
+
+// cargoRequest is one GET of a crate version from a cargo host.
+type cargoRequest struct {
+	url string
+	// service names what is asked for in errors ("crates.io", "Cargo.toml").
+	service string
+	// authorization is the Authorization header value, or "" to send none.
+	authorization string
+	cache         CargoCacheSettings
+}
+
+// fetchVersion answers req with the version parse reads from the response, reusing a
+// cached response while it is fresh. Only a response that parses is stored, so a
+// failed or unreadable one is asked for again next time.
+func (c *CargoInstaller) fetchVersion(ctx context.Context, req cargoRequest, parse func([]byte) (string, error)) (string, error) {
+	if body, ok := req.cache.load(ctx, c.fsys, req.url); ok {
+		if version, err := parse(body); err == nil {
+			return version, nil
+		}
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, req.url, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating %s request: %w", req.service, err)
+	}
+	httpReq.Header.Set("User-Agent", c.userAgent())
+	if req.authorization != "" {
+		httpReq.Header.Set("Authorization", req.authorization)
+	}
+
+	resp, err := c.client().Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("requesting %s: %w", req.service, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("%s returned status: %d", req.service, resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading %s response: %w", req.service, err)
+	}
+	version, err := parse(body)
+	if err != nil {
+		return "", err
+	}
+	req.cache.store(c.fsys, req.url, body)
+	return version, nil
 }
 
 // cargoTargetTriple maps the system context onto the platform and architecture
@@ -236,7 +325,7 @@ func (c *CargoInstaller) resolveVersion(ctx context.Context, tool *config.ToolCo
 			if githubRepo == "" {
 				return cargoVersion{}, fmt.Errorf("versionSource %q requires githubRepo or cargoTomlUrl", source)
 			}
-			cargoTomlURL = fmt.Sprintf("%s/%s/main/Cargo.toml", c.githubRawURL(), githubRepo)
+			cargoTomlURL = c.cargoTomlURL(githubRepo)
 		}
 		version, err := c.fetchCargoTomlVersion(ctx, cargoTomlURL)
 		if err != nil {
@@ -257,35 +346,35 @@ func (c *CargoInstaller) resolveVersion(ctx context.Context, tool *config.ToolCo
 	}
 }
 
-// fetchCratesIOVersion returns the newest version of the crate from the crates.io API:
+// fetchCratesIOVersion returns the newest version of the crate from the crates.io API
+// on the configured host (parseCratesIOVersion). cargo.cratesIo.token is sent as the
+// Authorization header value as it is, the way Cargo authenticates to a registry's web
+// API. The cached response is the whole crate description, so a prerelease and a
+// stable lookup of the same crate share it.
+func (c *CargoInstaller) fetchCratesIOVersion(ctx context.Context, crateName string, prerelease bool) (string, error) {
+	return c.fetchVersion(ctx, cargoRequest{
+		url:           c.cratesIOCrateURL(crateName),
+		service:       "crates.io",
+		authorization: c.Cargo.CratesIO.Token,
+		cache:         c.Cargo.CratesIOCache,
+	}, func(body []byte) (string, error) {
+		return parseCratesIOVersion(body, crateName, prerelease)
+	})
+}
+
+// parseCratesIOVersion reads the newest version from a crates.io crate response:
 // max_stable_version, the highest release that is not a prerelease, or max_version, the
 // highest of all, when prerelease is set. A crate that has published only prereleases
 // has no max_stable_version, and resolving it without prerelease is an error rather
 // than a silent move onto a prerelease.
-func (c *CargoInstaller) fetchCratesIOVersion(ctx context.Context, crateName string, prerelease bool) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/%s", c.cratesIOURL(), crateName), nil)
-	if err != nil {
-		return "", fmt.Errorf("creating request to crates.io: %w", err)
-	}
-	req.Header.Set("User-Agent", cargoUserAgent)
-
-	resp, err := c.client().Do(req)
-	if err != nil {
-		return "", fmt.Errorf("fetching from crates.io: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("crates.io returned status: %d", resp.StatusCode)
-	}
-
+func parseCratesIOVersion(body []byte, crateName string, prerelease bool) (string, error) {
 	var apiResp struct {
 		Crate struct {
 			MaxVersion       string `json:"max_version"`
 			MaxStableVersion string `json:"max_stable_version"`
 		} `json:"crate"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+	if err := json.Unmarshal(body, &apiResp); err != nil {
 		return "", fmt.Errorf("decoding crates.io response: %w", err)
 	}
 	crate := apiResp.Crate
@@ -304,27 +393,19 @@ func (c *CargoInstaller) fetchCratesIOVersion(ctx context.Context, crateName str
 }
 
 // fetchCargoTomlVersion downloads a Cargo.toml and returns its [package] version.
+// cargo.githubRaw.token authenticates the request only when the URL is on the
+// configured raw host: a cargoTomlUrl the tool names may point anywhere.
 func (c *CargoInstaller) fetchCargoTomlVersion(ctx context.Context, cargoTomlURL string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cargoTomlURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("creating Cargo.toml request: %w", err)
+	authorization := ""
+	if serves(hostOrDefault(c.Cargo.GitHubRaw.Host, defaultGitHubRawHost), cargoTomlURL) {
+		authorization = githubAuthorization(c.Cargo.GitHubRaw.Token)
 	}
-	req.Header.Set("User-Agent", cargoUserAgent)
-
-	resp, err := c.client().Do(req)
-	if err != nil {
-		return "", fmt.Errorf("fetching Cargo.toml: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Cargo.toml request returned status: %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("reading Cargo.toml: %w", err)
-	}
-	return parseCargoTomlPackageVersion(body)
+	return c.fetchVersion(ctx, cargoRequest{
+		url:           cargoTomlURL,
+		service:       "Cargo.toml",
+		authorization: authorization,
+		cache:         c.Cargo.GitHubRawCache,
+	}, parseCargoTomlPackageVersion)
 }
 
 // parseCargoTomlPackageVersion extracts `version` from the [package] table of a
@@ -397,7 +478,8 @@ func releaseTagCandidates(version string) []string {
 	return []string{"v" + version, version}
 }
 
-// installArchive downloads a prebuilt archive into the tool directory, extracts
+// installArchive downloads a prebuilt archive from the release host into the tool
+// directory, authenticated with cargo.githubRelease.token, extracts
 // it and promotes the declared binaries.
 func (c *CargoInstaller) installArchive(ctx context.Context, tool *config.ToolConfig, url, archiveName, sha256 string) ([]string, error) {
 	destDir := c.BinDir
@@ -410,7 +492,7 @@ func (c *CargoInstaller) installArchive(ctx context.Context, tool *config.ToolCo
 	}
 
 	archivePath := filepath.Join(destDir, archiveName)
-	if err := c.dl.Download(ctx, url, archivePath, sha256); err != nil {
+	if err := c.dl.Download(ctx, url, archivePath, sha256, c.releaseDownloadOptions()...); err != nil {
 		return nil, fmt.Errorf("downloading archive: %w", err)
 	}
 
@@ -434,12 +516,7 @@ func (c *CargoInstaller) tryQuickinstall(ctx context.Context, tool *config.ToolC
 		return nil, err
 	}
 
-	baseURL := quickinstallReleasesURL
-	if c.BaseURL != "" {
-		baseURL = c.BaseURL
-	}
-	url := fmt.Sprintf("%s/%s-%s/%s-%s-%s-%s.tar.gz", baseURL, crateName, version, crateName, version, arch, platform)
-
+	url := c.quickinstallURL(crateName, version, arch, platform)
 	binaries, err := c.installArchive(ctx, tool, url, tool.Name+"-quickinstall.tar.gz", getStringParam(tool.InstallParams, "sha256", ""))
 	if err != nil {
 		return nil, fmt.Errorf("quickinstall: %w", err)
@@ -477,14 +554,9 @@ func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.Too
 		"{arch}", arch,
 	).Replace(assetPattern)
 
-	baseURL := githubDownloadBaseURL
-	if c.BaseURL != "" {
-		baseURL = c.BaseURL
-	}
-
 	var notFound error
 	for _, tag := range tags {
-		url := fmt.Sprintf("%s/%s/releases/download/%s/%s", baseURL, githubRepo, tag, assetName)
+		url := c.githubReleaseURL(githubRepo, tag, assetName)
 		binaries, err := c.installArchive(ctx, tool, url, tool.Name+"-gh-release.tar.gz", "")
 		if err == nil {
 			return &InstallResult{Binaries: binaries, Version: ver.bare()}, nil

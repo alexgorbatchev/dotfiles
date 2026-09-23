@@ -131,7 +131,7 @@ func TestCargoInstaller(t *testing.T) {
 				_, _ = w.Write([]byte(`{"crate":{"max_version":"0.10.1","max_stable_version":"0.10.1"}}`))
 				return
 			}
-			if r.URL.Path == "/releases/download/exa-0.10.1/exa-0.10.1-x86_64-unknown-linux-gnu.tar.gz" {
+			if r.URL.Path == "/cargo-bins/cargo-quickinstall/releases/download/exa-0.10.1/exa-0.10.1-x86_64-unknown-linux-gnu.tar.gz" {
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write(tarBytes)
 				return
@@ -144,8 +144,8 @@ func TestCargoInstaller(t *testing.T) {
 		testDl := downloader.NewDownloader(testFsys, server.Client())
 		testInst := NewCargoInstaller(runner, testFsys, testDl, &SystemContext{OS: "linux", Arch: "amd64"})
 		testInst.httpClient = server.Client()
-		testInst.BaseURL = server.URL + "/releases/download"
-		testInst.CratesIOURL = server.URL + "/api/v1/crates"
+		testInst.Cargo.GitHubRelease.Host = server.URL
+		testInst.Cargo.CratesIO.Host = server.URL
 		testInst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
@@ -203,8 +203,8 @@ func TestCargoInstaller(t *testing.T) {
 		testDl := downloader.NewDownloader(testFsys, server.Client())
 		testInst := NewCargoInstaller(runner, testFsys, testDl, &SystemContext{OS: "linux", Arch: "amd64"})
 		testInst.httpClient = server.Client()
-		testInst.BaseURL = server.URL + "/releases/download"
-		testInst.CratesIOURL = server.URL + "/api/v1/crates"
+		testInst.Cargo.GitHubRelease.Host = server.URL
+		testInst.Cargo.CratesIO.Host = server.URL
 		testInst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
@@ -300,8 +300,8 @@ func newCargoResolutionInstaller(server *recordingServer) *CargoInstaller {
 	fsys := fs.NewMemFS()
 	inst := NewCargoInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, server.Client()), &SystemContext{OS: "linux", Arch: "amd64"})
 	inst.httpClient = server.Client()
-	inst.CratesIOURL = server.URL + "/api/v1/crates"
-	inst.GitHubRawURL = server.URL + "/raw/"
+	inst.Cargo.CratesIO.Host = server.URL
+	inst.Cargo.GitHubRaw.Host = server.URL + "/raw/"
 	inst.GitHubAPIURL = server.URL
 	return inst
 }
@@ -567,20 +567,34 @@ func TestCargoCheckUpdateFailures(t *testing.T) {
 }
 
 // TestCargoCheckUpdateSendsUserAgent pins the header crates.io requires: its data
-// access policy refuses requests without a User-Agent (v1 sent cargo.userAgent).
+// access policy refuses requests without a User-Agent that identifies the client, so
+// the built-in one is sent unless cargo.userAgent names another, as v1 did.
 func TestCargoCheckUpdateSendsUserAgent(t *testing.T) {
-	server := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("User-Agent") != cargoUserAgent {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-		_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0","max_stable_version":"1.5.0"}}`))
-	})
-	inst := newCargoResolutionInstaller(server)
+	tests := []struct {
+		name       string
+		configured string
+		want       string
+	}{
+		{name: "the built-in User-Agent by default", want: defaultCargoUserAgent},
+		{name: "cargo.userAgent when configured", configured: "my-bot (me@example.com)", want: "my-bot (me@example.com)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("User-Agent") != tt.want {
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
+				_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0","max_stable_version":"1.5.0"}}`))
+			})
+			inst := newCargoResolutionInstaller(server)
+			inst.Cargo.UserAgent = tt.configured
 
-	res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "mycrate"})
-	if err != nil || res == nil || res.LatestVersion != "1.5.0" {
-		t.Fatalf("CheckUpdate() = %+v, %v; want 1.5.0 fetched with the cargo User-Agent", res, err)
+			res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "mycrate"})
+			if err != nil || res == nil || res.LatestVersion != "1.5.0" {
+				t.Fatalf("CheckUpdate() = %+v, %v; want 1.5.0 fetched with User-Agent %q", res, err, tt.want)
+			}
+		})
 	}
 }
 
@@ -631,21 +645,21 @@ func TestCargoPrereleaseOptIn(t *testing.T) {
 			params:       map[string]interface{}{},
 			wantVersion:  "2.11.6",
 			wantQuery:    "/api/v1/crates/mycrate",
-			wantDownload: "/mycrate-2.11.6/mycrate-2.11.6-x86_64-unknown-linux-gnu.tar.gz",
+			wantDownload: "/cargo-bins/cargo-quickinstall/releases/download/mycrate-2.11.6/mycrate-2.11.6-x86_64-unknown-linux-gnu.tar.gz",
 		},
 		{
 			name:         "crates.io resolves the newest stable release with prerelease false",
 			params:       map[string]interface{}{"prerelease": false},
 			wantVersion:  "2.11.6",
 			wantQuery:    "/api/v1/crates/mycrate",
-			wantDownload: "/mycrate-2.11.6/mycrate-2.11.6-x86_64-unknown-linux-gnu.tar.gz",
+			wantDownload: "/cargo-bins/cargo-quickinstall/releases/download/mycrate-2.11.6/mycrate-2.11.6-x86_64-unknown-linux-gnu.tar.gz",
 		},
 		{
 			name:         "crates.io resolves the highest version with prerelease true",
 			params:       map[string]interface{}{"prerelease": true},
 			wantVersion:  "3.0.0-alpha.2",
 			wantQuery:    "/api/v1/crates/mycrate",
-			wantDownload: "/mycrate-3.0.0-alpha.2/mycrate-3.0.0-alpha.2-x86_64-unknown-linux-gnu.tar.gz",
+			wantDownload: "/cargo-bins/cargo-quickinstall/releases/download/mycrate-3.0.0-alpha.2/mycrate-3.0.0-alpha.2-x86_64-unknown-linux-gnu.tar.gz",
 		},
 		{
 			name:         "GitHub releases resolve the latest stable release by default",
@@ -687,7 +701,7 @@ func TestCargoPrereleaseOptIn(t *testing.T) {
 				server := newCargoPrereleaseServer(t, tarData)
 				runner := exec.NewMockRunner()
 				inst, _ := newCargoGithubInstaller(server, runner)
-				inst.CratesIOURL = server.URL + "/api/v1/crates"
+				inst.Cargo.CratesIO.Host = server.URL
 
 				res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
 				if err != nil {
@@ -731,7 +745,7 @@ func TestCargoCompileFallbackInstallsResolvedVersion(t *testing.T) {
 			server := newCargoPrereleaseServer(t, nil)
 			runner := exec.NewMockRunner()
 			inst, fsys := newCargoGithubInstaller(server, runner)
-			inst.CratesIOURL = server.URL + "/api/v1/crates"
+			inst.Cargo.CratesIO.Host = server.URL
 			inst.SetLogger(logger.New(logger.Config{Writer: io.Discard}))
 			_ = fsys.MkdirAll("/test/bin/bin", 0755)
 			_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
@@ -780,7 +794,7 @@ func TestCargoCompileFallbackTrustsOnlyCratesIO(t *testing.T) {
 			server := newCargoResolutionServer(t)
 			runner := exec.NewMockRunner()
 			inst, fsys := newCargoGithubInstaller(server, runner)
-			inst.GitHubRawURL = server.URL + "/raw/"
+			inst.Cargo.GitHubRaw.Host = server.URL + "/raw/"
 			_ = fsys.MkdirAll("/test/bin/bin", 0755)
 			_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
 
@@ -882,7 +896,7 @@ func TestCargoCompileFallbackKeepsPrereleaseOptIn(t *testing.T) {
 	server := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) })
 	runner := exec.NewMockRunner()
 	inst, _ := newCargoGithubInstaller(server, runner)
-	inst.CratesIOURL = server.URL + "/api/v1/crates"
+	inst.Cargo.CratesIO.Host = server.URL
 
 	_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: map[string]interface{}{"prerelease": true}})
 	if err == nil || !strings.Contains(err.Error(), "mycrate") || !strings.Contains(err.Error(), "crates.io returned status: 500") {
@@ -940,7 +954,7 @@ func TestCargoOnlyPrereleasesPublished(t *testing.T) {
 			}
 			runner := exec.NewMockRunner()
 			inst, _ := newCargoGithubInstaller(server, runner)
-			inst.CratesIOURL = server.URL + "/api/v1/crates"
+			inst.Cargo.CratesIO.Host = server.URL
 
 			_, err := inst.Install(context.Background(), &config.ToolConfig{Name: tc.crate})
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
@@ -956,7 +970,7 @@ func TestCargoOnlyPrereleasesPublished(t *testing.T) {
 		server := newCargoPrereleaseServer(t, tarData)
 		runner := exec.NewMockRunner()
 		inst, _ := newCargoGithubInstaller(server, runner)
-		inst.CratesIOURL = server.URL + "/api/v1/crates"
+		inst.Cargo.CratesIO.Host = server.URL
 
 		res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "early", InstallParams: map[string]interface{}{"prerelease": true}})
 		if err != nil {
@@ -1066,7 +1080,7 @@ func newCargoGithubInstaller(server *recordingServer, runner exec.CommandRunner)
 	dl.RetryDelay = time.Millisecond
 	inst := NewCargoInstaller(runner, fsys, dl, &SystemContext{OS: "linux", Arch: "amd64"})
 	inst.httpClient = server.Client()
-	inst.BaseURL = server.URL
+	inst.Cargo.GitHubRelease.Host = server.URL
 	inst.GitHubAPIURL = server.URL
 	inst.BinDir = "/test/bin"
 	return inst, fsys
@@ -1296,7 +1310,7 @@ func TestCargoGithubReleases(t *testing.T) {
 		defer errServer.Close()
 
 		qiInst := NewCargoInstaller(runner, testFsys, testDl, &SystemContext{OS: "linux", Arch: "amd64"})
-		qiInst.CratesIOURL = errServer.URL
+		qiInst.Cargo.CratesIO.Host = errServer.URL
 		qiInst.httpClient = errServer.Client()
 		qiInst.BinDir = "/test/bin"
 
@@ -1352,7 +1366,7 @@ func TestCargoGithubReleases(t *testing.T) {
 
 		vInst := NewCargoInstaller(runner, testFsys, downloader.NewDownloader(testFsys, vServer.Client()), &SystemContext{OS: "linux", Arch: "amd64"})
 		vInst.httpClient = vServer.Client()
-		vInst.BaseURL = vServer.URL
+		vInst.Cargo.GitHubRelease.Host = vServer.URL
 		vInst.BinDir = "/test/vbin"
 
 		_, err = vInst.tryGithubReleases(context.Background(), &config.ToolConfig{
@@ -1371,7 +1385,7 @@ func TestCargoGithubReleases(t *testing.T) {
 			sys := &SystemContext{OS: osName, Arch: "arm64"}
 			cInst := NewCargoInstaller(runner, testFsys, testDl, sys)
 			// Downloads go to the local server, which has no owner/crate release.
-			cInst.BaseURL = server.URL
+			cInst.Cargo.GitHubRelease.Host = server.URL
 			_, _ = cInst.tryQuickinstall(context.Background(), &config.ToolConfig{Name: "crate"}, "crate", "1.0.0")
 			_, _ = cInst.tryGithubReleases(context.Background(), &config.ToolConfig{
 				Name:          "crate",
@@ -1388,7 +1402,7 @@ func TestCargoGithubReleases(t *testing.T) {
 		cInst := NewCargoInstaller(runner, errDLFS, errDL, &SystemContext{OS: "linux", Arch: "amd64"})
 		// owner/nonexistent has no releases, so both tag spellings fail to download.
 		missingServer := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) })
-		cInst.BaseURL = missingServer.URL
+		cInst.Cargo.GitHubRelease.Host = missingServer.URL
 		cInst.SetLogger(log)
 		cInst.BinDir = "/test/errbin"
 		_ = errDLFS.MkdirAll("/test/errbin/bin", 0755)
@@ -1420,7 +1434,7 @@ func TestCargoGithubReleases(t *testing.T) {
 		}))
 		defer cratesIOServer.Close()
 
-		cInst.CratesIOURL = cratesIOServer.URL + "/api/v1/crates"
+		cInst.Cargo.CratesIO.Host = cratesIOServer.URL
 		cInst.httpClient = cratesIOServer.Client()
 		ver, err := cInst.resolveVersion(context.Background(), &config.ToolConfig{Name: "latestcrate"}, "latestcrate", cargoBinarySourceQuickinstall)
 		if err != nil || ver.version != "2.5.0" {
@@ -1441,7 +1455,7 @@ func TestCargoGithubReleases(t *testing.T) {
 
 		patInst := NewCargoInstaller(runner, testFsys, downloader.NewDownloader(testFsys, patServer.Client()), &SystemContext{OS: "linux", Arch: "amd64"})
 		patInst.httpClient = patServer.Client()
-		patInst.BaseURL = patServer.URL
+		patInst.Cargo.GitHubRelease.Host = patServer.URL
 		patInst.BinDir = "/test/patbin"
 
 		_, err := patInst.tryGithubReleases(context.Background(), &config.ToolConfig{

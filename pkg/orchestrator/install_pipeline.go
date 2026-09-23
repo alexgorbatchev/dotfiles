@@ -170,6 +170,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		UserAgent:    projCfg.Github.UserAgent,
 		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
 	})
+	installer.SetCargoSettings(inst, installer.NewCargoSettings(projCfg))
 
 	if !isExternal {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {

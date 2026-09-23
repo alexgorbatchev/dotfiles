@@ -685,7 +685,7 @@ func TestCargoQuickinstallAndGithubReleasesSuccess(t *testing.T) {
 
 	cargo := NewCargoInstaller(runner, memFS, dl, sysCtx)
 	cargo.httpClient = server.Client()
-	cargo.BaseURL = server.URL
+	cargo.Cargo.GitHubRelease.Host = server.URL
 	cargo.BinDir = "/test/cargobin"
 
 	tCargo := &config.ToolConfig{

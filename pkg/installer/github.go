@@ -331,9 +331,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		// that resolved it, so a private release resolved with a token can also be
 		// fetched with it.
 		opts := downloader.DownloadOptions{}
-		if token := githubToken(tool.InstallParams, g.GitHub.Token); token != "" {
+		if authorization := githubAuthorization(githubToken(tool.InstallParams, g.GitHub.Token)); authorization != "" {
 			opts.Headers = map[string]string{
-				"Authorization": "token " + token,
+				"Authorization": authorization,
 			}
 		}
 		if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, "", opts); err != nil {

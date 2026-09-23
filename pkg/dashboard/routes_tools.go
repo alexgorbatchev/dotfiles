@@ -699,6 +699,7 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
+	s.configureInstaller(inst)
 	res, err := inst.CheckUpdate(ctx, targetTool)
 	if errors.Is(err, installer.ErrUpdateCheckUnsupported) {
 		reason := fmt.Sprintf("Update checking is not supported for installation method %q", targetTool.InstallationMethod)
@@ -732,6 +733,22 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		"latestVersion":  orUnknown(res.LatestVersion),
 		"supported":      true,
 	}, "")
+}
+
+// configureInstaller applies the project's github and cargo sections to an installer
+// before the dashboard asks it about upstream, as tool check and tool update do, so an
+// update check addresses the hosts the configuration names with its credentials.
+func (s *Server) configureInstaller(inst installer.Installer) {
+	if s.projectConfig == nil {
+		return
+	}
+	installer.SetGitHubSettings(inst, installer.GitHubSettings{
+		Host:         s.projectConfig.Github.Host,
+		Token:        s.projectConfig.Github.Token,
+		UserAgent:    s.projectConfig.Github.UserAgent,
+		CacheEnabled: s.projectConfig.Github.Cache.IsEnabled(),
+	})
+	installer.SetCargoSettings(inst, installer.NewCargoSettings(s.projectConfig))
 }
 
 // unsupportedCheckUpdate is the check-update answer for a tool nothing upstream was asked
@@ -802,12 +819,7 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 		if inst, err := installer.Get(targetTool.InstallationMethod); err == nil {
 			// Only the update check runs here; the install directory is set by the
 			// orchestrator when it installs the release this picks.
-			installer.SetGitHubSettings(inst, installer.GitHubSettings{
-				Host:         s.projectConfig.Github.Host,
-				Token:        s.projectConfig.Github.Token,
-				UserAgent:    s.projectConfig.Github.UserAgent,
-				CacheEnabled: s.projectConfig.Github.Cache.IsEnabled(),
-			})
+			s.configureInstaller(inst)
 			// A release the tool's updateCheck.constraint excludes is not one this
 			// endpoint may install, however new it is.
 			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" &&

@@ -66,16 +66,18 @@ var platformMatchKeys = []string{"os", "arch"}
 // than inline in validateProjectSection so that the accepted surface is one readable
 // table, and so that TestEveryAcceptedProjectKeyIsAccountedFor can walk it.
 var (
-	pathsKeys        = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir}
-	systemKeys       = []string{"sudoPrompt"}
-	cargoKeys        = []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
-	cargoHostKeys    = []string{"cratesIo", "githubRaw", "githubRelease"}
-	downloaderKeys   = []string{"timeout", "retryCount", "retryDelay", "cache"}
-	featuresKeys     = []string{"catalog", "shellInstall"}
-	catalogKeys      = []string{"generate", "filePath"}
-	shellInstallKeys = []string{"zsh", "bash", "powershell"}
-	hostKeys         = []string{"host", "cache", "token", "userAgent"}
-	cacheKeys        = []string{"enabled", "ttl"}
+	pathsKeys     = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir}
+	systemKeys    = []string{"sudoPrompt"}
+	cargoKeys     = []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
+	cargoHostKeys = []string{"cratesIo", "githubRaw", "githubRelease"}
+	// cargoReleaseHostKeys are the keys of cargo.githubRelease, which has no cache.
+	cargoReleaseHostKeys = []string{"host", "token", "userAgent"}
+	downloaderKeys       = []string{"timeout", "retryCount", "retryDelay", "cache"}
+	featuresKeys         = []string{"catalog", "shellInstall"}
+	catalogKeys          = []string{"generate", "filePath"}
+	shellInstallKeys     = []string{"zsh", "bash", "powershell"}
+	hostKeys             = []string{"host", "cache", "token", "userAgent"}
+	cacheKeys            = []string{"enabled", "ttl"}
 )
 
 func validateProjectMap(prefix string, m map[string]interface{}) error {
@@ -226,10 +228,18 @@ func validateProjectSection(path, key string, v interface{}) error {
 				return err
 			}
 			for _, subHost := range cargoHostKeys {
-				if hostMap, ok := sub[subHost].(map[string]interface{}); ok {
-					if err := validateHostMap(qualifyPath(path, subHost), hostMap); err != nil {
+				hostMap, ok := sub[subHost].(map[string]interface{})
+				if !ok {
+					continue
+				}
+				if subHost == "githubRelease" {
+					if err := checkKeys(qualifyPath(path, subHost), hostMap, cargoReleaseHostKeys); err != nil {
 						return err
 					}
+					continue
+				}
+				if err := validateHostMap(qualifyPath(path, subHost), hostMap); err != nil {
+					return err
 				}
 			}
 		}

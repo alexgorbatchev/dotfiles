@@ -105,6 +105,24 @@ expectError(
   })),
 );
 
+// Every cargo key the cargo installer reads.
+defineConfig(() => ({
+  cargo: {
+    cratesIo: { host: "https://crates.io", token: "t", cache: { enabled: true, ttl: 86400000 } },
+    githubRaw: { host: "https://raw.githubusercontent.com", token: "t", cache: { enabled: false, ttl: 1000 } },
+    githubRelease: { host: "https://github.com", token: "t" },
+    userAgent: "my-bot (me@example.com)",
+  },
+}));
+
+// Archive downloads are cached by the downloader section, so the release host has no
+// cache of its own.
+expectError(
+  defineConfig(() => ({
+    cargo: { githubRelease: { cache: { enabled: false } } },
+  })),
+);
+
 defineTool((install, ctx) => {
   expectType<IInstallFunction>(install);
   expectType<IToolConfigContext>(ctx);

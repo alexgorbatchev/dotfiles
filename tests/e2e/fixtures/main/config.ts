@@ -34,9 +34,6 @@ export default {
     },
     githubRelease: {
       host: mockServerHost,
-      cache: {
-        enabled: false,
-      },
     },
   },
   downloader: {

@@ -179,3 +179,12 @@ func (c githubReleaseClient) downloadAssetViaGhCli(ctx context.Context, repo, ta
 func githubToken(params map[string]interface{}, projectToken string) string {
 	return github.Token(getStringParam(params, "token", ""), projectToken)
 }
+
+// githubAuthorization is the Authorization header value a GitHub host takes for a
+// download authenticated with token, or "" when there is no token to send.
+func githubAuthorization(token string) string {
+	if token == "" {
+		return ""
+	}
+	return "token " + token
+}
