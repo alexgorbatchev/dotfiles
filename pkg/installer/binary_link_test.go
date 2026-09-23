@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
+	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -92,15 +93,11 @@ func symlinkOrFatal(t *testing.T, osFS fs.FS, target, link string) {
 // point with volume, which receives the mount point.
 func installDmgVolume(t *testing.T, osFS fs.FS, staging string, volume func(mountPoint string)) ([]string, error) {
 	t.Helper()
-	// extractDmg creates its mount point in the system temporary directory.
-	t.Setenv("TMPDIR", t.TempDir())
 	runner := exec.NewMockRunner()
-	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-		if len(c.Args) > 4 && c.Args[0] == "attach" {
-			volume(c.Args[4])
-		}
+	archivetest.Hdiutil{FS: osFS, Volume: func(mountPoint string) error {
+		volume(mountPoint)
 		return nil
-	})
+	}}.Register(runner)
 	assetPath := filepath.Join(staging, "mytool.dmg")
 	writeModeFile(t, osFS, assetPath, 0o644)
 	placer := releaseAssetInstaller{fsys: osFS, extractor: archive.NewExtractor(osFS, runner)}

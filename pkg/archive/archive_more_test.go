@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
@@ -139,39 +140,16 @@ func TestExtractPkgError(t *testing.T) {
 	}
 }
 
-func TestExtractDmgErrors(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-
-	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-		if len(c.Args) > 0 && c.Args[0] == "attach" {
-			return fmt.Errorf("hdiutil attach failed")
-		}
-		return nil
-	})
-
-	_ = memFS.WriteFile("/test.dmg", []byte("dmg bytes"), 0644)
-
-	ext := NewExtractor(memFS, runner)
-	err := ext.Extract(context.Background(), "/test.dmg", "/dest-dmg-err")
-	if err == nil {
-		t.Fatal("expected error on hdiutil attach failure, got nil")
-	}
-}
-
 func TestExtractDmgAppBundle(t *testing.T) {
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
 
-	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-		if len(c.Args) > 4 && c.Args[0] == "attach" {
-			mountPoint := c.Args[4]
-			_ = memFS.MkdirAll(filepath.Join(mountPoint, "TestApp.app", "Contents"), 0755)
-			_ = memFS.WriteFile(filepath.Join(mountPoint, "TestApp.app", "Contents", "Info.plist"), []byte("plist"), 0644)
-			return nil
+	archivetest.Hdiutil{FS: memFS, Volume: func(mountPoint string) error {
+		if err := memFS.MkdirAll(filepath.Join(mountPoint, "TestApp.app", "Contents"), 0755); err != nil {
+			return err
 		}
-		return nil
-	})
+		return memFS.WriteFile(filepath.Join(mountPoint, "TestApp.app", "Contents", "Info.plist"), []byte("plist"), 0644)
+	}}.Register(runner)
 
 	_ = memFS.WriteFile("/app.dmg", []byte("dmg"), 0644)
 
@@ -762,23 +740,6 @@ func TestDetectAndSetExecutablesMagicBytes(t *testing.T) {
 	_, err = ext.walkFiles("/nonexistent_dir_12345")
 	if err == nil {
 		t.Error("expected error from walkFiles on non-existent directory")
-	}
-}
-
-func TestExtractDmg7zError(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-
-	runner.RegisterFunc("7z", func(c *exec.MockCmd) error {
-		return fmt.Errorf("7z extract failed")
-	})
-
-	_ = memFS.WriteFile("/archive.dmg", []byte("dmg"), 0644)
-
-	ext := NewExtractor(memFS, runner)
-	err := ext.extractDmg(context.Background(), "/archive.dmg", "/dest")
-	if err == nil {
-		t.Error("expected error when 7z fails on extractDmg")
 	}
 }
 

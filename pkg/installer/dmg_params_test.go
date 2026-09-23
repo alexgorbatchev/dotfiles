@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -91,9 +92,7 @@ func TestDmgInstallerReleaseParameters(t *testing.T) {
 		inst.BaseURL = server.URL
 		inst.BinDir = "/test/dmg-params"
 		// The mounted image the mock hdiutil "attaches".
-		appSourceDir := "/test/dmg-params/app-mount/App.app/Contents/MacOS"
-		_ = fsys.MkdirAll(appSourceDir, 0755)
-		_ = fsys.WriteFile(filepath.Join(appSourceDir, "app"), []byte("app-bin"), 0755)
+		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "App.app/Contents/MacOS/app", "app-bin")}.Register(runner)
 		return inst, runner, fsys
 	}
 

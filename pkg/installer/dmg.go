@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -111,7 +112,7 @@ func (d *DmgInstaller) fetcher(toolName string) macPackageFetcher {
 	}
 }
 
-func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
+func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (result *InstallResult, err error) {
 	if err := ValidateSudo(d, tool); err != nil {
 		return nil, err
 	}
@@ -144,28 +145,19 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	if err != nil {
 		return nil, err
 	}
+	defer payload.cleanup(d.fsys)
 
 	mountPoint := filepath.Join(destDir, tool.Name+"-mount")
-	mounted := false
-	defer func() {
-		if mounted {
-			detachCmd := d.runner.CommandContext(ctx, "hdiutil", "detach", mountPoint)
-			_ = detachCmd.Run()
-		}
-		_ = d.fsys.RemoveAll(mountPoint)
-		payload.cleanup(d.fsys)
-	}()
-
-	if err := d.fsys.MkdirAll(mountPoint, 0755); err != nil {
-		return nil, fmt.Errorf("creating mountpoint directory: %w", err)
-	}
-
-	// Mount DMG
-	attachCmd := d.runner.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-noautoopen", "-mountpoint", mountPoint, payload.packagePath)
-	if err := attachCmd.Run(); err != nil {
+	detach, err := archive.MountDmg(ctx, d.runner, d.fsys, payload.packagePath, mountPoint)
+	if err != nil {
 		return nil, fmt.Errorf("mounting DMG: %w", err)
 	}
-	mounted = true
+	// An image left attached fails the install, even one whose bundle was copied.
+	defer func() {
+		if detachErr := detach(); detachErr != nil {
+			result, err = nil, errors.Join(err, detachErr)
+		}
+	}()
 
 	appName := getStringParam(tool.InstallParams, "appName", "")
 	if appName == "" {

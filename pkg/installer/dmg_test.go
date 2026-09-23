@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -71,10 +72,8 @@ func TestDmgInstaller(t *testing.T) {
 			},
 		}
 
-		// Pre-populate mock .app bundle in MemFS
-		appSourceDir := "/test/dmg/slack-mount/Slack.app/Contents/MacOS"
-		_ = fsys.MkdirAll(appSourceDir, 0755)
-		_ = fsys.WriteFile(filepath.Join(appSourceDir, "slack"), []byte("mock-slack-bin"), 0755)
+		// The volume the mocked hdiutil attaches.
+		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin")}.Register(runner)
 
 		// A previous install left a file the new version no longer ships.
 		const staleFile = "/Applications/Slack.app/Contents/Resources/removed-in-this-version"
@@ -103,24 +102,7 @@ func TestDmgInstaller(t *testing.T) {
 			t.Errorf("reinstall kept %s; the previous bundle must be replaced, not merged into", staleFile)
 		}
 
-		// Verify hdiutil commands were executed
-		hasAttach := false
-		hasDetach := false
-		for _, cmd := range runner.History {
-			if cmd.Name == "hdiutil" && cmd.Args[0] == "attach" {
-				hasAttach = true
-			}
-			if cmd.Name == "hdiutil" && cmd.Args[0] == "detach" {
-				hasDetach = true
-			}
-		}
-
-		if !hasAttach {
-			t.Error("expected hdiutil attach to run")
-		}
-		if !hasDetach {
-			t.Error("expected hdiutil detach to run")
-		}
+		assertMountedAndDetached(t, runner, "/test/dmg/slack-mount")
 	})
 
 	t.Run("Install mount failure on macOS", func(t *testing.T) {
@@ -129,12 +111,7 @@ func TestDmgInstaller(t *testing.T) {
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg-fail"
 
-		runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-			if len(c.Args) > 0 && c.Args[0] == "attach" {
-				return errors.New("attach failed")
-			}
-			return nil
-		})
+		archivetest.Hdiutil{FS: fsys, Volume: func(string) error { return errors.New("attach failed") }}.Register(runner)
 
 		tool := &config.ToolConfig{
 			Name: "slack",
@@ -144,8 +121,11 @@ func TestDmgInstaller(t *testing.T) {
 		}
 
 		_, err := inst.Install(context.Background(), tool)
-		if err == nil {
-			t.Errorf("expected error on mount failure")
+		if err == nil || !strings.Contains(err.Error(), "attach failed") {
+			t.Errorf("Install = %v, want the attach failure", err)
+		}
+		if exists, _ := fsys.Exists("/test/dmg-fail/slack-mount"); exists {
+			t.Error("mount point left behind after a failed attach")
 		}
 	})
 
@@ -228,10 +208,8 @@ func TestDmgInstaller(t *testing.T) {
 			},
 		}
 
-		// Pre-populate mock .app bundle in MemFS
-		appSourceDir := "/test/dmg-github/slack-mount/Slack.app/Contents/MacOS"
-		_ = fsys.MkdirAll(appSourceDir, 0755)
-		_ = fsys.WriteFile(filepath.Join(appSourceDir, "slack"), []byte("mock-slack-bin-github"), 0755)
+		// The volume the mocked hdiutil attaches.
+		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin-github")}.Register(runner)
 
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
@@ -276,10 +254,8 @@ func TestDmgInstaller(t *testing.T) {
 			},
 		}
 
-		// Pre-populate mock .app bundle in MemFS
-		appSourceDir := "/test/dmg-zip/slack-mount/Slack.app/Contents/MacOS"
-		_ = fsys.MkdirAll(appSourceDir, 0755)
-		_ = fsys.WriteFile(filepath.Join(appSourceDir, "slack"), []byte("mock-slack-bin-zip"), 0755)
+		// The volume the mocked hdiutil attaches.
+		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin-zip")}.Register(runner)
 
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
@@ -297,6 +273,8 @@ func TestDmgInstaller(t *testing.T) {
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg-fail-copy"
+		// An empty volume: the bundle the tool names is not on it.
+		archivetest.Hdiutil{FS: fsys}.Register(runner)
 
 		tool := &config.ToolConfig{
 			Name: "failcopy",
@@ -314,16 +292,8 @@ func TestDmgInstaller(t *testing.T) {
 			t.Errorf("expected error to contain copy failure message, got: %v", err)
 		}
 
-		// Verify hdiutil detach was executed even on copy failure
-		hasDetach := false
-		for _, cmd := range runner.History {
-			if cmd.Name == "hdiutil" && cmd.Args[0] == "detach" {
-				hasDetach = true
-			}
-		}
-		if !hasDetach {
-			t.Error("expected hdiutil detach to run even on copy error")
-		}
+		// The image is detached even though the copy failed.
+		assertMountedAndDetached(t, runner, "/test/dmg-fail-copy/failcopy-mount")
 
 		// Verify temporary directories were pruned
 		mountPoint := "/test/dmg-fail-copy/failcopy-mount"
@@ -353,10 +323,8 @@ func TestDmgInstaller(t *testing.T) {
 			},
 		}
 
-		// Pre-populate mock .app bundle in MemFS without explicit appName in params
-		appSourceDir := "/test/dmg-autodetect/autotool-mount/AutoDetect.app/Contents/MacOS"
-		_ = fsys.MkdirAll(appSourceDir, 0755)
-		_ = fsys.WriteFile(filepath.Join(appSourceDir, "autobinary"), []byte("bin"), 0755)
+		// The volume the mocked hdiutil attaches.
+		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "AutoDetect.app/Contents/MacOS/autobinary", "bin")}.Register(runner)
 
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
@@ -366,4 +334,100 @@ func TestDmgInstaller(t *testing.T) {
 			t.Errorf("expected /Applications/AutoDetect.app/Contents/MacOS/autobinary, got %v", res.Binaries)
 		}
 	})
+}
+
+// assertMountedAndDetached checks that runner ran exactly one hdiutil attach, read-only
+// at mountPoint, followed by one detach of it.
+func assertMountedAndDetached(t *testing.T, runner *exec.MockRunner, mountPoint string) {
+	t.Helper()
+	calls := archivetest.Calls(runner)
+	wantAttach := []string{"attach", "-readonly", "-nobrowse", "-noautoopen", "-mountpoint", mountPoint}
+	if len(calls) != 2 || len(calls[0]) != len(wantAttach)+1 || !slices.Equal(calls[0][:len(wantAttach)], wantAttach) ||
+		!slices.Equal(calls[1], []string{"detach", mountPoint}) {
+		t.Errorf("hdiutil calls = %q, want %q <image> then a detach of %s", calls, wantAttach, mountPoint)
+	}
+}
+
+// TestDmgInstallerDetach is the regression test for issue #173: the image is attached
+// read-only, a failed detach is retried with -force and otherwise fails the install,
+// and the mount point is removed only once it is empty, never recursively.
+func TestDmgInstallerDetach(t *testing.T) {
+	const (
+		staging    = "/stage"
+		mountPoint = staging + "/app-mount"
+		volumeBin  = "App.app/Contents/MacOS/app"
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("dmg-content"))
+	}))
+	defer server.Close()
+
+	attach := []string{"attach", "-readonly", "-nobrowse", "-noautoopen", "-mountpoint", mountPoint, staging + "/App.dmg"}
+	detach := []string{"detach", mountPoint}
+	forceDetach := []string{"detach", mountPoint, "-force"}
+	tests := []struct {
+		name  string
+		fake  archivetest.Hdiutil
+		calls [][]string
+		// wantErr reports whether Install must fail, with an error naming the mount point.
+		wantErr bool
+	}{
+		{name: "a detach that succeeds", calls: [][]string{attach, detach}},
+		{
+			name:  "a failed detach is retried with -force",
+			fake:  archivetest.Hdiutil{Detach: archivetest.RefuseUnlessForced},
+			calls: [][]string{attach, detach, forceDetach},
+		},
+		{
+			name:    "a detach that fails even with -force fails the install and leaves the volume",
+			fake:    archivetest.Hdiutil{Detach: func(bool) error { return archivetest.ErrResourceBusy }},
+			calls:   [][]string{attach, detach, forceDetach},
+			wantErr: true,
+		},
+		{
+			name:    "a mount point that still holds files after a detach is not removed recursively",
+			fake:    archivetest.Hdiutil{StayMounted: true},
+			calls:   [][]string{attach, detach},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fsys := fs.NewMemFS()
+			runner := exec.NewMockRunner()
+			fake := tt.fake
+			fake.FS = fsys
+			fake.Volume = archivetest.VolumeFile(fsys, volumeBin, "app-bin")
+			fake.Register(runner)
+			inst := NewDmgInstaller(runner, fsys, downloader.NewDownloader(fsys, server.Client()), &SystemContext{OS: "darwin", Arch: "arm64"})
+			inst.BinDir = staging
+
+			res, err := inst.Install(context.Background(), &config.ToolConfig{
+				Name:          "app",
+				InstallParams: map[string]interface{}{"url": server.URL + "/App.dmg", "appName": "App.app"},
+			})
+			if !tt.wantErr && err != nil {
+				t.Fatalf("Install = %v, want nil", err)
+			}
+			if tt.wantErr {
+				if err == nil || !strings.Contains(err.Error(), mountPoint) {
+					t.Fatalf("Install = %v, want an error naming %s", err, mountPoint)
+				}
+				if res != nil {
+					t.Errorf("Install returned %+v along with its error", res)
+				}
+			}
+			if got := archivetest.Calls(runner); !slices.EqualFunc(got, tt.calls, slices.Equal) {
+				t.Errorf("hdiutil calls = %q, want %q", got, tt.calls)
+			}
+			volumeExists, _ := fsys.Exists(filepath.Join(mountPoint, volumeBin))
+			if volumeExists != tt.wantErr {
+				t.Errorf("volume file present after Install = %v, want %v", volumeExists, tt.wantErr)
+			}
+			mountPointExists, _ := fsys.Exists(mountPoint)
+			if mountPointExists != tt.wantErr {
+				t.Errorf("mount point present after Install = %v, want %v", mountPointExists, tt.wantErr)
+			}
+		})
+	}
 }
