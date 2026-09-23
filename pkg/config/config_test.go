@@ -819,6 +819,15 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 		notWantErrs []string
 	}{
 		{
+			name:     "unknown installation method",
+			tool:     ToolConfig{Name: "bogus", InstallationMethod: "github-releases"},
+			wantErrs: []string{`tool "bogus"`, `unknown installation method "github-releases"`, strings.Join(InstallMethods(), ", ")},
+		},
+		{
+			name: "no installation method",
+			tool: ToolConfig{Name: "shell-only"},
+		},
+		{
 			name: "curl-script binaryPath with one binary",
 			tool: ToolConfig{
 				Name:               "claude",
