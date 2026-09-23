@@ -196,7 +196,7 @@ func (c *CurlTarInstaller) Install(ctx context.Context, tool *config.ToolConfig)
 	// Remove downloaded archive
 	_ = c.fsys.Remove(archivePath)
 
-	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries)
+	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries, RejectOutsideLinks)
 	if err != nil {
 		return nil, err
 	}
