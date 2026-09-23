@@ -3,6 +3,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -98,5 +99,69 @@ func TestE2EAsyncToolFactoryFailureFailsTheLoad(t *testing.T) {
 	}
 	if !strings.Contains(output, "factory exploded") {
 		t.Errorf("expected the failure to carry the error the factory threw:\n%s", output)
+	}
+}
+
+// A misspelled conflict policy fails the load before anything is written. Falling back
+// to the default would back up and replace a user-owned file that the author asked to
+// keep.
+func TestE2EInvalidBlockDeclarationFailsBeforeTouchingTheTarget(t *testing.T) {
+	t.Parallel()
+
+	h := NewTestHarness(t, HarnessOptions{
+		ConfigContent: "export default { paths: { generatedDir: \"./.generated\" } };\n",
+	})
+
+	targetPath := filepath.Join(h.TempDir, "home", ".ssh", "config")
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0700); err != nil {
+		t.Fatalf("creating the target directory: %v", err)
+	}
+	const userContent = "Host personal\n  User me\n"
+	if err := os.WriteFile(targetPath, []byte(userContent), 0600); err != nil {
+		t.Fatalf("writing the user-owned target: %v", err)
+	}
+
+	toolsDir := filepath.Join(h.TempDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating the tools directory: %v", err)
+	}
+	toolPath := filepath.Join(toolsDir, "ssh.tool.ts")
+	toolSource := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+		"export default defineTool((install) =>\n" +
+		"  install(\"manual\").block(" + strconv.Quote(targetPath) + ", {\n" +
+		"    id: \"main\",\n    content: \"Include managed\",\n    conflict: \"keep-locl\",\n  }),\n);\n"
+	if err := os.WriteFile(toolPath, []byte(toolSource), 0644); err != nil {
+		t.Fatalf("writing the tool file: %v", err)
+	}
+
+	stdout, stderr, exitCode, err := h.Generate()
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if exitCode == 0 {
+		t.Fatalf("expected generate to fail:\nstdout: %s\nstderr: %s", stdout, stderr)
+	}
+
+	output := stdout + stderr
+	// The loader records the tool file with forward slashes on every platform.
+	for _, want := range []string{filepath.ToSlash(toolPath), `conflict "keep-locl"`} {
+		if !strings.Contains(output, want) {
+			t.Errorf("expected the failure to mention %q:\n%s", want, output)
+		}
+	}
+
+	got, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("reading the target: %v", err)
+	}
+	if string(got) != userContent {
+		t.Errorf("expected the target to be left untouched, got:\n%s", got)
+	}
+	siblings, err := os.ReadDir(filepath.Dir(targetPath))
+	if err != nil {
+		t.Fatalf("listing the target directory: %v", err)
+	}
+	if len(siblings) != 1 {
+		t.Errorf("expected nothing but the user's file next to the target, found %d entries", len(siblings))
 	}
 }

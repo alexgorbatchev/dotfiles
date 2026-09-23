@@ -244,6 +244,80 @@ func TestToolConfigDecodesDeclarativeFiles(t *testing.T) {
 	}
 }
 
+// TestValidateToolConfigsReportsTheFirstInvalidToolByName pins what every loader
+// relies on: the same configuration always fails on the same tool, whatever order the
+// tools arrived in, and the error names the tool file when the tool has one.
+func TestValidateToolConfigsReportsTheFirstInvalidToolByName(t *testing.T) {
+	badBlock := []BlockConfig{{Target: "~/.ssh/config", ID: "main", Position: "Top"}}
+	tests := []struct {
+		name  string
+		tools []*ToolConfig
+		want  []string
+	}{
+		{
+			name:  "all valid",
+			tools: []*ToolConfig{{Name: "b"}, {Name: "a"}},
+		},
+		{
+			name: "first invalid tool by name, naming its file",
+			tools: []*ToolConfig{
+				{Name: "zeta", ConfigFilePath: "/repo/tools/zeta.tool.ts", Blocks: badBlock},
+				{Name: "alpha", ConfigFilePath: "/repo/tools/alpha.tool.ts", Blocks: badBlock},
+			},
+			want: []string{`invalid tool configuration in "/repo/tools/alpha.tool.ts"`, `tool "alpha"`, `position "Top"`},
+		},
+		{
+			name: "same name, first tool file",
+			tools: []*ToolConfig{
+				{Name: "ssh", ConfigFilePath: "/repo/b.json", Blocks: badBlock},
+				{Name: "ssh", ConfigFilePath: "/repo/a.json", Blocks: badBlock},
+			},
+			want: []string{`invalid tool configuration in "/repo/a.json"`},
+		},
+		{
+			name: "same name and no file keeps the caller's order",
+			tools: []*ToolConfig{
+				{Name: "ssh", Blocks: []BlockConfig{{Target: "~/.ssh/config", ID: "main", Position: "First"}}},
+				{Name: "ssh", Blocks: badBlock},
+			},
+			want: []string{`position "First"`},
+		},
+		{
+			name:  "tool without a file",
+			tools: []*ToolConfig{{Name: "ssh", Blocks: badBlock}},
+			want:  []string{"invalid tool configuration: ", `tool "ssh"`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateToolConfigs(tt.tools)
+			if len(tt.want) == 0 {
+				if err != nil {
+					t.Fatalf("ValidateToolConfigs() = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("ValidateToolConfigs() = nil, want an error")
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("ValidateToolConfigs() = %v, want it to contain %s", err, want)
+				}
+			}
+		})
+	}
+
+	tools := []*ToolConfig{{Name: "b"}, {Name: "a"}}
+	if err := ValidateToolConfigs(tools); err != nil {
+		t.Fatalf("ValidateToolConfigs() = %v, want nil", err)
+	}
+	if tools[0].Name != "b" || tools[1].Name != "a" {
+		t.Errorf("ValidateToolConfigs reordered the caller's slice to %q, %q", tools[0].Name, tools[1].Name)
+	}
+}
+
 // TestMergeCombinesDeclarativeFiles checks that a .platform() block
 // contributes its declarations rather than replacing the ones outside it, which is
 // how the existing symlink and copy lists already behave.

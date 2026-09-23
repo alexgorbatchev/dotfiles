@@ -417,3 +417,24 @@ Render dynamic configuration templates using `.template()`. Variables support pr
   },
 })
 ```
+
+## Declaration Checks
+
+The declarations below are checked when the configuration loads, before any command acts on it. A declaration that breaks one of the rules below fails the load with an error that names the tool's configuration file, the tool and the offending value, so nothing is linked, copied or written for any tool. A value that is not recognised is never replaced by its default: a misspelled `conflict` policy on a block or template would otherwise back up and replace a file the author asked to keep.
+
+| Declaration    | Rule                                                                                                                                                                                                                                                            |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.symlink()`   | `source` and `target` must not be empty                                                                                                                                                                                                                         |
+| `.copy()`      | `source` and `target` must not be empty                                                                                                                                                                                                                         |
+| `.ensureDir()` | `path` must not be blank                                                                                                                                                                                                                                        |
+| `.block()`     | `target` must not be blank; `id` must not be empty and may contain only letters, digits, `.`, `-` and `_`; no two blocks of a tool may share both `target` and `id`                                                                                             |
+| `.template()`  | `source` and `target` must not be blank                                                                                                                                                                                                                         |
+| shell scripts  | the argument of `.once()`, `.always()`, `.script()`, `.sourceFile()`, `.sourceFunction()` and `.source()` must not be empty; `.script(kind, content)` fails the load for a `kind` that is none of `once`, `always`, `sourceFile`, `source` and `sourceFunction` |
+
+The options are checked the same way wherever they appear. Leaving an option out selects its default; only an unrecognised value is rejected.
+
+| Option     | Accepted values                                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `mode`     | An octal permission from `0000` to `0777`, written as `0600`, `600` or `0o600`                                                       |
+| `position` | `top` or `bottom` (the default), on `.block()`; decides where a block not yet in the file is inserted                                |
+| `conflict` | `merge` (the default), `keep-local`, `overwrite` or `prompt`, on `.block()` and `.template()`. `.copy()` rejects any other value too |

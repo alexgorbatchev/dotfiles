@@ -18,13 +18,20 @@ import (
 // from any host.
 func loadToolSource(t *testing.T, tool string, opts ...Option) (map[string]*config.ToolConfig, error) {
 	t.Helper()
+	return loadToolFile(t, "probe.tool.ts", tool, opts...)
+}
+
+// loadToolFile is loadToolSource with the tool file named fileName, for behavior that
+// depends on the name the tool falls back to.
+func loadToolFile(t *testing.T, fileName, tool string, opts ...Option) (map[string]*config.ToolConfig, error) {
+	t.Helper()
 
 	tmpDir := t.TempDir()
 	toolsDir := filepath.Join(tmpDir, "tools")
 	if err := os.MkdirAll(toolsDir, 0755); err != nil {
 		t.Fatalf("creating tools dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(toolsDir, "probe.tool.ts"), []byte(tool), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(toolsDir, fileName), []byte(tool), 0644); err != nil {
 		t.Fatalf("writing tool: %v", err)
 	}
 
