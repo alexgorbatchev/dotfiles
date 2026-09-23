@@ -36,7 +36,10 @@ type UpdateCheckResult struct {
 	// Outdated is a package manager's own verdict, for the installers that have one
 	// (brew's `outdated` flag, apt's installed-versus-candidate, dnf's upgradable
 	// list, pacman -Qu). nil means the installer cannot tell, and the versions decide.
-	Outdated      *bool
+	Outdated *bool
+	// LocalVersion is the version a package manager reports on disk (v1's
+	// UpdateCheckResult.currentVersion). Checks measure the status against the
+	// installation record instead, so that every installer is compared the same way.
 	LocalVersion  string
 	LatestVersion string
 	Cached        bool
@@ -380,6 +383,23 @@ func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
 		names = []string{toolName}
 	}
 	return names
+}
+
+// installedPackageChecker is implemented by the installers whose update check asks
+// the system package manager about the package installed on this machine (brew, apt,
+// dnf, pacman) instead of asking a release source upstream. Such a check has nothing to
+// answer for a tool dotfiles never installed: the package manager either reports the
+// package as missing or describes a package installed some other way.
+type installedPackageChecker interface {
+	checksInstalledPackage()
+}
+
+// UpdateCheckNeedsInstallation reports whether inst can check a tool for updates only
+// once the tool is installed. A check of a tool with no installation record skips such
+// an installer rather than reporting the missing package as a failed check.
+func UpdateCheckNeedsInstallation(inst Installer) bool {
+	_, ok := inst.(installedPackageChecker)
+	return ok
 }
 
 type FSSetter interface {

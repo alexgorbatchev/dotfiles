@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -80,8 +79,12 @@ var toolCheckCmd = &cobra.Command{
 			}
 			configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
-			res, err := inst.CheckUpdate(ctx, tool)
-			check, err := orchestrator.ClassifyCheck(tool, checkedLocalVersion(ctx, services, tool), res, err)
+			installed, err := services.Registry.GetToolInstallation(ctx, tool.Name)
+			if err != nil {
+				toolLog.Error("Reading the installation record failed", err)
+				continue
+			}
+			check, err := orchestrator.CheckTool(ctx, inst, tool, installed)
 			if err != nil {
 				toolLog.Error("Update check failed", err)
 				continue
@@ -111,30 +114,21 @@ var toolCheckCmd = &cobra.Command{
 	},
 }
 
-// checkedLocalVersion is the version a check compares upstream against: the installed
-// one when the registry has it, otherwise the version the configuration asks for
-// (config.ToolConfig.RequestedVersion).
-func checkedLocalVersion(ctx context.Context, services *Services, tool *config.ToolConfig) string {
-	installed, _ := services.Registry.GetToolInstallation(ctx, tool.Name)
-	if installed != nil && installed.Version != "" {
-		return installed.Version
-	}
-	return tool.RequestedVersion()
-}
-
 // logCheckResult reports one tool's check on the diagnostic stream.
 func logCheckResult(toolLog *logger.Logger, tool *config.ToolConfig, r ToolUpdateResult) {
 	switch r.Status {
 	case orchestrator.CheckStatusUnsupported:
 		toolLog.Info(logger.Message(orchestrator.UpdateCheckUnsupportedMessage(tool)))
 	case orchestrator.CheckStatusUpdateAvailable:
-		if r.CurrentVersion == "" {
-			toolLog.Info(logger.Message(fmt.Sprintf("Available: %s", r.LatestVersion)))
-			return
-		}
 		toolLog.Info(logger.Message(fmt.Sprintf("Update available: %s -> %s", r.CurrentVersion, r.LatestVersion)))
 	case orchestrator.CheckStatusAheadOfLatest:
 		toolLog.Info(logger.Message(orchestrator.AheadOfLatestMessage(r.CurrentVersion, r.LatestVersion)))
+	case orchestrator.CheckStatusNotInstalled:
+		if r.LatestVersion == "" {
+			toolLog.Info(logger.Message("Not installed"))
+			return
+		}
+		toolLog.Info(logger.Message("Not installed; the latest available version is " + r.LatestVersion))
 	default:
 		toolLog.Info(logger.Message("Up to date" + versionSuffix(r.CurrentVersion, r.Cached)))
 	}
@@ -156,13 +150,15 @@ func printCheckResult(w io.Writer, tool *config.ToolConfig, r ToolUpdateResult) 
 	case orchestrator.CheckStatusUnsupported:
 		fmt.Fprintf(w, "%s: update check not supported (%s)\n", r.ToolName, tool.InstallationMethod)
 	case orchestrator.CheckStatusUpdateAvailable:
-		if r.CurrentVersion == "" {
-			fmt.Fprintf(w, "%s: available (%s)\n", r.ToolName, r.LatestVersion)
-			return
-		}
 		fmt.Fprintf(w, "%s: update available (%s -> %s)\n", r.ToolName, r.CurrentVersion, r.LatestVersion)
 	case orchestrator.CheckStatusAheadOfLatest:
 		fmt.Fprintln(w, orchestrator.AheadOfLatestMessage(fmt.Sprintf("%s (%s)", r.ToolName, r.CurrentVersion), r.LatestVersion))
+	case orchestrator.CheckStatusNotInstalled:
+		if r.LatestVersion == "" {
+			fmt.Fprintf(w, "%s: not installed\n", r.ToolName)
+			return
+		}
+		fmt.Fprintf(w, "%s: not installed (latest: %s)\n", r.ToolName, r.LatestVersion)
 	default:
 		fmt.Fprintf(w, "%s: up to date%s\n", r.ToolName, versionSuffix(r.CurrentVersion, r.Cached))
 	}

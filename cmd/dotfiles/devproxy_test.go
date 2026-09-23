@@ -289,7 +289,7 @@ func TestCheckUpdatesThroughDevProxy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tool check: %v\n%s", err, out.Combined)
 	}
-	mustContain(t, "stdout", out.Stdout, "proxied: available (v1.2.3)\n")
+	mustContain(t, "stdout", out.Stdout, "proxied: not installed (latest: v1.2.3)\n")
 
 	// BootstrapServices points github.host at http://127.0.0.1:MOCK_SERVER_PORT.
 	wantURL := fmt.Sprintf("http://127.0.0.1:%d/repos/%s/releases/latest", releases.Listener.Addr().(*net.TCPAddr).Port, repo)

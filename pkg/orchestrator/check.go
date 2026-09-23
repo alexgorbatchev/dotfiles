@@ -1,11 +1,13 @@
 package orchestrator
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 )
 
@@ -36,6 +38,10 @@ const (
 	// CheckStatusUnsupported: the installer has no way to learn the latest version
 	// upstream (installer.ErrUpdateCheckUnsupported), so nothing was compared.
 	CheckStatusUnsupported CheckStatus = "unsupported"
+	// CheckStatusNotInstalled: dotfiles has no installation record for the tool, so
+	// there is nothing to compare; the latest version upstream is reported when the
+	// installer could name one without an installation.
+	CheckStatusNotInstalled CheckStatus = "not-installed"
 )
 
 // CheckResult is what an update check found for one tool.
@@ -49,6 +55,32 @@ type CheckResult struct {
 	LatestVersion string
 	// Cached is set when the latest version came from a cached upstream answer.
 	Cached bool
+}
+
+// CheckTool runs tool's update check on inst and classifies the answer. installed is
+// the tool's installation record, nil when dotfiles never installed it.
+//
+// A tool that is not installed is CheckStatusNotInstalled, never an update or a failed
+// check. Like v1, an installer that answers from upstream is still asked, so the latest
+// available version is reported alongside; an installer that can only ask about the
+// installed package (installer.UpdateCheckNeedsInstallation) is not asked at all, since
+// the package it would describe is missing or was installed some other way. A failed
+// upstream query is a failed check whether or not the tool is installed, and so is an
+// installer that answers with neither a result nor an error.
+func CheckTool(ctx context.Context, inst installer.Installer, tool *config.ToolConfig, installed *registry.ToolInstallationRecord) (CheckResult, error) {
+	if installed == nil && installer.UpdateCheckNeedsInstallation(inst) {
+		return CheckResult{Status: CheckStatusNotInstalled}, nil
+	}
+	var installedVersion string
+	if installed != nil {
+		installedVersion = installed.Version
+	}
+	res, err := inst.CheckUpdate(ctx, tool)
+	check, err := ClassifyCheck(tool, installedVersion, res, err)
+	if err != nil || installed != nil {
+		return check, err
+	}
+	return CheckResult{Status: CheckStatusNotInstalled, LatestVersion: check.LatestVersion, Cached: check.Cached}, nil
 }
 
 // ClassifyCheck turns what tool's installer answered for an installation at

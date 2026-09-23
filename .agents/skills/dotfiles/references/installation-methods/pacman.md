@@ -50,7 +50,7 @@ install("pacman", {
 
 ## Update Checks
 
-An update check runs `pacman -Qu <package>`, which compares the installed package with the local sync database, so it is only as current as the last `pacman -Sy`. A listed upgrade means the tool is outdated. pacman exits 1 both when there is no upgrade and when the query fails, so only exit status 1 with no output at all counts as up to date. A package that is not installed, or a sync database that was never downloaded, fails the check ([`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool)).
+An update check runs `pacman -Qu <package>`, which compares the installed package with the local sync database, so it is only as current as the last `pacman -Sy`. A listed upgrade means the tool is outdated. pacman exits 1 both when there is no upgrade and when the query fails, so only exit status 1 with no output at all counts as up to date. For a tool dotfiles installed, a package that is no longer installed, or a sync database that was never downloaded, fails the check. A tool dotfiles never installed is not checked; [`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool) reports it as not installed.
 
 ## Platform Support
 

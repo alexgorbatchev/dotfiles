@@ -696,7 +696,8 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 		{name: "log json", args: []string{"-c", absConfig, "state", "log", "--json"}},
 		{name: "bin", args: []string{"-c", absConfig, "path"}},
 		{name: "bin list", args: []string{"-c", absConfig, "tool", "list"}, contains: []string{"brew"}},
-		{name: "check-updates", args: []string{"-c", absConfig, "tool", "check"}, contains: []string{"up to date"}},
+		// Nothing in the fixture is installed, so every tool is reported as not installed (#151).
+		{name: "check-updates", args: []string{"-c", absConfig, "tool", "check"}, contains: []string{"github-release--bat: not installed"}},
 		{name: "tool info", args: []string{"-c", absConfig, "tool", "info", "github-release--bat"}, contains: []string{"github-release"}},
 		{name: "detect-conflicts", args: []string{"-c", absConfig, "shell", "audit"}, contains: []string{"conflicts"}},
 		{name: "env", args: []string{"-c", absConfig, "shell", "init"}, contains: []string{"export PATH="}},
@@ -2084,9 +2085,13 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 		"off": {"name": "off", "disabled": true, "installationMethod": "github-release", "installParams": {"repo": %[5]q}},
 		"noinst": {"name": "noinst", "installationMethod": "bogus-installer"},
 		"hand": {"name": "hand", "installationMethod": "manual"},
+		"never-hand": {"name": "never-hand", "installationMethod": "manual"},
+		"never-brew": {"name": "never-brew", "installationMethod": "brew", "installParams": {"formula": "dotfiles-test-never-installed"}},
 		"shell-only": {"name": "shell-only"}
 	`, repoAvail, repoUpd, repoSame, repoFail, repoAvail, repoSameParam))
+	// avail, same-param, fail, never-hand and never-brew have no installation record.
 	p.seedInstallation(t, "upd", "v0.1.0", filepath.Join(p.Root, "installed", "upd"))
+	p.seedInstallation(t, "same", "v0.1.0", filepath.Join(p.Root, "installed", "same"))
 	p.seedInstallation(t, "hand", "v1.0.0", filepath.Join(p.Root, "installed", "hand"))
 
 	t.Run("human output on a fresh fetch", func(t *testing.T) {
@@ -2095,24 +2100,29 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 			t.Fatalf("tool check: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout,
-			"avail: available (v9.9.9)\n",
+			// A tool dotfiles never installed is not installed, never an update from the
+			// placeholder "latest" (#151); the release upstream is still reported.
+			"avail: not installed (latest: v9.9.9)\n",
+			"same-param: not installed (latest: v0.1.0)\n",
+			"never-hand: not installed\n",
+			// brew is not asked about a package dotfiles never installed.
+			"never-brew: not installed\n",
 			"upd: update available (v0.1.0 -> v9.9.9)\n",
 			"same: up to date (v0.1.0)\n",
-			// An uninstalled tool is compared at the version its installation asks for,
-			// which its version install parameter names.
-			"same-param: up to date (v0.1.0)\n",
 			"hand: update check not supported (manual)\n",
 		)
-		mustNotContain(t, "stdout", out.Stdout, "off:", "noinst:", "shell-only:", "fail:", "hand: up to date")
+		mustNotContain(t, "stdout", out.Stdout, "off:", "noinst:", "shell-only:", "fail:", "hand: up to date", "avail: update available", "avail: available")
 		mustContain(t, "stderr", out.Stderr,
 			`Installer "bogus-installer" not found`,
+			// A failed upstream query is still a failed check, installed or not.
 			"[fail] Update check failed",
-			"[avail] Available: v9.9.9",
+			"[avail] Not installed; the latest available version is v9.9.9",
+			"[never-brew] Not installed\n",
 			"[upd] Update available: v0.1.0 -> v9.9.9",
 			"[same] Up to date (v0.1.0)",
 			`[hand] Update check not supported for installer "manual"`,
 		)
-		mustNotContain(t, "stderr", out.Stderr, "[hand] Up to date", "[hand] Update check failed")
+		mustNotContain(t, "stderr", out.Stderr, "[hand] Up to date", "[hand] Update check failed", "[never-brew] Update check failed", "[never-hand] Update check")
 	})
 
 	t.Run("human output from the cached releases", func(t *testing.T) {
@@ -2131,7 +2141,8 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 			t.Fatalf("tool check: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout,
-			"tool:avail status:update-available current: latest:v9.9.9 cached:true\n",
+			"tool:avail status:not-installed current: latest:v9.9.9 cached:true\n",
+			"tool:never-brew status:not-installed current: latest: cached:false\n",
 			"tool:upd status:update-available current:v0.1.0 latest:v9.9.9 cached:true\n",
 			"tool:same status:up-to-date current:v0.1.0 latest:v0.1.0 cached:true\n",
 			"tool:hand status:unsupported current:v1.0.0 installer:manual\n",
@@ -2164,7 +2175,51 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 		if _, ok := byName["off"]; ok {
 			t.Errorf("disabled tool must not be checked: %+v", results)
 		}
+		notInstalled := map[string]ToolUpdateResult{
+			"avail":      {ToolName: "avail", Status: orchestrator.CheckStatusNotInstalled, LatestVersion: "v9.9.9", Cached: true},
+			"never-hand": {ToolName: "never-hand", Status: orchestrator.CheckStatusNotInstalled},
+			"never-brew": {ToolName: "never-brew", Status: orchestrator.CheckStatusNotInstalled},
+		}
+		for name, want := range notInstalled {
+			if got, ok := byName[name]; !ok || got != want {
+				t.Errorf("%s result = %+v (present: %t), want %+v", name, got, ok, want)
+			}
+		}
+		mustNotContain(t, "stdout", out.Stdout, `"currentVersion": "latest"`)
 	})
+}
+
+// TestCheckUpdatesCommand_UnreadableInstallation pins that an installation record that
+// cannot be read is a failed check, never "not installed" (#151): the registry is the
+// only evidence of what is installed, so a read error says nothing about the tool.
+func TestCheckUpdatesCommand_UnreadableInstallation(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repo = "acme/unreadable"
+	newReleaseServer(t, map[string]mockRelease{repo: {Tag: "v1.0.0"}})
+	p := newE2EProject(t, fmt.Sprintf(`"unreadable": {"name": "unreadable", "installationMethod": "github-release", "installParams": {"repo": %q}}`, repo))
+	// A record whose version is NULL cannot be scanned; the schema is recreated without
+	// the NOT NULL constraint so that such a record can exist.
+	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+		for _, stmt := range []string{
+			"DROP TABLE tool_installations",
+			"CREATE TABLE tool_installations (id INTEGER PRIMARY KEY AUTOINCREMENT, tool_name TEXT NOT NULL UNIQUE, version TEXT, install_path TEXT NOT NULL, timestamp TEXT NOT NULL, installed_at INTEGER NOT NULL, binary_paths TEXT NOT NULL, download_url TEXT, asset_name TEXT, configured_version TEXT, original_tag TEXT, install_method TEXT)",
+			"INSERT INTO tool_installations (tool_name, version, install_path, timestamp, installed_at, binary_paths) VALUES ('unreadable', NULL, '/x', 't', 0, '[]')",
+		} {
+			if _, err := tx.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("%s: %w", stmt, err)
+			}
+		}
+		return nil
+	})
+
+	out, err := p.run("tool", "check", "--json")
+	if err != nil {
+		t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "[unreadable] Reading the installation record failed")
+	if strings.TrimSpace(out.Stdout) != "[]" {
+		t.Errorf("stdout = %s, want no result for a tool whose installation could not be read", out.Stdout)
+	}
 }
 
 // TestAheadOfLatest pins what tool check and tool update do with a tool installed at a

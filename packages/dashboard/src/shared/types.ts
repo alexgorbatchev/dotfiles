@@ -289,8 +289,9 @@ export interface IInstallToolResponse {
  * - `update-available`: a newer version counts as an update
  * - `ahead-of-latest`: the installed version is newer than the latest one upstream
  * - `unsupported`: nothing upstream could be asked, so nothing was compared
+ * - `not-installed`: dotfiles never installed the tool; `latestVersion` is the latest release when one could be named
  */
-export type ToolCheckStatus = "up-to-date" | "update-available" | "ahead-of-latest" | "unsupported";
+export type ToolCheckStatus = "up-to-date" | "update-available" | "ahead-of-latest" | "unsupported" | "not-installed";
 
 /**
  * Response for POST /api/tools/:name/check-update
