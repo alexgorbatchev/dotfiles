@@ -2116,6 +2116,60 @@ func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 	}
 }
 
+// cargoSettingsSpyInstaller records the cargo settings the install pipeline applies.
+type cargoSettingsSpyInstaller struct {
+	cacheSpyInstaller
+	cargo []installer.CargoSettings
+}
+
+func (c *cargoSettingsSpyInstaller) SetCargoSettings(settings installer.CargoSettings) {
+	c.cargo = append(c.cargo, settings)
+}
+
+// TestInstallTool_AppliesCargoSettings pins that the install pipeline hands every
+// installer the project's cargo section, as it does the github section, so a cargo
+// install reaches the configured hosts with the configured User-Agent and tokens.
+func TestInstallTool_AppliesCargoSettings(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	defer database.Close()
+
+	instReg := installer.NewRegistry()
+	spy := &cargoSettingsSpyInstaller{cacheSpyInstaller: cacheSpyInstaller{name: "cargo-spy-installer"}}
+	_ = instReg.Register(spy)
+	orch := NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), registry.NewRegistry(database), instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/test",
+			DotfilesDir:     "/home/test/dotfiles",
+			TargetDir:       "/home/test/.bin",
+			BinariesDir:     "/home/test/.binaries",
+			GeneratedDir:    "/home/test/.generated",
+			ShellScriptsDir: "/home/test/.generated/shell-scripts",
+		},
+		Cargo: config.CargoConfig{
+			CratesIo:      config.HostConfig{Host: "https://crates.mirror.example", Token: "crates-secret"},
+			GithubRelease: config.CargoReleaseHostConfig{Host: "https://ghe.example", Token: "release-secret"},
+			UserAgent:     "my-bot",
+		},
+	}
+	tool := &config.ToolConfig{Name: "spy-tool", InstallationMethod: spy.name, Binaries: testutil.DeclaredBinaries("spybin")}
+	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	want := installer.NewCargoSettings(projCfg)
+	if len(spy.cargo) != 1 || spy.cargo[0] != want {
+		t.Fatalf("cargo settings applied = %+v, want exactly %+v", spy.cargo, want)
+	}
+}
+
 // TestDownloadSettingsFromProjectConfig pins how the `downloader` section of a
 // project configuration becomes the policy installers download under, including the
 // values a configuration that says nothing gets.

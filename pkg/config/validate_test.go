@@ -170,6 +170,13 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 				expected: `unknown property "cargo.cratesIo.badProp" (valid properties under 'cargo.cratesIo': cache, host, token, userAgent)`,
 			},
 			{
+				// Nothing caches release archive downloads per host (the downloader
+				// section's cache covers every download), so the key is not accepted.
+				name:     "cargo.githubRelease.cache error",
+				json:     `{ "cargo": { "githubRelease": { "cache": { "enabled": false } } } }`,
+				expected: `unknown property "cargo.githubRelease.cache" (valid properties under 'cargo.githubRelease': host, token, userAgent)`,
+			},
+			{
 				name:     "downloader.badProp error",
 				json:     `{ "downloader": { "badProp": true } }`,
 				expected: `unknown property "downloader.badProp" (valid properties under 'downloader': cache, retryCount, retryDelay, timeout)`,

@@ -607,7 +607,7 @@ export interface ICargoInstallParams extends ICommonInstallParams {
   versionSource?: "cargo-toml" | "crates-io" | "github-releases";
   /**
    * Cargo.toml to read the version from with `versionSource: "cargo-toml"`. Defaults
-   * to the main branch of githubRepo on raw.githubusercontent.com.
+   * to the main branch of githubRepo on the project's cargo.githubRaw.host.
    */
   cargoTomlUrl?: string;
   /**

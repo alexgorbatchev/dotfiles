@@ -123,8 +123,8 @@ catalog file; both keys default to empty.
 
 `host` applies to every method that resolves GitHub releases -- `github-release`,
 `cargo`, `dmg` and `pkg` -- and to the dashboard's README lookup. It is the API root
-only; the hosts a `cargo` crate's archive is downloaded from are the `cargo` section's
-own settings.
+only; the hosts a `cargo` crate's version and archive come from are set by the
+[`cargo`](#cargo) section.
 
 `token` is the project-wide default. A tool that sets the `token` parameter of its
 installation method overrides it, and when neither names one the `GITHUB_TOKEN` and
@@ -157,8 +157,36 @@ terminal.
 
 ### cargo
 
-Every key under `cargo` is accepted by the loader and read by nothing. Set the log level
-with the `--log` flag or `-v`/`-q` (see the [CLI reference](../getting-started/cli-reference.md)).
+The hosts the [`cargo`](../installation-methods/cargo.md) method fetches a crate's
+version and prebuilt archive from.
+
+| Key                       | Default                                                   | Effect                                                                 |
+| ------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `userAgent`               | `dotfiles-installer (github.com/alexgorbatchev/dotfiles)` | The `User-Agent` sent with crates.io and `Cargo.toml` requests         |
+| `cratesIo.host`           | `https://crates.io`                                       | Site root of the registry; its API is addressed under `/api/v1/crates` |
+| `cratesIo.token`          | none                                                      | Sent as the `Authorization` header of crates.io API requests           |
+| `cratesIo.cache.enabled`  | `true`                                                    | Whether a crates.io response is reused at all                          |
+| `cratesIo.cache.ttl`      | `86400000` (one day), in ms                               | How long a crates.io response is reused                                |
+| `githubRaw.host`          | `https://raw.githubusercontent.com`                       | Host a `githubRepo`'s `Cargo.toml` is read from                        |
+| `githubRaw.token`         | none                                                      | Authenticates `Cargo.toml` requests to `githubRaw.host`                |
+| `githubRaw.cache.enabled` | `true`                                                    | Whether a fetched `Cargo.toml` is reused at all                        |
+| `githubRaw.cache.ttl`     | `86400000` (one day), in ms                               | How long a fetched `Cargo.toml` is reused                              |
+| `githubRelease.host`      | `https://github.com`                                      | Host of cargo-quickinstall and `github-releases` archive downloads     |
+| `githubRelease.token`     | none                                                      | Authenticates archive downloads from `githubRelease.host`              |
+
+A token is only ever sent to the host it is configured for. `cratesIo.token` is sent as
+it is, the way Cargo authenticates to a registry. The two GitHub tokens are sent in the
+`token <value>` form, and a `cargoTomlUrl` on any host other than `githubRaw.host` is
+fetched without one. `github.token` and the `GITHUB_TOKEN`/`GH_TOKEN` variables never
+reach these hosts.
+
+Cached responses live in `cache/cargo/crates-io` and `cache/cargo/github-raw` under
+`paths.generatedDir`. They are keyed by URL alone, so no token is written to disk, and
+`--force` fetches fresh data. The archives themselves are cached by the `downloader`
+section.
+
+`cratesIo.userAgent`, `githubRaw.userAgent` and `githubRelease.userAgent` are accepted
+by the loader but read by nothing; `userAgent` is the one that is sent.
 
 ## Platform Overrides
 
