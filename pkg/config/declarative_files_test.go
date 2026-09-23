@@ -291,7 +291,7 @@ func TestValidateToolConfigsReportsTheFirstInvalidToolByName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateToolConfigs(tt.tools)
+			err := ValidateToolConfigs(tt.tools, nil)
 			if len(tt.want) == 0 {
 				if err != nil {
 					t.Fatalf("ValidateToolConfigs() = %v, want nil", err)
@@ -310,7 +310,7 @@ func TestValidateToolConfigsReportsTheFirstInvalidToolByName(t *testing.T) {
 	}
 
 	tools := []*ToolConfig{{Name: "b"}, {Name: "a"}}
-	if err := ValidateToolConfigs(tools); err != nil {
+	if err := ValidateToolConfigs(tools, nil); err != nil {
 		t.Fatalf("ValidateToolConfigs() = %v, want nil", err)
 	}
 	if tools[0].Name != "b" || tools[1].Name != "a" {

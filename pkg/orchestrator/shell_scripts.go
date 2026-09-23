@@ -79,7 +79,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 			}
 
 			for _, tool := range tools {
-				if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+				if !tool.IsActive() {
 					continue
 				}
 				stc := getShellTypeConfig(tool, sh)
@@ -131,7 +131,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 			// 4. Environment Variables Section (hoisted)
 			var envLines []string
 			for _, tool := range tools {
-				if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+				if !tool.IsActive() {
 					continue
 				}
 				stc := getShellTypeConfig(tool, sh)
@@ -169,7 +169,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			onceCounter := 1
 			for _, tool := range tools {
-				if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+				if !tool.IsActive() {
 					continue
 				}
 

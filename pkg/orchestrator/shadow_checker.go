@@ -751,7 +751,7 @@ func (sc *ShadowChecker) resolveBinaryTarget(ctx context.Context, tool *config.T
 
 // CheckTool performs shadow checks on a single active tool configuration.
 func (sc *ShadowChecker) CheckTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) []ShadowWarning {
-	if tool.Disabled || (tool.Hostname != "" && !matchesHostname(tool.Hostname)) {
+	if !tool.IsActive() {
 		return nil
 	}
 

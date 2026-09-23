@@ -392,7 +392,7 @@ Copy static files or directory trees into place using `.copy()`.
 
 ## Managed Blocks
 
-Own a delimited section of a shared configuration file (e.g. `~/.ssh/config`, `~/.bashrc`, `~/.gitconfig`) with `.block()`. Changes made by the user or external tools outside the marker lines are never touched or conflicted.
+Own a delimited section of a shared configuration file (e.g. `~/.ssh/config`, `~/.bashrc`, `~/.gitconfig`) with `.block()`. Changes made by the user or external tools outside the marker lines are never touched or conflicted. Any number of tools may own blocks in one file, as long as each block has its own `id`; see [Conflicting File Declarations](#conflicting-file-declarations).
 
 ```typescript builder
 .block('~/.ssh/config', {
@@ -427,7 +427,7 @@ The declarations below are checked when the configuration loads, before any comm
 | `.symlink()`   | `source` and `target` must not be empty                                                                                                                                                                                                                         |
 | `.copy()`      | `source` and `target` must not be empty                                                                                                                                                                                                                         |
 | `.ensureDir()` | `path` must not be blank                                                                                                                                                                                                                                        |
-| `.block()`     | `target` must not be blank; `id` must not be empty and may contain only letters, digits, `.`, `-` and `_`; no two blocks of a tool may share both `target` and `id`                                                                                             |
+| `.block()`     | `target` must not be blank; `id` must not be empty and may contain only letters, digits, `.`, `-` and `_`                                                                                                                                                       |
 | `.template()`  | `source` and `target` must not be blank                                                                                                                                                                                                                         |
 | shell scripts  | the argument of `.once()`, `.always()`, `.script()`, `.sourceFile()`, `.sourceFunction()` and `.source()` must not be empty; `.script(kind, content)` fails the load for a `kind` that is none of `once`, `always`, `sourceFile`, `source` and `sourceFunction` |
 
@@ -438,3 +438,13 @@ The options are checked the same way wherever they appear. Leaving an option out
 | `mode`     | An octal permission from `0000` to `0777`, written as `0600`, `600` or `0o600`                                                       |
 | `position` | `top` or `bottom` (the default), on `.block()`; decides where a block not yet in the file is inserted                                |
 | `conflict` | `merge` (the default), `keep-local`, `overwrite` or `prompt`, on `.block()` and `.template()`. `.copy()` rejects any other value too |
+
+### Conflicting File Declarations
+
+A file that `.symlink()`, `.copy()` or `.template()` writes has one owner, and so does each block `id` within a file that `.block()` writes. This is checked across all tools when the configuration loads. Targets are compared as paths, after placeholders and `~` are resolved, so `~/.ssh/config`, `$HOME/.ssh/config` and `{paths.homeDir}/.ssh/config` name the same file. The load fails, naming both tools, their configuration files, both declarations and the resolved path, when:
+
+- two blocks share a file and an `id`, whether they belong to one tool or to two. Blocks with different ids sharing a file are what `.block()` is for, and pass.
+- two `.symlink()`, `.copy()` or `.template()` declarations, in any combination, write the same file.
+- a block targets a file a `.symlink()`, `.copy()` or `.template()` writes. Such a declaration replaces the whole file, so the block would be taken for a local edit, or, through a symlink, written into the source file in your repository.
+
+A disabled tool, and a tool whose `hostname` does not match the machine, write nothing and are left out of the check. Only equal paths are compared: a declaration that writes beneath a directory another declaration links or copies is not detected. To use a different file on each platform, declare the target once in each `.platform()` block rather than once outside them and again inside one.

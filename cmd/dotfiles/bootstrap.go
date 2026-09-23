@@ -168,7 +168,8 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	var projCfg *config.ProjectConfig
 	var toolConfigs []*config.ToolConfig
 
-	if strings.HasSuffix(absConfigPath, ".ts") || strings.HasSuffix(absConfigPath, ".js") {
+	scriptConfig := strings.HasSuffix(absConfigPath, ".ts") || strings.HasSuffix(absConfigPath, ".js")
+	if scriptConfig {
 		var err error
 		var toolMap map[string]*config.ToolConfig
 		// --platform/--arch/--libc must reach the loader, because .platform() blocks and
@@ -205,9 +206,6 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 			}
 			toolConfigs = append(toolConfigs, &localTC)
 		}
-		if err := config.ValidateToolConfigs(toolConfigs); err != nil {
-			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
-		}
 	}
 
 	// If MOCK_SERVER_PORT is set, override public hosts to target mock server
@@ -222,6 +220,16 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 
 	if err := projCfg.ResolvePlaceholders(filepath.Dir(absConfigPath)); err != nil {
 		return nil, fmt.Errorf("resolving paths in %s: %w", filepath.Base(absConfigPath), err)
+	}
+
+	// vm.LoadTypeScriptConfig validates the tools of a TypeScript configuration itself. A
+	// JSON configuration is validated here, once its paths are resolved: the check that
+	// no two declarations write the same file compares targets as the engine resolves
+	// them, against these paths.
+	if !scriptConfig {
+		if err := config.ValidateToolConfigs(toolConfigs, projCfg); err != nil {
+			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
+		}
 	}
 
 	if rfs, ok := fsys.(*fs.ResolvedFS); ok {

@@ -25,7 +25,7 @@ const (
 // is checked first: a tool scoped to another machine is that machine's business
 // whether or not it is also disabled here.
 func toolSkipReason(tool *config.ToolConfig) skipReason {
-	if tool.Hostname != "" && !matchesHostname(tool.Hostname) {
+	if tool.Hostname != "" && !config.MatchesHostname(tool.Hostname) {
 		return skipHostname
 	}
 	if tool.Disabled {
