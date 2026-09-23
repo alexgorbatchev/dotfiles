@@ -2,13 +2,12 @@ package installer
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
-	"sync"
+	"slices"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
@@ -34,6 +33,16 @@ type githubRelease struct {
 	Assets     []githubAsset `json:"assets"`
 }
 
+func (r githubRelease) tag() string {
+	return r.TagName
+}
+
+// clone returns a copy of r that shares no assets with it.
+func (r githubRelease) clone() githubRelease {
+	r.Assets = slices.Clone(r.Assets)
+	return r
+}
+
 type GitHubInstaller struct {
 	log          *logger.Logger
 	runner       exec.CommandRunner
@@ -42,8 +51,7 @@ type GitHubInstaller struct {
 	extractor    *archive.Extractor
 	sysCtx       *SystemContext
 	httpClient   *http.Client
-	cacheMu      sync.Mutex
-	releaseCache map[string]*githubRelease
+	releases     releaseCache[githubRelease]
 	CacheDir     string        // Cache directory for release metadata
 	CacheTTL     time.Duration // Time-to-live for cached release metadata
 	CacheEnabled bool          // Whether cached release metadata is reused
@@ -83,74 +91,29 @@ func NewGitHubInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Do
 	}
 }
 
-func (g *GitHubInstaller) getCachedRelease(ctx context.Context, repo, version string) (*githubRelease, bool) {
+// releaseClient resolves releases from the configured API host with the configured
+// User-Agent.
+func (g *GitHubInstaller) releaseClient() githubReleaseClient {
+	return githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: g.BaseURL, userAgent: g.GitHub.UserAgent}
+}
+
+// releaseStore is where the release cache keeps entries for the current settings.
+func (g *GitHubInstaller) releaseStore() releaseCacheStore {
+	return releaseCacheStore{fsys: g.fsys, dir: g.CacheDir, ttl: g.CacheTTL}
+}
+
+func (g *GitHubInstaller) getCachedRelease(ctx context.Context, key string) (*githubRelease, bool) {
 	if config.IsOverwriteEnabled(ctx) || !g.CacheEnabled {
 		return nil, false
 	}
-
-	cacheKey := repo + "@" + version
-
-	g.cacheMu.Lock()
-	if g.releaseCache != nil {
-		if rel, ok := g.releaseCache[cacheKey]; ok {
-			g.cacheMu.Unlock()
-			relCopy := *rel
-			return &relCopy, true
-		}
-	}
-	g.cacheMu.Unlock()
-
-	if g.fsys != nil && g.CacheDir != "" {
-		h := md5.Sum([]byte(cacheKey))
-		cacheFile := filepath.Join(g.CacheDir, fmt.Sprintf("%x.json", h))
-		if exists, err := g.fsys.Exists(cacheFile); err == nil && exists {
-			if info, err := g.fsys.Stat(cacheFile); err == nil {
-				ttl := g.CacheTTL
-				if ttl <= 0 {
-					ttl = time.Hour
-				}
-				if time.Since(info.ModTime()) < ttl {
-					if data, err := g.fsys.ReadFile(cacheFile); err == nil {
-						var rel githubRelease
-						if err := json.Unmarshal(data, &rel); err == nil && rel.TagName != "" {
-							g.cacheMu.Lock()
-							if g.releaseCache == nil {
-								g.releaseCache = make(map[string]*githubRelease)
-							}
-							g.releaseCache[cacheKey] = &rel
-							g.cacheMu.Unlock()
-							relCopy := rel
-							return &relCopy, true
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return nil, false
+	return g.releases.get(g.releaseStore(), key)
 }
 
-func (g *GitHubInstaller) setCachedRelease(repo, version string, rel *githubRelease) {
-	if rel == nil || !g.CacheEnabled {
+func (g *GitHubInstaller) setCachedRelease(key string, rel *githubRelease) {
+	if !g.CacheEnabled {
 		return
 	}
-	cacheKey := repo + "@" + version
-	g.cacheMu.Lock()
-	if g.releaseCache == nil {
-		g.releaseCache = make(map[string]*githubRelease)
-	}
-	g.releaseCache[cacheKey] = rel
-	g.cacheMu.Unlock()
-
-	if g.fsys != nil && g.CacheDir != "" {
-		h := md5.Sum([]byte(cacheKey))
-		cacheFile := filepath.Join(g.CacheDir, fmt.Sprintf("%x.json", h))
-		_ = g.fsys.MkdirAll(g.CacheDir, 0755)
-		if data, err := json.Marshal(rel); err == nil {
-			_ = g.fsys.WriteFile(cacheFile, data, 0644)
-		}
-	}
+	g.releases.set(g.releaseStore(), key, rel)
 }
 
 func (g *GitHubInstaller) Name() string {
@@ -266,12 +229,13 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
-	releaseClient := githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: g.BaseURL, userAgent: g.GitHub.UserAgent}
+	releaseClient := g.releaseClient()
+	token := githubToken(tool.InstallParams, g.GitHub.Token)
 	var release *githubRelease
 	useGhCli := ghCli
 
 	if version != "latest" {
-		if cached, ok := g.getCachedRelease(ctx, repo, version); ok {
+		if cached, ok := g.getCachedRelease(ctx, releaseClient.cacheKey(repo, version, prerelease, token)); ok {
 			release = cached
 		}
 	}
@@ -281,7 +245,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			version:    version,
 			prerelease: prerelease,
 			ghCli:      ghCli,
-			token:      githubToken(tool.InstallParams, g.GitHub.Token),
+			token:      token,
 		})
 		if err != nil {
 			return nil, err
@@ -291,9 +255,9 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		// A gh-resolved release without assets is not worth caching: the CLI may have
 		// answered for a repository the token cannot fully see.
 		if !viaGhCli || len(release.Assets) > 0 {
-			g.setCachedRelease(repo, release.TagName, release)
+			g.setCachedRelease(releaseClient.cacheKey(repo, release.TagName, prerelease, token), release)
 			if version != "latest" {
-				g.setCachedRelease(repo, version, release)
+				g.setCachedRelease(releaseClient.cacheKey(repo, version, prerelease, token), release)
 			}
 		}
 	}
@@ -367,12 +331,14 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	}
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
 	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
-	releaseClient := githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: g.BaseURL, userAgent: g.GitHub.UserAgent}
+	releaseClient := g.releaseClient()
+	token := githubToken(tool.InstallParams, g.GitHub.Token)
+	latestKey := releaseClient.cacheKey(repo, "latest", prerelease, token)
 
 	var release *githubRelease
 	var isCached bool
 
-	if cached, ok := g.getCachedRelease(ctx, repo, "latest"); ok {
+	if cached, ok := g.getCachedRelease(ctx, latestKey); ok {
 		release = cached
 		isCached = true
 	}
@@ -383,15 +349,15 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 			version:    "latest",
 			prerelease: prerelease,
 			ghCli:      ghCli,
-			token:      githubToken(tool.InstallParams, g.GitHub.Token),
+			token:      token,
 		})
 		if err != nil {
 			return nil, err
 		}
 		release = rel
 		if len(release.Assets) > 0 {
-			g.setCachedRelease(repo, "latest", release)
-			g.setCachedRelease(repo, release.TagName, release)
+			g.setCachedRelease(latestKey, release)
+			g.setCachedRelease(releaseClient.cacheKey(repo, release.TagName, prerelease, token), release)
 		}
 	}
 	return &UpdateCheckResult{
