@@ -48,6 +48,10 @@ install("apt", {
 }).bin("rg");
 ```
 
+## Update Checks
+
+An update check runs `apt-cache policy <package>` in the C locale, since apt translates the labels it prints. It compares the `Installed:` version with the `Candidate:` version, the one `apt-get install` would pick from the local package lists, so the check is only as current as the last `apt-get update`. The tool is outdated exactly when the two differ; apt's answer decides, since Debian versions are not semantic versions. `apt-cache policy` exits 0 for a package that is not installed (it prints `Installed: (none)`, also for a package removed with its configuration files kept) and for a name apt does not know, so either fails the check. For an unknown name apt prints nothing, or, when the name reads as a regular expression (such as `perl-bas.` or `libstdc++`), the packages that match it. Only the section for the package itself counts, so a misspelled name fails the check rather than reporting another package's versions. An installed package with no candidate, as when every version is pinned below zero, and a query that fails also fail the check ([`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool)).
+
 ## Platform Support
 
 | Platform | Support                          |
