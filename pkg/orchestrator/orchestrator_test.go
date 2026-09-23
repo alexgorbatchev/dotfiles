@@ -3493,13 +3493,13 @@ func TestSymlinkAndCopyRejectsUnresolvablePlaceholder(t *testing.T) {
 	}
 }
 
-// TestResolveUpdate_TargetVersion pins which version an update installs. A tool whose
+// TestPlanUpdate_TargetVersion pins which version an update installs. A tool whose
 // installer cannot check upstream has no version to ask for; the target is then empty,
 // so the installation records what the installer detects or a fresh timestamp, as v1's
 // installer did, instead of the version recorded by the previous installation. A tool
 // whose configuration pins a version is refused before this is asked
 // (cmd/dotfiles TestUpdateCommand_RefusesPinnedTools).
-func TestResolveUpdate_TargetVersion(t *testing.T) {
+func TestPlanUpdate_TargetVersion(t *testing.T) {
 	latestTag, constraint := "latest", "<2.0.0"
 	tests := []struct {
 		name      string
@@ -3523,6 +3523,13 @@ func TestResolveUpdate_TargetVersion(t *testing.T) {
 			want:      "v1.0.0",
 		},
 		{
+			name:      "an installed version ahead of the latest release is reinstalled, not downgraded",
+			tool:      &config.ToolConfig{Name: "tauri-cli"},
+			installed: "3.0.0-alpha.2",
+			res:       &installer.UpdateCheckResult{LatestVersion: "2.11.6"},
+			want:      "3.0.0-alpha.2",
+		},
+		{
 			name:      "an unpinned tool nothing could check does not reuse its recorded timestamp",
 			tool:      &config.ToolConfig{Name: "stamped"},
 			installed: "2000-01-01-00-00-00",
@@ -3543,8 +3550,17 @@ func TestResolveUpdate_TargetVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, got := resolveUpdate(tt.tool, tt.installed, tt.res); got != tt.want {
-				t.Fatalf("resolveUpdate target = %q, want %q", got, tt.want)
+			// A tool with no answer from upstream is one whose installer cannot check.
+			var checkErr error
+			if tt.res == nil {
+				checkErr = installer.ErrUpdateCheckUnsupported
+			}
+			plan, err := PlanUpdate(tt.tool, tt.installed, tt.res, checkErr, true)
+			if err != nil {
+				t.Fatalf("PlanUpdate: %v", err)
+			}
+			if plan.TargetVersion != tt.want {
+				t.Fatalf("PlanUpdate target = %q, want %q", plan.TargetVersion, tt.want)
 			}
 		})
 	}
@@ -3559,6 +3575,7 @@ func TestPlanUpdate(t *testing.T) {
 	queryErr := errors.New("API rate limit exceeded")
 	tests := []struct {
 		name          string
+		installed     string
 		res           *installer.UpdateCheckResult
 		checkErr      error
 		force         bool
@@ -3572,34 +3589,59 @@ func TestPlanUpdate(t *testing.T) {
 			wantErr:  queryErr,
 		},
 		{
+			// The same answer tool check reports as a failed check, never "up to date".
+			name:    "an installer that answers nothing is an error",
+			wantErr: errNoCheckResult,
+		},
+		{
 			name:          "an unsupported check reinstalls without a target",
 			checkErr:      fmt.Errorf("manual: %w", installer.ErrUpdateCheckUnsupported),
-			want:          UpdatePlan{Unsupported: true, InstalledVersion: "1.0.0"},
+			want:          UpdatePlan{Status: CheckStatusUnsupported, InstalledVersion: "1.0.0"},
 			wantReinstall: true,
 		},
 		{
 			name:          "a newer release is installed",
 			res:           &installer.UpdateCheckResult{LatestVersion: "2.0.0"},
-			want:          UpdatePlan{HasUpdate: true, InstalledVersion: "1.0.0", TargetVersion: "2.0.0"},
+			want:          UpdatePlan{Status: CheckStatusUpdateAvailable, InstalledVersion: "1.0.0", LatestVersion: "2.0.0", TargetVersion: "2.0.0"},
 			wantReinstall: true,
 		},
 		{
 			name: "the installed release is left alone",
 			res:  &installer.UpdateCheckResult{LatestVersion: "1.0.0"},
-			want: UpdatePlan{InstalledVersion: "1.0.0", TargetVersion: "1.0.0"},
+			want: UpdatePlan{Status: CheckStatusUpToDate, InstalledVersion: "1.0.0", LatestVersion: "1.0.0", TargetVersion: "1.0.0"},
 		},
 		{
 			name:          "force reinstalls the installed release",
 			res:           &installer.UpdateCheckResult{LatestVersion: "1.0.0"},
 			force:         true,
-			want:          UpdatePlan{Force: true, InstalledVersion: "1.0.0", TargetVersion: "1.0.0"},
+			want:          UpdatePlan{Status: CheckStatusUpToDate, Force: true, InstalledVersion: "1.0.0", LatestVersion: "1.0.0", TargetVersion: "1.0.0"},
+			wantReinstall: true,
+		},
+		// An installed version newer than the latest release is neither replaced by the
+		// older release nor reported as current (#130).
+		{
+			name:      "an installed version ahead of the latest release is left alone",
+			installed: "3.0.0-alpha.2",
+			res:       &installer.UpdateCheckResult{LatestVersion: "2.11.6"},
+			want:      UpdatePlan{Status: CheckStatusAheadOfLatest, InstalledVersion: "3.0.0-alpha.2", LatestVersion: "2.11.6", TargetVersion: "3.0.0-alpha.2"},
+		},
+		{
+			name:          "force reinstalls an installed version ahead of the latest release, never the older release",
+			installed:     "3.0.0-alpha.2",
+			res:           &installer.UpdateCheckResult{LatestVersion: "2.11.6"},
+			force:         true,
+			want:          UpdatePlan{Status: CheckStatusAheadOfLatest, Force: true, InstalledVersion: "3.0.0-alpha.2", LatestVersion: "2.11.6", TargetVersion: "3.0.0-alpha.2"},
 			wantReinstall: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := PlanUpdate(tool, "1.0.0", tt.res, tt.checkErr, tt.force)
+			installed := tt.installed
+			if installed == "" {
+				installed = "1.0.0"
+			}
+			got, err := PlanUpdate(tool, installed, tt.res, tt.checkErr, tt.force)
 			if tt.wantErr != nil {
 				want := `checking update for "gh": ` + tt.wantErr.Error()
 				if !errors.Is(err, tt.wantErr) || err.Error() != want {
@@ -3620,6 +3662,84 @@ func TestPlanUpdate(t *testing.T) {
 	}
 }
 
+// TestClassifyCheck pins the status a check reports for an installed tool, the one
+// tool check, tool update and the dashboard all act on: an installed version newer than
+// the latest release is ahead of it, never up to date or outdated (#130), and a failed
+// check is an error rather than a status.
+func TestClassifyCheck(t *testing.T) {
+	t.Parallel()
+	tool := &config.ToolConfig{Name: "tauri-cli", InstallationMethod: "cargo"}
+	queryErr := errors.New("crates.io unreachable")
+	tests := []struct {
+		name      string
+		installed string
+		res       *installer.UpdateCheckResult
+		checkErr  error
+		want      CheckResult
+		wantErr   error
+	}{
+		{
+			name:      "newer release",
+			installed: "2.0.0",
+			res:       &installer.UpdateCheckResult{LatestVersion: "2.11.6"},
+			want:      CheckResult{Status: CheckStatusUpdateAvailable, InstalledVersion: "2.0.0", LatestVersion: "2.11.6"},
+		},
+		{
+			name:      "installed release",
+			installed: "2.11.6",
+			res:       &installer.UpdateCheckResult{LatestVersion: "2.11.6", Cached: true},
+			want:      CheckResult{Status: CheckStatusUpToDate, InstalledVersion: "2.11.6", LatestVersion: "2.11.6", Cached: true},
+		},
+		{
+			name:      "installed prerelease ahead of the latest release",
+			installed: "3.0.0-alpha.2",
+			res:       &installer.UpdateCheckResult{LatestVersion: "2.11.6"},
+			want:      CheckResult{Status: CheckStatusAheadOfLatest, InstalledVersion: "3.0.0-alpha.2", LatestVersion: "2.11.6"},
+		},
+		{
+			name:      "a package manager reports the version on disk",
+			installed: "1.2.3",
+			res:       &installer.UpdateCheckResult{Outdated: new(true), LocalVersion: "1.2.3_1", LatestVersion: "1.2.4"},
+			want:      CheckResult{Status: CheckStatusUpdateAvailable, InstalledVersion: "1.2.3", LatestVersion: "1.2.4"},
+		},
+		{
+			name:      "unsupported",
+			installed: "1.0.0",
+			checkErr:  fmt.Errorf("manual: %w", installer.ErrUpdateCheckUnsupported),
+			want:      CheckResult{Status: CheckStatusUnsupported, InstalledVersion: "1.0.0"},
+		},
+		{
+			name:      "failed",
+			installed: "1.0.0",
+			checkErr:  queryErr,
+			wantErr:   queryErr,
+		},
+		{
+			name:      "an installer that answers nothing",
+			installed: "1.0.0",
+			wantErr:   errNoCheckResult,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := ClassifyCheck(tool, tt.installed, tt.res, tt.checkErr)
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) || err.Error() != `checking update for "tauri-cli": `+tt.wantErr.Error() {
+					t.Fatalf("ClassifyCheck error = %v, want one naming the tool and wrapping %v", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ClassifyCheck: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("ClassifyCheck = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestUpdatePlan_Messages pins what an update says about a reinstall, which the CLI and
 // the dashboard both print.
 func TestUpdatePlan_Messages(t *testing.T) {
@@ -3630,23 +3750,34 @@ func TestUpdatePlan_Messages(t *testing.T) {
 		plan             UpdatePlan
 		wantAnnouncement string
 		wantTarget       string
+		wantCompletion   string
 	}{
 		{
 			name:             "unsupported",
-			plan:             UpdatePlan{Unsupported: true},
+			plan:             UpdatePlan{Status: CheckStatusUnsupported},
 			wantAnnouncement: `Update check not supported for installer "manual", performing regular install instead`,
+			wantCompletion:   "Successfully updated to version 2026-01-01-00-00-00",
 		},
 		{
 			name:             "new version",
-			plan:             UpdatePlan{HasUpdate: true, InstalledVersion: "1.0.0", TargetVersion: "2.0.0"},
+			plan:             UpdatePlan{Status: CheckStatusUpdateAvailable, InstalledVersion: "1.0.0", LatestVersion: "2.0.0", TargetVersion: "2.0.0"},
 			wantAnnouncement: "New version available: 1.0.0 -> 2.0.0",
 			wantTarget:       " to version 2.0.0",
+			wantCompletion:   "Successfully updated to version 2.0.0",
 		},
 		{
 			name:             "forced",
-			plan:             UpdatePlan{Force: true, InstalledVersion: "1.0.0", TargetVersion: "1.0.0"},
+			plan:             UpdatePlan{Status: CheckStatusUpToDate, Force: true, InstalledVersion: "1.0.0", LatestVersion: "1.0.0", TargetVersion: "1.0.0"},
 			wantAnnouncement: "Force updating: reinstalling version 1.0.0",
 			wantTarget:       " to version 1.0.0",
+			wantCompletion:   "Successfully reinstalled version 1.0.0",
+		},
+		{
+			name:             "forced ahead of the latest release",
+			plan:             UpdatePlan{Status: CheckStatusAheadOfLatest, Force: true, InstalledVersion: "3.0.0-alpha.2", LatestVersion: "2.11.6", TargetVersion: "3.0.0-alpha.2"},
+			wantAnnouncement: "Force updating: reinstalling installed version 3.0.0-alpha.2, which is ahead of the latest known version (2.11.6)",
+			wantTarget:       " to version 3.0.0-alpha.2",
+			wantCompletion:   "Successfully reinstalled version 3.0.0-alpha.2",
 		},
 	}
 	for _, tt := range tests {
@@ -3657,6 +3788,13 @@ func TestUpdatePlan_Messages(t *testing.T) {
 			}
 			if got := tt.plan.TargetDescription(); got != tt.wantTarget {
 				t.Errorf("TargetDescription = %q, want %q", got, tt.wantTarget)
+			}
+			recorded := tt.plan.TargetVersion
+			if recorded == "" {
+				recorded = "2026-01-01-00-00-00"
+			}
+			if got := tt.plan.Completion(recorded); got != tt.wantCompletion {
+				t.Errorf("Completion(%q) = %q, want %q", recorded, got, tt.wantCompletion)
 			}
 		})
 	}
@@ -3719,7 +3857,7 @@ func TestOrchestrator_ApplyUpdate(t *testing.T) {
 
 	for _, target := range []string{"1.0.0", "2.0.0"} {
 		installs := mockInst.installCount
-		recorded, err := orch.ApplyUpdate(ctx, tool, projCfg, UpdatePlan{Force: true, InstalledVersion: "1.0.0", TargetVersion: target})
+		recorded, err := orch.ApplyUpdate(ctx, tool, projCfg, UpdatePlan{Status: CheckStatusUpToDate, Force: true, InstalledVersion: "1.0.0", TargetVersion: target})
 		if err != nil {
 			t.Fatalf("ApplyUpdate to %s: %v", target, err)
 		}
@@ -3735,7 +3873,7 @@ func TestOrchestrator_ApplyUpdate(t *testing.T) {
 	}
 
 	mockInst.err = errors.New("download failed")
-	if _, err := orch.ApplyUpdate(ctx, tool, projCfg, UpdatePlan{HasUpdate: true, TargetVersion: "3.0.0"}); !errors.Is(err, mockInst.err) {
+	if _, err := orch.ApplyUpdate(ctx, tool, projCfg, UpdatePlan{Status: CheckStatusUpdateAvailable, TargetVersion: "3.0.0"}); !errors.Is(err, mockInst.err) {
 		t.Errorf("ApplyUpdate error = %v, want the installer's %v", err, mockInst.err)
 	}
 }

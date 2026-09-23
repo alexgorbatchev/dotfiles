@@ -284,18 +284,25 @@ export interface IInstallToolResponse {
 }
 
 /**
+ * What an update check found for a tool, the same status `dotfiles tool check --json` reports.
+ * - `up-to-date`: the installed version is the latest one, or no newer one counts as an update
+ * - `update-available`: a newer version counts as an update
+ * - `ahead-of-latest`: the installed version is newer than the latest one upstream
+ * - `unsupported`: nothing upstream could be asked, so nothing was compared
+ */
+export type ToolCheckStatus = "up-to-date" | "update-available" | "ahead-of-latest" | "unsupported";
+
+/**
  * Response for POST /api/tools/:name/check-update
  */
 export interface ICheckUpdateResponse {
-  /** Whether an update is available */
-  hasUpdate: boolean;
-  /** Currently configured or installed version */
+  /** What the check found */
+  status: ToolCheckStatus;
+  /** Installed version, or "unknown" */
   currentVersion: string;
-  /** Latest available version */
+  /** Latest available version, or "unknown" */
   latestVersion: string;
-  /** Whether an upstream check was possible; when false, hasUpdate says nothing about the tool */
-  supported: boolean;
-  /** Error message when check fails, or why it is unsupported */
+  /** Why the check is unsupported */
   error?: string;
 }
 
@@ -309,8 +316,10 @@ export interface IUpdateToolResponse {
   oldVersion: string;
   /** The version the installation records after the update; oldVersion when nothing was reinstalled */
   newVersion: string;
-  /** Whether the installer could check upstream; when false, the tool was reinstalled unchecked */
-  supported: boolean;
+  /** What the update check found; `unsupported` means the tool was reinstalled unchecked */
+  status: ToolCheckStatus;
+  /** Latest available version the check found, or "unknown" */
+  latestVersion: string;
   /** Whether the tool was installed again; false means the check found no newer release */
   reinstalled: boolean;
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
@@ -1400,6 +1401,9 @@ func (p e2eProject) seedInstallation(t *testing.T, toolName, version, installPat
 type mockRelease struct {
 	Tag      string
 	Binaries []string
+	// OtherTags are releases the repository also publishes, older or prereleases, which
+	// only a lookup by tag finds; they serve the same asset.
+	OtherTags []string
 }
 
 // releaseAssetName is the one asset every mock release lists. Its name carries no
@@ -1439,6 +1443,19 @@ func newReleaseServer(t *testing.T, releases map[string]mockRelease) *httptest.S
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprintf(w, `{"tag_name": %q, "assets": [{"name": %q, "browser_download_url": "%s/download/%s/%s"}]}`,
 				rel.Tag, releaseAssetName, server.URL, repo, releaseAssetName)
+			return
+		}
+		const tagInfix = "/releases/tags/"
+		if strings.HasPrefix(r.URL.Path, apiPrefix) && strings.Contains(r.URL.Path, tagInfix) {
+			repo, tag, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, apiPrefix), tagInfix)
+			rel, ok := releases[repo]
+			if !ok || (tag != rel.Tag && !slices.Contains(rel.OtherTags, tag)) {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"tag_name": %q, "assets": [{"name": %q, "browser_download_url": "%s/download/%s/%s"}]}`,
+				tag, releaseAssetName, server.URL, repo, releaseAssetName)
 			return
 		}
 		const downloadPrefix, downloadSuffix = "/download/", "/" + releaseAssetName
@@ -2114,10 +2131,10 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 			t.Fatalf("tool check: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stdout", out.Stdout,
-			"tool:avail current: latest:v9.9.9 update:true cached:true\n",
-			"tool:upd current:v0.1.0 latest:v9.9.9 update:true cached:true\n",
-			"tool:same current:v0.1.0 latest:v0.1.0 update:false cached:true\n",
-			"tool:hand current:v1.0.0 supported:false installer:manual\n",
+			"tool:avail status:update-available current: latest:v9.9.9 cached:true\n",
+			"tool:upd status:update-available current:v0.1.0 latest:v9.9.9 cached:true\n",
+			"tool:same status:up-to-date current:v0.1.0 latest:v0.1.0 cached:true\n",
+			"tool:hand status:unsupported current:v1.0.0 installer:manual\n",
 		)
 		mustNotContain(t, "stdout", out.Stdout, "tool:hand current:v1.0.0 latest:")
 	})
@@ -2135,17 +2152,103 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 		for _, r := range results {
 			byName[r.ToolName] = r
 		}
-		if r := byName["upd"]; !r.HasUpdate || r.CurrentVersion != "v0.1.0" || r.LatestVersion != "v9.9.9" {
+		if r := byName["upd"]; r.Status != orchestrator.CheckStatusUpdateAvailable || r.CurrentVersion != "v0.1.0" || r.LatestVersion != "v9.9.9" {
 			t.Errorf("upd result = %+v, want an update from v0.1.0 to v9.9.9", r)
 		}
-		if r := byName["same"]; r.HasUpdate || !r.Cached || !r.UpdateCheckSupported {
+		if r := byName["same"]; r.Status != orchestrator.CheckStatusUpToDate || !r.Cached {
 			t.Errorf("same result = %+v, want a supported check with no update from cache", r)
 		}
-		if r, ok := byName["hand"]; !ok || r.UpdateCheckSupported || r.HasUpdate || r.LatestVersion != "" || r.CurrentVersion != "v1.0.0" {
+		if r, ok := byName["hand"]; !ok || r.Status != orchestrator.CheckStatusUnsupported || r.LatestVersion != "" || r.CurrentVersion != "v1.0.0" {
 			t.Errorf("hand result = %+v (present: %t), want an unsupported check at v1.0.0 with no latest version", r, ok)
 		}
 		if _, ok := byName["off"]; ok {
 			t.Errorf("disabled tool must not be checked: %+v", results)
+		}
+	})
+}
+
+// TestAheadOfLatest pins what tool check and tool update do with a tool installed at a
+// version newer than the latest release upstream, the state #124 left cargo tools in
+// that the old max_version resolution had moved onto a prerelease (#130). It is its own
+// status, never "up to date" or an update, and update never downgrades it: without
+// --force it leaves the tool alone, and with it reinstalls the installed version.
+func TestAheadOfLatest(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repo, installed, latest = "acme/ahead", "v3.0.0-alpha.2", "v2.11.6"
+	newReleaseServer(t, map[string]mockRelease{repo: {Tag: latest, OtherTags: []string{installed}, Binaries: []string{"ahead"}}})
+
+	p := newE2EProject(t, fmt.Sprintf(`
+		"ahead": {"name": "ahead", "installationMethod": "github-release", "installParams": {"repo": %q, "assetPattern": %q}}
+	`, repo, releaseAssetName))
+	dir := filepath.Join(p.Root, "installed", "ahead")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("creating install dir: %v", err)
+	}
+	p.seedInstallation(t, "ahead", installed, dir)
+	const aheadMessage = installed + " is ahead of the latest known version (" + latest + ")"
+
+	t.Run("tool check", func(t *testing.T) {
+		out, err := p.run("tool", "check")
+		if err != nil {
+			t.Fatalf("tool check: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "ahead ("+installed+") is ahead of the latest known version ("+latest+")\n")
+		mustContain(t, "stderr", out.Stderr, "[ahead] "+aheadMessage)
+		mustNotContain(t, "output", out.Combined, "up to date", "Up to date", "update available", "Update available")
+	})
+
+	t.Run("tool check in agent mode", func(t *testing.T) {
+		t.Setenv("AGENT", "1")
+		out, err := p.run("tool", "check")
+		if err != nil {
+			t.Fatalf("tool check: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stdout", out.Stdout, "tool:ahead status:ahead-of-latest current:"+installed+" latest:"+latest+" cached:")
+	})
+
+	t.Run("tool check --json", func(t *testing.T) {
+		out, err := p.run("tool", "check", "--json")
+		if err != nil {
+			t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
+		}
+		var results []ToolUpdateResult
+		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+			t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
+		}
+		want := ToolUpdateResult{ToolName: "ahead", Status: orchestrator.CheckStatusAheadOfLatest, CurrentVersion: installed, LatestVersion: latest}
+		if len(results) != 1 || results[0].ToolName != want.ToolName || results[0].Status != want.Status ||
+			results[0].CurrentVersion != want.CurrentVersion || results[0].LatestVersion != want.LatestVersion {
+			t.Errorf("results = %+v, want one entry %+v", results, want)
+		}
+		mustContain(t, "stdout", out.Stdout, `"status": "ahead-of-latest"`)
+	})
+
+	for _, args := range [][]string{{"tool", "update", "ahead"}, {"tool", "update"}} {
+		t.Run(strings.Join(args, " ")+" leaves it alone", func(t *testing.T) {
+			out, err := p.run(args...)
+			if err != nil {
+				t.Fatalf("%v: %v\n%s", args, err, out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, "[ahead] "+aheadMessage)
+			mustNotContain(t, "stderr", out.Stderr, "Already up to date", "New version available", "Force updating", "Successfully")
+			if rec := p.installation(t, "ahead"); rec == nil || rec.Version != installed {
+				t.Fatalf("installation record = %+v, want it left at %s", rec, installed)
+			}
+		})
+	}
+
+	t.Run("tool update --force reinstalls the installed version", func(t *testing.T) {
+		out, err := p.run("tool", "update", "--force", "ahead")
+		if err != nil {
+			t.Fatalf("tool update --force ahead: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr,
+			"[ahead] Force updating: reinstalling installed version "+installed+", which is ahead of the latest known version ("+latest+")",
+			"[ahead] Successfully reinstalled version "+installed,
+		)
+		mustNotContain(t, "stderr", out.Stderr, "Successfully updated", "reinstalling version "+latest)
+		if rec := p.installation(t, "ahead"); rec == nil || rec.Version != installed {
+			t.Fatalf("installation record = %+v, want %s, never the older %s", rec, installed, latest)
 		}
 	})
 }
@@ -2231,10 +2334,10 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 	if r, ok := byName["off"]; ok {
 		t.Errorf(`"off" was checked despite updateCheck.enabled:false: %+v`, r)
 	}
-	if r := byName["pinned"]; r.HasUpdate {
+	if r := byName["pinned"]; r.Status != orchestrator.CheckStatusUpToDate {
 		t.Errorf("pinned result = %+v, want no update: v2.0.0 is outside ~1.2.0", r)
 	}
-	if r := byName["admitted"]; !r.HasUpdate || r.LatestVersion != "v1.2.9" {
+	if r := byName["admitted"]; r.Status != orchestrator.CheckStatusUpdateAvailable || r.LatestVersion != "v1.2.9" {
 		t.Errorf("admitted result = %+v, want an update to v1.2.9, which ~1.2.0 admits", r)
 	}
 }
@@ -2404,11 +2507,11 @@ func TestCargoUpdateChecks(t *testing.T) {
 		}
 
 		want := map[string]ToolUpdateResult{
-			"outdated": {ToolName: "outdated", CurrentVersion: "1.0.0", LatestVersion: "2.0.0", HasUpdate: true, UpdateCheckSupported: true},
-			"current":  {ToolName: "current", CurrentVersion: "1.0.0", LatestVersion: "1.0.0", HasUpdate: false, UpdateCheckSupported: true},
+			"outdated": {ToolName: "outdated", CurrentVersion: "1.0.0", LatestVersion: "2.0.0", Status: orchestrator.CheckStatusUpdateAvailable},
+			"current":  {ToolName: "current", CurrentVersion: "1.0.0", LatestVersion: "1.0.0", Status: orchestrator.CheckStatusUpToDate},
 			// 2.0.0 is the latest upstream, but ~1.2.0 does not admit it as an update.
-			"bounded":  {ToolName: "bounded", CurrentVersion: "1.2.3", LatestVersion: "2.0.0", HasUpdate: false, UpdateCheckSupported: true},
-			"admitted": {ToolName: "admitted", CurrentVersion: "1.2.3", LatestVersion: "1.2.9", HasUpdate: true, UpdateCheckSupported: true},
+			"bounded":  {ToolName: "bounded", CurrentVersion: "1.2.3", LatestVersion: "2.0.0", Status: orchestrator.CheckStatusUpToDate},
+			"admitted": {ToolName: "admitted", CurrentVersion: "1.2.3", LatestVersion: "1.2.9", Status: orchestrator.CheckStatusUpdateAvailable},
 		}
 		for name, w := range want {
 			if got, ok := byName[name]; !ok || got != w {

@@ -96,7 +96,7 @@ func refusePinned(toolLog *logger.Logger, tool *config.ToolConfig) bool {
 // installer could not check upstream, since the tool is reinstalled unchecked.
 func announceUpdate(toolLog *logger.Logger, tool *config.ToolConfig, plan orchestrator.UpdatePlan) {
 	msg := logger.Message(plan.Announcement(tool))
-	if plan.Unsupported {
+	if plan.Status == orchestrator.CheckStatusUnsupported {
 		toolLog.Warn(msg)
 		return
 	}
@@ -171,8 +171,12 @@ When run without arguments, checks all installed tools for updates and installs 
 
 				// Unlike updating one named tool, updating everything does not reinstall a
 				// tool nothing could check unless --force asks for it.
-				if plan.Unsupported && !force {
+				if plan.Status == orchestrator.CheckStatusUnsupported && !force {
 					toolLogs.report.Warn(logger.Message(orchestrator.UpdateCheckUnsupportedMessage(targetTool)))
+					continue
+				}
+				if !plan.Reinstall() && plan.Status == orchestrator.CheckStatusAheadOfLatest {
+					toolLogs.report.Info(logger.Message(orchestrator.AheadOfLatestMessage(plan.InstalledVersion, plan.LatestVersion)))
 					continue
 				}
 				if plan.Reinstall() {
@@ -182,7 +186,7 @@ When run without arguments, checks all installed tools for updates and installs 
 						toolLogs.report.Error(logger.Message("Updating"+plan.TargetDescription()+" failed"), err)
 						continue
 					}
-					toolLogs.report.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
+					toolLogs.report.Info(logger.Message(plan.Completion(recorded)))
 				}
 			}
 			return nil
@@ -230,7 +234,9 @@ When run without arguments, checks all installed tools for updates and installs 
 				if err != nil {
 					return fmt.Errorf("updating tool %q%s failed: %w", targetTool.Name, plan.TargetDescription(), err)
 				}
-				toolLogs.report.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
+				toolLogs.report.Info(logger.Message(plan.Completion(recorded)))
+			} else if plan.Status == orchestrator.CheckStatusAheadOfLatest {
+				toolLogs.report.Info(logger.Message(orchestrator.AheadOfLatestMessage(plan.InstalledVersion, plan.LatestVersion)))
 			} else {
 				toolLogs.report.Info(logger.Message("Already up to date" + versionSuffix(installed.Version, res != nil && res.Cached)))
 			}

@@ -30,7 +30,7 @@ type InstallResult struct {
 }
 
 // UpdateCheckResult is what an installer observed, not what it concluded. Whether an
-// update is available is decided in one place, version.UpdateAvailable, so that every
+// update is available is decided in one place, version.UpdateStatus, so that every
 // consumer answers the question the same way.
 type UpdateCheckResult struct {
 	// Outdated is a package manager's own verdict, for the installers that have one
