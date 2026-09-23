@@ -5,12 +5,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -350,15 +352,18 @@ type mockCheckUpdateInstaller struct {
 	latestVersion string
 	outdated      *bool
 	err           error
-	calls         atomic.Int32
-	installs      atomic.Int32
+	// detectedVersion is the version Install reports having installed, which the
+	// installation records when the update asked for no particular version.
+	detectedVersion string
+	calls           atomic.Int32
+	installs        atomic.Int32
 }
 
 func (m *mockCheckUpdateInstaller) Name() string       { return m.name }
 func (m *mockCheckUpdateInstaller) SupportsSudo() bool { return false }
 func (m *mockCheckUpdateInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
 	m.installs.Add(1)
-	return &installer.InstallResult{}, nil
+	return &installer.InstallResult{Version: m.detectedVersion}, nil
 }
 func (m *mockCheckUpdateInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
 	return nil
@@ -546,6 +551,15 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 			InstallationMethod: githubInst.name,
 			InstallParams:      map[string]any{"repo": "acme/param-latest", "version": "latest"},
 		},
+		// Pinned and never installed: the CLI reports such a tool as not installed.
+		{Name: "pinned-uninstalled", Version: &pinned, InstallationMethod: mockInst.name},
+	}
+	// Only an installed tool is updated, and a pinned one is refused only once it is
+	// installed, so the other tools start installed at an older release than upstream's.
+	for _, tool := range toolConfigs[:4] {
+		if err := orch.InstallTool(ctx, tool.WithRequestedVersion("v1.0.0"), projCfg); err != nil {
+			t.Fatalf("installing %s: %v", tool.Name, err)
+		}
 	}
 
 	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
@@ -568,6 +582,14 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		}
 		return resp.StatusCode, body
 	}
+
+	t.Run("a pinned tool that is not installed is refused as not installed, as the CLI refuses it", func(t *testing.T) {
+		_, body := update(t, "pinned-uninstalled")
+		want := `Tool "pinned-uninstalled" is not installed`
+		if body["success"] != false || body["error"] != want {
+			t.Errorf("response = %v, want success false with error %q", body, want)
+		}
+	})
 
 	t.Run("a pinned tool is refused without asking or running the installer", func(t *testing.T) {
 		checks, installs := mockInst.calls.Load(), mockInst.installs.Load()
@@ -690,6 +712,283 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		}
 		if got := toolConfigs[1].Version; got == nil || *got != latest {
 			t.Errorf("the unpinned tool configuration no longer says %q", latest)
+		}
+	})
+}
+
+// TestDashboard_UpdateRoute_ReportsCheckOutcome is the regression test for the update
+// endpoint discarding every way its update check can go wrong and answering updated:true
+// for an installation the orchestrator skipped. Each tool is installed and healthy at
+// 1.0.0 with version "latest", the configuration an unforced reinstall skips, and the
+// route has to report what the check and the installation records actually say, as the
+// CLI's tool update does.
+func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+
+	ctx := context.Background()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("connecting to db: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	const installedVersion = "1.0.0"
+	failing := &mockCheckUpdateInstaller{name: "update-outcome-failing", err: errors.New("API rate limit exceeded")}
+	unsupported := &mockCheckUpdateInstaller{
+		name:            "update-outcome-unsupported",
+		err:             installer.ErrUpdateCheckUnsupported,
+		detectedVersion: installedVersion,
+	}
+	current := &mockCheckUpdateInstaller{name: "update-outcome-current", latestVersion: installedVersion}
+	newer := &mockCheckUpdateInstaller{name: "update-outcome-newer", latestVersion: "2.0.0"}
+	// A package manager that says the tool is outdated without naming a release.
+	outdated := &mockCheckUpdateInstaller{name: "update-outcome-outdated", outdated: new(true)}
+	mocks := []*mockCheckUpdateInstaller{failing, unsupported, current, newer, outdated}
+	instReg := installer.NewRegistry()
+	for _, m := range mocks {
+		if err := installer.Register(m); err != nil {
+			t.Fatalf("registering %s: %v", m.name, err)
+		}
+		if err := instReg.Register(m); err != nil {
+			t.Fatalf("registering %s with the orchestrator: %v", m.name, err)
+		}
+	}
+	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
+
+	tempDir := t.TempDir()
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}
+	toolConfigs := []*config.ToolConfig{
+		{Name: "failing", Version: new("latest"), InstallationMethod: failing.name},
+		{Name: "unsupported", Version: new("latest"), InstallationMethod: unsupported.name},
+		{Name: "current", Version: new("latest"), InstallationMethod: current.name},
+		{Name: "newer", Version: new("latest"), InstallationMethod: newer.name},
+		{Name: "outdated", Version: new("latest"), InstallationMethod: outdated.name},
+		{Name: "unknown-installer", Version: new("latest"), InstallationMethod: "update-outcome-missing"},
+		{Name: "not-installed", Version: new("latest"), InstallationMethod: newer.name},
+	}
+	for _, tool := range toolConfigs[:5] {
+		if err := orch.InstallTool(ctx, tool.WithRequestedVersion(installedVersion), projCfg); err != nil {
+			t.Fatalf("installing %s at %s: %v", tool.Name, installedVersion, err)
+		}
+	}
+	// No installer of this name exists, so its installation can only be recorded.
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    "unknown-installer",
+			Version:     installedVersion,
+			InstallPath: filepath.Join(tempDir, "binaries", "unknown-installer"),
+			InstalledAt: time.Now().UnixMilli(),
+		})
+	}); err != nil {
+		t.Fatalf("recording unknown-installer: %v", err)
+	}
+	for _, m := range mocks {
+		m.installs.Store(0)
+	}
+	configured := make([]config.ToolConfig, len(toolConfigs))
+	for i, tool := range toolConfigs {
+		configured[i] = *tool
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	if err := server.Start(); err != nil {
+		t.Fatalf("starting server: %v", err)
+	}
+	defer server.Stop()
+
+	type updateAnswer struct {
+		Success bool           `json:"success"`
+		Data    map[string]any `json:"data"`
+		Error   string         `json:"error"`
+	}
+	// update posts the update and returns its answer with everything the route
+	// broadcast to the tool's log stream meanwhile.
+	update := func(t *testing.T, tool string) (updateAnswer, string) {
+		t.Helper()
+		logs := make(chan string, 64)
+		server.broadcaster.Subscribe(tool, logs)
+		defer server.broadcaster.Unsubscribe(tool, logs)
+
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/%s/update", server.Port(), tool)
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST update for %s: %v", tool, err)
+		}
+		defer resp.Body.Close()
+		var body updateAnswer
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding update response for %s: %v", tool, err)
+		}
+		var broadcast strings.Builder
+		for {
+			select {
+			case line := <-logs:
+				broadcast.WriteString(line)
+			default:
+				return body, broadcast.String()
+			}
+		}
+	}
+	recordedVersion := func(t *testing.T, tool string) string {
+		t.Helper()
+		rec, err := reg.GetToolInstallation(ctx, tool)
+		if err != nil || rec == nil {
+			t.Fatalf("installation record of %s = %+v, %v", tool, rec, err)
+		}
+		return rec.Version
+	}
+
+	t.Run("a failed update check is reported and installs nothing", func(t *testing.T) {
+		body, broadcast := update(t, "failing")
+		want := `Update failed: checking update for "failing": API rate limit exceeded`
+		if body.Success || body.Error != want {
+			t.Errorf("response = %+v, want success false with error %q", body, want)
+		}
+		if !strings.Contains(broadcast, `ERROR	[failing] `+want) {
+			t.Errorf("broadcast = %q, want the failure in the tool's log stream", broadcast)
+		}
+		if got := failing.installs.Load(); got != 0 {
+			t.Errorf("the installer installed %d time(s) after its update check failed, want 0", got)
+		}
+	})
+
+	t.Run("an installer that is not registered is reported and installs nothing", func(t *testing.T) {
+		body, broadcast := update(t, "unknown-installer")
+		wantPrefix := `Update failed: getting installer for "unknown-installer": `
+		if body.Success || !strings.HasPrefix(body.Error, wantPrefix) || !strings.Contains(body.Error, "update-outcome-missing") {
+			t.Errorf("response = %+v, want success false with an error starting %q and naming the installer", body, wantPrefix)
+		}
+		if !strings.Contains(broadcast, `ERROR	[unknown-installer] `+wantPrefix) {
+			t.Errorf("broadcast = %q, want the failure in the tool's log stream", broadcast)
+		}
+	})
+
+	t.Run("an installer that cannot check reinstalls with the CLI's warning", func(t *testing.T) {
+		body, broadcast := update(t, "unsupported")
+		if !body.Success {
+			t.Fatalf("response = %+v, want success", body)
+		}
+		wantWarning := `WARN	[unsupported] Update check not supported for installer "update-outcome-unsupported", performing regular install instead`
+		if !strings.Contains(broadcast, wantWarning) {
+			t.Errorf("broadcast = %q, want it to contain %q", broadcast, wantWarning)
+		}
+		if got := unsupported.installs.Load(); got != 1 {
+			t.Errorf("the installer installed %d time(s), want the forced reinstall", got)
+		}
+		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "supported": false, "reinstalled": true}
+		if !reflect.DeepEqual(body.Data, want) {
+			t.Errorf("data = %v, want %v: the reinstall recorded the version it detected, the one installed before", body.Data, want)
+		}
+	})
+
+	t.Run("a tool already at the latest release is not reinstalled", func(t *testing.T) {
+		body, _ := update(t, "current")
+		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "supported": true, "reinstalled": false}
+		if !body.Success || !reflect.DeepEqual(body.Data, want) {
+			t.Errorf("response = %+v, want success with data %v", body, want)
+		}
+		if got := current.installs.Load(); got != 0 {
+			t.Errorf("the installer installed %d time(s) for a tool with no update, want 0", got)
+		}
+	})
+
+	t.Run("a newer release is installed and reported from the installation records", func(t *testing.T) {
+		body, broadcast := update(t, "newer")
+		want := map[string]any{"updated": true, "oldVersion": installedVersion, "newVersion": "2.0.0", "supported": true, "reinstalled": true}
+		if !body.Success || !reflect.DeepEqual(body.Data, want) {
+			t.Errorf("response = %+v, want success with data %v", body, want)
+		}
+		if got := newer.installs.Load(); got != 1 {
+			t.Errorf("the installer installed %d time(s), want 1", got)
+		}
+		if got := recordedVersion(t, "newer"); got != "2.0.0" {
+			t.Errorf("recorded version = %q, want 2.0.0", got)
+		}
+		if !strings.Contains(broadcast, "INFO	[newer] New version available: 1.0.0 -> 2.0.0") {
+			t.Errorf("broadcast = %q, want the version the update moves to", broadcast)
+		}
+	})
+
+	// The reinstall records the version it had before, so only reinstalled tells this
+	// answer apart from a tool that had no update.
+	t.Run("a reinstall that keeps the recorded version is reported as a reinstall", func(t *testing.T) {
+		body, _ := update(t, "outdated")
+		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "supported": true, "reinstalled": true}
+		if !body.Success || !reflect.DeepEqual(body.Data, want) {
+			t.Errorf("response = %+v, want success with data %v", body, want)
+		}
+		if got := outdated.installs.Load(); got != 1 {
+			t.Errorf("the installer installed %d time(s), want 1", got)
+		}
+	})
+
+	t.Run("a tool that is not installed is refused", func(t *testing.T) {
+		installs := newer.installs.Load()
+		body, _ := update(t, "not-installed")
+		want := `Tool "not-installed" is not installed`
+		if body.Success || body.Error != want {
+			t.Errorf("response = %+v, want success false with error %q", body, want)
+		}
+		if got := newer.installs.Load() - installs; got != 0 {
+			t.Errorf("the installer installed %d time(s), want 0", got)
+		}
+	})
+
+	// A registry that cannot be read says nothing about whether the tool is installed.
+	t.Run("a registry that cannot be read is reported with its cause", func(t *testing.T) {
+		brokenDB, err := db.NewConnection(ctx, ":memory:")
+		if err != nil {
+			t.Fatalf("connecting to db: %v", err)
+		}
+		brokenReg := registry.NewRegistry(brokenDB)
+		if err := brokenDB.Close(); err != nil {
+			t.Fatalf("closing db: %v", err)
+		}
+		brokenServer := NewServer(log, "127.0.0.1", 0, brokenReg, testFS(), "", projCfg, toolConfigs, orch)
+		if err := brokenServer.Start(); err != nil {
+			t.Fatalf("starting server: %v", err)
+		}
+		defer brokenServer.Stop()
+
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/newer/update", brokenServer.Port())
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST update: %v", err)
+		}
+		defer resp.Body.Close()
+		var body updateAnswer
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding update response: %v", err)
+		}
+		wantPrefix := `Update failed: reading the installation of "newer": `
+		if body.Success || !strings.HasPrefix(body.Error, wantPrefix) || !strings.Contains(body.Error, "closed") {
+			t.Errorf("response = %+v, want success false with an error starting %q and keeping the database's cause", body, wantPrefix)
+		}
+	})
+
+	t.Run("the server's tool configurations are unchanged", func(t *testing.T) {
+		for i, tool := range toolConfigs {
+			// The snapshot shares the Version pointer and the InstallParams map with
+			// the live configuration, so what they hold is compared to what was
+			// configured rather than to the snapshot.
+			if tool.Version == nil || *tool.Version != "latest" {
+				t.Errorf("tool configuration %s has version %v, want the configured latest", tool.Name, tool.Version)
+			}
+			if tool.InstallParams != nil {
+				t.Errorf("tool configuration %s has install parameters %v, want none", tool.Name, tool.InstallParams)
+			}
+			if !reflect.DeepEqual(*tool, configured[i]) {
+				t.Errorf("tool configuration %s = %+v, want the configured %+v", tool.Name, *tool, configured[i])
+			}
 		}
 	})
 }
@@ -1849,7 +2148,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 		if !ok {
 			t.Fatal("expected update object")
 		}
-		assertExactKeys(t, "update", data, "updated")
+		assertExactKeys(t, "update", data, "updated", "oldVersion", "newVersion", "supported", "reinstalled")
 	})
 }
 

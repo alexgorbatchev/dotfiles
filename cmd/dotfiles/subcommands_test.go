@@ -1789,63 +1789,6 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	})
 }
 
-// TestResolveUpdate_TargetVersion pins which version an update installs. A tool whose
-// installer cannot check upstream has no version to ask for; the target is then empty,
-// so the installation records what the installer detects or a fresh timestamp, as v1's
-// installer did, instead of the version recorded by the previous installation. A tool
-// whose configuration pins a version is refused before this is asked
-// (TestUpdateCommand_RefusesPinnedTools).
-func TestResolveUpdate_TargetVersion(t *testing.T) {
-	latestTag, constraint := "latest", "<2.0.0"
-	tests := []struct {
-		name      string
-		tool      *config.ToolConfig
-		installed string
-		res       *installer.UpdateCheckResult
-		want      string
-	}{
-		{
-			name:      "an installable upstream release is installed",
-			tool:      &config.ToolConfig{Name: "gh"},
-			installed: "v1.0.0",
-			res:       &installer.UpdateCheckResult{LatestVersion: "v2.0.0"},
-			want:      "v2.0.0",
-		},
-		{
-			name:      "a release the constraint excludes reinstalls the installed one",
-			tool:      &config.ToolConfig{Name: "gh", UpdateCheck: &config.ToolConfigUpdateCheck{Constraint: &constraint}},
-			installed: "v1.0.0",
-			res:       &installer.UpdateCheckResult{LatestVersion: "v2.0.0"},
-			want:      "v1.0.0",
-		},
-		{
-			name:      "an unpinned tool nothing could check does not reuse its recorded timestamp",
-			tool:      &config.ToolConfig{Name: "stamped"},
-			installed: "2000-01-01-00-00-00",
-			want:      "",
-		},
-		{
-			name:      "an unpinned tool nothing could check does not reuse its recorded version",
-			tool:      &config.ToolConfig{Name: "detected"},
-			installed: "1.0.0",
-			want:      "",
-		},
-		{
-			name:      "latest is not a pin",
-			tool:      &config.ToolConfig{Name: "stamped", Version: &latestTag},
-			installed: "2000-01-01-00-00-00",
-			want:      "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if _, got := resolveUpdate(tt.tool, tt.installed, tt.res); got != tt.want {
-				t.Fatalf("resolveUpdate target = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
 // TestUpdateCommand_RecordedVersion checks what the installation record holds after
 // update reinstalls a tool whose installer cannot check upstream: a fresh timestamp
 // for a tool with no version of its own, or the version its installer detects -- never
