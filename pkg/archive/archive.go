@@ -258,23 +258,14 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 			continue
 		}
 
-		// Regular file: stream using chunked copy
-		destFile, err := e.fsys.Create(cleanTarget)
-		if err != nil {
-			return fmt.Errorf("creating extracted zip file %q: %w", cleanTarget, err)
-		}
-
 		entryRc, err := f.Open()
 		if err != nil {
-			destFile.Close()
 			return fmt.Errorf("opening zip file entry %q: %w", f.Name, err)
 		}
-
-		_, copyErr := io.Copy(destFile, entryRc)
+		writeErr := e.writeFile(cleanTarget, entryRc)
 		entryRc.Close()
-		destFile.Close()
-		if copyErr != nil {
-			return fmt.Errorf("writing zip entry data to %q: %w", cleanTarget, copyErr)
+		if writeErr != nil {
+			return writeErr
 		}
 
 		if err := e.fsys.Chmod(cleanTarget, f.Mode()); err != nil {
@@ -337,15 +328,9 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 			}
 
-			destFile, err := e.fsys.Create(cleanTarget)
-			if err != nil {
-				return fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+			if err := e.writeFile(cleanTarget, tarReader); err != nil {
+				return err
 			}
-			if _, err := io.Copy(destFile, tarReader); err != nil {
-				destFile.Close()
-				return fmt.Errorf("writing tar entry data to %q: %w", cleanTarget, err)
-			}
-			destFile.Close()
 			if err := e.fsys.Chmod(cleanTarget, header.FileInfo().Mode()); err != nil {
 				return fmt.Errorf("setting permissions on %q: %w", cleanTarget, err)
 			}
@@ -450,17 +435,10 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 				return extractErr
 			}
 
-			destFile, err := e.fsys.Create(cleanTarget)
-			if err != nil {
-				extractErr = fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+			if err := e.writeFile(cleanTarget, tarReader); err != nil {
+				extractErr = err
 				return extractErr
 			}
-			if _, err := io.Copy(destFile, tarReader); err != nil {
-				destFile.Close()
-				extractErr = fmt.Errorf("writing xz tar entry data to %q: %w", cleanTarget, err)
-				return extractErr
-			}
-			destFile.Close()
 			if err := e.fsys.Chmod(cleanTarget, header.FileInfo().Mode()); err != nil {
 				extractErr = fmt.Errorf("setting permissions on %q: %w", cleanTarget, err)
 				return extractErr
@@ -511,18 +489,26 @@ func (e *Extractor) extractSingleGz(ctx context.Context, src string, dest string
 		return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 	}
 
-	destFile, err := e.fsys.Create(cleanTarget)
-	if err != nil {
-		return fmt.Errorf("creating extracted file %q: %w", cleanTarget, err)
+	if err := e.writeFile(cleanTarget, gz); err != nil {
+		return err
 	}
-
-	if _, err := io.Copy(destFile, gz); err != nil {
-		destFile.Close()
-		return fmt.Errorf("writing decompressed gz stream to %q: %w", cleanTarget, err)
-	}
-	destFile.Close()
 
 	return e.fsys.Chmod(cleanTarget, 0755)
+}
+
+// writeFile creates path and streams r into it. The close result is part of the write:
+// some write failures surface only when the file is closed, and on a tracked file
+// system the close is where the file is recorded. A failed close therefore fails the
+// extraction instead of passing off a possibly incomplete file as extracted.
+func (e *Extractor) writeFile(path string, r io.Reader) error {
+	w, err := e.fsys.Create(path)
+	if err != nil {
+		return fmt.Errorf("creating extracted file %q: %w", path, err)
+	}
+	if err := fs.WriteAndClose(w, r); err != nil {
+		return fmt.Errorf("writing extracted file %q: %w", path, err)
+	}
+	return nil
 }
 
 // detectAndSetExecutables walks the dest directory and applies heuristics to find
@@ -668,29 +654,12 @@ func (e *Extractor) copyDir(srcDir, destDir string) error {
 			return e.fsys.MkdirAll(destPath, info.Mode())
 		}
 
-		err = func() error {
-			srcFile, err := e.fsys.Open(path)
-			if err != nil {
-				return err
-			}
-			defer srcFile.Close()
-
-			destFile, err := e.fsys.Create(destPath)
-			if err != nil {
-				return err
-			}
-			defer destFile.Close()
-
-			if _, err := io.Copy(destFile, srcFile); err != nil {
-				return err
-			}
-			return nil
-		}()
+		srcFile, err := e.fsys.Open(path)
 		if err != nil {
 			return err
 		}
-
-		return nil
+		defer srcFile.Close()
+		return e.writeFile(destPath, srcFile)
 	})
 }
 
