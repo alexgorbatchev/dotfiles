@@ -52,6 +52,10 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 - `install()` - Configuration-only tool (no installation method)
 - `ctx` - Context object with `projectConfig`, `toolName`, `systemInfo`
 
+### Naming and Load-Time Checks
+
+The tool is named after its file with `.tool.ts` removed, so `tools/ripgrep.tool.ts` defines `ripgrep`. A file named just `.tool.ts` leaves the tool without a name and fails the load, naming the file. Every tool is checked as the configuration loads, and the first tool that breaks a rule fails the whole load, so no command runs against a partly valid configuration. The rules for file and shell-script declarations are listed under [Declaration Checks](shell-integration.md#declaration-checks).
+
 ### Builder Methods
 
 | Method                        | Description                                                                                           |

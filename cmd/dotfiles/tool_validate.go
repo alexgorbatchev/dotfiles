@@ -71,26 +71,18 @@ When a tool name is provided (e.g. 'dotfiles tool validate ripgrep'), it validat
 			targetTools = services.ToolConfigs
 		}
 
+		// Every tool here has passed config.ValidateToolConfigs: the load that produced
+		// services.ToolConfigs fails on the first tool that does not, so a missing name
+		// or an unusable declaration never reaches this loop.
 		knownToolNames := make(map[string]bool)
 		for _, tc := range services.ToolConfigs {
-			if tc.Name != "" {
-				knownToolNames[tc.Name] = true
-			}
+			knownToolNames[tc.Name] = true
 		}
 
 		errors := []ValidationError{}
 		warnings := []ValidationWarning{}
 
 		for _, tool := range targetTools {
-			if tool.Name == "" {
-				errors = append(errors, ValidationError{
-					ToolName: "<unnamed>",
-					Config:   tool.ConfigFilePath,
-					Message:  "Tool configuration is missing a name",
-				})
-				continue
-			}
-
 			// Validate installation method
 			if tool.InstallationMethod == "" {
 				warnings = append(warnings, ValidationWarning{

@@ -977,24 +977,24 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.tool.ValidateInstallParams()
+			err := tt.tool.Validate()
 			if len(tt.wantErrs) == 0 {
 				if err != nil {
-					t.Fatalf("ValidateInstallParams() = %v, want nil", err)
+					t.Fatalf("Validate() = %v, want nil", err)
 				}
 				return
 			}
 			if err == nil {
-				t.Fatal("ValidateInstallParams() = nil, want an error")
+				t.Fatal("Validate() = nil, want an error")
 			}
 			for _, want := range tt.wantErrs {
 				if !strings.Contains(err.Error(), want) {
-					t.Errorf("ValidateInstallParams() = %v, want it to contain %s", err, want)
+					t.Errorf("Validate() = %v, want it to contain %s", err, want)
 				}
 			}
 			for _, notWant := range tt.notWantErrs {
 				if strings.Contains(err.Error(), notWant) {
-					t.Errorf("ValidateInstallParams() = %v, want it not to contain %s", err, notWant)
+					t.Errorf("Validate() = %v, want it not to contain %s", err, notWant)
 				}
 			}
 		})

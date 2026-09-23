@@ -433,6 +433,73 @@ func TestCopyModeIsEnforcedOnTheTarget(t *testing.T) {
 	}
 }
 
+// TestInvalidSymlinkAndCopyModesFailBeforeTouchingTheTarget covers a tool
+// configuration that reaches the orchestrator without passing through the loader's
+// validation. A mode that cannot be parsed is reported, never dropped, and it is
+// reported before the declaration moves the user's file aside or links over it.
+func TestInvalidSymlinkAndCopyModesFailBeforeTouchingTheTarget(t *testing.T) {
+	const userContent = "user-owned"
+	tests := []struct {
+		name   string
+		target string
+		setup  func(tool *config.ToolConfig)
+	}{
+		{
+			name:   "symlink",
+			target: "/home/user/.ssh/id_rsa",
+			setup: func(tool *config.ToolConfig) {
+				tool.Symlinks = []config.SymlinkConfig{{Source: "source", Target: "~/.ssh/id_rsa", Mode: "0888"}}
+			},
+		},
+		{
+			name:   "copy",
+			target: "/home/user/.netrc",
+			setup: func(tool *config.ToolConfig) {
+				tool.Copies = []config.CopyConfig{{Source: "source", Target: "~/.netrc", Mode: "0888"}}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orch, memFS := declFixture(t)
+			writeDecl(t, memFS, declToolDir+"/source", "from the repository")
+			writeDecl(t, memFS, tt.target, userContent)
+
+			tool := newDeclTool()
+			tt.setup(tool)
+
+			err := orch.GenerateTool(context.Background(), tool, declProjectConfig())
+			if err == nil {
+				t.Fatal("expected the invalid mode to be reported")
+			}
+			if !strings.Contains(err.Error(), `mode "0888"`) {
+				t.Errorf("error = %q, want it to name the invalid mode", err)
+			}
+
+			info, err := memFS.Lstat(tt.target)
+			if err != nil {
+				t.Fatalf("lstat: %v", err)
+			}
+			if !info.Mode().IsRegular() {
+				t.Fatalf("target mode = %v, want the user's regular file left in place", info.Mode())
+			}
+			if got := readDecl(t, memFS, tt.target); got != userContent {
+				t.Errorf("target content = %q, want the user's %q", got, userContent)
+			}
+			entries, err := memFS.ReadDir(filepath.Dir(tt.target))
+			if err != nil {
+				t.Fatalf("listing %s: %v", filepath.Dir(tt.target), err)
+			}
+			for _, entry := range entries {
+				if base := filepath.Base(tt.target); entry != base && strings.HasPrefix(entry, base) {
+					t.Errorf("found %q next to the target, want the target not to have been moved aside", entry)
+				}
+			}
+		})
+	}
+}
+
 // TestBlockRefusesToGuessAtAMalformedFile checks that a file whose markers were
 // mangled by hand stops the run instead of being written over.
 func TestBlockRefusesToGuessAtAMalformedFile(t *testing.T) {

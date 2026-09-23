@@ -362,6 +362,12 @@ func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConf
 		if !o.fs.IsAbs(src) && tool.ConfigFilePath != "" {
 			src = filepath.Join(filepath.Dir(tool.ConfigFilePath), src)
 		}
+		var mode os.FileMode
+		if sym.Mode != "" {
+			if mode, err = config.ParseMode(sym.Mode); err != nil {
+				return fmt.Errorf("tool %q: symlink %q: %w", tool.Name, sym.Target, err)
+			}
+		}
 		wasCreated, err := symEvaluator.CreateSymlink(src, target, symlinkOptions)
 		if err != nil {
 			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, target, err)
@@ -381,9 +387,7 @@ func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConf
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
 			if sym.Mode != "" {
-				if m, err := config.ParseMode(sym.Mode); err == nil {
-					activeFS = activeFS.WithTargetMode(m)
-				}
+				activeFS = activeFS.WithTargetMode(mode)
 			}
 			return activeFS.RecordExistingSymlink(src, target)
 		})
@@ -429,6 +433,16 @@ func (o *Orchestrator) copyPath(ctx context.Context, toolName, source, target st
 }
 
 func (o *Orchestrator) copyPathWithMode(ctx context.Context, toolName, source, target, declaredMode string) error {
+	// Parsed before anything is moved aside, so a mode the copy cannot apply fails the
+	// copy while the target is still the user's.
+	var mode os.FileMode
+	if declaredMode != "" {
+		var err error
+		if mode, err = config.ParseMode(declaredMode); err != nil {
+			return err
+		}
+	}
+
 	absSource, err := o.fs.Abs(source)
 	if err != nil {
 		return fmt.Errorf("getting absolute source path: %w", err)
@@ -466,9 +480,7 @@ func (o *Orchestrator) copyPathWithMode(ctx context.Context, toolName, source, t
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 		tracked := o.getTrackedFS(ctx, tx, toolName, "copy")
 		if declaredMode != "" {
-			if m, err := config.ParseMode(declaredMode); err == nil {
-				tracked = tracked.WithTargetMode(m)
-			}
+			tracked = tracked.WithTargetMode(mode)
 		}
 		if err := copyTree(o.fs, tracked, absSource, absTarget); err != nil {
 			return err

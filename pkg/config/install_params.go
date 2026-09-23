@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
-// ValidateInstallParams rejects install parameters that cannot be installed as
+// validateInstallParams rejects install parameters that cannot be installed as
 // written, whatever the target: a combination that only fails once the installation
-// has already run a script is reported while the configuration loads instead.
-func (tc *ToolConfig) ValidateInstallParams() error {
+// has already run a script is reported while the configuration loads instead. It is
+// one part of ToolConfig.Validate, and a rule for another method's parameters is a
+// new case of this switch.
+func (tc *ToolConfig) validateInstallParams() error {
 	switch tc.InstallationMethod {
 	case "curl-script":
 		if err := tc.validateCurlScriptBinaryPath(); err != nil {
