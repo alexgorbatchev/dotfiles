@@ -18,6 +18,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 // DownloadOptions configure the download process.
@@ -53,6 +54,9 @@ func getCacheKey(url string, headers map[string]string) string {
 // project configuration nor the call that starts the download names one.
 const defaultRetryDelay = time.Second
 
+// defaultCacheTTL is how long a cached download is served when nothing sets CacheTTL.
+const defaultCacheTTL = 30 * 24 * time.Hour
+
 // Settings is the project-level download policy: what every download this
 // downloader performs does unless the call that starts it overrides the value.
 // It is what the `downloader` section of a project configuration resolves to.
@@ -83,6 +87,17 @@ type Downloader struct {
 	RetryCount int
 	RetryDelay time.Duration
 	Quiet      bool
+	// log reports what the download cache does on its own: evicting an entry that
+	// no longer matches its record, or failing to store one. Nil logs nothing.
+	log *logger.Logger
+}
+
+// SetLogger sets the logger the download cache reports evictions and failed stores
+// through.
+func (d *Downloader) SetLogger(log *logger.Logger) {
+	if d != nil {
+		d.log = log
+	}
 }
 
 // Apply installs the project-level download policy on d. A zero value leaves the
@@ -142,7 +157,7 @@ func NewDownloader(fsys fs.FS, client *http.Client) *Downloader {
 		client:       client,
 		CacheEnabled: true,
 		CacheDir:     filepath.Join(".generated", "cache", "downloads"),
-		CacheTTL:     30 * 24 * time.Hour,
+		CacheTTL:     defaultCacheTTL,
 	}
 }
 
@@ -193,39 +208,23 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 		cacheDir = filepath.Join(".generated", "cache")
 	}
 
-	if d.CacheEnabled && !skipCache {
-		keyStr := getCacheKey(url, activeOpts[0].Headers)
-		cachePath := filepath.Join(cacheDir, keyStr)
+	cachePath := filepath.Join(cacheDir, getCacheKey(url, activeOpts[0].Headers))
 
-		exists, err := d.fsys.Exists(cachePath)
-		if err == nil && exists {
-			info, err := d.fsys.Stat(cachePath)
-			if err == nil {
-				ttl := d.CacheTTL
-				if ttl <= 0 {
-					ttl = 30 * 24 * time.Hour
-				}
-				if time.Since(info.ModTime()) < ttl {
-					cacheValid := true
-					if expectedSHA256 != "" {
-						if ok, errHash := d.verifyHash(cachePath, expectedSHA256); errHash != nil || !ok {
-							cacheValid = false
-							_ = d.fsys.Remove(cachePath)
-						}
-					}
-					if cacheValid {
-						errCopy := d.fsys.CopyFile(cachePath, destPath)
-						if errCopy == nil {
-							if activeOpts[0].OnProgress != nil {
-								size := info.Size()
-								activeOpts[0].OnProgress(0, size)
-								activeOpts[0].OnProgress(size, size)
-							}
-							return nil
-						}
-					}
-				}
+	if d.CacheEnabled && !skipCache {
+		ttl := d.CacheTTL
+		if ttl <= 0 {
+			ttl = defaultCacheTTL
+		}
+		size, ok, err := d.serveFromCache(cachePath, url, destPath, expectedSHA256, ttl)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if activeOpts[0].OnProgress != nil {
+				activeOpts[0].OnProgress(0, size)
+				activeOpts[0].OnProgress(size, size)
 			}
+			return nil
 		}
 	}
 
@@ -281,12 +280,12 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			if bar != nil {
 				bar.Finish()
 			}
-			// Save successful download to cache
+			// A download that cannot be cached is still a download: the failed store
+			// leaves nothing behind that a later run would serve.
 			if d.CacheEnabled && !activeOpts[0].SkipCache {
-				_ = d.fsys.MkdirAll(cacheDir, 0755)
-				keyStr := getCacheKey(url, activeOpts[0].Headers)
-				cachePath := filepath.Join(cacheDir, keyStr)
-				_ = d.fsys.CopyFile(destPath, cachePath)
+				if err := d.storeInCache(cacheDir, cachePath, url, destPath); err != nil {
+					d.warn(logger.Message(fmt.Sprintf("Could not cache download of %s: %v", url, err)))
+				}
 			}
 			return lifecycle.Emit(ctx, lifecycle.AfterDownload, lifecycle.Details{DownloadPath: destPath})
 		}
@@ -506,19 +505,11 @@ func (pw *progressWriter) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-// verifyHash calculates SHA256 of the file content in a streaming fashion.
+// verifyHash reports whether the SHA-256 of the file at path is expected.
 func (d *Downloader) verifyHash(path string, expected string) (bool, error) {
-	rc, err := d.fsys.Open(path)
+	actual, _, err := d.fileDigest(path)
 	if err != nil {
 		return false, err
 	}
-	defer rc.Close()
-
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, rc); err != nil {
-		return false, err
-	}
-
-	actual := hex.EncodeToString(hasher.Sum(nil))
 	return strings.EqualFold(actual, strings.TrimSpace(expected)), nil
 }

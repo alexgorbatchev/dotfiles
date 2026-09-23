@@ -156,6 +156,11 @@ and never sends a token written for your `host`.
 A download renders a progress line on stderr while it runs, and only when stderr is a
 terminal.
 
+Cached downloads live in `cache/downloads` under `paths.generatedDir`, each with a
+record of the SHA-256 and size it had when it was stored. A cached download is reused
+only while its content still matches that record. One that no longer does, or whose
+record is missing or unreadable, is removed with a warning and downloaded again.
+
 ### cargo
 
 The hosts the [`cargo`](../installation-methods/cargo.md) method fetches a crate's

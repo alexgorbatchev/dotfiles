@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -728,6 +729,75 @@ func TestResolveBinaryPaths(t *testing.T) {
 
 	if len(resFallback) != 1 || resFallback[0] != "/usr/bin/uninstalled-tool" {
 		t.Errorf("expected /usr/bin/uninstalled-tool, got %v", resFallback)
+	}
+}
+
+// TestSetLogger_ReachesEveryDownloader checks that an installer which downloads hands
+// its logger to its downloader, so the download cache's evictions reach the log.
+func TestSetLogger_ReachesEveryDownloader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("asset"))
+	}))
+	defer server.Close()
+	sysCtx := &SystemContext{OS: "linux", Arch: "amd64"}
+
+	constructors := map[string]func(exec.CommandRunner, fs.FS, *downloader.Downloader, *SystemContext) Installer{
+		"github-release": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewGitHubInstaller(r, f, d, s)
+		},
+		"gitea-release": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewGiteaInstaller(r, f, d, s)
+		},
+		"curl-tar": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewCurlTarInstaller(r, f, d, s)
+		},
+		"curl-binary": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewCurlBinaryInstaller(r, f, d, s)
+		},
+		"curl-script": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewCurlScriptInstaller(r, f, d, s)
+		},
+		"cargo": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewCargoInstaller(r, f, d, s)
+		},
+		"dmg": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewDmgInstaller(r, f, d, s)
+		},
+		"pkg": func(r exec.CommandRunner, f fs.FS, d *downloader.Downloader, s *SystemContext) Installer {
+			return NewPkgInstaller(r, f, d, s)
+		},
+	}
+	for name, newInstaller := range constructors {
+		t.Run(name, func(t *testing.T) {
+			memFS := fs.NewMemFS()
+			dl := downloader.NewDownloader(memFS, server.Client())
+			dl.CacheDir = "/cache"
+			inst := newInstaller(exec.NewMockRunner(), memFS, dl, sysCtx)
+			var logs bytes.Buffer
+			SetLogger(inst, logger.New(logger.Config{Level: logger.LogLevelDefault, Writer: &logs}))
+
+			if err := dl.Download(context.Background(), server.URL, "/first", ""); err != nil {
+				t.Fatalf("Download() error = %v", err)
+			}
+			// Drop the entry's record, which the next download must notice and log.
+			names, err := memFS.ReadDir("/cache")
+			if err != nil {
+				t.Fatalf("listing the cache: %v", err)
+			}
+			for _, n := range names {
+				if strings.HasSuffix(n, ".json") {
+					if err := memFS.Remove("/cache/" + n); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if err := dl.Download(context.Background(), server.URL, "/second", ""); err != nil {
+				t.Fatalf("Download() error = %v", err)
+			}
+			if !strings.Contains(logs.String(), "Evicting cached download") {
+				t.Errorf("installer log = %q, want the downloader's eviction in it", logs.String())
+			}
+		})
 	}
 }
 

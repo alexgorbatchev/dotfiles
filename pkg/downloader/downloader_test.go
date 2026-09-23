@@ -1,9 +1,11 @@
 package downloader
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +24,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 func TestDownloader(t *testing.T) {
@@ -1372,23 +1375,6 @@ func TestDownloaderEdgeCasesAndProgress(t *testing.T) {
 		t.Errorf("expected 416 with valid hash to return nil, got %v", err)
 	}
 
-	// 8. Cache TTL expiration
-	expCacheFS := fs.NewMemFS()
-	expDL := NewDownloader(expCacheFS, nil)
-	expDL.CacheEnabled = true
-	expDL.CacheTTL = 1 * time.Nanosecond
-	expDL.CacheDir = "/cache"
-
-	_ = expCacheFS.MkdirAll("/cache", 0755)
-	keyStr := getCacheKey(okServer2.URL, nil)
-	_ = expCacheFS.WriteFile(filepath.Join("/cache", keyStr), []byte("stale cache"), 0644)
-	time.Sleep(10 * time.Millisecond)
-
-	err = expDL.Download(context.Background(), okServer2.URL, "/dl-exp.txt", "", DownloadOptions{})
-	if err != nil {
-		t.Fatalf("expected download to succeed after cache TTL expiration: %v", err)
-	}
-
 	// 9. Context cancellation and invalid URL
 	ctxCanceled, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -1482,26 +1468,6 @@ func TestDownloaderEdgeCasesAndProgress(t *testing.T) {
 	})
 	if err == nil {
 		t.Errorf("expected context cancellation error during retry backoff")
-	}
-
-	// 14. Cache hit with OnProgress callback
-	cacheProgressFS := fs.NewMemFS()
-	cacheProgressDL := NewDownloader(cacheProgressFS, nil)
-	cacheProgressDL.CacheEnabled = true
-	cacheProgressDL.CacheDir = "/cache-prog"
-	_ = cacheProgressFS.MkdirAll("/cache-prog", 0755)
-
-	keyStrProg := getCacheKey(okServer2.URL, nil)
-	_ = cacheProgressFS.WriteFile(filepath.Join("/cache-prog", keyStrProg), []byte("cached content"), 0644)
-
-	var cacheProgCalled bool
-	err = cacheProgressDL.Download(context.Background(), okServer2.URL, "/dl-cached-prog.txt", "", DownloadOptions{
-		OnProgress: func(downloaded, total int64) {
-			cacheProgCalled = true
-		},
-	})
-	if err != nil || !cacheProgCalled {
-		t.Errorf("expected cache hit with OnProgress callback to succeed: %v, called: %v", err, cacheProgCalled)
 	}
 
 	// 15. Download timeout option
@@ -1960,5 +1926,619 @@ func TestDownloadResumesAStreamCutOffPartWay(t *testing.T) {
 	defer mu.Unlock()
 	if want := []string{"", "bytes=10-"}; !slices.Equal(ranges, want) {
 		t.Errorf("request Range headers = %q, want %q", ranges, want)
+	}
+}
+
+// countingServer serves body and counts the requests that reach it.
+type countingServer struct {
+	*httptest.Server
+	mu       sync.Mutex
+	body     string
+	requests int
+}
+
+func newCountingServer(t *testing.T, body string) *countingServer {
+	t.Helper()
+	s := &countingServer{body: body}
+	s.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		s.requests++
+		body := s.body
+		s.mu.Unlock()
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(s.Close)
+	return s
+}
+
+func (s *countingServer) setBody(body string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.body = body
+}
+
+func (s *countingServer) requestCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.requests
+}
+
+// newCachingDownloader returns a downloader caching into /cache on fsys whose log
+// lines are written to the returned buffer.
+func newCachingDownloader(fsys fs.FS, client *http.Client) (*Downloader, *bytes.Buffer) {
+	d := NewDownloader(fsys, client)
+	d.CacheEnabled = true
+	d.CacheDir = "/cache"
+	d.CacheTTL = time.Hour
+	var logs bytes.Buffer
+	d.SetLogger(logger.New(logger.Config{Level: logger.LogLevelDefault, Writer: &logs}))
+	return d, &logs
+}
+
+// downloadAndRead downloads url with no expected hash to dest and returns what dest holds.
+func downloadAndRead(t *testing.T, d *Downloader, mem fs.FS, url, dest string) string {
+	t.Helper()
+	if err := d.Download(context.Background(), url, dest, "", DownloadOptions{Quiet: true}); err != nil {
+		t.Fatalf("Download(%q) error = %v", dest, err)
+	}
+	got, err := mem.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading %s: %v", dest, err)
+	}
+	return string(got)
+}
+
+// TestDownloadCacheEvictsAnEntryThatNoLongerMatchesItsRecord damages a cache entry
+// stored by a download that passed no expected hash, and checks that the next such
+// download notices, evicts the entry, logs that, fetches the file again, and stores
+// an entry the one after it is served from.
+func TestDownloadCacheEvictsAnEntryThatNoLongerMatchesItsRecord(t *testing.T) {
+	const content = "the real release asset bytes"
+	otherSum := sha256.Sum256([]byte("an entirely different asset"))
+
+	tests := []struct {
+		name   string
+		damage func(t *testing.T, mem fs.FS, entryPath string)
+	}{
+		{"entry truncated", func(t *testing.T, mem fs.FS, entryPath string) {
+			mustWrite(t, mem, entryPath, content[:8])
+		}},
+		{"entry altered at the same size", func(t *testing.T, mem fs.FS, entryPath string) {
+			mustWrite(t, mem, entryPath, strings.ToUpper(content))
+		}},
+		{"entry grown", func(t *testing.T, mem fs.FS, entryPath string) {
+			mustWrite(t, mem, entryPath, content+" and a tail")
+		}},
+		{"record deleted", func(t *testing.T, mem fs.FS, entryPath string) {
+			if err := mem.Remove(cacheRecordPath(entryPath)); err != nil {
+				t.Fatalf("removing record: %v", err)
+			}
+		}},
+		{"record corrupted", func(t *testing.T, mem fs.FS, entryPath string) {
+			mustWrite(t, mem, cacheRecordPath(entryPath), `{"sha256": "`)
+		}},
+		{"record empty", func(t *testing.T, mem fs.FS, entryPath string) {
+			mustWrite(t, mem, cacheRecordPath(entryPath), `{}`)
+		}},
+		{"record names other content", func(t *testing.T, mem fs.FS, entryPath string) {
+			data, err := json.Marshal(cacheRecord{SHA256: hex.EncodeToString(otherSum[:]), Size: int64(len(content))})
+			if err != nil {
+				t.Fatal(err)
+			}
+			mustWrite(t, mem, cacheRecordPath(entryPath), string(data))
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newCountingServer(t, content)
+			mem := fs.NewMemFS()
+			d, logs := newCachingDownloader(mem, server.Client())
+
+			downloadAndRead(t, d, mem, server.URL, "/first")
+			entryPath := getCachePath(d.CacheDir, server.URL, nil)
+			tt.damage(t, mem, entryPath)
+
+			if got := downloadAndRead(t, d, mem, server.URL, "/second"); got != content {
+				t.Errorf("download after the damage = %q, want %q", got, content)
+			}
+			if got := server.requestCount(); got != 2 {
+				t.Errorf("server requests after the damage = %d, want 2 (the damaged entry must not be served)", got)
+			}
+			if !strings.Contains(logs.String(), "Evicting cached download") {
+				t.Errorf("log = %q, want it to report the eviction", logs.String())
+			}
+
+			if got := downloadAndRead(t, d, mem, server.URL, "/third"); got != content {
+				t.Errorf("download from the restored entry = %q, want %q", got, content)
+			}
+			if got := server.requestCount(); got != 2 {
+				t.Errorf("server requests after the restore = %d, want 2 (the restored entry must be served)", got)
+			}
+		})
+	}
+}
+
+// TestDownloadCacheEvictsATruncatedEntryOnDisk repeats the truncation case on the
+// real file system, where the entry and its record are separate files on disk.
+func TestDownloadCacheEvictsATruncatedEntryOnDisk(t *testing.T) {
+	const content = "the real release asset bytes"
+	server := newCountingServer(t, content)
+	dir := t.TempDir()
+	osFS := fs.NewOSFS()
+	d, _ := newCachingDownloader(osFS, server.Client())
+	d.CacheDir = filepath.Join(dir, "cache")
+
+	downloadAndRead(t, d, osFS, server.URL, filepath.Join(dir, "first"))
+	entryPath := getCachePath(d.CacheDir, server.URL, nil)
+	if err := os.Truncate(entryPath, 8); err != nil {
+		t.Fatalf("truncating the entry: %v", err)
+	}
+
+	if got := downloadAndRead(t, d, osFS, server.URL, filepath.Join(dir, "second")); got != content {
+		t.Errorf("download after the truncation = %q, want %q", got, content)
+	}
+	if got := server.requestCount(); got != 2 {
+		t.Errorf("server requests = %d, want 2", got)
+	}
+}
+
+// TestDownloadCacheEvictionThatCannotRemoveTheEntry checks that an entry the cache
+// fails to delete is reported and still not served, and that the download replaces it.
+func TestDownloadCacheEvictionThatCannotRemoveTheEntry(t *testing.T) {
+	server := newCountingServer(t, "asset")
+	mem := fs.NewMemFS()
+	faulty := &cacheFaultFS{FS: mem}
+	d, logs := newCachingDownloader(faulty, server.Client())
+	downloadAndRead(t, d, mem, server.URL, "/first")
+	entryPath := getCachePath(d.CacheDir, server.URL, nil)
+	mustWrite(t, mem, entryPath, "ass")
+
+	faulty.fail = func(op, path string) error {
+		if op == "remove" && path == entryPath {
+			return errors.New("injected fault")
+		}
+		return nil
+	}
+	if got := downloadAndRead(t, d, mem, server.URL, "/second"); got != "asset" {
+		t.Errorf("download = %q, want %q", got, "asset")
+	}
+	if !strings.Contains(logs.String(), "Could not remove cached download") {
+		t.Errorf("log = %q, want it to report the failed removal", logs.String())
+	}
+	faulty.fail = nil
+	if got := downloadAndRead(t, d, mem, server.URL, "/third"); got != "asset" {
+		t.Errorf("download from the replaced entry = %q, want %q", got, "asset")
+	}
+	if got := server.requestCount(); got != 2 {
+		t.Errorf("server requests = %d, want 2", got)
+	}
+}
+
+// swapOnCopyFS copies a cache entry out as other bytes, the way it reads when another
+// run replaces the entry between reading its record and copying it.
+type swapOnCopyFS struct {
+	fs.FS
+	swapped   string
+	removeErr error
+	// removeDeletes deletes the file before failing with removeErr, as a
+	// TrackedFileSystem does when it cannot record the removal.
+	removeDeletes bool
+}
+
+func (s *swapOnCopyFS) CopyFile(src, dest string) error {
+	if s.swapped == "" || filepath.Dir(src) != filepath.Clean("/cache") {
+		return s.FS.CopyFile(src, dest)
+	}
+	return s.FS.WriteFile(dest, []byte(s.swapped), 0o644)
+}
+
+func (s *swapOnCopyFS) Remove(path string) error {
+	if s.removeErr != nil && filepath.Dir(path) != filepath.Clean("/cache") {
+		if s.removeDeletes {
+			if err := s.FS.Remove(path); err != nil {
+				return err
+			}
+		}
+		return s.removeErr
+	}
+	return s.FS.Remove(path)
+}
+
+// TestDownloadCacheChecksTheCopyItInstalls checks the bytes a cache hit writes to the
+// destination rather than the entry they were copied from: a copy that does not match
+// the record is removed and the file is downloaded again. A copy that cannot be removed
+// fails the download instead of being resumed onto.
+func TestDownloadCacheChecksTheCopyItInstalls(t *testing.T) {
+	t.Run("the copy is replaced by a download", func(t *testing.T) {
+		server := newCountingServer(t, "asset")
+		mem := fs.NewMemFS()
+		swapFS := &swapOnCopyFS{FS: mem}
+		d, logs := newCachingDownloader(swapFS, server.Client())
+		downloadAndRead(t, d, mem, server.URL, "/first")
+
+		swapFS.swapped = "other"
+		if got := downloadAndRead(t, d, mem, server.URL, "/second"); got != "asset" {
+			t.Errorf("download = %q, want %q", got, "asset")
+		}
+		if got := server.requestCount(); got != 2 {
+			t.Errorf("server requests = %d, want 2", got)
+		}
+		if !strings.Contains(logs.String(), "Evicting cached download") {
+			t.Errorf("log = %q, want it to report the eviction", logs.String())
+		}
+	})
+	t.Run("a copy removed despite a failed Remove is downloaded again", func(t *testing.T) {
+		server := newCountingServer(t, "asset")
+		mem := fs.NewMemFS()
+		swapFS := &swapOnCopyFS{FS: mem}
+		d, logs := newCachingDownloader(swapFS, server.Client())
+		downloadAndRead(t, d, mem, server.URL, "/first")
+
+		swapFS.swapped = "other"
+		swapFS.removeErr = errors.New("recording the removal failed")
+		swapFS.removeDeletes = true
+		if got := downloadAndRead(t, d, mem, server.URL, "/second"); got != "asset" {
+			t.Errorf("download = %q, want %q", got, "asset")
+		}
+		if got := server.requestCount(); got != 2 {
+			t.Errorf("server requests = %d, want 2", got)
+		}
+		if !strings.Contains(logs.String(), "recording the removal failed") {
+			t.Errorf("log = %q, want it to report the Remove error", logs.String())
+		}
+	})
+	t.Run("a copy that cannot be removed fails the download", func(t *testing.T) {
+		server := newCountingServer(t, "asset")
+		mem := fs.NewMemFS()
+		swapFS := &swapOnCopyFS{FS: mem}
+		d, _ := newCachingDownloader(swapFS, server.Client())
+		downloadAndRead(t, d, mem, server.URL, "/first")
+
+		swapFS.swapped = "other"
+		swapFS.removeErr = errors.New("injected fault")
+		err := d.Download(context.Background(), server.URL, "/second", "", DownloadOptions{Quiet: true})
+		if err == nil || !strings.Contains(err.Error(), "failed verification") {
+			t.Fatalf("Download() error = %v, want the copy that could not be removed", err)
+		}
+		if got := server.requestCount(); got != 1 {
+			t.Errorf("server requests = %d, want 1 (nothing may be resumed onto the copy)", got)
+		}
+	})
+}
+
+// copyThenFailFS copies a file and then reports failed, the way TrackedFileSystem
+// does when it copies and then fails to record the copy.
+type copyThenFailFS struct {
+	fs.FS
+	failing   bool
+	removeErr error
+}
+
+func (c *copyThenFailFS) Remove(path string) error {
+	if c.removeErr != nil && filepath.Dir(path) != filepath.Clean("/cache") {
+		return c.removeErr
+	}
+	return c.FS.Remove(path)
+}
+
+func (c *copyThenFailFS) CopyFile(src, dest string) error {
+	if err := c.FS.CopyFile(src, dest); err != nil || !c.failing || filepath.Dir(src) != filepath.Clean("/cache") {
+		return err
+	}
+	return errors.New("recording the copy failed")
+}
+
+// TestDownloadCacheCopyThatFailsIsNotResumedOnto fails the copy of a damaged cache
+// entry after it wrote the destination, against a server that honours Range, and
+// checks that the download starts over instead of appending to the unverified copy.
+func TestDownloadCacheCopyThatFailsIsNotResumedOnto(t *testing.T) {
+	const content = "the real release asset bytes"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, "asset", time.Time{}, strings.NewReader(content))
+	}))
+	t.Cleanup(server.Close)
+	mem := fs.NewMemFS()
+	faulty := &copyThenFailFS{FS: mem}
+	d, logs := newCachingDownloader(faulty, server.Client())
+	downloadAndRead(t, d, mem, server.URL, "/first")
+	mustWrite(t, mem, getCachePath(d.CacheDir, server.URL, nil), "EVIL real")
+
+	faulty.failing = true
+	if got := downloadAndRead(t, d, mem, server.URL, "/second"); got != content {
+		t.Errorf("download = %q, want %q", got, content)
+	}
+	if !strings.Contains(logs.String(), "Could not copy cached download") {
+		t.Errorf("log = %q, want it to report the failed copy", logs.String())
+	}
+}
+
+// TestDownloadCacheCopyThatFailsAndCannotBeRemoved fails the download when the copy
+// a failed cache copy left behind cannot be removed, naming the failed copy as the
+// cause rather than a verification that never ran.
+func TestDownloadCacheCopyThatFailsAndCannotBeRemoved(t *testing.T) {
+	server := newCountingServer(t, "asset")
+	mem := fs.NewMemFS()
+	faulty := &copyThenFailFS{FS: mem}
+	d, _ := newCachingDownloader(faulty, server.Client())
+	downloadAndRead(t, d, mem, server.URL, "/first")
+
+	faulty.failing = true
+	faulty.removeErr = errors.New("injected fault")
+	err := d.Download(context.Background(), server.URL, "/second", "", DownloadOptions{Quiet: true})
+	if err == nil || !strings.Contains(err.Error(), "could not be copied completely") {
+		t.Fatalf("Download() error = %v, want it to name the failed copy", err)
+	}
+	if got := server.requestCount(); got != 1 {
+		t.Errorf("server requests = %d, want 1 (nothing may be resumed onto the copy)", got)
+	}
+}
+
+// TestDownloadCacheServesAnEntryOnlyWithinItsTTL serves a stored entry while it is
+// younger than the TTL and asks the server again once it is older.
+func TestDownloadCacheServesAnEntryOnlyWithinItsTTL(t *testing.T) {
+	server := newCountingServer(t, "first")
+	mem := fs.NewMemFS()
+	d, _ := newCachingDownloader(mem, server.Client())
+	downloadAndRead(t, d, mem, server.URL, "/first")
+
+	server.setBody("second")
+	var progress [][2]int64
+	err := d.Download(context.Background(), server.URL, "/cached", "", DownloadOptions{
+		OnProgress: func(downloaded, total int64) { progress = append(progress, [2]int64{downloaded, total}) },
+	})
+	if err != nil {
+		t.Fatalf("Download() error = %v", err)
+	}
+	if got, _ := mem.ReadFile("/cached"); string(got) != "first" {
+		t.Errorf("download within the TTL = %q, want the cached %q", got, "first")
+	}
+	if got := server.requestCount(); got != 1 {
+		t.Errorf("server requests within the TTL = %d, want 1", got)
+	}
+	size := int64(len("first"))
+	if want := [][2]int64{{0, size}, {size, size}}; !slices.Equal(progress, want) {
+		t.Errorf("progress on a cache hit = %v, want %v", progress, want)
+	}
+
+	d.CacheTTL = time.Nanosecond
+	time.Sleep(10 * time.Millisecond)
+	if got := downloadAndRead(t, d, mem, server.URL, "/expired"); got != "second" {
+		t.Errorf("download after the TTL = %q, want %q", got, "second")
+	}
+	if got := server.requestCount(); got != 2 {
+		t.Errorf("server requests = %d, want 2", got)
+	}
+}
+
+// TestDownloadCacheHitStillChecksTheCallersHash keeps the existing guarantee: an
+// entry that matches its own record is still refused when it is not the content the
+// caller expects.
+func TestDownloadCacheHitStillChecksTheCallersHash(t *testing.T) {
+	server := newCountingServer(t, "first version")
+	mem := fs.NewMemFS()
+	d, logs := newCachingDownloader(mem, server.Client())
+	downloadAndRead(t, d, mem, server.URL, "/first")
+
+	server.setBody("second version")
+	sum := sha256.Sum256([]byte("second version"))
+	if err := d.Download(context.Background(), server.URL, "/second", hex.EncodeToString(sum[:]), DownloadOptions{Quiet: true}); err != nil {
+		t.Fatalf("Download() error = %v", err)
+	}
+	if got, _ := mem.ReadFile("/second"); string(got) != "second version" {
+		t.Errorf("download = %q, want %q", got, "second version")
+	}
+	if got := server.requestCount(); got != 2 {
+		t.Errorf("server requests = %d, want 2", got)
+	}
+	if !strings.Contains(logs.String(), "Evicting cached download") {
+		t.Errorf("log = %q, want it to report the eviction", logs.String())
+	}
+}
+
+func mustWrite(t *testing.T, fsys fs.FS, path, content string) {
+	t.Helper()
+	if err := fsys.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("writing %s: %v", path, err)
+	}
+}
+
+// cacheFaultFS wraps a real file system and fails the operations fail names an error
+// for, on the /cache directory (newCachingDownloader's CacheDir) and anything in it.
+type cacheFaultFS struct {
+	fs.FS
+	fail func(op, path string) error
+}
+
+func (c *cacheFaultFS) fault(op, path string) error {
+	cacheDir := filepath.Clean("/cache")
+	path = filepath.Clean(path)
+	if c.fail == nil || (path != cacheDir && filepath.Dir(path) != cacheDir) {
+		return nil
+	}
+	return c.fail(op, path)
+}
+
+func (c *cacheFaultFS) CopyFile(src, dest string) error {
+	if err := c.fault("copy", dest); err != nil {
+		return err
+	}
+	return c.FS.CopyFile(src, dest)
+}
+
+func (c *cacheFaultFS) WriteFile(path string, data []byte, perm os.FileMode) error {
+	if err := c.fault("write", path); err != nil {
+		return err
+	}
+	return c.FS.WriteFile(path, data, perm)
+}
+
+func (c *cacheFaultFS) Open(path string) (io.ReadCloser, error) {
+	if err := c.fault("open", path); err != nil {
+		return nil, err
+	}
+	return c.FS.Open(path)
+}
+
+func (c *cacheFaultFS) Remove(path string) error {
+	if err := c.fault("remove", path); err != nil {
+		return err
+	}
+	return c.FS.Remove(path)
+}
+
+func (c *cacheFaultFS) MkdirAll(path string, perm os.FileMode) error {
+	if err := c.fault("mkdir", path); err != nil {
+		return err
+	}
+	return c.FS.MkdirAll(path, perm)
+}
+
+// TestDownloadCacheStoreThatFailsLeavesNothingToServe fails each step of storing a
+// download in the cache. The download itself still succeeds, the failure is logged,
+// and a later download does not find an entry to serve: it asks the server again.
+func TestDownloadCacheStoreThatFailsLeavesNothingToServe(t *testing.T) {
+	errFault := errors.New("injected fault")
+	isRecord := func(path string) bool { return strings.HasSuffix(path, cacheRecordSuffix) }
+
+	tests := []struct {
+		name string
+		fail func(op, path string) error
+		// leavesEntry is set when the cleanup itself fails, so the entry stays without a record.
+		leavesEntry bool
+	}{
+		{"creating the cache directory", func(op, path string) error {
+			if op == "mkdir" {
+				return errFault
+			}
+			return nil
+		}, false},
+		{"copying the entry", func(op, path string) error {
+			if op == "copy" {
+				return errFault
+			}
+			return nil
+		}, false},
+		{"hashing the entry", func(op, path string) error {
+			if op == "open" && !isRecord(path) {
+				return errFault
+			}
+			return nil
+		}, false},
+		{"writing the record", func(op, path string) error {
+			if op == "write" && isRecord(path) {
+				return errFault
+			}
+			return nil
+		}, false},
+		// The entry stays behind, but without a record it is never served.
+		{"writing the record and removing the incomplete entry", func(op, path string) error {
+			if (op == "write" && isRecord(path)) || (op == "remove" && !isRecord(path)) {
+				return errFault
+			}
+			return nil
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newCountingServer(t, "asset")
+			mem := fs.NewMemFS()
+			faulty := &cacheFaultFS{FS: mem, fail: tt.fail}
+			d, logs := newCachingDownloader(faulty, server.Client())
+
+			if got := downloadAndRead(t, d, mem, server.URL, "/first"); got != "asset" {
+				t.Errorf("download = %q, want %q", got, "asset")
+			}
+			if !strings.Contains(logs.String(), "Could not cache download") {
+				t.Errorf("log = %q, want it to report the failed store", logs.String())
+			}
+			entryPath := getCachePath(d.CacheDir, server.URL, nil)
+			if exists, _ := mem.Exists(entryPath); exists != tt.leavesEntry {
+				t.Errorf("entry left behind = %v, want %v", exists, tt.leavesEntry)
+			}
+			if exists, _ := mem.Exists(cacheRecordPath(entryPath)); exists {
+				t.Error("a record was left behind by the failed store")
+			}
+
+			faulty.fail = nil
+			downloadAndRead(t, d, mem, server.URL, "/second")
+			if got := server.requestCount(); got != 2 {
+				t.Errorf("server requests = %d, want 2 (a failed store must leave nothing to serve)", got)
+			}
+		})
+	}
+}
+
+// TestDownloadCacheRestoreThatFailsDoesNotServeTheOldRecord stores a newer version
+// of a cached file, fails to write its record and then to clean up after itself, and
+// checks that the older record was retired before the new content was copied, so it
+// is not left to vouch for the new entry.
+func TestDownloadCacheRestoreThatFailsDoesNotServeTheOldRecord(t *testing.T) {
+	server := newCountingServer(t, "old")
+	mem := fs.NewMemFS()
+	faulty := &cacheFaultFS{FS: mem}
+	d, _ := newCachingDownloader(faulty, server.Client())
+	downloadAndRead(t, d, mem, server.URL, "/first")
+
+	server.setBody("new")
+	copied := false
+	faulty.fail = func(op, path string) error {
+		switch {
+		case op == "copy":
+			copied = true
+		case op == "write", op == "remove" && copied:
+			return errors.New("injected fault")
+		}
+		return nil
+	}
+	// Overwrite skips the cache lookup but still stores what it downloads.
+	ctx := config.WithOverwrite(context.Background(), true)
+	if err := d.Download(ctx, server.URL, "/second", "", DownloadOptions{Quiet: true}); err != nil {
+		t.Fatalf("Download() error = %v", err)
+	}
+	if exists, _ := mem.Exists(cacheRecordPath(getCachePath(d.CacheDir, server.URL, nil))); exists {
+		t.Error("the old record is still beside the new entry")
+	}
+
+	faulty.fail = nil
+	server.setBody("newest")
+	if got := downloadAndRead(t, d, mem, server.URL, "/third"); got != "newest" {
+		t.Errorf("download after the failed store = %q, want %q (fetched again)", got, "newest")
+	}
+	if got := server.requestCount(); got != 3 {
+		t.Errorf("server requests = %d, want 3", got)
+	}
+}
+
+// TestDownloadCacheKeepsTheOldEntryWhenItsRecordCannotBeRemoved checks the other
+// half of the ordering: a store that cannot retire the old record changes nothing,
+// so the old entry is still served and still matches that record.
+func TestDownloadCacheKeepsTheOldEntryWhenItsRecordCannotBeRemoved(t *testing.T) {
+	server := newCountingServer(t, "old")
+	mem := fs.NewMemFS()
+	faulty := &cacheFaultFS{FS: mem}
+	d, logs := newCachingDownloader(faulty, server.Client())
+	downloadAndRead(t, d, mem, server.URL, "/first")
+
+	server.setBody("new")
+	faulty.fail = func(op, path string) error {
+		if op == "remove" && strings.HasSuffix(path, cacheRecordSuffix) {
+			return errors.New("injected fault")
+		}
+		return nil
+	}
+	ctx := config.WithOverwrite(context.Background(), true)
+	if err := d.Download(ctx, server.URL, "/second", "", DownloadOptions{Quiet: true}); err != nil {
+		t.Fatalf("Download() error = %v", err)
+	}
+	if !strings.Contains(logs.String(), "Could not cache download") {
+		t.Errorf("log = %q, want it to report the failed store", logs.String())
+	}
+
+	faulty.fail = nil
+	if got := downloadAndRead(t, d, mem, server.URL, "/third"); got != "old" {
+		t.Errorf("download = %q, want the old entry %q", got, "old")
+	}
+	if got := server.requestCount(); got != 2 {
+		t.Errorf("server requests = %d, want 2", got)
 	}
 }

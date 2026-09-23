@@ -80,6 +80,7 @@ func (p *PkgInstaller) SetLogger(log *logger.Logger) {
 	p.log = log
 	if p.dl != nil && log != nil {
 		p.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+		p.dl.SetLogger(log)
 	}
 }
 

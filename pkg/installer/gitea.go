@@ -155,6 +155,7 @@ func (g *GiteaInstaller) SetLogger(log *logger.Logger) {
 	g.log = log
 	if g.dl != nil && log != nil {
 		g.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+		g.dl.SetLogger(log)
 	}
 }
 
