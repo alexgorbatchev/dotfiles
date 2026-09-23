@@ -250,52 +250,55 @@ func TestGetGitShortSHA(t *testing.T) {
 	}
 }
 
-func TestRunMain(t *testing.T) {
-	repoRoot, err := getRepoRoot()
-	if err != nil {
-		t.Fatalf("failed to get repo root: %v", err)
+// TestParseArgs covers the command line on its own. Running the pipeline from
+// here would compile the CLI and refresh the embedded assets of the real
+// repository, which Run's own tests already cover (issue #171).
+func TestParseArgs(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		wantTarget  string
+		wantVerbose bool
+	}{
+		{name: "no arguments leaves the target to Run", args: nil, wantTarget: ""},
+		{name: "empty target leaves the target to Run", args: []string{""}, wantTarget: ""},
+		{name: "positional target", args: []string{"/srv/dotfiles"}, wantTarget: "/srv/dotfiles"},
+		{name: "short verbose flag", args: []string{"-v"}, wantTarget: "", wantVerbose: true},
+		{name: "long verbose flag with target", args: []string{"-verbose", "~/dots"}, wantTarget: "~/dots", wantVerbose: true},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			opts, err := parseArgs(tt.args, &stdout, &stderr)
+			if err != nil {
+				t.Fatalf("parseArgs(%q) error = %v, stderr: %s", tt.args, err, stderr.String())
+			}
+			want := Options{TargetDir: tt.wantTarget, Verbose: tt.wantVerbose, Stdout: &stdout, Stderr: &stderr}
+			if opts != want {
+				t.Errorf("parseArgs(%q) = %+v, want %+v", tt.args, opts, want)
+			}
+		})
+	}
+}
 
-	devBin := buildSharedDevBin(t, repoRoot)
+func TestParseArgsRejectsUnknownFlag(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if _, err := parseArgs([]string{"-invalid-flag-xyz"}, &stdout, &stderr); err == nil {
+		t.Fatal("expected an error for an unknown flag")
+	}
+	if !strings.Contains(stderr.String(), "flag provided but not defined: -invalid-flag-xyz") {
+		t.Errorf("expected the unknown flag to be reported on stderr, got: %q", stderr.String())
+	}
+}
 
-	t.Run("parses args and succeeds with target", func(t *testing.T) {
-		tmpTarget := t.TempDir()
-		configPath := filepath.Join(tmpTarget, "dotfiles.config.ts")
-		_ = os.WriteFile(configPath, []byte(`export default { paths: { generatedDir: "./.generated" } };`), 0644)
-
-		// Place devBin in .tmp
-		tmpDevBinDir := filepath.Join(repoRoot, ".tmp")
-		_ = os.MkdirAll(tmpDevBinDir, 0755)
-		devBinName := "dotfiles-dev"
-		if runtime.GOOS == "windows" {
-			devBinName = "dotfiles-dev.exe"
-		}
-		data, _ := os.ReadFile(devBin)
-		_ = os.WriteFile(filepath.Join(tmpDevBinDir, devBinName), data, 0755)
-
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
-		// Test invalid flag
-		err := runMain([]string{"-invalid-flag-xyz"}, &stdout, &stderr)
-		if err == nil {
-			t.Error("expected error for invalid flag")
-		}
-
-		// Test valid flags
-		stdout.Reset()
-		stderr.Reset()
-		// We set HOME to tmpTarget to test default target resolution
-		t.Setenv("HOME", tmpTarget)
-		dotfilesDir := filepath.Join(tmpTarget, ".dotfiles")
-		_ = os.MkdirAll(dotfilesDir, 0755)
-		_ = os.WriteFile(filepath.Join(dotfilesDir, "dotfiles.config.ts"), []byte(`export default { paths: { generatedDir: "./.generated" } };`), 0644)
-
-		err = runMain([]string{"-v", dotfilesDir}, &stdout, &stderr)
-		if err != nil {
-			t.Fatalf("runMain with -v failed: %v\nstderr: %s", err, stderr.String())
-		}
-	})
+func TestRunMainStopsOnInvalidArguments(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if err := runMain([]string{"-invalid-flag-xyz"}, &stdout, &stderr); err == nil {
+		t.Fatal("expected an error for an unknown flag")
+	}
+	if stdout.Len() != 0 {
+		t.Errorf("expected the pipeline not to start, got stdout: %q", stdout.String())
+	}
 }
 
 func TestMainProcess(t *testing.T) {
@@ -508,6 +511,39 @@ func TestDevBootstrapErrors(t *testing.T) {
 		}
 		if _, err := os.Stat(expectedBin); err != nil {
 			t.Errorf("expected binary at fallback path %s: %v", expectedBin, err)
+		}
+	})
+
+	t.Run("fails when the deployment directory cannot be created", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		// A regular file where the binaries directory should be makes MkdirAll fail.
+		blocker := filepath.Join(tmpDir, "blocker")
+		if err := os.WriteFile(blocker, nil, 0644); err != nil {
+			t.Fatalf("failed to write blocker file: %v", err)
+		}
+		// The path reaches the mock through the environment so the shell never parses it.
+		t.Setenv("BLOCKED_BINARIES_DIR", filepath.Join(blocker, "binaries"))
+		mockBin := filepath.Join(tmpDir, "mock-blocked-binaries")
+		mockScript := "#!/bin/sh\nprintf '%s\\n' \"$BLOCKED_BINARIES_DIR\"\n"
+		if err := os.WriteFile(mockBin, []byte(mockScript), 0755); err != nil {
+			t.Fatalf("failed to write mock script: %v", err)
+		}
+
+		tmpTarget := t.TempDir()
+		configPath := filepath.Join(tmpTarget, "dotfiles.config.ts")
+		if err := os.WriteFile(configPath, []byte(`export default { paths: { generatedDir: "./.generated" } };`), 0644); err != nil {
+			t.Fatalf("failed to write config: %v", err)
+		}
+
+		opts := Options{
+			RepoRoot:   repoRoot,
+			TargetDir:  tmpTarget,
+			DevBin:     mockBin,
+			SkipAssets: true,
+		}
+		err := Run(opts)
+		if err == nil || !strings.Contains(err.Error(), "creating destination directory") {
+			t.Errorf("expected a destination directory error, got: %v", err)
 		}
 	})
 

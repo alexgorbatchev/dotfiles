@@ -13,6 +13,9 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
+// defaultTargetDir is the dotfiles directory bootstrapped when none is given.
+const defaultTargetDir = "~/.dotfiles"
+
 // Options configures a dev-bootstrap run.
 type Options struct {
 	RepoRoot   string
@@ -124,7 +127,7 @@ func Run(opts Options) error {
 	// Step 3: Resolve target paths and provision starter configurations if missing
 	target := opts.TargetDir
 	if target == "" {
-		target = "~/.dotfiles"
+		target = defaultTargetDir
 	}
 	if home, err := os.UserHomeDir(); err == nil {
 		target = utils.ExpandHomePath(home, target)
@@ -222,30 +225,35 @@ func Run(opts Options) error {
 	return nil
 }
 
-func runMain(args []string, stdout, stderr io.Writer) error {
-	fs := flag.NewFlagSet("dev-bootstrap", flag.ContinueOnError)
-	fs.SetOutput(stderr)
+// parseArgs turns the command line into the Options for Run. It is kept apart
+// from Run so the command line can be tested without compiling the CLI and
+// refreshing the embedded assets of the repository.
+func parseArgs(args []string, stdout, stderr io.Writer) (Options, error) {
+	flags := flag.NewFlagSet("dev-bootstrap", flag.ContinueOnError)
+	flags.SetOutput(stderr)
 
 	var verbose bool
-	fs.BoolVar(&verbose, "v", false, "verbose output")
-	fs.BoolVar(&verbose, "verbose", false, "verbose output")
+	flags.BoolVar(&verbose, "v", false, "verbose output")
+	flags.BoolVar(&verbose, "verbose", false, "verbose output")
 
-	if err := fs.Parse(args); err != nil {
-		return err
+	if err := flags.Parse(args); err != nil {
+		return Options{}, err
 	}
 
-	target := "~/.dotfiles"
-	if fs.NArg() > 0 && fs.Arg(0) != "" {
-		target = fs.Arg(0)
-	}
-
-	opts := Options{
-		TargetDir: target,
+	// An absent target stays empty; Run applies defaultTargetDir.
+	return Options{
+		TargetDir: flags.Arg(0),
 		Verbose:   verbose,
 		Stdout:    stdout,
 		Stderr:    stderr,
-	}
+	}, nil
+}
 
+func runMain(args []string, stdout, stderr io.Writer) error {
+	opts, err := parseArgs(args, stdout, stderr)
+	if err != nil {
+		return err
+	}
 	return Run(opts)
 }
 
