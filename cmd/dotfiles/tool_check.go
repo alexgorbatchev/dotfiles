@@ -9,20 +9,29 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
+	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/spf13/cobra"
 )
 
 var toolCheckJSON bool
 
+// checkStatusFailed is the --json status of a tool whose check failed. It is not an
+// orchestrator.CheckStatus value, since those are what a check found and a failed check
+// found nothing (orchestrator.CheckTool returns the error), but a report that lists
+// every tool it was asked about still has to name the ones it could not check.
+const checkStatusFailed orchestrator.CheckStatus = "failed"
+
 // ToolUpdateResult is one tool's entry in tool check --json.
 type ToolUpdateResult struct {
 	ToolName string `json:"tool"`
-	// Status is what the check found (orchestrator.CheckStatus): one field, so no
-	// combination of flags can describe a tool two ways at once.
+	// Status is what the check found (orchestrator.CheckStatus), or checkStatusFailed:
+	// one field, so no combination of flags can describe a tool two ways at once.
 	Status         orchestrator.CheckStatus `json:"status"`
 	CurrentVersion string                   `json:"currentVersion,omitempty"`
 	LatestVersion  string                   `json:"latestVersion,omitempty"`
 	Cached         bool                     `json:"cached"`
+	// Error is why the check failed; set only with checkStatusFailed.
+	Error string `json:"error,omitempty"`
 }
 
 var toolCheckCmd = &cobra.Command{
@@ -43,6 +52,7 @@ var toolCheckCmd = &cobra.Command{
 
 		instReg := services.Installers
 		jsonResults := []ToolUpdateResult{}
+		failed := false
 
 		toolsToCheck := services.ToolConfigs
 		if len(args) > 0 {
@@ -80,14 +90,23 @@ var toolCheckCmd = &cobra.Command{
 			}
 			configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
+			// A tool that cannot be checked is logged with the cause, and in JSON listed
+			// as failed; the other tools are still checked, and the run then fails.
+			fail := func(msg logger.Message, installed *registry.ToolInstallationRecord, err error) {
+				toolLog.Error(msg)
+				failed = true
+				if toolCheckJSON {
+					jsonResults = append(jsonResults, failedCheck(tool, installed, err))
+				}
+			}
 			installed, err := services.Registry.GetToolInstallation(ctx, tool.Name)
 			if err != nil {
-				toolLog.Error(installationReadFailed(err))
+				fail(installationReadFailed(err), nil, err)
 				continue
 			}
 			check, err := orchestrator.CheckTool(ctx, inst, tool, installed)
 			if err != nil {
-				toolLog.Error(updateCheckFailed(err))
+				fail(updateCheckFailed(err), installed, err)
 				continue
 			}
 
@@ -108,11 +127,26 @@ var toolCheckCmd = &cobra.Command{
 		}
 
 		if toolCheckJSON {
-			return cliout.RenderJSON(cmd.OutOrStdout(), jsonResults)
+			if err := cliout.RenderJSON(cmd.OutOrStdout(), jsonResults); err != nil {
+				return err
+			}
 		}
-
+		// Every failure was logged where it happened, so main only sets the exit status.
+		if failed {
+			return ErrSilent
+		}
 		return nil
 	},
+}
+
+// failedCheck is the --json entry of a tool whose check failed with err. installed is
+// its installation record, nil when there is none or it could not be read.
+func failedCheck(tool *config.ToolConfig, installed *registry.ToolInstallationRecord, err error) ToolUpdateResult {
+	result := ToolUpdateResult{ToolName: tool.Name, Status: checkStatusFailed, Error: err.Error()}
+	if installed != nil {
+		result.CurrentVersion = installed.Version
+	}
+	return result
 }
 
 // logCheckResult reports one tool's check on the diagnostic stream.
@@ -130,8 +164,12 @@ func logCheckResult(toolLog *logger.Logger, tool *config.ToolConfig, r ToolUpdat
 			return
 		}
 		toolLog.Info(logger.Message("Not installed; the latest available version is " + r.LatestVersion))
-	default:
+	case orchestrator.CheckStatusUpToDate:
 		toolLog.Info(logger.Message("Up to date" + versionSuffix(r.CurrentVersion, r.Cached)))
+	default:
+		// Only a status this switch does not know reaches here; it is named as it is,
+		// never mistaken for up to date.
+		toolLog.Info(logger.Message("Status: " + string(r.Status)))
 	}
 }
 
@@ -171,8 +209,10 @@ func printCheckResult(w io.Writer, tool *config.ToolConfig, r ToolUpdateResult) 
 			return
 		}
 		fmt.Fprintf(w, "%s: not installed (latest: %s)\n", r.ToolName, r.LatestVersion)
-	default:
+	case orchestrator.CheckStatusUpToDate:
 		fmt.Fprintf(w, "%s: up to date%s\n", r.ToolName, versionSuffix(r.CurrentVersion, r.Cached))
+	default:
+		fmt.Fprintf(w, "%s: %s\n", r.ToolName, r.Status)
 	}
 }
 

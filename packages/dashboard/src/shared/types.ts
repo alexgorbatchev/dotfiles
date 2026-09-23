@@ -284,7 +284,7 @@ export interface IInstallToolResponse {
 }
 
 /**
- * What an update check found for a tool, the same status `dotfiles tool check --json` reports.
+ * What an update check found for a tool, the same status `dotfiles tool check --json` reports for a tool it could check.
  * - `up-to-date`: the installed version is the latest one, or no newer one counts as an update
  * - `update-available`: a newer version counts as an update
  * - `ahead-of-latest`: the installed version is newer than the latest one upstream

@@ -111,7 +111,7 @@ var toolUpdateCmd = &cobra.Command{
 	ValidArgsFunction: completeToolNames,
 	Long: `Evaluates tool versions and updates software packages if newer versions are available.
 
-When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version, with .version() or a version install parameter, is never updated, even with --force; set that version to "latest" to enable updates. An update check whose upstream query fails is not bypassed by --force: a named tool's update fails, and updating everything reports the failure and moves on to the next tool without reinstalling it; "dotfiles tool install --force <tool>" reinstalls without checking.`,
+When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled and disabled tools are skipped when batch updating. A tool whose configuration pins a version, with .version() or a version install parameter, is never updated, even with --force; set that version to "latest" to enable updates. An update check whose upstream query fails is not bypassed by --force: a named tool's update fails, and updating everything reports the failure and moves on to the next tool without reinstalling it, then exits non-zero, as it does after any tool it could not update; "dotfiles tool install --force <tool>" reinstalls without checking.`,
 	Example: `  # Update all installed tools
   dotfiles tool update
 
@@ -144,18 +144,21 @@ When run without arguments, checks all installed tools for updates and installs 
 
 		if len(args) == 0 {
 			logs.progress.Info(logger.Message("Checking all configured tools for updates..."))
-			// Only a tool with no installation method, which has nothing to update, or
-			// no installation record is skipped without a word. Every other tool this
+			failed := false
+			// Only a disabled tool (as install and check skip it), a tool with no
+			// installation method, which has nothing to update, or one with no
+			// installation record is skipped without a word. Every other tool this
 			// cannot update is reported with the cause, and the run goes on with the next
-			// tool.
+			// tool; the command then fails.
 			for _, targetTool := range services.ToolConfigs {
-				if targetTool.InstallationMethod == "" {
+				if targetTool.Disabled || targetTool.InstallationMethod == "" {
 					continue
 				}
 				toolLogs := logs.withTag(targetTool.Name)
 				installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 				if err != nil {
 					toolLogs.report.Error(installationReadFailed(err))
+					failed = true
 					continue
 				}
 				if installed == nil {
@@ -181,6 +184,7 @@ When run without arguments, checks all installed tools for updates and installs 
 				plan, err := orchestrator.PlanUpdate(targetTool, installed.Version, res, err, force)
 				if err != nil {
 					toolLogs.report.Error(updateCheckFailed(err))
+					failed = true
 					continue
 				}
 
@@ -199,10 +203,16 @@ When run without arguments, checks all installed tools for updates and installs 
 					recorded, err := services.Orchestrator.ApplyUpdate(ctx, targetTool, services.ProjectConfig, plan)
 					if err != nil {
 						toolLogs.report.Error(logger.Message(fmt.Sprintf("Updating%s failed: %v", plan.TargetDescription(), err)))
+						failed = true
 						continue
 					}
 					toolLogs.report.Info(logger.Message(plan.Completion(recorded)))
 				}
+			}
+			// Every failure was logged where it happened, so main only sets the exit
+			// status, as for rm given many files: the run goes on and then fails.
+			if failed {
+				return ErrSilent
 			}
 			return nil
 		}

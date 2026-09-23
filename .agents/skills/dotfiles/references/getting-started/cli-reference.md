@@ -116,7 +116,9 @@ Removes installed tools and their associated binaries, shims, and symlinks. With
 
 _(Alias: `u`, Root shortcuts: `dotfiles update`, `dotfiles u`)_
 
-Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed, and tools with no installation method, are skipped during batch updates. Every other tool a batch update cannot update, such as one whose installation record cannot be read, is logged with its cause, and the update goes on to the next tool.
+Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed, disabled tools, and tools with no installation method are skipped during batch updates. Every other tool a batch update cannot update, such as one whose installation record cannot be read, is logged with its cause, and the update goes on to the next tool.
+
+Exit status: 0 when every requested tool was updated or was left alone by design: already up to date, ahead of the latest release, pinned, not installed or disabled during a batch update, or skipped during a batch update because its installation method cannot check for updates. Non-zero when any tool could not be updated: its installation record could not be read, its update check failed, or its reinstall failed. Updating named tools stops at the first such tool. Updating everything goes on to every other tool first, logging each failure with its cause, and then exits non-zero. A tool name that is not configured, and a single named tool that is not installed, also exit non-zero; among several named tools, one that is not installed is skipped. `<binary> @update` from a shim exits with the status of `update`.
 
 A tool whose configuration pins a version is not updated, whatever its installation method. A version is pinned when the one its installation asks for is anything other than `"latest"`, and it is named in one of two places:
 
@@ -159,9 +161,11 @@ Each tool is reported with one status:
 
 In agent mode (`AGENT=1`) each tool is one line, `tool:<tool> status:<status> current:<installed> latest:<latest> cached:<true|false>`, or `tool:<tool> status:unsupported current:<installed> installer:<method>`. `current` is empty for a tool that is not installed.
 
-A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails, whether the tool is installed or not (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed: <error>` for that tool and leaves it out of its output. A tool whose installation record cannot be read is logged as `Reading the installation record failed: <error>` and left out the same way.
+A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails, whether the tool is installed or not (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed: <error>` for that tool and leaves it out of its plain and agent-mode output. A tool whose installation record cannot be read is logged as `Reading the installation record failed: <error>` and left out the same way. Under `--json`, either is listed with the status `failed`.
 
-- `--json`: Output update status in JSON format. Each entry carries `tool`, `status` (one of the statuses above), `currentVersion`, `latestVersion`, and `cached`. `currentVersion` is absent for a tool that is not installed, and `latestVersion` when nothing upstream named one.
+Exit status: 0 unless the check of a tool failed, whatever the checks found, including an available update, a tool that is not installed, and an installation method that cannot check for updates. Disabled tools, tools with no installation method, and tools whose update checks are turned off with [`updateCheck.enabled`](../api-reference/core-api.md#updatecheckconfig) are skipped, named or not. Non-zero when the check of any tool failed, or when a named tool is not configured, which fails before anything is checked. `tool check` still checks and reports every other tool first, and under `--json` prints the whole array before exiting.
+
+- `--json`: Output update status in JSON format. Each entry carries `tool`, `status`, `currentVersion`, `latestVersion`, and `cached`. `status` is one of the statuses above, or `failed` for a tool whose check failed, whose entry also carries `error`, the cause that was logged. `currentVersion` is absent for a tool that is not installed or whose installation record could not be read, and `latestVersion` when nothing upstream named one.
 
 #### `dotfiles tool validate [tool]`
 

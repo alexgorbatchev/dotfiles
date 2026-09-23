@@ -26,6 +26,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
@@ -1530,6 +1531,16 @@ func mustNotContain(t *testing.T, label, got string, unwanted ...string) {
 	}
 }
 
+// mustFailAfterLogging fails the test unless a command that went on past a failure it
+// had logged ended with ErrSilent (#132): main then exits 1 without printing the failure
+// a second time.
+func mustFailAfterLogging(t *testing.T, err error, out commandOutput) {
+	t.Helper()
+	if !errors.Is(err, ErrSilent) {
+		t.Fatalf("error = %v, want ErrSilent after a logged failure\n%s", err, out.Combined)
+	}
+}
+
 func TestConfigureInstallerForUpdate(t *testing.T) {
 	const destDir = "dest"
 
@@ -1774,12 +1785,11 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	})
 
 	// Every failure names its cause without --trace (#131): the logger keeps an error
-	// argument's text for --trace, so the cause has to be part of the message.
+	// argument's text for --trace, so the cause has to be part of the message. The run
+	// goes on past each failure and then exits non-zero (#132).
 	t.Run("updating everything reports what it cannot update and continues past failures", func(t *testing.T) {
 		out, err := p.run("tool", "update")
-		if err != nil {
-			t.Fatalf("tool update: %v\n%s", err, out.Combined)
-		}
+		mustFailAfterLogging(t, err, out)
 		mustContain(t, "stderr", out.Stderr,
 			"Checking all configured tools for updates...",
 			`[sudo-tool] Updating to version v9.9.9 failed: installer "github-release" does not support sudo elevation`,
@@ -1795,9 +1805,7 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 
 	t.Run("force updating everything reinstalls each installed tool whose check did not fail", func(t *testing.T) {
 		out, err := p.run("tool", "update", "--force")
-		if err != nil {
-			t.Fatalf("tool update --force: %v\n%s", err, out.Combined)
-		}
+		mustFailAfterLogging(t, err, out)
 		mustContain(t, "stderr", out.Stderr,
 			"[same] Force updating: reinstalling version v0.1.0",
 			`[manual-versioned] Update check not supported for installer "manual", performing regular install instead`,
@@ -1807,6 +1815,107 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		)
 		mustNotContain(t, "stderr", out.Stderr, "[check-fails] Force updating", "[check-fails] Successfully")
 	})
+}
+
+// TestCheckResultOutput_UnknownStatus pins that a status the output does not describe,
+// such as a failed check, is named as it is and never reported as up to date (#120).
+func TestCheckResultOutput_UnknownStatus(t *testing.T) {
+	tool := &config.ToolConfig{Name: "t", InstallationMethod: "github-release"}
+	r := ToolUpdateResult{ToolName: "t", Status: checkStatusFailed, CurrentVersion: "v1.0.0"}
+
+	var stdout, stderr bytes.Buffer
+	printCheckResult(&stdout, tool, r)
+	logCheckResult(newLogger("check", &stderr, logger.LogLevelDefault).WithTag("t"), tool, r)
+
+	if stdout.String() != "t: failed\n" {
+		t.Errorf("stdout = %q, want %q", stdout.String(), "t: failed\n")
+	}
+	mustContain(t, "stderr", stderr.String(), "[t] Status: failed")
+	mustNotContain(t, "stderr", stderr.String(), "Up to date")
+}
+
+// TestUpdateCommand_BulkExitStatus pins the exit status of updating everything (#132):
+// like rm with many operands, it goes on to every other tool after one it could not
+// update and then fails, so a script or a scheduled job can tell. Each failure is tested
+// on its own next to a tool that is updated, and a run whose only outcomes are tools it
+// leaves alone by design succeeds.
+func TestUpdateCommand_BulkExitStatus(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repoNewer, repoSame, repoMissing = "acme/bulk-newer", "acme/bulk-same", "acme/bulk-missing"
+	newReleaseServer(t, map[string]mockRelease{
+		repoNewer: {Tag: "v9.9.9", Binaries: []string{"newer", "sudo-tool"}},
+		repoSame:  {Tag: "v0.1.0", Binaries: []string{"same", "ahead", "pinned"}},
+	})
+	manualBin := filepath.Join(t.TempDir(), "manual-bin")
+	if err := os.WriteFile(manualBin, []byte("#!/bin/sh\necho manual\n"), 0755); err != nil {
+		t.Fatalf("writing manual binary: %v", err)
+	}
+	tool := func(name, repo string, extra string) string {
+		return fmt.Sprintf(`%q: {"name": %[1]q, "installationMethod": "github-release"%s, "installParams": {"repo": %q, "assetPattern": %q}}`, name, extra, repo, releaseAssetName)
+	}
+	newer := tool("newer", repoNewer, "")
+
+	tests := []struct {
+		name      string
+		tools     []string
+		installed map[string]string
+		// wantFailure is the logged failure the run must end in ErrSilent for; empty
+		// means the run must succeed.
+		wantFailure string
+	}{
+		{
+			name:        "a failed update check",
+			tools:       []string{newer, tool("check-fails", repoMissing, "")},
+			installed:   map[string]string{"newer": "v0.1.0", "check-fails": "v0.1.0"},
+			wantFailure: `[check-fails] Update check failed: checking update for "check-fails": GitHub API returned status 500`,
+		},
+		{
+			name:        "a failed reinstall",
+			tools:       []string{newer, tool("sudo-tool", repoNewer, `, "sudo": true`)},
+			installed:   map[string]string{"newer": "v0.1.0", "sudo-tool": "v0.1.0"},
+			wantFailure: `[sudo-tool] Updating to version v9.9.9 failed: installer "github-release" does not support sudo elevation`,
+		},
+		{
+			name: "only tools left alone by design",
+			tools: []string{
+				newer,
+				tool("same", repoSame, ""),
+				tool("ahead", repoSame, ""),
+				tool("pinned", repoSame, `, "version": "v0.1.0"`),
+				fmt.Sprintf(`"hand": {"name": "hand", "installationMethod": "manual", "installParams": {"binaryPath": %q}}`, manualBin),
+				tool("never-installed", repoMissing, ""),
+				// Disabled after it was installed: skipped as install and check skip it,
+				// so its check, which would fail, never runs.
+				tool("off", repoMissing, `, "disabled": true`),
+			},
+			installed: map[string]string{"newer": "v0.1.0", "same": "v0.1.0", "ahead": "v1.0.0", "pinned": "v0.1.0", "hand": "v1.0.0", "off": "v0.1.0"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newE2EProject(t, strings.Join(tt.tools, ",\n"))
+			for name, version := range tt.installed {
+				dir := filepath.Join(p.Root, "installed", name)
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					t.Fatalf("creating install dir: %v", err)
+				}
+				p.seedInstallation(t, name, version, dir)
+			}
+
+			out, err := p.run("tool", "update")
+			// The tool beside the failure is updated whichever of the two comes first.
+			mustContain(t, "stderr", out.Stderr, "[newer] Successfully updated to version v9.9.9")
+			if tt.wantFailure == "" {
+				if err != nil {
+					t.Fatalf("tool update: %v\n%s", err, out.Combined)
+				}
+				mustNotContain(t, "stderr", out.Stderr, "ERROR", "failed")
+				return
+			}
+			mustFailAfterLogging(t, err, out)
+			mustContain(t, "stderr", out.Stderr, tt.wantFailure)
+		})
+	}
 }
 
 // TestUpdateCommand_RecordedVersion checks what the installation record holds after
@@ -2095,11 +2204,11 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	p.seedInstallation(t, "same", "v0.1.0", filepath.Join(p.Root, "installed", "same"))
 	p.seedInstallation(t, "hand", "v1.0.0", filepath.Join(p.Root, "installed", "hand"))
 
+	// The check of fail fails, so every run of all tools exits non-zero (#132), after
+	// reporting every other tool.
 	t.Run("human output on a fresh fetch", func(t *testing.T) {
 		out, err := p.run("tool", "check")
-		if err != nil {
-			t.Fatalf("tool check: %v\n%s", err, out.Combined)
-		}
+		mustFailAfterLogging(t, err, out)
 		mustContain(t, "stdout", out.Stdout,
 			// A tool dotfiles never installed is not installed, never an update from the
 			// placeholder "latest" (#151); the release upstream is still reported.
@@ -2128,19 +2237,25 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 
 	t.Run("human output from the cached releases", func(t *testing.T) {
 		out, err := p.run("tool", "check")
+		mustFailAfterLogging(t, err, out)
+		mustContain(t, "stdout", out.Stdout, "same: up to date (v0.1.0, cached)\n")
+		mustContain(t, "stderr", out.Stderr, "[same] Up to date (v0.1.0, cached)")
+	})
+
+	// Update availability, not-installed tools and unsupported checks are what a check
+	// finds, not failures, so a run with nothing else succeeds.
+	t.Run("checking only tools whose checks succeed exits 0", func(t *testing.T) {
+		out, err := p.run("tool", "check", "avail", "upd", "same", "same-param", "hand", "never-hand", "never-brew")
 		if err != nil {
 			t.Fatalf("tool check: %v\n%s", err, out.Combined)
 		}
-		mustContain(t, "stdout", out.Stdout, "same: up to date (v0.1.0, cached)\n")
-		mustContain(t, "stderr", out.Stderr, "[same] Up to date (v0.1.0, cached)")
+		mustContain(t, "stdout", out.Stdout, "upd: update available (v0.1.0 -> v9.9.9)\n", "hand: update check not supported (manual)\n", "never-brew: not installed\n")
 	})
 
 	t.Run("agent output", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
 		out, err := p.run("tool", "check")
-		if err != nil {
-			t.Fatalf("tool check: %v\n%s", err, out.Combined)
-		}
+		mustFailAfterLogging(t, err, out)
 		mustContain(t, "stdout", out.Stdout,
 			"tool:avail status:not-installed current: latest:v9.9.9 cached:true\n",
 			"tool:never-brew status:not-installed current: latest: cached:false\n",
@@ -2153,9 +2268,7 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 
 	t.Run("json output", func(t *testing.T) {
 		out, err := p.run("tool", "check", "--json")
-		if err != nil {
-			t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
-		}
+		mustFailAfterLogging(t, err, out)
 		var results []ToolUpdateResult
 		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
 			t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
@@ -2186,6 +2299,12 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 				t.Errorf("%s result = %+v (present: %t), want %+v", name, got, ok, want)
 			}
 		}
+		// The failed check is in the array with its cause, so a script reading the JSON
+		// sees which tool failed and why (#132).
+		wantFail := ToolUpdateResult{ToolName: "fail", Status: checkStatusFailed, Error: `checking update for "fail": GitHub API returned status 500`}
+		if got, ok := byName["fail"]; !ok || got != wantFail {
+			t.Errorf("fail result = %+v (present: %t), want %+v", got, ok, wantFail)
+		}
 		mustNotContain(t, "stdout", out.Stdout, `"currentVersion": "latest"`)
 	})
 }
@@ -2201,13 +2320,16 @@ func TestCheckUpdatesCommand_UnreadableInstallation(t *testing.T) {
 	p.seedUnreadableInstallation(t, "unreadable")
 
 	out, err := p.run("tool", "check", "--json")
-	if err != nil {
-		t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
-	}
+	mustFailAfterLogging(t, err, out)
 	// The cause is part of the message, so it is printed without --trace (#131).
 	mustContain(t, "stderr", out.Stderr, "[unreadable] Reading the installation record failed: scanning tool installation record: ", unreadableInstallationCause)
-	if strings.TrimSpace(out.Stdout) != "[]" {
-		t.Errorf("stdout = %s, want no result for a tool whose installation could not be read", out.Stdout)
+	var results []ToolUpdateResult
+	if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+		t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
+	}
+	if len(results) != 1 || results[0].ToolName != "unreadable" || results[0].Status != checkStatusFailed ||
+		!strings.Contains(results[0].Error, unreadableInstallationCause) || results[0].CurrentVersion != "" || results[0].LatestVersion != "" {
+		t.Errorf("results = %+v, want one failed check for unreadable carrying the read error", results)
 	}
 }
 
@@ -2225,9 +2347,7 @@ func TestUpdateCommand_UnreadableInstallation(t *testing.T) {
 	for _, args := range [][]string{{"tool", "update"}, {"tool", "update", "--force"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			out, err := p.run(args...)
-			if err != nil {
-				t.Fatalf("%s: %v\n%s", strings.Join(args, " "), err, out.Combined)
-			}
+			mustFailAfterLogging(t, err, out)
 			mustContain(t, "stderr", out.Stderr, "[unreadable] Reading the installation record failed: scanning tool installation record: ", unreadableInstallationCause)
 			mustNotContain(t, "stderr", out.Stderr, "[unreadable] Force updating", "[unreadable] Successfully")
 		})
@@ -2382,9 +2502,9 @@ func TestAheadOfLatest(t *testing.T) {
 
 // TestCheckUpdatesCommand_FailedQuery pins that an update check whose upstream query
 // fails is reported as failed, never as up to date: with the real npm installer and an
-// npm that exits 1, `tool check` logs the failure and leaves the tool out of its
-// results, and `tool update` fails instead of answering "Already up to date" (issue
-// #120).
+// npm that exits 1, `tool check` logs the failure, lists the tool as failed and exits
+// non-zero (#132), and `tool update` fails instead of answering "Already up to date"
+// (#120).
 func TestCheckUpdatesCommand_FailedQuery(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	stubDir := t.TempDir()
@@ -2399,17 +2519,13 @@ func TestCheckUpdatesCommand_FailedQuery(t *testing.T) {
 
 	t.Run("tool check reports the failure", func(t *testing.T) {
 		out, err := p.run("tool", "check", "--json")
-		if err != nil {
-			t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
-		}
+		mustFailAfterLogging(t, err, out)
 		var results []ToolUpdateResult
 		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
 			t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
 		}
-		for _, r := range results {
-			if r.ToolName == "private-cli" {
-				t.Errorf("private-cli reported as %+v; a failed query must not produce a result", r)
-			}
+		if len(results) != 1 || results[0].Status != checkStatusFailed || !strings.Contains(results[0].Error, "npm error code E401") {
+			t.Errorf("results = %+v; a failed query must be reported as failed with its cause", results)
 		}
 		mustContain(t, "stderr", out.Stderr, "[private-cli] Update check failed")
 	})
@@ -2621,9 +2737,7 @@ func TestCargoUpdateChecks(t *testing.T) {
 
 	t.Run("tool check reports the latest crates.io version", func(t *testing.T) {
 		out, err := p.run("tool", "check", "--json")
-		if err != nil {
-			t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
-		}
+		mustFailAfterLogging(t, err, out)
 		var results []ToolUpdateResult
 		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
 			t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
@@ -2645,10 +2759,14 @@ func TestCargoUpdateChecks(t *testing.T) {
 				t.Errorf("%s result = %+v (present: %t), want %+v", name, got, ok, w)
 			}
 		}
-		if r, ok := byName["failing"]; ok {
-			t.Errorf("failing result = %+v; a failed query must not be reported as a result", r)
+		const failingCause = `checking update for "failing": checking failing for updates: resolving crate-missing version from crates.io: crates.io returned status: 500`
+		// A failed query is reported as failed with its cause, never as a status the
+		// query did not establish.
+		wantFailing := ToolUpdateResult{ToolName: "failing", CurrentVersion: "1.0.0", Status: checkStatusFailed, Error: failingCause}
+		if got, ok := byName["failing"]; !ok || got != wantFailing {
+			t.Errorf("failing result = %+v (present: %t), want %+v", got, ok, wantFailing)
 		}
-		mustContain(t, "stderr", out.Stderr, `[failing] Update check failed: checking update for "failing": checking failing for updates: resolving crate-missing version from crates.io: crates.io returned status: 500`)
+		mustContain(t, "stderr", out.Stderr, `[failing] Update check failed: `+failingCause)
 		mustNotContain(t, "stderr", out.Stderr, "Update check not supported")
 	})
 
