@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
 // One resolved target governs a whole run: the configuration is loaded for it, the
@@ -87,27 +89,30 @@ func TestE2ECrossTargetHookSeesTheRequestedTarget(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		platform   string
-		targetArch string
-		libc       string
-		wantOS     string
-		wantLibc   string
+		name         string
+		platform     string
+		targetArch   string
+		libc         string
+		wantPlatform int
+		wantArch     int
+		wantLibc     string
 	}{
 		{
-			name:       "linux arm64 musl",
-			platform:   "linux",
-			targetArch: "arm64",
-			libc:       "musl",
-			wantOS:     "linux",
-			wantLibc:   "musl",
+			name:         "linux arm64 musl",
+			platform:     "linux",
+			targetArch:   "arm64",
+			libc:         "musl",
+			wantPlatform: config.PlatformLinux,
+			wantArch:     config.ArchArm64,
+			wantLibc:     "musl",
 		},
 		{
-			name:       "macos amd64 has no C library",
-			platform:   "macos",
-			targetArch: "amd64",
-			wantOS:     "darwin",
-			wantLibc:   "unknown",
+			name:         "macos amd64 has no C library",
+			platform:     "macos",
+			targetArch:   "amd64",
+			wantPlatform: config.PlatformMacOS,
+			wantArch:     config.ArchX86_64,
+			wantLibc:     "unknown",
 		},
 	}
 
@@ -136,19 +141,23 @@ func TestE2ECrossTargetHookSeesTheRequestedTarget(t *testing.T) {
 			if err != nil {
 				t.Fatalf("the after-install hook wrote no systemInfo: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 			}
-			var got map[string]string
+			var got struct {
+				Platform int    `json:"platform"`
+				Arch     int    `json:"arch"`
+				Libc     string `json:"libc"`
+			}
 			if err := json.Unmarshal(data, &got); err != nil {
 				t.Fatalf("the hook wrote %q, which is not JSON: %v", data, err)
 			}
 
-			if got["os"] != tt.wantOS {
-				t.Errorf("systemInfo.os = %q, want %q", got["os"], tt.wantOS)
+			if got.Platform != tt.wantPlatform {
+				t.Errorf("systemInfo.platform = %d, want the Platform member %d", got.Platform, tt.wantPlatform)
 			}
-			if got["arch"] != tt.targetArch {
-				t.Errorf("systemInfo.arch = %q, want %q", got["arch"], tt.targetArch)
+			if got.Arch != tt.wantArch {
+				t.Errorf("systemInfo.arch = %d, want the Architecture member %d", got.Arch, tt.wantArch)
 			}
-			if got["libc"] != tt.wantLibc {
-				t.Errorf("systemInfo.libc = %q, want %q", got["libc"], tt.wantLibc)
+			if got.Libc != tt.wantLibc {
+				t.Errorf("systemInfo.libc = %q, want %q", got.Libc, tt.wantLibc)
 			}
 		})
 	}

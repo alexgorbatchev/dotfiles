@@ -29,7 +29,7 @@ func TestVMContextAndFSBindings(t *testing.T) {
 		import { defineTool } from "@dotfiles/cli";
 		export default defineTool(async (install, ctx) => {
 			ctx.log.info("evaluated " + ctx.toolName);
-			ctx.log.warn("platform: " + ctx.systemInfo.os + "-" + ctx.systemInfo.arch);
+			ctx.log.warn("platform: " + ctx.systemInfo.platform + "-" + ctx.systemInfo.arch);
 			
 			if (await ctx.fs.exists("/sandbox/tools/test.txt")) {
 				ctx.log.debug("content: " + (await ctx.fs.readFile("/sandbox/tools/test.txt")));

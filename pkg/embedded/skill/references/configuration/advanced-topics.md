@@ -38,7 +38,7 @@ Choose methods based on system capabilities:
 
 ```typescript
 export default defineTool((install, ctx) => {
-  if (ctx.systemInfo.os === "darwin" && process.env.HOMEBREW_PREFIX) {
+  if (ctx.systemInfo.platform === Platform.MacOS && process.env.HOMEBREW_PREFIX) {
     return install("brew", { formula: "tool" }).bin("tool");
   }
   return install("github-release", { repo: "owner/tool" }).bin("tool");

@@ -1509,7 +1509,7 @@ func TestLoaderToolContextSystemInfo(t *testing.T) {
 		import { defineTool } from "@alexgorbatchev/dotfiles";
 		export default defineTool((install, ctx) =>
 			install("manual", {
-				binaryPath: ctx.systemInfo.homeDir + "|" + ctx.systemInfo.hostname + "|" + ctx.systemInfo.os,
+				binaryPath: ctx.systemInfo.homeDir + "|" + ctx.systemInfo.hostname,
 			}).bin("probe"),
 		);
 	`
@@ -1532,17 +1532,14 @@ func TestLoaderToolContextSystemInfo(t *testing.T) {
 		t.Fatalf("reading the hostname: %v", err)
 	}
 	parts := strings.Split(got, "|")
-	if len(parts) != 3 {
-		t.Fatalf("tool factory saw %q, want three systemInfo members", got)
+	if len(parts) != 2 {
+		t.Fatalf("tool factory saw %q, want two systemInfo members", got)
 	}
 	if parts[0] != homeDir {
 		t.Errorf("systemInfo.homeDir = %q, want the configured home %q", parts[0], homeDir)
 	}
 	if parts[1] != hostname {
 		t.Errorf("systemInfo.hostname = %q, want %q", parts[1], hostname)
-	}
-	if parts[2] == "" {
-		t.Errorf("systemInfo.os = %q, want it to stay populated", parts[2])
 	}
 }
 
@@ -1742,7 +1739,7 @@ func TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure(t *testing.T) {
 // configFactoryContextBody is a configuration built entirely out of the context a
 // configuration factory receives, so that a factory which is never called, or is called
 // with something other than that context, cannot produce the expected path.
-const configFactoryContextBody = "({ paths: { dotfilesDir: ctx.configFileDir + \"/\" + ctx.systemInfo.os + \"/\" + ctx.systemInfo.arch } })"
+const configFactoryContextBody = "({ paths: { dotfilesDir: ctx.configFileDir + \"/\" + ctx.systemInfo.platform + \"/\" + ctx.systemInfo.arch } })"
 
 // TestLoadTypeScriptConfigResolvesConfigurationFactory proves both factory forms reach
 // Go as the configuration they produce: the promise an asynchronous factory returns is
@@ -1770,22 +1767,30 @@ func TestLoadTypeScriptConfigResolvesConfigurationFactory(t *testing.T) {
 		{
 			name:   "async defineConfig factory reading its context",
 			source: defineConfigImport + "export default defineConfig(async (ctx) => " + configFactoryContextBody + ");",
-			want:   func(dir string) string { return dir + "/linux/arm64" },
+			want: func(dir string) string {
+				return dir + "/" + strconv.Itoa(config.PlatformLinux) + "/" + strconv.Itoa(config.ArchArm64)
+			},
 		},
 		{
 			name:   "synchronous defineConfig factory reading its context",
 			source: defineConfigImport + "export default defineConfig((ctx) => " + configFactoryContextBody + ");",
-			want:   func(dir string) string { return dir + "/linux/arm64" },
+			want: func(dir string) string {
+				return dir + "/" + strconv.Itoa(config.PlatformLinux) + "/" + strconv.Itoa(config.ArchArm64)
+			},
 		},
 		{
 			name:   "bare function default export reading its context",
 			source: "export default (ctx) => " + configFactoryContextBody + ";",
-			want:   func(dir string) string { return dir + "/linux/arm64" },
+			want: func(dir string) string {
+				return dir + "/" + strconv.Itoa(config.PlatformLinux) + "/" + strconv.Itoa(config.ArchArm64)
+			},
 		},
 		{
 			name:   "bare async function default export reading its context",
 			source: "export default async (ctx) => " + configFactoryContextBody + ";",
-			want:   func(dir string) string { return dir + "/linux/arm64" },
+			want: func(dir string) string {
+				return dir + "/" + strconv.Itoa(config.PlatformLinux) + "/" + strconv.Itoa(config.ArchArm64)
+			},
 		},
 	}
 

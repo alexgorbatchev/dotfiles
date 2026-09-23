@@ -41,6 +41,18 @@ func (t Target) arch() string {
 	return arch.GetArch()
 }
 
+// platform returns the Platform member of the OS this target evaluates against, the
+// value systemInfo.platform reports.
+func (t Target) platform() int {
+	return config.PlatformOf(t.os())
+}
+
+// architecture returns the Architecture member of the architecture this target
+// evaluates against, the value systemInfo.arch reports.
+func (t Target) architecture() int {
+	return config.ArchitectureOf(t.arch())
+}
+
 // libc returns the C library this target evaluates against. Detection inspects the
 // running machine's dynamic loaders, which say nothing about a target the caller named,
 // so an override replaces detection rather than being reconciled with it.
@@ -120,17 +132,17 @@ var libcConstants = map[string]string{
 func RegisterBindings(vm *goja.Runtime, target Target) error {
 	_ = vm.Set("globalThis", vm.GlobalObject())
 	bindings := map[string]any{
-		"getOS":         target.os,
-		"getArch":       target.arch,
-		"matchesTarget": target.matchesTarget,
-		"getenv":        os.Getenv,
-		"fileExists":    arch.FileExists,
-		"isMac":         func() bool { return target.os() == arch.OSDarwin },
-		"isLinux":       func() bool { return target.os() == arch.OSLinux },
-		"isWindows":     func() bool { return target.os() == "windows" },
-		"detectLibc":    target.libc,
-		"libcConstants": func() map[string]string { return maps.Clone(libcConstants) },
-		"getHostname":   hostname,
+		"getPlatform":     target.platform,
+		"getArchitecture": target.architecture,
+		"matchesTarget":   target.matchesTarget,
+		"getenv":          os.Getenv,
+		"fileExists":      arch.FileExists,
+		"isMac":           func() bool { return target.os() == arch.OSDarwin },
+		"isLinux":         func() bool { return target.os() == arch.OSLinux },
+		"isWindows":       func() bool { return target.os() == "windows" },
+		"detectLibc":      target.libc,
+		"libcConstants":   func() map[string]string { return maps.Clone(libcConstants) },
+		"getHostname":     hostname,
 	}
 
 	for name, fn := range bindings {
@@ -172,10 +184,11 @@ func effectiveHomeDir(homeDir string) string {
 }
 
 // configSystemInfo is ISystemInfo of the authoring DSL: what the runtime reports about
-// the machine a configuration is evaluated for.
+// the machine a configuration is evaluated for. Platform and Arch are the Platform and
+// Architecture members of the target, as v1 reported them.
 type configSystemInfo struct {
-	OS       string `json:"os"`
-	Arch     string `json:"arch"`
+	Platform int    `json:"platform"`
+	Arch     int    `json:"arch"`
 	Libc     string `json:"libc"`
 	HomeDir  string `json:"homeDir"`
 	Hostname string `json:"hostname"`
@@ -201,8 +214,8 @@ func newConfigContext(configFileDir, homeDir string, target Target) configContex
 	return configContext{
 		ConfigFileDir: configFileDir,
 		SystemInfo: configSystemInfo{
-			OS:       target.os(),
-			Arch:     target.arch(),
+			Platform: target.platform(),
+			Arch:     target.architecture(),
 			Libc:     target.libc(),
 			HomeDir:  effectiveHomeDir(homeDir),
 			Hostname: hostname(),

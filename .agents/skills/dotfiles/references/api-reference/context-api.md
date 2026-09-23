@@ -19,22 +19,38 @@ The `ctx` parameter in `defineTool` provides access to tool and project informat
 ### ctx.systemInfo
 
 What the runtime reports about the machine a configuration is evaluated for. The same
-object, of type `ISystemInfo`, is on the `defineConfig` context and on every
-[hook context](lifecycle-hooks.md#context-properties). `os`, `arch` and `libc` follow the
-`--platform`, `--arch` and `--libc` flags when those are given, so a configuration loaded
-for another target describes that target rather than the machine running the CLI.
+object, of type `ISystemInfo`, is on the `defineConfig` context, on every
+[hook context](lifecycle-hooks.md#context-properties) and on the context a function-valued
+install parameter such as `assetSelector` receives. `platform`, `arch` and `libc`
+follow the `--platform`, `--arch` and `--libc` flags when those are given, so a
+configuration loaded for another target describes that target rather than the machine
+running the CLI.
 
-| Field      | Type     | Value                                                                                                                                                                                                                                                                                     |
-| ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `os`       | `string` | `"darwin"`, `"linux"`, `"windows"` or `"unknown"`                                                                                                                                                                                                                                         |
-| `arch`     | `string` | `"amd64"`, `"arm64"` or `"unknown"`                                                                                                                                                                                                                                                       |
-| `libc`     | `string` | The Linux C library, named the way release assets name it: `"gnu"`, `"musl"`, or `"unknown"` when it cannot be told apart. Always `"unknown"` off Linux. Compare against the `Libc` enum (`Libc.Gnu`, `Libc.Musl`, `Libc.Unknown`) rather than against a literal.                         |
-| `homeDir`  | `string` | The directory a `~` path resolves against. It is the project's `paths.homeDir`, which a configuration may deliberately point somewhere other than the invoking user's own home; inside `defineConfig`, where that value is still being defined, it is the invoking user's home directory. |
-| `hostname` | `string` | Name of the machine, the value `.hostname(pattern)` matches against. Empty when the machine cannot report one.                                                                                                                                                                            |
+| Field      | Type           | Value                                                                                                                                                                                                                                                                                     |
+| ---------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platform` | `Platform`     | The operating system, as exactly one member: `Platform.Linux`, `Platform.MacOS` or `Platform.Windows`. An operating system with no member reports `0`, which equals none of them.                                                                                                         |
+| `arch`     | `Architecture` | The CPU architecture, as exactly one member: `Architecture.X86_64` or `Architecture.Arm64`. An architecture with no member reports `0`, which equals none of them.                                                                                                                        |
+| `libc`     | `string`       | The Linux C library, named the way release assets name it: `"gnu"`, `"musl"`, or `"unknown"` when it cannot be told apart. Always `"unknown"` off Linux. Compare against the `Libc` enum (`Libc.Gnu`, `Libc.Musl`, `Libc.Unknown`) rather than against a literal.                         |
+| `homeDir`  | `string`       | The directory a `~` path resolves against. It is the project's `paths.homeDir`, which a configuration may deliberately point somewhere other than the invoking user's own home; inside `defineConfig`, where that value is still being defined, it is the invoking user's home directory. |
+| `hostname` | `string`       | Name of the machine, the value `.hostname(pattern)` matches against. Empty when the machine cannot report one.                                                                                                                                                                            |
 
-There is no `platform` field and no `timestamp` field on `systemInfo`. `os` is the
-operating system as a string; `Platform` is a separate bitmask enum, used by `.platform()`
-blocks and documented in [platform-specific.md](../configuration/platform-specific.md).
+`platform` and `arch` hold members of the same `Platform` and `Architecture` enums that
+`.platform()` blocks take (see [platform-specific.md](../configuration/platform-specific.md#platform-and-architecture-enums)).
+They always hold a single member, never a combination such as `Platform.All`, so compare
+them with `===`:
+
+```typescript
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, ctx) => {
+  const { platform, arch } = ctx.systemInfo;
+  const isAppleSilicon = platform === Platform.MacOS && arch === Architecture.Arm64;
+  const prefix = isAppleSilicon ? "/opt/homebrew" : "/usr/local";
+  return install("manual", { binaryPath: `${prefix}/bin/tool` }).bin("tool");
+});
+```
+
+There is no `os` field and no `timestamp` field on `systemInfo`.
 
 ### Path Properties via projectConfig
 

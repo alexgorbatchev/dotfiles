@@ -53,6 +53,12 @@ func hookTestProjectConfig(t *testing.T) *config.ProjectConfig {
 // runHookCapturingFile runs a hook that writes what it saw to /captured and returns it.
 func runHookCapturingFile(t *testing.T, tool *config.ToolConfig, projCfg *config.ProjectConfig, event string, hookCtx HookContext) string {
 	t.Helper()
+	return runHookCapturingFileFor(t, tool, projCfg, event, hookCtx, Target{})
+}
+
+// runHookCapturingFileFor is runHookCapturingFile for a run invoked for target.
+func runHookCapturingFileFor(t *testing.T, tool *config.ToolConfig, projCfg *config.ProjectConfig, event string, hookCtx HookContext, target Target) string {
+	t.Helper()
 	memFS := fs.NewMemFS()
 	err := RunHook(
 		context.Background(),
@@ -63,7 +69,7 @@ func runHookCapturingFile(t *testing.T, tool *config.ToolConfig, projCfg *config
 		projCfg,
 		event,
 		hookCtx,
-		Target{},
+		target,
 	)
 	if err != nil {
 		t.Fatalf("RunHook returned error: %v", err)
@@ -395,7 +401,7 @@ func TestRunHook_DirnameIsTheToolFilesDirectory(t *testing.T) {
 	}
 }
 
-// systemInfo describes the machine the hook runs on. homeDir is the home directory the
+// systemInfo describes the machine the run targets. homeDir is the home directory the
 // project is configured with rather than the invoking user's, because a tool writing a
 // dotfile has to land where the configuration says.
 func TestRunHook_SystemInfoCarriesHomeDirAndHostname(t *testing.T) {
@@ -411,7 +417,9 @@ func TestRunHook_SystemInfoCarriesHomeDirAndHostname(t *testing.T) {
 	projCfg := hookTestProjectConfig(t)
 	captured := runHookCapturingFile(t, tool, projCfg, HookAfterInstall, HookContext{})
 
-	var got map[string]string
+	// platform and arch are Platform and Architecture members, pinned by
+	// TestHookSystemInfoDescribesTheTarget; this test is about the string members.
+	var got map[string]any
 	if err := json.Unmarshal([]byte(captured), &got); err != nil {
 		t.Fatalf("hook wrote %q, which is not JSON: %v", captured, err)
 	}
@@ -424,9 +432,6 @@ func TestRunHook_SystemInfoCarriesHomeDirAndHostname(t *testing.T) {
 	}
 	if got["hostname"] != hostname {
 		t.Errorf("systemInfo.hostname = %q, want %q", got["hostname"], hostname)
-	}
-	if got["os"] == "" || got["arch"] == "" {
-		t.Errorf("systemInfo = %v, want os and arch to stay populated", got)
 	}
 }
 

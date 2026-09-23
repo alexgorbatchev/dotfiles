@@ -253,13 +253,17 @@ export interface IProjectConfig extends DeepPartial<ProjectConfig> {
  */
 export interface ISystemInfo {
   /**
-   * Operating system name: `"darwin"`, `"linux"`, `"windows"`, or `"unknown"`.
+   * Operating system, as a single `Platform` member (`Platform.Linux`, `Platform.MacOS`
+   * or `Platform.Windows`); compare it with `===`. An operating system with no member
+   * reports `0`, which equals none of them.
    */
-  os: string;
+  platform: Platform;
   /**
-   * CPU architecture name: `"amd64"`, `"arm64"`, or `"unknown"`.
+   * CPU architecture, as a single `Architecture` member (`Architecture.X86_64` or
+   * `Architecture.Arm64`); compare it with `===`. An architecture with no member
+   * reports `0`, which equals none of them.
    */
-  arch: string;
+  arch: Architecture;
   /**
    * C library on Linux: `"gnu"`, `"musl"`, or `"unknown"` (compare against `Libc`).
    */
