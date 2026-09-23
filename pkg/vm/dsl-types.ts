@@ -611,6 +611,11 @@ export interface ICargoInstallParams extends ICommonInstallParams {
    */
   cargoTomlUrl?: string;
   /**
+   * Include prerelease versions when resolving the latest version, from crates.io and
+   * from GitHub releases alike. Defaults to false: the newest stable release.
+   */
+  prerelease?: boolean;
+  /**
    * Expected SHA-256 checksum of the downloaded artifact.
    */
   sha256?: string;

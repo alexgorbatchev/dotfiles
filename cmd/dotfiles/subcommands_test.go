@@ -2221,7 +2221,7 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 	}
 }
 
-// cargoUpstream is what newCratesServer publishes: the crates.io max_version of each
+// cargoUpstream is what newCratesServer publishes: the newest stable crates.io version of each
 // crate, and the latest GitHub release tag of each owner/repo.
 type cargoUpstream struct {
 	crates   map[string]string
@@ -2257,7 +2257,7 @@ func newCratesServer(t *testing.T, upstream cargoUpstream) func() []string {
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"crate": {"name": %q, "max_version": %q}}`, crate, version)
+			fmt.Fprintf(w, `{"crate": {"name": %q, "max_version": %q, "max_stable_version": %q}}`, crate, version, version)
 			return
 		}
 		for repo, tag := range upstream.releases {

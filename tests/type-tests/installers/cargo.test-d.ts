@@ -51,6 +51,21 @@ defineTool((install) =>
   }).bin("bat"),
 );
 
+// The latest version is the newest stable release unless prereleases are requested,
+// from crates.io and from GitHub releases alike.
+defineTool((install) => install("cargo", { crateName: "tauri-cli", prerelease: true }).bin("cargo-tauri"));
+
+defineTool((install) =>
+  install("cargo", {
+    crateName: "bat",
+    binarySource: "github-releases",
+    githubRepo: "sharkdp/bat",
+    prerelease: false,
+  }).bin("bat"),
+);
+
+expectError(() => defineTool((install) => install("cargo", { crateName: "bat", prerelease: "yes" })));
+
 // The three version sources are the only ones the runtime knows.
 expectError(() => defineTool((install) => install("cargo", { crateName: "bat", versionSource: "npm" })));
 

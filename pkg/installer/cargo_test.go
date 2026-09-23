@@ -128,7 +128,7 @@ func TestCargoInstaller(t *testing.T) {
 			if r.URL.Path == "/api/v1/crates/exa" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{"crate": {"max_version": "0.10.1"}}`))
+				_, _ = w.Write([]byte(`{"crate":{"max_version":"0.10.1","max_stable_version":"0.10.1"}}`))
 				return
 			}
 			if r.URL.Path == "/releases/download/exa-0.10.1/exa-0.10.1-x86_64-unknown-linux-gnu.tar.gz" {
@@ -189,7 +189,7 @@ func TestCargoInstaller(t *testing.T) {
 			if r.URL.Path == "/api/v1/crates/exa" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{"crate": {"max_version": "0.10.1"}}`))
+				_, _ = w.Write([]byte(`{"crate":{"max_version":"0.10.1","max_stable_version":"0.10.1"}}`))
 				return
 			}
 			w.WriteHeader(http.StatusNotFound)
@@ -283,7 +283,7 @@ func newCargoResolutionServer(t *testing.T) *recordingServer {
 	return newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/crates/mycrate":
-			_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0"}}`))
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0","max_stable_version":"1.5.0"}}`))
 		case "/raw/owner/repo/main/Cargo.toml":
 			_, _ = w.Write([]byte("[package]\nname = \"mycrate\"\nversion = \"2.0.0\"\n"))
 		case "/custom/Cargo.toml":
@@ -322,7 +322,7 @@ func TestCargoResolveVersion(t *testing.T) {
 			name:         "explicit crates-io",
 			binarySource: cargoBinarySourceQuickinstall,
 			params:       map[string]interface{}{"versionSource": "crates-io", "githubRepo": "owner/repo"},
-			want:         cargoVersion{version: "1.5.0"},
+			want:         cargoVersion{version: "1.5.0", published: true},
 			wantPath:     "/api/v1/crates/mycrate",
 		},
 		{
@@ -368,7 +368,7 @@ func TestCargoResolveVersion(t *testing.T) {
 			name:         "default for quickinstall is crates-io",
 			binarySource: cargoBinarySourceQuickinstall,
 			params:       map[string]interface{}{"githubRepo": "owner/repo"},
-			want:         cargoVersion{version: "1.5.0"},
+			want:         cargoVersion{version: "1.5.0", published: true},
 			wantPath:     "/api/v1/crates/mycrate",
 		},
 		{
@@ -508,9 +508,32 @@ func TestCargoCheckUpdateFailures(t *testing.T) {
 			wantErr: "crates.io returned status: 404",
 		},
 		{
-			name:    "empty max_version",
+			name:    "no version at all",
 			handler: func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"crate":{}}`)) },
-			wantErr: "empty max_version",
+			wantErr: "crates.io lists no installable version of mycrate",
+		},
+		{
+			name:    "no version at all with prereleases requested",
+			handler: func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"crate":{}}`)) },
+			params:  map[string]interface{}{"prerelease": true},
+			wantErr: "crates.io lists no installable version of mycrate",
+		},
+		{
+			// crates.io reports max_version "0.0.0" and no max_stable_version for a crate
+			// with no version it can parse; a published 0.0.0 would be its stable version.
+			name: "the placeholder crates.io gives a crate without versions",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte(`{"crate":{"max_version":"0.0.0","max_stable_version":null}}`))
+			},
+			wantErr: "crates.io lists no installable version of mycrate",
+		},
+		{
+			name: "the placeholder crates.io gives a crate without versions, with prereleases requested",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte(`{"crate":{"max_version":"0.0.0","max_stable_version":null}}`))
+			},
+			params:  map[string]interface{}{"prerelease": true},
+			wantErr: "crates.io lists no installable version of mycrate",
 		},
 		{
 			name:    "malformed response",
@@ -551,7 +574,7 @@ func TestCargoCheckUpdateSendsUserAgent(t *testing.T) {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
-		_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0"}}`))
+		_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0","max_stable_version":"1.5.0"}}`))
 	})
 	inst := newCargoResolutionInstaller(server)
 
@@ -559,6 +582,390 @@ func TestCargoCheckUpdateSendsUserAgent(t *testing.T) {
 	if err != nil || res == nil || res.LatestVersion != "1.5.0" {
 		t.Fatalf("CheckUpdate() = %+v, %v; want 1.5.0 fetched with the cargo User-Agent", res, err)
 	}
+}
+
+// newCargoPrereleaseServer publishes a crate whose newest version is a prerelease
+// from both version sources, as tauri does (3.0.0-alpha.2 above 2.11.6), and a crate
+// that has published only prereleases. Every .tar.gz is served as tarData, so an
+// install succeeds for whichever version it resolved and the request says which;
+// without tarData every download answers 404.
+func newCargoPrereleaseServer(t *testing.T, tarData []byte) *recordingServer {
+	t.Helper()
+	return newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/v1/crates/mycrate":
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"3.0.0-alpha.2","max_stable_version":"2.11.6","newest_version":"3.0.0-alpha.2"}}`))
+		case r.URL.Path == "/api/v1/crates/early":
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"0.1.0-alpha.1","max_stable_version":null,"newest_version":"0.1.0-alpha.1"}}`))
+		case r.URL.Path == "/repos/owner/mycrate/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"v2.11.6","assets":[]}`))
+		case r.URL.Path == "/repos/owner/monorepo/releases":
+			_, _ = w.Write([]byte(`[{"tag_name":"mycrate-v3.0.0-alpha.2","prerelease":true}]`))
+		case r.URL.Path == "/repos/owner/monorepo/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"mycrate-v2.11.6","assets":[]}`))
+		case r.URL.Path == "/repos/owner/mycrate/releases":
+			_, _ = w.Write([]byte(`[{"tag_name":"v3.0.0-beta.1","draft":true},{"tag_name":"v3.0.0-alpha.2","prerelease":true},{"tag_name":"v2.11.6"}]`))
+		case strings.HasSuffix(r.URL.Path, ".tar.gz") && tarData != nil:
+			_, _ = w.Write(tarData)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+}
+
+// TestCargoPrereleaseOptIn is the regression test for issue #124. The latest version
+// of a crate is its newest stable release unless the tool sets prerelease: true, and
+// the two version sources agree on that: crates.io answers with max_stable_version
+// instead of max_version, and GitHub with releases/latest instead of the listing. An
+// update check and an unpinned install resolve the same version.
+func TestCargoPrereleaseOptIn(t *testing.T) {
+	tests := []struct {
+		name         string
+		params       map[string]interface{}
+		wantVersion  string
+		wantQuery    string
+		wantDownload string
+	}{
+		{
+			name:         "crates.io resolves the newest stable release by default",
+			params:       map[string]interface{}{},
+			wantVersion:  "2.11.6",
+			wantQuery:    "/api/v1/crates/mycrate",
+			wantDownload: "/mycrate-2.11.6/mycrate-2.11.6-x86_64-unknown-linux-gnu.tar.gz",
+		},
+		{
+			name:         "crates.io resolves the newest stable release with prerelease false",
+			params:       map[string]interface{}{"prerelease": false},
+			wantVersion:  "2.11.6",
+			wantQuery:    "/api/v1/crates/mycrate",
+			wantDownload: "/mycrate-2.11.6/mycrate-2.11.6-x86_64-unknown-linux-gnu.tar.gz",
+		},
+		{
+			name:         "crates.io resolves the highest version with prerelease true",
+			params:       map[string]interface{}{"prerelease": true},
+			wantVersion:  "3.0.0-alpha.2",
+			wantQuery:    "/api/v1/crates/mycrate",
+			wantDownload: "/mycrate-3.0.0-alpha.2/mycrate-3.0.0-alpha.2-x86_64-unknown-linux-gnu.tar.gz",
+		},
+		{
+			name:         "GitHub releases resolve the latest stable release by default",
+			params:       map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/mycrate"},
+			wantVersion:  "2.11.6",
+			wantQuery:    "/repos/owner/mycrate/releases/latest",
+			wantDownload: "/owner/mycrate/releases/download/v2.11.6/mycrate-2.11.6-unknown-linux-gnu-x86_64.tar.gz",
+		},
+		{
+			name:         "GitHub releases resolve the newest published release with prerelease true",
+			params:       map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/mycrate", "prerelease": true},
+			wantVersion:  "3.0.0-alpha.2",
+			wantQuery:    "/repos/owner/mycrate/releases",
+			wantDownload: "/owner/mycrate/releases/download/v3.0.0-alpha.2/mycrate-3.0.0-alpha.2-unknown-linux-gnu-x86_64.tar.gz",
+		},
+	}
+	tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
+	if err != nil {
+		t.Fatalf("failed to create tar: %v", err)
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Run("CheckUpdate", func(t *testing.T) {
+				server := newCargoPrereleaseServer(t, tarData)
+				inst := newCargoResolutionInstaller(server)
+
+				res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
+				if err != nil {
+					t.Fatalf("CheckUpdate() error = %v", err)
+				}
+				if res.LatestVersion != tt.wantVersion {
+					t.Fatalf("CheckUpdate() LatestVersion = %q, want %q", res.LatestVersion, tt.wantVersion)
+				}
+				if !slices.Equal(server.paths, []string{tt.wantQuery}) {
+					t.Fatalf("requests = %v, want exactly %s", server.paths, tt.wantQuery)
+				}
+			})
+			t.Run("Install", func(t *testing.T) {
+				server := newCargoPrereleaseServer(t, tarData)
+				runner := exec.NewMockRunner()
+				inst, _ := newCargoGithubInstaller(server, runner)
+				inst.CratesIOURL = server.URL + "/api/v1/crates"
+
+				res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
+				if err != nil {
+					t.Fatalf("Install() error = %v", err)
+				}
+				if len(runner.History) != 0 {
+					t.Fatalf("expected the prebuilt download, not a cargo fallback: %v", runner.History)
+				}
+				if res.Version != tt.wantVersion {
+					t.Fatalf("Install() Version = %q, want %q", res.Version, tt.wantVersion)
+				}
+				if !slices.Equal(server.paths, []string{tt.wantQuery, tt.wantDownload}) {
+					t.Fatalf("requests = %v, want exactly %s then %s", server.paths, tt.wantQuery, tt.wantDownload)
+				}
+			})
+		})
+	}
+}
+
+// TestCargoCompileFallbackInstallsResolvedVersion pins that when the prebuilt download
+// fails, cargo install compiles exactly the version that was resolved for it, so the
+// version installed is the one an update check reports. cargo install without
+// --version would pick its own newest stable release and drop a prerelease opt-in.
+func TestCargoCompileFallbackInstallsResolvedVersion(t *testing.T) {
+	tests := []struct {
+		name        string
+		params      map[string]interface{}
+		wantVersion string
+	}{
+		{name: "the newest stable release by default", params: map[string]interface{}{}, wantVersion: "2.11.6"},
+		{name: "the newest prerelease with prerelease true", params: map[string]interface{}{"prerelease": true}, wantVersion: "3.0.0-alpha.2"},
+		{
+			name:        "the release tag the github-releases source resolved",
+			params:      map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/mycrate", "prerelease": true},
+			wantVersion: "3.0.0-alpha.2",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Without archive data, resolution succeeds and every download answers 404.
+			server := newCargoPrereleaseServer(t, nil)
+			runner := exec.NewMockRunner()
+			inst, fsys := newCargoGithubInstaller(server, runner)
+			inst.CratesIOURL = server.URL + "/api/v1/crates"
+			inst.SetLogger(logger.New(logger.Config{Writer: io.Discard}))
+			_ = fsys.MkdirAll("/test/bin/bin", 0755)
+			_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
+
+			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
+			if err != nil {
+				t.Fatalf("Install() error = %v", err)
+			}
+			if len(runner.History) != 1 {
+				t.Fatalf("cargo runs = %v, want exactly one cargo install", runner.History)
+			}
+			wantArgs := []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, "mycrate"}
+			if got := runner.History[0]; got.Name != "cargo" || !slices.Equal(got.Args, wantArgs) {
+				t.Fatalf("ran %s %v, want cargo %v", got.Name, got.Args, wantArgs)
+			}
+			if res.Version != tt.wantVersion {
+				t.Fatalf("Install() Version = %q, want %q", res.Version, tt.wantVersion)
+			}
+		})
+	}
+}
+
+// TestCargoCompileFallbackTrustsOnlyCratesIO pins that without a prerelease opt-in,
+// the compile fallback names a version only when crates.io resolved it, since only then
+// is it known to be published there. A Cargo.toml on a branch is often ahead of the
+// last release and a release tag need not match a crate version, and cargo install
+// --version would fail for either where cargo's own newest stable release compiles.
+// A prerelease opt-in has no such default to fall back on, so it compiles the version
+// its source resolved.
+func TestCargoCompileFallbackTrustsOnlyCratesIO(t *testing.T) {
+	tests := []struct {
+		name        string
+		params      map[string]interface{}
+		wantVersion string
+	}{
+		{name: "cargo-toml", params: map[string]interface{}{"versionSource": "cargo-toml", "githubRepo": "owner/repo"}},
+		{name: "github-releases", params: map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/repo"}},
+		{
+			name:        "cargo-toml with prerelease",
+			params:      map[string]interface{}{"versionSource": "cargo-toml", "githubRepo": "owner/repo", "prerelease": true},
+			wantVersion: "2.0.0",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := newCargoResolutionServer(t)
+			runner := exec.NewMockRunner()
+			inst, fsys := newCargoGithubInstaller(server, runner)
+			inst.GitHubRawURL = server.URL + "/raw/"
+			_ = fsys.MkdirAll("/test/bin/bin", 0755)
+			_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
+
+			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
+			if err != nil {
+				t.Fatalf("Install() error = %v", err)
+			}
+			wantArgs := []string{"install", "--root", "/test/bin", "mycrate"}
+			if tt.wantVersion != "" {
+				wantArgs = []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, "mycrate"}
+			}
+			if len(runner.History) != 1 || !slices.Equal(runner.History[0].Args, wantArgs) {
+				t.Fatalf("cargo runs = %v, want exactly cargo %v", runner.History, wantArgs)
+			}
+			if res.Version != tt.wantVersion {
+				t.Fatalf("Install() Version = %q, want %q", res.Version, tt.wantVersion)
+			}
+		})
+	}
+}
+
+// TestCargoCompileFallbackWithoutCrateVersion pins what the compile fallback does
+// when the resolved version cannot name a crate version, as a monorepo release tag
+// such as mycrate-v2.11.6 cannot: cargo install --version accepts only
+// MAJOR.MINOR.PATCH. Without prerelease cargo compiles its own newest stable release,
+// as before; with it, that would drop the opt-in, so the install fails naming both.
+func TestCargoCompileFallbackWithoutCrateVersion(t *testing.T) {
+	params := func(prerelease bool) map[string]interface{} {
+		return map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/monorepo", "prerelease": prerelease}
+	}
+	newInstaller := func(t *testing.T) (*CargoInstaller, *exec.MockRunner) {
+		t.Helper()
+		server := newCargoPrereleaseServer(t, nil)
+		runner := exec.NewMockRunner()
+		inst, fsys := newCargoGithubInstaller(server, runner)
+		_ = fsys.MkdirAll("/test/bin/bin", 0755)
+		_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
+		return inst, runner
+	}
+
+	t.Run("without prerelease cargo compiles its default", func(t *testing.T) {
+		inst, runner := newInstaller(t)
+		res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params(false)})
+		if err != nil {
+			t.Fatalf("Install() error = %v", err)
+		}
+		wantArgs := []string{"install", "--root", "/test/bin", "mycrate"}
+		if len(runner.History) != 1 || !slices.Equal(runner.History[0].Args, wantArgs) {
+			t.Fatalf("cargo runs = %v, want exactly cargo %v", runner.History, wantArgs)
+		}
+		if res.Version != "" {
+			t.Fatalf("Install() Version = %q; cargo chose the version, so none is known", res.Version)
+		}
+	})
+
+	t.Run("with prerelease the install fails", func(t *testing.T) {
+		inst, runner := newInstaller(t)
+		_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params(true)})
+		if err == nil {
+			t.Fatal("Install() succeeded; want an error")
+		}
+		for _, want := range []string{"installing a prerelease of mycrate", "mycrate-v3.0.0-alpha.2"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("Install() error = %v, want it to contain %q", err, want)
+			}
+		}
+		if len(runner.History) != 0 {
+			t.Fatalf("cargo runs = %v; a prerelease opt-in must not compile cargo's stable default", runner.History)
+		}
+	})
+}
+
+// TestIsCrateVersion pins the spellings cargo install --version takes as an exact
+// version: MAJOR.MINOR.PATCH with an optional prerelease, and nothing shorter.
+func TestIsCrateVersion(t *testing.T) {
+	tests := []struct {
+		version string
+		want    bool
+	}{
+		{"2.11.6", true},
+		{"3.0.0-alpha.2", true},
+		{"", false},
+		{"1.2", false},
+		{"v1.2.3", false},
+		{"mycrate-v2.11.6", false},
+		{"nightly", false},
+	}
+	for _, tt := range tests {
+		if got := isCrateVersion(tt.version); got != tt.want {
+			t.Errorf("isCrateVersion(%q) = %v, want %v", tt.version, got, tt.want)
+		}
+	}
+}
+
+// TestCargoCompileFallbackKeepsPrereleaseOptIn pins that a prerelease opt-in whose
+// version could not be resolved is an error naming the crate, not a compile of the
+// newest stable release that cargo install picks without --version.
+func TestCargoCompileFallbackKeepsPrereleaseOptIn(t *testing.T) {
+	server := newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) })
+	runner := exec.NewMockRunner()
+	inst, _ := newCargoGithubInstaller(server, runner)
+	inst.CratesIOURL = server.URL + "/api/v1/crates"
+
+	_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: map[string]interface{}{"prerelease": true}})
+	if err == nil || !strings.Contains(err.Error(), "mycrate") || !strings.Contains(err.Error(), "crates.io returned status: 500") {
+		t.Fatalf("Install() error = %v, want the failed resolution of mycrate", err)
+	}
+	if len(runner.History) != 0 {
+		t.Fatalf("cargo runs = %v; a prerelease opt-in must not compile cargo's stable default", runner.History)
+	}
+}
+
+// TestCargoOnlyPrereleasesPublished pins that a crate without a stable release is an
+// error naming the crate unless the tool opts into prereleases, never a silent
+// prerelease and never an empty version.
+func TestCargoOnlyPrereleasesPublished(t *testing.T) {
+	tarData, err := createTarGzBytes(map[string]string{"early": "binary-content"})
+	if err != nil {
+		t.Fatalf("failed to create tar: %v", err)
+	}
+
+	t.Run("without prerelease the check fails naming the crate", func(t *testing.T) {
+		server := newCargoPrereleaseServer(t, tarData)
+		inst := newCargoResolutionInstaller(server)
+
+		res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "early-tool", InstallParams: map[string]interface{}{"crateName": "early"}})
+		if err == nil || res != nil {
+			t.Fatalf("CheckUpdate() = %+v, %v; want an error and no result", res, err)
+		}
+		for _, want := range []string{"early has published only prereleases", "0.1.0-alpha.1", "prerelease: true"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("CheckUpdate() error = %v, want it to contain %q", err, want)
+			}
+		}
+	})
+
+	t.Run("without prerelease resolution fails naming the crate", func(t *testing.T) {
+		server := newCargoPrereleaseServer(t, tarData)
+		inst := newCargoResolutionInstaller(server)
+
+		_, err := inst.resolveVersion(context.Background(), &config.ToolConfig{Name: "early"}, "early", cargoBinarySourceQuickinstall)
+		if err == nil || !strings.Contains(err.Error(), "early has published only prereleases") {
+			t.Fatalf("resolveVersion() error = %v, want it to name early and its missing stable release", err)
+		}
+	})
+
+	// crates.io has answered definitively, so compiling instead would only fail later,
+	// or install whatever cargo picks, with the reason buried in a warning.
+	for _, tc := range []struct{ crate, body, wantErr string }{
+		{crate: "early", wantErr: "early has published only prereleases"},
+		{crate: "empty", body: `{"crate":{"max_version":"0.0.0","max_stable_version":null}}`, wantErr: "crates.io lists no installable version of empty"},
+	} {
+		t.Run("without prerelease the install of "+tc.crate+" fails without compiling", func(t *testing.T) {
+			server := newCargoPrereleaseServer(t, tarData)
+			if tc.body != "" {
+				server = newRecordingServer(t, func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(tc.body)) })
+			}
+			runner := exec.NewMockRunner()
+			inst, _ := newCargoGithubInstaller(server, runner)
+			inst.CratesIOURL = server.URL + "/api/v1/crates"
+
+			_, err := inst.Install(context.Background(), &config.ToolConfig{Name: tc.crate})
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("Install() error = %v, want it to contain %q", err, tc.wantErr)
+			}
+			if len(runner.History) != 0 {
+				t.Fatalf("cargo runs = %v; want no compile after crates.io answered", runner.History)
+			}
+		})
+	}
+
+	t.Run("with prerelease the newest prerelease is installed", func(t *testing.T) {
+		server := newCargoPrereleaseServer(t, tarData)
+		runner := exec.NewMockRunner()
+		inst, _ := newCargoGithubInstaller(server, runner)
+		inst.CratesIOURL = server.URL + "/api/v1/crates"
+
+		res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "early", InstallParams: map[string]interface{}{"prerelease": true}})
+		if err != nil {
+			t.Fatalf("Install() error = %v", err)
+		}
+		if res.Version != "0.1.0-alpha.1" || len(runner.History) != 0 {
+			t.Fatalf("Install() = %+v with cargo runs %v; want the prebuilt 0.1.0-alpha.1", res, runner.History)
+		}
+	})
 }
 
 func TestParseCargoTomlPackageVersion(t *testing.T) {
@@ -1006,7 +1413,7 @@ func TestCargoGithubReleases(t *testing.T) {
 		cratesIOServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(r.URL.Path, "/api/v1/crates/latestcrate") {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"crate":{"max_version":"2.5.0"}}`))
+				_, _ = w.Write([]byte(`{"crate":{"max_version":"2.5.0","max_stable_version":"2.5.0"}}`))
 				return
 			}
 			w.WriteHeader(http.StatusNotFound)
