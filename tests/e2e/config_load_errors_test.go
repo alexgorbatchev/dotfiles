@@ -165,3 +165,48 @@ func TestE2EInvalidBlockDeclarationFailsBeforeTouchingTheTarget(t *testing.T) {
 		t.Errorf("expected nothing but the user's file next to the target, found %d entries", len(siblings))
 	}
 }
+
+// An installation method no installer registers fails the load, naming the tool file,
+// the value and the methods that exist. Letting it through would give the tool a shim
+// on PATH that fails on every run, and only running the binary would reveal the typo.
+func TestE2EUnknownInstallationMethodFailsBeforeWritingAShim(t *testing.T) {
+	t.Parallel()
+
+	h := NewTestHarness(t, HarnessOptions{
+		ConfigContent: "export default { paths: { generatedDir: \"./.generated\" } };\n",
+	})
+
+	toolsDir := filepath.Join(h.TempDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating the tools directory: %v", err)
+	}
+	toolPath := filepath.Join(toolsDir, "bogus.tool.ts")
+	toolSource := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+		"export default defineTool((install) =>\n" +
+		"  // @ts-expect-error an installation method no installer registers\n" +
+		"  install(\"no-such-method\", {}).bin(\"bogus\"),\n);\n"
+	if err := os.WriteFile(toolPath, []byte(toolSource), 0644); err != nil {
+		t.Fatalf("writing the tool file: %v", err)
+	}
+
+	stdout, stderr, exitCode, err := h.Generate()
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if exitCode == 0 {
+		t.Fatalf("expected generate to fail:\nstdout: %s\nstderr: %s", stdout, stderr)
+	}
+
+	output := stdout + stderr
+	// The loader records the tool file with forward slashes on every platform.
+	for _, want := range []string{filepath.ToSlash(toolPath), `unknown installation method "no-such-method"`, "github-release"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("expected the failure to mention %q:\n%s", want, output)
+		}
+	}
+
+	shimPath := filepath.Join(h.TempDir, ".generated", "user-bin", "bogus")
+	if _, err := os.Lstat(shimPath); !os.IsNotExist(err) {
+		t.Errorf("expected no shim at %s, got err=%v", shimPath, err)
+	}
+}

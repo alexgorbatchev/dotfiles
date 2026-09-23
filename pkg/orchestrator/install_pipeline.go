@@ -132,6 +132,9 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return o.GenerateTool(ctx, tool, projCfg)
 	}
 
+	// A loaded configuration never names a method no installer handles
+	// (config.ToolConfig.Validate), so this fails only for a caller that builds a
+	// ToolConfig by hand or an orchestrator given a registry without every installer.
 	inst, err := o.instRegistry.Get(tool.InstallationMethod)
 	if err != nil {
 		return fmt.Errorf("getting installer: %w", err)

@@ -3,8 +3,38 @@ package config
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 )
+
+// installMethods names every installation method an installer handles, sorted. The
+// installers are compiled in and register themselves with installer.DefaultRegistry,
+// which the loader cannot consult (pkg/installer imports pkg/vm, and the load runs
+// before the registry is built), so the set is written out here. Tests pin it to that
+// registry and to the InstallMethod union in pkg/vm/dsl-types.ts.
+var installMethods = []string{
+	"apt",
+	"brew",
+	"cargo",
+	"curl-binary",
+	"curl-script",
+	"curl-tar",
+	"dmg",
+	"dnf",
+	"gitea-release",
+	"github-release",
+	"manual",
+	"npm",
+	"pacman",
+	"pkg",
+	"zsh-plugin",
+}
+
+// InstallMethods returns the name of every installation method an installer handles,
+// sorted. It is a copy, so a caller cannot change what the load accepts.
+func InstallMethods() []string {
+	return slices.Clone(installMethods)
+}
 
 // validateInstallParams rejects install parameters that cannot be installed as
 // written, whatever the target: a combination that only fails once the installation
@@ -12,6 +42,9 @@ import (
 // one part of ToolConfig.Validate, and a rule for another method's parameters is a
 // new case of this switch.
 func (tc *ToolConfig) validateInstallParams() error {
+	if err := tc.validateInstallationMethod(); err != nil {
+		return err
+	}
 	switch tc.InstallationMethod {
 	case "curl-script":
 		if err := tc.validateCurlScriptBinaryPath(); err != nil {
@@ -22,6 +55,17 @@ func (tc *ToolConfig) validateInstallParams() error {
 		return tc.validateBinaryPathPatterns()
 	}
 	return nil
+}
+
+// validateInstallationMethod rejects a method no installer handles: nothing could ever
+// install the tool, and its shim would fail on every run. A tool without a method
+// (install() called without arguments) is configuration only and passes.
+func (tc *ToolConfig) validateInstallationMethod() error {
+	if tc.InstallationMethod == "" || slices.Contains(installMethods, tc.InstallationMethod) {
+		return nil
+	}
+	return fmt.Errorf("tool %q: unknown installation method %q; valid methods: %s",
+		tc.Name, tc.InstallationMethod, strings.Join(installMethods, ", "))
 }
 
 // binaryPath returns the binaryPath install parameter, or "" when none is set.
