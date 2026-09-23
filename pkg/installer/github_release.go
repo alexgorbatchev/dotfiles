@@ -68,6 +68,13 @@ func (c githubReleaseClient) apiBaseURL() string {
 	return strings.TrimSuffix(c.baseURL, "/")
 }
 
+// cacheKey names the release cache entry for version of repo as this client resolves
+// it with token, so an entry is only reused for the same API host, credentials and
+// prerelease setting.
+func (c githubReleaseClient) cacheKey(repo, version string, prerelease bool, token string) string {
+	return releaseCacheKey(c.apiBaseURL(), repo, version, prerelease, token)
+}
+
 // agent returns the User-Agent to present to the API.
 func (c githubReleaseClient) agent() string {
 	if c.userAgent == "" {

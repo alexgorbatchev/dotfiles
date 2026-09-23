@@ -424,13 +424,14 @@ func TestInstallerDetailedBranches(t *testing.T) {
 
 	// 4. GitHub Release Cache Hit
 	gh := NewGitHubInstaller(runner, memFS, dl, sysCtx)
-	gh.setCachedRelease("owner/cachedrepo", "latest", &githubRelease{
+	cachedKey := releaseCacheKey(githubAPIBaseURL, "owner/cachedrepo", "latest", false, "")
+	gh.setCachedRelease(cachedKey, &githubRelease{
 		TagName: "v1.0.0",
 		Assets: []githubAsset{
 			{Name: "tool-linux-amd64", BrowserDownloadURL: "http://127.0.0.1/dl"},
 		},
 	})
-	cachedRel, ok := gh.getCachedRelease(ctx, "owner/cachedrepo", "latest")
+	cachedRel, ok := gh.getCachedRelease(ctx, cachedKey)
 	if !ok || cachedRel == nil || cachedRel.TagName != "v1.0.0" {
 		t.Errorf("GitHub release cache hit failed")
 	}

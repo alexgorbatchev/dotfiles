@@ -1415,9 +1415,6 @@ const releaseAssetName = "tool.tar.gz"
 // leaving the machine. Each release lists that asset because the GitHub installer
 // only caches releases that have one, and the cached branches are part of what
 // is tested.
-//
-// The GitHub installer keeps an in-process release cache keyed by repository, so
-// tests must use repository names that no other test uses.
 func newReleaseServer(t *testing.T, releases map[string]mockRelease) *httptest.Server {
 	t.Helper()
 	assets := make(map[string][]byte, len(releases))
