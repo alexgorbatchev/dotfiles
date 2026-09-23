@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -397,7 +399,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("CheckUpdate success", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"},"installed":[{"version":"1.7"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "jq",
@@ -436,23 +438,97 @@ func TestBrewInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate error graceful fallback", func(t *testing.T) {
+	// A failed query and an answer with no version in it are errors, never an empty
+	// result that callers read as "up to date" (issue #120).
+	t.Run("CheckUpdate fails when brew info fails", func(t *testing.T) {
 		runner.Clear()
-		runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
-			return errors.New("exit status 1")
+		registerQuery(runner, "brew", "", "Error: No available formula with the name \"unknown-pkg\".\n", exitStatusError(1))
+
+		res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "unknown-pkg"})
+		assertCheckFailed(t, res, err, "running brew info --json=v2 unknown-pkg", "exit status 1", `No available formula with the name "unknown-pkg"`)
+	})
+
+	// A cask tool retries the query without --cask, and reports the cask query's
+	// failure when the retry fails as well.
+	for _, formulaWorks := range []bool{true, false} {
+		name := "CheckUpdate falls back to a formula query when the cask query fails"
+		if !formulaWorks {
+			name = "CheckUpdate reports the cask query when the formula query fails too"
+		}
+		t.Run(name, func(t *testing.T) {
+			runner.Clear()
+			runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+				if slices.Contains(c.Args, "--cask") {
+					_, _ = io.WriteString(c.Stderr(), "Error: Cask 'signal' is unavailable\n")
+					return exitStatusError(1)
+				}
+				if !formulaWorks {
+					_, _ = io.WriteString(c.Stderr(), "Error: No available formula with the name \"signal\".\n")
+					return exitStatusError(1)
+				}
+				c.SetOutput([]byte(`{"formulae":[{"name":"signal","versions":{"stable":"8.27.0"},"installed":[{"version":"8.26.0"}],"outdated":true}],"casks":[]}`))
+				return nil
+			})
+
+			tool := &config.ToolConfig{Name: "signal", InstallParams: map[string]interface{}{"cask": true}}
+			res, err := inst.CheckUpdate(context.Background(), tool)
+			if !formulaWorks {
+				assertCheckFailed(t, res, err, "running brew info --json=v2 --cask signal", "Cask 'signal' is unavailable")
+				return
+			}
+			if err != nil {
+				t.Fatalf("CheckUpdate() error = %v", err)
+			}
+			if res.LatestVersion != "8.27.0" || res.Outdated == nil || !*res.Outdated {
+				t.Errorf("CheckUpdate() = %+v, want 8.27.0 reported as outdated", res)
+			}
 		})
+	}
 
-		tool := &config.ToolConfig{
-			Name: "unknown-pkg",
-		}
+	// brew info describes a formula or cask that is not installed as current
+	// (outdated: false), so an empty installation is a failed check, not a verdict. The
+	// shapes are what Homebrew prints: `installed: []` for a formula, null for a cask.
+	notInstalled := []struct {
+		name   string
+		params map[string]interface{}
+		output string
+	}{
+		{name: "formula", output: `{"formulae":[{"name":"cowsay","versions":{"stable":"3.8.4"},"installed":[],"outdated":false}],"casks":[]}`},
+		{name: "cask", params: map[string]interface{}{"cask": true}, output: `{"formulae":[],"casks":[{"token":"cowsay","version":"156.0.1","installed":null,"outdated":false}]}`},
+		{name: "formula in the v1 shape", output: `[{"name":"cowsay","versions":{"stable":"3.8.4"},"installed":[],"outdated":false}]`},
+	}
+	for _, tt := range notInstalled {
+		t.Run("CheckUpdate fails for a "+tt.name+" that is not installed", func(t *testing.T) {
+			runner.Clear()
+			runner.Register("brew", []byte(tt.output), nil)
 
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil {
-			t.Fatalf("expected graceful fallback on error, got error: %v", err)
+			res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "cowsay", InstallParams: tt.params})
+			assertCheckFailed(t, res, err, "brew package cowsay is not installed: brew info reports no installed version")
+		})
+	}
+
+	t.Run("CheckUpdate names the brew executable that ran", func(t *testing.T) {
+		const brewPath = "/home/linuxbrew/.linuxbrew/bin/brew"
+		brewFS := fs.NewMemFS()
+		if err := brewFS.MkdirAll(filepath.Dir(brewPath), 0755); err != nil {
+			t.Fatalf("creating brew directory: %v", err)
 		}
-		if res.Outdated != nil {
-			t.Error("expected no verdict when brew info fails")
+		if err := brewFS.WriteFile(brewPath, []byte("#!/bin/sh\n"), 0755); err != nil {
+			t.Fatalf("writing brew: %v", err)
 		}
+		brewRunner := exec.NewMockRunner()
+		registerQuery(brewRunner, brewPath, "", "Error: No available formula with the name \"jq\".\n", exitStatusError(1))
+
+		res, err := NewBrewInstaller(brewRunner, brewFS, nil).CheckUpdate(context.Background(), &config.ToolConfig{Name: "jq"})
+		assertCheckFailed(t, res, err, "running "+brewPath+" info --json=v2 jq")
+	})
+
+	t.Run("CheckUpdate fails when brew info names no version", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`{"formulae":[{"name":"jq","versions":{"stable":""}}],"casks":[]}`), nil)
+
+		res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "jq"})
+		assertCheckFailed(t, res, err, "no version found for brew package jq")
 	})
 
 	t.Run("Install error tap fails", func(t *testing.T) {

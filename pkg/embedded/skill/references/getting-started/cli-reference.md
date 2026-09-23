@@ -132,7 +132,9 @@ Some installation methods have no way to learn the latest version upstream: `man
 
 Reinstalling such a tool records the version the installer detects, such as through the `versionArgs` of [`curl-script`](../installation-methods/curl-script.md). If the installer detects none, the reinstall records a new `YYYY-MM-DD-HH-MM-SS` timestamp. It never records the version the previous installation left.
 
-- `-f, --force`: Re-download and reinstall even if already up to date.
+A tool counts as up to date only when its installation method's query says so. The update check fails when that query fails, prints no version, or cannot tell a current package from a failed lookup. Examples are a registry that cannot be reached, a `brew`, `dnf` or `pacman` package that is not installed, or a `github-release` or `gitea-release` tool without a valid `repo`. `dotfiles tool update <tool>` then fails with the query's error, which names the command and what it printed. `--force` does not bypass a failed check; `dotfiles tool install --force <tool>` reinstalls a tool without checking upstream.
+
+- `-f, --force`: Re-download and reinstall even if already up to date. A failed update check still fails the update.
 - `--shim-mode`: Used by generated shims running `<binary> @update`, which print nothing of their own. `update` then reports only what became of the tool: that it is pinned, already up to date, moving to a new release, updated, or reinstalled without an update check. The progress of checking and installing is left out, and errors are reported as always.
 
 #### `dotfiles tool check [tool...]`
@@ -140,6 +142,8 @@ Reinstalling such a tool records the version the installer detects, such as thro
 Checks available updates from upstream releases without installing.
 
 Each tool is reported as having an update available, as up to date, or, when its installation method cannot check for updates (see [`tool update`](#dotfiles-tool-update-tool)), as `<tool>: update check not supported (<method>)`.
+
+A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed` for that tool and leaves it out of its output.
 
 - `--json`: Output update status in JSON format. Each entry carries `tool`, `currentVersion`, `latestVersion`, `hasUpdate`, `cached`, and `updateCheckSupported`; when `updateCheckSupported` is `false`, nothing upstream was asked and `hasUpdate` says nothing about whether the tool is current.
 

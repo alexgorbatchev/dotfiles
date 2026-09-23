@@ -161,23 +161,16 @@ func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	if idx := strings.LastIndex(packageName, "/"); idx >= 0 {
 		localPackageName = packageName[idx+1:]
 	}
-	cmd := p.runner.CommandContext(ctx, "pacman", "-Qu", localPackageName)
-	out, err := cmd.Output()
-	if err != nil {
-		// `pacman -Qu` exits non-zero both when the package is up to date and when the
-		// query itself fails, so a failure says nothing either way.
-		return &UpdateCheckResult{}, nil
-	}
-
-	// A package listed by `pacman -Qu` is out of date by pacman's own reckoning, and
-	// its `pkgver-pkgrel` strings are not semver.
-	lines := strings.Split(string(out), "\n")
-	re := regexp.MustCompile(`^(\S+)\s+(\S+)\s+->\s+(\S+)`)
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		matches := re.FindStringSubmatch(trimmed)
-		if len(matches) >= 4 {
-			if strings.EqualFold(matches[1], localPackageName) {
+	args := []string{"-Qu", localPackageName}
+	query := runQuery(p.runner.CommandContext(ctx, "pacman", args...), "pacman", args...)
+	code, exited := query.exitCode()
+	switch {
+	case exited && code == 0:
+		// A package listed by `pacman -Qu` is out of date by pacman's own reckoning,
+		// and its `pkgver-pkgrel` strings are not semver.
+		for _, line := range strings.Split(query.stdout, "\n") {
+			matches := pacmanUpgradeLine.FindStringSubmatch(strings.TrimSpace(line))
+			if matches != nil && strings.EqualFold(matches[1], localPackageName) {
 				return &UpdateCheckResult{
 					Outdated:      new(true),
 					LocalVersion:  matches[2],
@@ -185,10 +178,21 @@ func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 				}, nil
 			}
 		}
+		return nil, query.fail(fmt.Errorf("listed no upgrade for %s", localPackageName))
+	case exited && code == 1 && strings.TrimSpace(query.stdout) == "" && strings.TrimSpace(query.stderr) == "":
+		// `pacman -Qu` exits 1 both for a package with no upgrade and for a failed
+		// query, but only the first prints nothing: a package that is not installed
+		// ("error: package 'x' was not found") or a sync database that was never
+		// downloaded says so on stderr.
+		return &UpdateCheckResult{Outdated: new(false)}, nil
+	default:
+		return nil, query.fail(query.err)
 	}
-
-	return &UpdateCheckResult{Outdated: new(false)}, nil
 }
+
+// pacmanUpgradeLine is one package in the `pacman -Qu` listing:
+// `name installed-version -> available-version`.
+var pacmanUpgradeLine = regexp.MustCompile(`^(\S+)\s+(\S+)\s+->\s+(\S+)`)
 
 func init() {
 	_ = Register(&PacmanInstaller{
