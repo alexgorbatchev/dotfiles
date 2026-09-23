@@ -25,9 +25,11 @@ Enables testing feature changes, bug fixes, or TypeScript declaration updates ag
 - **Version stamping**: Development binaries compiled by `dev-bootstrap` are stamped with `999.0.0-dev.<short sha>` via `-ldflags "-s -w -X main.Version=..."`. The `999.0.0` major semver prefix ensures local builds are distinct from release tags and prevents `self upgrade` or update checkers from flagging them as outdated or attempting to downgrade them.
 - Always compile temporary dev binaries into `.tmp/` inside the repository root. Never use global `/tmp`.
 - Unit tests must set `SkipAssets: true` to prevent `scripts/build/main.go --assets-only` from wiping `pkg/embedded/dist` during parallel test runs.
+- Command-line handling lives in `parseArgs`, and tests cover it there. `runMain` always refreshes assets and compiles the CLI, so tests never call it past an argument error.
 
 ## Local gotchas
 
+- **Never run the Go toolchain under a test-overridden `HOME`:** When `GOPATH` is not exported (as on CI runners), Go derives it from `HOME`, so a `go build` or `go run` started after `t.Setenv("HOME", t.TempDir())` extracts the module cache into the temp directory. Go writes that cache read-only, and the `TempDir` cleanup then fails with `permission denied` (issue #171). Tests that change `HOME` must pass a prebuilt `DevBin` and `SkipAssets: true`. Reproduce with `env -u GOPATH -u GOMODCACHE go test -count=1 ./scripts/dev-bootstrap/`, as a non-root user.
 - **Shim routing**: The interactive shim generated at `<dotfilesDir>/.generated/bin/dotfiles` executes `<binariesDir>/dotfiles/current/dotfiles`. Deploying directly to `<binariesDir>/dotfiles/current/dotfiles` ensures interactive shell invocations run the local development build immediately without requiring a GitHub release download.
 - **Empty target bootstrap**: `tool scaffold` requires an existing `dotfiles.config.ts` or `dotfiles.config.js` to initialize services. When bootstrapping a fresh target directory, `dev-bootstrap` creates starter configuration files before invoking `tool scaffold`.
 
