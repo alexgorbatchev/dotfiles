@@ -771,7 +771,7 @@ func TestExtractorTarWriteError(t *testing.T) {
 	extTarCopy := NewExtractor(fwTarFS, runner)
 
 	err := extTarCopy.Extract(ctx, "/test.tar", "/dest")
-	if err == nil || !strings.Contains(err.Error(), "writing tar entry data") {
+	if err == nil || !strings.Contains(err.Error(), "writing extracted file") {
 		t.Fatalf("expected error on tar write failure, got %v", err)
 	}
 }

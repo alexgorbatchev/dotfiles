@@ -36,3 +36,15 @@ type FS interface {
 
 // errSameFile reports a CopyFile whose source and destination are the same file.
 var errSameFile = errors.New("source and destination are the same file")
+
+// WriteAndClose copies r into w and then closes w, returning the first error from either.
+// Some write failures surface only when the file is closed (a full disk, an exceeded
+// quota, a network file system flushing deferred writes), so a file whose close result
+// was not checked may be incomplete. w is closed even when the copy fails.
+func WriteAndClose(w io.WriteCloser, r io.Reader) error {
+	_, err := io.Copy(w, r)
+	if closeErr := w.Close(); err == nil {
+		err = closeErr
+	}
+	return err
+}
