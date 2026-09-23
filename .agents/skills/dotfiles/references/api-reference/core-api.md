@@ -56,6 +56,8 @@ export default defineTool((install, ctx) => install("github-release", { repo: "o
 
 The tool is named after its file with `.tool.ts` removed, so `tools/ripgrep.tool.ts` defines `ripgrep`. A file named just `.tool.ts` leaves the tool without a name and fails the load, naming the file. Every tool is checked as the configuration loads, and the first tool that breaks a rule fails the whole load, so no command runs against a partly valid configuration. The rules for file and shell-script declarations are listed under [Declaration Checks](shell-integration.md#declaration-checks).
 
+The method passed to `install(method, ...)` must be one of the [installation methods](../installation-methods/overview.md). Any other name, such as `github-releases` for `github-release`, fails the load with an error that names the tool file, the value, and the valid methods, even in a file that is never type-checked. A `.platform()` or `.arch()` block is evaluated only for a target it matches, so a method inside it is checked only when the configuration loads for that target, which `--platform` and `--arch` select. `install()` with no method is a configuration-only tool and loads.
+
 ### Builder Methods
 
 | Method                        | Description                                                                                           |

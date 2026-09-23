@@ -258,21 +258,10 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		// The installers below are substituted for the same reason.
 		runner = execRunner.NewMockRunner()
 		instReg = installer.NewRegistry()
-		_ = instReg.Register(&mockInstaller{name: "github-release", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "cargo", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "curl-script", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "manual", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "brew", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "zsh-plugin", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "gitea-release", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "curl-tar", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "curl-binary", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "dmg", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "npm", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "apt", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "pacman", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "dnf", fsys: fsys, projCfg: projCfg})
-		_ = instReg.Register(&mockInstaller{name: "pkg", fsys: fsys, projCfg: projCfg})
+		// One mock for every method the load accepts, so a loaded tool always finds one.
+		for _, name := range config.InstallMethods() {
+			_ = instReg.Register(&mockInstaller{name: name, fsys: fsys, projCfg: projCfg})
+		}
 	}
 	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stderr), trackedFS, runner, reg, instReg)
 	orch.SetConfigFilePath(absConfigPath)

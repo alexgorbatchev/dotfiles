@@ -7,7 +7,6 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/spf13/cobra"
 )
@@ -55,7 +54,6 @@ When a tool name is provided (e.g. 'dotfiles tool validate ripgrep'), it validat
 		log := GetLogger("validate", cmd.ErrOrStderr())
 		log.Info("Validating tool configurations...")
 
-		instReg := installer.DefaultRegistry()
 		var targetTools []*config.ToolConfig
 
 		if len(args) > 0 {
@@ -83,76 +81,65 @@ When a tool name is provided (e.g. 'dotfiles tool validate ripgrep'), it validat
 		warnings := []ValidationWarning{}
 
 		for _, tool := range targetTools {
-			// Validate installation method
-			if tool.InstallationMethod == "" {
+			// The load has already rejected a method no installer handles, so only the
+			// parameters of a known one are left to check here.
+			switch tool.InstallationMethod {
+			case "":
 				warnings = append(warnings, ValidationWarning{
 					ToolName: tool.Name,
 					Config:   tool.ConfigFilePath,
 					Message:  "No installation method specified (install() was called without arguments)",
 				})
-			} else {
-				inst, err := instReg.Get(tool.InstallationMethod)
-				if err != nil {
+			case "github-release":
+				repo, _ := tool.InstallParams["repo"].(string)
+				if strings.TrimSpace(repo) == "" {
 					errors = append(errors, ValidationError{
 						ToolName: tool.Name,
 						Config:   tool.ConfigFilePath,
-						Message:  fmt.Sprintf("Unknown installation method %q", tool.InstallationMethod),
+						Message:  "'github-release' installer requires a 'repo' parameter (e.g. 'owner/repo')",
 					})
-				} else if inst != nil {
-					// Validate required params per method
-					switch tool.InstallationMethod {
-					case "github-release":
-						repo, _ := tool.InstallParams["repo"].(string)
-						if strings.TrimSpace(repo) == "" {
-							errors = append(errors, ValidationError{
-								ToolName: tool.Name,
-								Config:   tool.ConfigFilePath,
-								Message:  "'github-release' installer requires a 'repo' parameter (e.g. 'owner/repo')",
-							})
-						} else if !strings.Contains(repo, "/") {
-							errors = append(errors, ValidationError{
-								ToolName: tool.Name,
-								Config:   tool.ConfigFilePath,
-								Message:  fmt.Sprintf("Invalid 'repo' parameter %q for github-release (expected 'owner/repo')", repo),
-							})
-						}
-					case "gitea-release":
-						repo, _ := tool.InstallParams["repo"].(string)
-						if strings.TrimSpace(repo) == "" {
-							errors = append(errors, ValidationError{
-								ToolName: tool.Name,
-								Config:   tool.ConfigFilePath,
-								Message:  "'gitea-release' installer requires a 'repo' parameter",
-							})
-						}
-					case "curl-script", "curl-tar", "curl-binary":
-						url, _ := tool.InstallParams["url"].(string)
-						if strings.TrimSpace(url) == "" {
-							errors = append(errors, ValidationError{
-								ToolName: tool.Name,
-								Config:   tool.ConfigFilePath,
-								Message:  fmt.Sprintf("'%s' installer requires a 'url' parameter", tool.InstallationMethod),
-							})
-						}
-					case "zsh-plugin":
-						repo, _ := tool.InstallParams["repo"].(string)
-						url, _ := tool.InstallParams["url"].(string)
-						if strings.TrimSpace(repo) == "" && strings.TrimSpace(url) == "" {
-							errors = append(errors, ValidationError{
-								ToolName: tool.Name,
-								Config:   tool.ConfigFilePath,
-								Message:  "'zsh-plugin' installer requires a 'repo' or 'url' parameter",
-							})
-						}
-					case "apt", "dnf", "pacman":
-						if !tool.Sudo {
-							warnings = append(warnings, ValidationWarning{
-								ToolName: tool.Name,
-								Config:   tool.ConfigFilePath,
-								Message:  fmt.Sprintf("System package installer %q usually requires .sudo() elevation", tool.InstallationMethod),
-							})
-						}
-					}
+				} else if !strings.Contains(repo, "/") {
+					errors = append(errors, ValidationError{
+						ToolName: tool.Name,
+						Config:   tool.ConfigFilePath,
+						Message:  fmt.Sprintf("Invalid 'repo' parameter %q for github-release (expected 'owner/repo')", repo),
+					})
+				}
+			case "gitea-release":
+				repo, _ := tool.InstallParams["repo"].(string)
+				if strings.TrimSpace(repo) == "" {
+					errors = append(errors, ValidationError{
+						ToolName: tool.Name,
+						Config:   tool.ConfigFilePath,
+						Message:  "'gitea-release' installer requires a 'repo' parameter",
+					})
+				}
+			case "curl-script", "curl-tar", "curl-binary":
+				url, _ := tool.InstallParams["url"].(string)
+				if strings.TrimSpace(url) == "" {
+					errors = append(errors, ValidationError{
+						ToolName: tool.Name,
+						Config:   tool.ConfigFilePath,
+						Message:  fmt.Sprintf("'%s' installer requires a 'url' parameter", tool.InstallationMethod),
+					})
+				}
+			case "zsh-plugin":
+				repo, _ := tool.InstallParams["repo"].(string)
+				url, _ := tool.InstallParams["url"].(string)
+				if strings.TrimSpace(repo) == "" && strings.TrimSpace(url) == "" {
+					errors = append(errors, ValidationError{
+						ToolName: tool.Name,
+						Config:   tool.ConfigFilePath,
+						Message:  "'zsh-plugin' installer requires a 'repo' or 'url' parameter",
+					})
+				}
+			case "apt", "dnf", "pacman":
+				if !tool.Sudo {
+					warnings = append(warnings, ValidationWarning{
+						ToolName: tool.Name,
+						Config:   tool.ConfigFilePath,
+						Message:  fmt.Sprintf("System package installer %q usually requires .sudo() elevation", tool.InstallationMethod),
+					})
 				}
 			}
 

@@ -67,10 +67,11 @@ var toolCheckCmd = &cobra.Command{
 				continue
 			}
 
+			// The load rejects a method no installer handles, so a lookup that fails here
+			// is an internal error, not something the configuration can cause.
 			inst, err := instReg.Get(tool.InstallationMethod)
 			if err != nil {
-				toolLog.Warn(logger.Message(fmt.Sprintf("Installer %q not found", tool.InstallationMethod)))
-				continue
+				return fmt.Errorf("getting installer for %q: %w", tool.Name, err)
 			}
 
 			toolDestDir := ""

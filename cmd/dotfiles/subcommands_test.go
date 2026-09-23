@@ -1642,7 +1642,6 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		"same": {"name": "same", "installationMethod": "github-release", "installParams": {"repo": %[2]q, "assetPattern": %[3]q}},
 		"manual-versioned": {"name": "manual-versioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
 		"manual-unversioned": {"name": "manual-unversioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
-		"bogus": {"name": "bogus", "installationMethod": "bogus-installer"},
 		"never-installed": {"name": "never-installed", "installationMethod": "manual"}
 	`, repoNewer, repoSame, releaseAssetName, manualBin))
 
@@ -1654,7 +1653,6 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		"same":               "v0.1.0",
 		"manual-versioned":   "v1.0.0",
 		"manual-unversioned": "",
-		"bogus":              "v1.0.0",
 	} {
 		dir := filepath.Join(installRoot, name)
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -1763,13 +1761,6 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		mustContain(t, "error", err.Error(), `updating tool "sudo-tool" to version v9.9.9 failed`, "does not support sudo")
 	})
 
-	t.Run("an unknown installer is an error", func(t *testing.T) {
-		_, err := p.run("tool", "update", "bogus")
-		if err == nil || !strings.Contains(err.Error(), `getting installer for "bogus"`) {
-			t.Fatalf("error = %v, want installer lookup failure", err)
-		}
-	})
-
 	t.Run("a tool that is not installed is an error", func(t *testing.T) {
 		_, err := p.run("tool", "update", "never-installed")
 		if err == nil || !strings.Contains(err.Error(), `tool "never-installed" is not installed`) {
@@ -1789,7 +1780,7 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 			`[manual-versioned] Update check not supported for installer "manual"`,
 		)
 		mustNotContain(t, "stderr", out.Stderr,
-			"[never-installed]", "[bogus]",
+			"[never-installed]",
 			"performing regular install instead", "[manual-versioned] Successfully updated",
 		)
 	})
@@ -2083,7 +2074,6 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 		"same-param": {"name": "same-param", "version": "latest", "installationMethod": "github-release", "installParams": {"repo": %[6]q, "version": "v0.1.0"}},
 		"fail": {"name": "fail", "installationMethod": "github-release", "installParams": {"repo": %[4]q}},
 		"off": {"name": "off", "disabled": true, "installationMethod": "github-release", "installParams": {"repo": %[5]q}},
-		"noinst": {"name": "noinst", "installationMethod": "bogus-installer"},
 		"hand": {"name": "hand", "installationMethod": "manual"},
 		"never-hand": {"name": "never-hand", "installationMethod": "manual"},
 		"never-brew": {"name": "never-brew", "installationMethod": "brew", "installParams": {"formula": "dotfiles-test-never-installed"}},
@@ -2111,9 +2101,8 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 			"same: up to date (v0.1.0)\n",
 			"hand: update check not supported (manual)\n",
 		)
-		mustNotContain(t, "stdout", out.Stdout, "off:", "noinst:", "shell-only:", "fail:", "hand: up to date", "avail: update available", "avail: available")
+		mustNotContain(t, "stdout", out.Stdout, "off:", "shell-only:", "fail:", "hand: up to date", "avail: update available", "avail: available")
 		mustContain(t, "stderr", out.Stderr,
-			`Installer "bogus-installer" not found`,
 			// A failed upstream query is still a failed check, installed or not.
 			"[fail] Update check failed",
 			"[avail] Not installed; the latest available version is v9.9.9",

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -2121,6 +2122,88 @@ func TestLoaderRejectsCurlScriptBinaryPathWithSeveralBinaries(t *testing.T) {
 				if !strings.Contains(err.Error(), want) {
 					t.Errorf("expected the error to mention %q, got: %v", want, err)
 				}
+			}
+		})
+	}
+}
+
+// An installation method no installer registers can never be installed, so the load
+// rejects it, naming the tool file, the value and the methods that exist, instead of
+// leaving state generate to write a shim that fails on every run. .platform() blocks
+// are resolved while loading, so only a block matching the target is checked.
+func TestLoaderRejectsUnknownInstallationMethod(t *testing.T) {
+	const header = "import { defineTool, Platform } from \"@alexgorbatchev/dotfiles\";\n"
+	platformBlock := header + "export default defineTool((install) =>\n" +
+		"  install(\"manual\", {}).bin(\"probe\")\n" +
+		"    .platform(Platform.Linux, (install) => install(\"no-such-linux-method\", {})),\n);"
+
+	tests := []struct {
+		name    string
+		tool    string
+		target  Target
+		wantErr string
+	}{
+		{
+			name:    "unknown method at the top level",
+			tool:    header + "export default defineTool((install) => install(\"no-such-method\", {}).bin(\"probe\"));",
+			target:  Target{OS: arch.OSDarwin, Arch: arch.ArchARM64},
+			wantErr: `"no-such-method"`,
+		},
+		{
+			name:    "unknown method in a platform block matching the target",
+			tool:    platformBlock,
+			target:  Target{OS: arch.OSLinux, Arch: arch.ArchAMD64},
+			wantErr: `"no-such-linux-method"`,
+		},
+		{
+			name:   "unknown method in a platform block for another target",
+			tool:   platformBlock,
+			target: Target{OS: arch.OSDarwin, Arch: arch.ArchARM64},
+		},
+		{
+			name:   "install() without a method",
+			tool:   header + "export default defineTool((install) => install().zsh((shell) => shell.aliases({ ll: \"ls -l\" })));",
+			target: Target{OS: arch.OSDarwin, Arch: arch.ArchARM64},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			toolConfigs, err := loadToolSource(t, tt.tool, WithTarget(tt.target))
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("load failed: %v", err)
+				}
+				if _, ok := toolConfigs["probe"]; !ok {
+					t.Fatalf("expected the probe tool to be loaded, got %v", toolConfigs)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("expected loading to fail")
+			}
+			for _, want := range []string{"probe.tool.ts", tt.wantErr, strings.Join(config.InstallMethods(), ", ")} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected the error to mention %q, got: %v", want, err)
+				}
+			}
+		})
+	}
+}
+
+// Every name the canonical list holds loads: the check must never reject a method an
+// installer handles.
+func TestLoaderAcceptsEveryInstallationMethod(t *testing.T) {
+	for _, method := range config.InstallMethods() {
+		t.Run(method, func(t *testing.T) {
+			tool := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+				"export default defineTool((install) => install(\"" + method + "\", {}));"
+			toolConfigs, err := loadToolSource(t, tool)
+			if err != nil {
+				t.Fatalf("load failed: %v", err)
+			}
+			if got := toolConfigs["probe"].InstallationMethod; got != method {
+				t.Errorf("installationMethod = %q, want %q", got, method)
 			}
 		})
 	}

@@ -438,6 +438,17 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// The load rejects every installation method config.InstallMethods does not hold,
+// because pkg/vm cannot ask this registry. An installer added here without a name in
+// that list would be rejected at load, and a name left in the list without an installer
+// would load a tool nothing can install.
+func TestRegisteredInstallersMatchConfigInstallMethods(t *testing.T) {
+	registered := slices.Sorted(slices.Values(productionInstallers))
+	if want := config.InstallMethods(); !slices.Equal(registered, want) {
+		t.Errorf("DefaultRegistry() registers %v, config.InstallMethods() is %v", registered, want)
+	}
+}
+
 // TestUpdateCheckNeedsInstallation pins which installers ask about the package
 // installed on this machine rather than about a release upstream, so that a tool
 // dotfiles never installed is not asked about at all (#151).

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
 // writeValidationConfig writes a configuration whose paths live under a temp dir
@@ -178,12 +180,16 @@ func TestValidateCommand_InvalidMethod(t *testing.T) {
 		t.Fatalf("writing config failed: %v", err)
 	}
 
+	// The JSON configuration loads through config.ValidateToolConfigs like a TypeScript
+	// one, so the method is rejected while loading, naming the file and the valid methods.
 	out, err := executeCommand("-c", configPath, "tool", "validate")
 	if err == nil {
-		t.Errorf("expected validate with invalid installer method to fail, got out:\n%s", out)
+		t.Fatalf("expected validate with invalid installer method to fail, got out:\n%s", out)
 	}
-	if !strings.Contains(out, "Unknown installation method") {
-		t.Errorf("expected 'Unknown installation method' in output, got:\n%s", out)
+	for _, want := range []string{filepath.Base(configPath), `unknown installation method "invalid-installer-method"`, strings.Join(config.InstallMethods(), ", ")} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("expected the error to mention %q, got: %v", want, err)
+		}
 	}
 }
 
