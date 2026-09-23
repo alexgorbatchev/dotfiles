@@ -50,7 +50,7 @@ defineTool((install) =>
 defineTool((install) =>
   install("manual").template("./gitconfig.template", "~/.gitconfig", {
     variables: async (ctx) => ({
-      diffTool: ctx.systemInfo.os === "darwin" ? "opendiff" : "vimdiff",
+      diffTool: ctx.systemInfo.platform === Platform.MacOS ? "opendiff" : "vimdiff",
     }),
   }),
 );

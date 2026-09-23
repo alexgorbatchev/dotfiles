@@ -91,8 +91,8 @@ func TestGiteaInstallerSelectsTheAssetForTheRunsLibc(t *testing.T) {
 
 // A function-valued install parameter is evaluated during the installation, so its
 // systemInfo has to describe the target the installation is for. An assetSelector
-// branching on systemInfo.os otherwise chose an asset for the host while the rest of
-// the run was resolved for another machine.
+// branching on systemInfo.platform or systemInfo.arch otherwise chose an asset for the
+// host while the rest of the run was resolved for another machine.
 func TestAssetSelectorSeesTheRunsTarget(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -119,12 +119,17 @@ func TestAssetSelectorSeesTheRunsTarget(t *testing.T) {
 			server := selectorReleaseServer(t, "v1.0.0", tt.assetNames)
 
 			tool := writeSelectorTool(t, "targeted", `
-				import { defineTool } from "@alexgorbatchev/dotfiles";
+				import { defineTool, Platform, Architecture } from "@alexgorbatchev/dotfiles";
 				export default defineTool((install) =>
 					install("github-release", {
 						repo: "owner/targeted",
-						assetSelector: ({ assets, systemInfo }) =>
-							assets.find((a) => a.name.includes(systemInfo.os + "-" + systemInfo.arch)),
+						assetSelector: ({ assets, systemInfo }) => {
+							const os = systemInfo.platform === Platform.MacOS ? "darwin"
+								: systemInfo.platform === Platform.Linux ? "linux" : "none";
+							const cpu = systemInfo.arch === Architecture.Arm64 ? "arm64"
+								: systemInfo.arch === Architecture.X86_64 ? "amd64" : "none";
+							return assets.find((a) => a.name === "tool-" + os + "-" + cpu);
+						},
 					}).bin("targeted"),
 				);
 			`, assetSelectorParam, map[string]any{"repo": "owner/targeted"})

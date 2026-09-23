@@ -60,18 +60,18 @@ naming the directory instead of promoting an empty one, and `after-install` does
 
 Every hook receives:
 
-| Property        | Description                                                                                                                |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `toolName`      | Name of the tool                                                                                                           |
-| `currentDir`    | Stable directory for this tool (the `current` symlink)                                                                     |
-| `stagingDir`    | Absolute path of the temporary directory the installer stages into                                                         |
-| `toolDir`       | Directory holding this tool's `.tool.ts`                                                                                   |
-| `systemInfo`    | `os`, `arch`, `libc`, `homeDir` and `hostname` of the target machine -- see [ctx.systemInfo](context-api.md#ctxsysteminfo) |
-| `projectConfig` | Project configuration                                                                                                      |
-| `toolConfig`    | The resolved configuration of the tool being installed, as the installer sees it (`ToolConfig`)                            |
-| `fileSystem`    | File operations -- the fifteen methods, their signatures and `IFileStats` are in [ctx.fs](utilities.md#ctxfs)              |
-| `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                                      |
-| `$`             | Shell executor                                                                                                             |
+| Property        | Description                                                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `toolName`      | Name of the tool                                                                                                                 |
+| `currentDir`    | Stable directory for this tool (the `current` symlink)                                                                           |
+| `stagingDir`    | Absolute path of the temporary directory the installer stages into                                                               |
+| `toolDir`       | Directory holding this tool's `.tool.ts`                                                                                         |
+| `systemInfo`    | `platform`, `arch`, `libc`, `homeDir` and `hostname` of the target machine -- see [ctx.systemInfo](context-api.md#ctxsysteminfo) |
+| `projectConfig` | Project configuration                                                                                                            |
+| `toolConfig`    | The resolved configuration of the tool being installed, as the installer sees it (`ToolConfig`)                                  |
+| `fileSystem`    | File operations -- the fifteen methods, their signatures and `IFileStats` are in [ctx.fs](utilities.md#ctxfs)                    |
+| `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                                            |
+| `$`             | Shell executor                                                                                                                   |
 
 Plus whatever the event itself provides, per the table above. A property an event does
 not provide is `undefined` rather than a misleading empty value, so destructuring
@@ -169,9 +169,9 @@ is noise or is being captured with `.text()` instead.
 
 ```typescript builder
 .hook('after-install', async ({ systemInfo, $ }) => {
-  if (systemInfo.os === 'darwin') {
+  if (systemInfo.platform === Platform.MacOS) {
     await $`./setup-macos.sh`;
-  } else if (systemInfo.os === 'linux') {
+  } else if (systemInfo.platform === Platform.Linux) {
     await $`./setup-linux.sh`;
   }
 })
@@ -256,23 +256,23 @@ export default defineTool((install, ctx) =>
 ### Environment-Specific Setup
 
 ```typescript
-import { defineTool } from "@alexgorbatchev/dotfiles";
+import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, ctx) =>
   install("github-release", { repo: "owner/custom-tool" })
     .bin("custom-tool")
     .hook("after-install", async ({ systemInfo, fileSystem, log, $ }) => {
       // Platform-specific setup
-      if (systemInfo.os === "darwin") {
+      if (systemInfo.platform === Platform.MacOS) {
         // macOS-specific setup
         await $`./setup-macos.sh`;
-      } else if (systemInfo.os === "linux") {
+      } else if (systemInfo.platform === Platform.Linux) {
         // Linux-specific setup
         await $`./setup-linux.sh`;
       }
 
       // Architecture-specific setup
-      if (systemInfo.arch === "arm64") {
+      if (systemInfo.arch === Architecture.Arm64) {
         log.info("Configuring for ARM64 architecture");
         await $`./configure-arm64.sh`;
       }

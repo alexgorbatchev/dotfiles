@@ -130,13 +130,13 @@ export default defineTool((install) =>
   install("github-release", { repo: "owner/tool" })
     .bin("tool")
     .hook("after-install", async ({ systemInfo, $ }) => {
-      if (systemInfo.os === "darwin") {
+      if (systemInfo.platform === Platform.MacOS) {
         await $`./setup-macos.sh`;
-      } else if (systemInfo.os === "linux") {
+      } else if (systemInfo.platform === Platform.Linux) {
         await $`./setup-linux.sh`;
       }
 
-      if (systemInfo.arch === "arm64") {
+      if (systemInfo.arch === Architecture.Arm64) {
         await $`./configure-arm64.sh`;
       }
     }),

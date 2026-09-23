@@ -29,6 +29,47 @@ func TestMatchesPlatform(t *testing.T) {
 	}
 }
 
+// PlatformOf and ArchitectureOf are the one mapping from the Go spelling of a target to
+// the Platform and Architecture members the authoring DSL compares against. A name with
+// no member maps to zero, v1's Platform.None / Architecture.None, which equals no member.
+func TestPlatformOf(t *testing.T) {
+	tests := []struct {
+		osName string
+		want   int
+	}{
+		{"linux", PlatformLinux},
+		{"darwin", PlatformMacOS},
+		{"windows", PlatformWindows},
+		{"freebsd", 0},
+		{"", 0},
+	}
+
+	for _, tt := range tests {
+		if got := PlatformOf(tt.osName); got != tt.want {
+			t.Errorf("PlatformOf(%q) = %d, want %d", tt.osName, got, tt.want)
+		}
+	}
+}
+
+func TestArchitectureOf(t *testing.T) {
+	tests := []struct {
+		archName string
+		want     int
+	}{
+		{"amd64", ArchX86_64},
+		{"x86_64", ArchX86_64},
+		{"arm64", ArchArm64},
+		{"386", 0},
+		{"", 0},
+	}
+
+	for _, tt := range tests {
+		if got := ArchitectureOf(tt.archName); got != tt.want {
+			t.Errorf("ArchitectureOf(%q) = %d, want %d", tt.archName, got, tt.want)
+		}
+	}
+}
+
 func TestMatchesArch(t *testing.T) {
 	tests := []struct {
 		architectures int

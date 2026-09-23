@@ -20,8 +20,8 @@ func TestBindingsDirect(t *testing.T) {
 
 	// Call all bindings
 	testScript := `
-		var osName = getOS();
-		var archName = getArch();
+		var platform = getPlatform();
+		var architecture = getArchitecture();
 		var envVal = getenv("PATH");
 		var mac = isMac();
 		var linux = isLinux();

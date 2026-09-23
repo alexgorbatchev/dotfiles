@@ -34,9 +34,10 @@ export const Architecture = {
 } as const;
 
 /**
- * Standard C library implementations. Unlike `Platform` and `Architecture`, whose values
- * are bitmasks this module owns, the members are the strings `detectLibc()` reports, so
- * they come from Go rather than being restated here: an author comparing
+ * Standard C library implementations. Unlike `Platform` and `Architecture`, whose bitmask
+ * values are restated here and pinned to the pkg/config constants by
+ * TestPlatformAndArchitectureConstantsMatchGo, the members are the strings `detectLibc()`
+ * reports, so they come from Go rather than being restated here: an author comparing
  * `systemInfo.libc` against a member compares two halves of the same constant.
  */
 export const Libc: Record<string, string> = libcConstants();
@@ -50,8 +51,8 @@ declare global {
   var currentToolPath: string;
   var currentToolConfig: ToolConfig;
   var path: IPathModule;
-  function getOS(): string;
-  function getArch(): string;
+  function getPlatform(): Platform;
+  function getArchitecture(): Architecture;
   function matchesTarget(platforms: unknown, architectures: unknown): boolean;
   function detectLibc(): string;
   function libcConstants(): Record<string, string>;
@@ -185,8 +186,8 @@ export type HookHandlerFn = (context: Record<string, unknown>) => unknown;
  */
 function currentSystemInfo(): ISystemInfo {
   return {
-    os: getOS(),
-    arch: getArch(),
+    platform: getPlatform(),
+    arch: getArchitecture(),
     libc: detectLibc(),
     homeDir: getHomeDir(),
     hostname: getHostname(),
