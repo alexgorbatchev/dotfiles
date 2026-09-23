@@ -176,13 +176,23 @@ func copyFile(src, dest string, destWriter func(*os.File) io.WriteCloser) (err e
 // errors. The temporary file is gone by the time the caller sees the error, so an
 // error that names it is reduced to its cause; one naming src is kept whole.
 func copyError(dest, tmpPath string, err error) error {
+	return &os.PathError{Op: "copyfile", Path: dest, Err: copyCause(tmpPath, err)}
+}
+
+// copyCause reduces an error that names the temporary file to its cause. A failed
+// WriteAndClose is reduced part by part, since its copy and close errors can each name
+// a different file.
+func copyCause(tmpPath string, err error) error {
+	var writeErr *writeError
 	var pathErr *os.PathError
 	var linkErr *os.LinkError
 	switch {
+	case errors.As(err, &writeErr):
+		return &writeError{copyErr: copyCause(tmpPath, writeErr.copyErr), closeErr: copyCause(tmpPath, writeErr.closeErr)}
 	case errors.As(err, &pathErr) && pathErr.Path == tmpPath:
-		err = pathErr.Err
+		return pathErr.Err
 	case errors.As(err, &linkErr) && linkErr.Old == tmpPath:
-		err = linkErr.Err
+		return linkErr.Err
 	}
-	return &os.PathError{Op: "copyfile", Path: dest, Err: err}
+	return err
 }

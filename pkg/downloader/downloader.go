@@ -291,6 +291,12 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			return lifecycle.Emit(ctx, lifecycle.AfterDownload, lifecycle.Details{DownloadPath: destPath})
 		}
 		lastErr = err
+		var unresumable *unresumableError
+		if errors.As(err, &unresumable) {
+			// Another attempt would resume onto a file that cannot be trusted.
+			retryCount = i
+			break
+		}
 	}
 	if bar != nil {
 		bar.Finish()
@@ -350,44 +356,18 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 		if err != nil {
 			return fmt.Errorf("opening partial download for append: %w", err)
 		}
-
-		var writer io.Writer = f
-		if len(opts) > 0 && opts[0].OnProgress != nil {
-			writer = &progressWriter{
-				writer:     f,
-				onProgress: opts[0].OnProgress,
-				total:      totalBytes,
-				downloaded: downloadedBytes,
-			}
+		if err := d.writeDownload(destPath, withProgress(f, opts, totalBytes, downloadedBytes), resp.Body); err != nil {
+			return fmt.Errorf("writing partial stream to %q: %w", destPath, err)
 		}
-
-		if _, err := io.Copy(writer, resp.Body); err != nil {
-			f.Close()
-			return fmt.Errorf("writing partial stream to file: %w", err)
-		}
-		f.Close()
 
 	case http.StatusOK: // 200
 		f, err := d.fsys.Create(destPath)
 		if err != nil {
 			return fmt.Errorf("creating download file: %w", err)
 		}
-
-		var writer io.Writer = f
-		if len(opts) > 0 && opts[0].OnProgress != nil {
-			writer = &progressWriter{
-				writer:     f,
-				onProgress: opts[0].OnProgress,
-				total:      totalBytes,
-				downloaded: downloadedBytes,
-			}
+		if err := d.writeDownload(destPath, withProgress(f, opts, totalBytes, downloadedBytes), resp.Body); err != nil {
+			return fmt.Errorf("writing full stream to %q: %w", destPath, err)
 		}
-
-		if _, err := io.Copy(writer, resp.Body); err != nil {
-			f.Close()
-			return fmt.Errorf("writing full stream to file: %w", err)
-		}
-		f.Close()
 
 	case http.StatusRequestedRangeNotSatisfiable: // 416
 		// File on disk is equal to or larger than remote file, or range is invalid.
@@ -426,22 +406,9 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 		if err != nil {
 			return fmt.Errorf("creating recovery file: %w", err)
 		}
-
-		var writer io.Writer = f
-		if len(opts) > 0 && opts[0].OnProgress != nil {
-			writer = &progressWriter{
-				writer:     f,
-				onProgress: opts[0].OnProgress,
-				total:      cleanResp.ContentLength,
-				downloaded: 0,
-			}
+		if err := d.writeDownload(destPath, withProgress(f, opts, cleanResp.ContentLength, 0), cleanResp.Body); err != nil {
+			return fmt.Errorf("writing recovery stream to %q: %w", destPath, err)
 		}
-
-		if _, err := io.Copy(writer, cleanResp.Body); err != nil {
-			f.Close()
-			return fmt.Errorf("writing recovery stream to file: %w", err)
-		}
-		f.Close()
 
 	default:
 		return &StatusError{StatusCode: resp.StatusCode, Status: resp.Status}
@@ -476,15 +443,62 @@ func (d *Downloader) partialDownloadSize(destPath string) (int64, error) {
 	return info.Size(), nil
 }
 
+// unresumableError is a failed attempt that left behind a file the next attempt would
+// resume onto but whose contents cannot be trusted, so Download does not retry it.
+type unresumableError struct{ err error }
+
+func (e *unresumableError) Error() string { return e.err.Error() }
+func (e *unresumableError) Unwrap() error { return e.err }
+
+// writeDownload streams body into w, the file open at destPath, and closes it. A
+// stream that stops part way leaves the bytes written so far for the next attempt to
+// resume after, but a file whose close failed holds contents nobody can vouch for, so
+// it is removed: the next attempt downloads it anew instead of resuming onto it. When
+// it is still there after the removal, the attempt is reported as unresumableError.
+// Whether the file is gone decides it, not what Remove returned: a Remove that finds
+// nothing, or that deletes the file and then fails to record it (TrackedFileSystem),
+// leaves nothing to resume onto.
+func (d *Downloader) writeDownload(destPath string, w io.WriteCloser, body io.Reader) error {
+	err := fs.WriteAndClose(w, body)
+	if !errors.Is(err, fs.ErrClose) {
+		return err
+	}
+	rmErr := d.fsys.Remove(destPath)
+	if rmErr == nil || errors.Is(rmErr, os.ErrNotExist) {
+		return err
+	}
+	exists, existsErr := d.fsys.Exists(destPath)
+	if existsErr == nil && !exists {
+		return errors.Join(err, fmt.Errorf("removing download whose close failed: %w", rmErr))
+	}
+	return &unresumableError{errors.Join(err, fmt.Errorf("removing download whose close failed (delete %q before downloading it again): %w", destPath, rmErr))}
+}
+
+// withProgress reports the bytes written to f through the OnProgress callback in
+// opts, counting from downloaded out of total. Without a callback f is used as is.
+func withProgress(f io.WriteCloser, opts []DownloadOptions, total, downloaded int64) io.WriteCloser {
+	if len(opts) == 0 || opts[0].OnProgress == nil {
+		return f
+	}
+	return &progressWriter{
+		WriteCloser: f,
+		onProgress:  opts[0].OnProgress,
+		total:       total,
+		downloaded:  downloaded,
+	}
+}
+
+// progressWriter is a file that reports each successful write to onProgress. Close
+// closes the file.
 type progressWriter struct {
-	writer     io.Writer
+	io.WriteCloser
 	onProgress func(bytesDownloaded int64, totalBytes int64)
 	total      int64
 	downloaded int64
 }
 
 func (pw *progressWriter) Write(p []byte) (n int, err error) {
-	n, err = pw.writer.Write(p)
+	n, err = pw.WriteCloser.Write(p)
 	if err == nil && pw.onProgress != nil {
 		pw.downloaded += int64(n)
 		pw.onProgress(pw.downloaded, pw.total)

@@ -2,6 +2,7 @@ package fs
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 )
@@ -37,14 +38,55 @@ type FS interface {
 // errSameFile reports a CopyFile whose source and destination are the same file.
 var errSameFile = errors.New("source and destination are the same file")
 
-// WriteAndClose copies r into w and then closes w, returning the first error from either.
+// ErrClose marks any error Close returned for a written file. It usually means the
+// operating system could not commit a write, so what the file holds is unknown, even
+// the bytes before a copy that stopped part way, and it cannot be resumed onto or
+// trusted. On a TrackedFileSystem it can also be a failure to record the file after it
+// closed cleanly; callers discard the file in that case too, as a precaution.
+var ErrClose = errors.New("closing file")
+
+// WriteAndClose copies r into w and then closes w, returning the errors from either.
 // Some write failures surface only when the file is closed (a full disk, an exceeded
 // quota, a network file system flushing deferred writes), so a file whose close result
-// was not checked may be incomplete. w is closed even when the copy fails.
+// was not checked may be incomplete. w is closed even when the copy fails. A failed
+// close is reported wrapped in ErrClose, joined with the copy error when both fail.
 func WriteAndClose(w io.WriteCloser, r io.Reader) error {
-	_, err := io.Copy(w, r)
-	if closeErr := w.Close(); err == nil {
-		err = closeErr
+	_, copyErr := io.Copy(w, r)
+	closeErr := w.Close()
+	if copyErr == nil && closeErr == nil {
+		return nil
 	}
-	return err
+	return &writeError{copyErr: copyErr, closeErr: closeErr}
+}
+
+// writeError is a failed WriteAndClose: the copy error, the close error, or both. It
+// matches ErrClose when the close failed, and unwraps to each error it holds.
+type writeError struct {
+	copyErr  error
+	closeErr error
+}
+
+func (e *writeError) Error() string {
+	switch {
+	case e.closeErr == nil:
+		return e.copyErr.Error()
+	case e.copyErr == nil:
+		return fmt.Sprintf("%v: %v", ErrClose, e.closeErr)
+	default:
+		return fmt.Sprintf("%v; %v: %v", e.copyErr, ErrClose, e.closeErr)
+	}
+}
+
+func (e *writeError) Is(target error) bool {
+	return target == ErrClose && e.closeErr != nil
+}
+
+func (e *writeError) Unwrap() []error {
+	errs := make([]error, 0, 2)
+	for _, err := range []error{e.copyErr, e.closeErr} {
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errs
 }
