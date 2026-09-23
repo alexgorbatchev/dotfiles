@@ -699,7 +699,6 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
-	s.configureInstaller(inst)
 	res, err := inst.CheckUpdate(ctx, targetTool)
 	if errors.Is(err, installer.ErrUpdateCheckUnsupported) {
 		reason := fmt.Sprintf("Update checking is not supported for installation method %q", targetTool.InstallationMethod)
@@ -735,20 +734,30 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 	}, "")
 }
 
-// configureInstaller applies the project's github and cargo sections to an installer
-// before the dashboard asks it about upstream, as tool check and tool update do, so an
-// update check addresses the hosts the configuration names with its credentials.
-func (s *Server) configureInstaller(inst installer.Installer) {
+// configureInstallers applies the project's github and cargo sections to every
+// registered installer, as tool check and tool update do, so the dashboard's update
+// checks address the hosts the configuration names with its credentials. It runs once,
+// when the server starts, so the update-check handlers never write installer settings
+// themselves; the installers are shared by every request.
+func (s *Server) configureInstallers() {
 	if s.projectConfig == nil {
 		return
 	}
-	installer.SetGitHubSettings(inst, installer.GitHubSettings{
+	github := installer.GitHubSettings{
 		Host:         s.projectConfig.Github.Host,
 		Token:        s.projectConfig.Github.Token,
 		UserAgent:    s.projectConfig.Github.UserAgent,
 		CacheEnabled: s.projectConfig.Github.Cache.IsEnabled(),
-	})
-	installer.SetCargoSettings(inst, installer.NewCargoSettings(s.projectConfig))
+	}
+	cargo := installer.NewCargoSettings(s.projectConfig)
+	for _, name := range installer.DefaultRegistry().List() {
+		inst, err := installer.Get(name)
+		if err != nil {
+			continue
+		}
+		installer.SetGitHubSettings(inst, github)
+		installer.SetCargoSettings(inst, cargo)
+	}
 }
 
 // unsupportedCheckUpdate is the check-update answer for a tool nothing upstream was asked
@@ -817,9 +826,9 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	updateTarget := *targetTool
 	if targetTool.InstallationMethod != "" {
 		if inst, err := installer.Get(targetTool.InstallationMethod); err == nil {
-			// Only the update check runs here; the install directory is set by the
-			// orchestrator when it installs the release this picks.
-			s.configureInstaller(inst)
+			// Only the update check runs here, with the settings configureInstallers
+			// applied at start; the install directory is set by the orchestrator when it
+			// installs the release this picks.
 			// A release the tool's updateCheck.constraint excludes is not one this
 			// endpoint may install, however new it is.
 			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" &&

@@ -174,10 +174,11 @@ version and prebuilt archive from.
 | `githubRelease.host`      | `https://github.com`                                      | Host of cargo-quickinstall and `github-releases` archive downloads     |
 | `githubRelease.token`     | none                                                      | Authenticates archive downloads from `githubRelease.host`              |
 
-A token is only ever sent to the host it is configured for. `cratesIo.token` is sent as
-it is, the way Cargo authenticates to a registry. The two GitHub tokens are sent in the
-`token <value>` form, and a `cargoTomlUrl` on any host other than `githubRaw.host` is
-fetched without one. `github.token` and the `GITHUB_TOKEN`/`GH_TOKEN` variables never
+A token is only ever sent to the host it is configured for, and is dropped when that
+host redirects elsewhere. `cratesIo.token` is sent as it is, the way Cargo
+authenticates to a registry. The two GitHub tokens are sent in the `token <value>`
+form, and a `cargoTomlUrl` on any host other than `githubRaw.host` is fetched without
+one. `github.token` and the `GITHUB_TOKEN`/`GH_TOKEN` variables never
 reach these hosts.
 
 Cached responses live in `cache/cargo/crates-io` and `cache/cargo/github-raw` under

@@ -28,6 +28,8 @@ const (
 	cargoVersionSourceCratesIO  = "crates-io"
 	cargoVersionSourceGitHub    = "github-releases"
 
+	// cratesIONoVersion is the max_version crates.io reports for a crate with no
+	// version it can parse.
 	cratesIONoVersion = "0.0.0"
 
 	// cratesIOAPIPath is where a crates.io host serves its crate API, below the site
@@ -165,13 +167,13 @@ func (c *CargoInstaller) userAgent() string {
 
 // cratesIOCrateURL is the crates.io API address of a crate on the configured host.
 func (c *CargoInstaller) cratesIOCrateURL(crateName string) string {
-	return fmt.Sprintf("%s%s/%s", hostOrDefault(c.Cargo.CratesIO.Host, defaultCratesIOHost), cratesIOAPIPath, crateName)
+	return fmt.Sprintf("%s%s/%s", c.cratesIOHost(), cratesIOAPIPath, crateName)
 }
 
 // cargoTomlURL is the Cargo.toml on the main branch of githubRepo on the configured
 // raw host.
 func (c *CargoInstaller) cargoTomlURL(githubRepo string) string {
-	return fmt.Sprintf("%s/%s/main/Cargo.toml", hostOrDefault(c.Cargo.GitHubRaw.Host, defaultGitHubRawHost), githubRepo)
+	return fmt.Sprintf("%s/%s/main/Cargo.toml", c.rawHost(), githubRepo)
 }
 
 // quickinstallURL is the cargo-quickinstall archive of a crate version on the
@@ -185,20 +187,28 @@ func (c *CargoInstaller) githubReleaseURL(githubRepo, tag, assetName string) str
 	return fmt.Sprintf("%s/%s/releases/download/%s/%s", c.releaseHost(), githubRepo, tag, assetName)
 }
 
+func (c *CargoInstaller) cratesIOHost() string {
+	return hostOrDefault(c.Cargo.CratesIO.Host, defaultCratesIOHost)
+}
+
+func (c *CargoInstaller) rawHost() string {
+	return hostOrDefault(c.Cargo.GitHubRaw.Host, defaultGitHubRawHost)
+}
+
 func (c *CargoInstaller) releaseHost() string {
 	return hostOrDefault(c.Cargo.GitHubRelease.Host, defaultGitHubReleaseHost)
 }
 
 // releaseDownloadOptions authenticates an archive download from the release host with
-// cargo.githubRelease.token. Every archive URL is built on that host, so the token
-// cannot reach another one; the HTTP client drops it when GitHub redirects the
-// download to its asset storage on another domain.
+// cargo.githubRelease.token. Every archive URL is built on that host, and the header
+// is dropped on any redirect that leaves it (GitHub sends asset downloads on to its
+// storage host), so the token reaches no other host.
 func (c *CargoInstaller) releaseDownloadOptions() []downloader.DownloadOptions {
 	authorization := githubAuthorization(c.Cargo.GitHubRelease.Token)
 	if authorization == "" {
 		return nil
 	}
-	return []downloader.DownloadOptions{{Headers: map[string]string{"Authorization": authorization}}}
+	return []downloader.DownloadOptions{{Headers: map[string]string{"Authorization": authorization}, HostScopedHeaders: true}}
 }
 
 // cargoRequest is one GET of a crate version from a cargo host.
@@ -230,7 +240,8 @@ func (c *CargoInstaller) fetchVersion(ctx context.Context, req cargoRequest, par
 		httpReq.Header.Set("Authorization", req.authorization)
 	}
 
-	resp, err := c.client().Do(httpReq)
+	// A token configured for the host must not follow a redirect to another one.
+	resp, err := downloader.HostScopedClient(c.client()).Do(httpReq)
 	if err != nil {
 		return "", fmt.Errorf("requesting %s: %w", req.service, err)
 	}
@@ -397,7 +408,7 @@ func parseCratesIOVersion(body []byte, crateName string, prerelease bool) (strin
 // configured raw host: a cargoTomlUrl the tool names may point anywhere.
 func (c *CargoInstaller) fetchCargoTomlVersion(ctx context.Context, cargoTomlURL string) (string, error) {
 	authorization := ""
-	if serves(hostOrDefault(c.Cargo.GitHubRaw.Host, defaultGitHubRawHost), cargoTomlURL) {
+	if serves(c.rawHost(), cargoTomlURL) {
 		authorization = githubAuthorization(c.Cargo.GitHubRaw.Token)
 	}
 	return c.fetchVersion(ctx, cargoRequest{

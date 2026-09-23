@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -15,30 +16,44 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
-// settingsRecordingInstaller records the project settings the dashboard applies to it
-// before asking it anything.
+// settingsRecordingRuns numbers the installers TestDashboard_CheckUpdateAppliesProjectSettings
+// registers.
+var settingsRecordingRuns atomic.Int32
+
+// settingsRecordingInstaller records the project settings it holds when it is asked
+// for an update check.
 type settingsRecordingInstaller struct {
 	mockCheckUpdateInstaller
-	mu     sync.Mutex
-	github []installer.GitHubSettings
-	cargo  []installer.CargoSettings
+	mu            sync.Mutex
+	github        installer.GitHubSettings
+	cargo         installer.CargoSettings
+	checkedGitHub []installer.GitHubSettings
+	checkedCargo  []installer.CargoSettings
 }
 
 func (m *settingsRecordingInstaller) SetGitHubSettings(settings installer.GitHubSettings) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.github = append(m.github, settings)
+	m.github = settings
 }
 
 func (m *settingsRecordingInstaller) SetCargoSettings(settings installer.CargoSettings) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.cargo = append(m.cargo, settings)
+	m.cargo = settings
+}
+
+func (m *settingsRecordingInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
+	m.mu.Lock()
+	m.checkedGitHub = append(m.checkedGitHub, m.github)
+	m.checkedCargo = append(m.checkedCargo, m.cargo)
+	m.mu.Unlock()
+	return m.mockCheckUpdateInstaller.CheckUpdate(ctx, tool)
 }
 
 // TestDashboard_CheckUpdateAppliesProjectSettings pins that the dashboard's update
 // check reaches the installer configured by the project, as tool check and tool update
-// do: the github and cargo sections are applied before CheckUpdate runs, so a cargo
+// do: the github and cargo sections are in place when CheckUpdate runs, so a cargo
 // tool is checked against the configured crates.io host with the configured
 // User-Agent and token.
 func TestDashboard_CheckUpdateAppliesProjectSettings(t *testing.T) {
@@ -49,7 +64,10 @@ func TestDashboard_CheckUpdateAppliesProjectSettings(t *testing.T) {
 	}
 	defer sqlDB.Close()
 
-	inst := &settingsRecordingInstaller{mockCheckUpdateInstaller: mockCheckUpdateInstaller{name: "mock-settings-recording-inst", latestVersion: "2.0.0"}}
+	// The global registry has no way to remove an installer, so every run registers one
+	// under a name of its own (-count=N reruns the test in the same process).
+	name := fmt.Sprintf("mock-settings-recording-inst-%d", settingsRecordingRuns.Add(1))
+	inst := &settingsRecordingInstaller{mockCheckUpdateInstaller: mockCheckUpdateInstaller{name: name, latestVersion: "2.0.0"}}
 	if err := installer.Register(inst); err != nil {
 		t.Fatalf("registering mock installer: %v", err)
 	}
@@ -81,10 +99,10 @@ func TestDashboard_CheckUpdateAppliesProjectSettings(t *testing.T) {
 		t.Fatalf("CheckUpdate ran %d time(s), want 1", inst.calls.Load())
 	}
 	wantCargo := installer.NewCargoSettings(projCfg)
-	if len(inst.cargo) != 1 || inst.cargo[0] != wantCargo {
-		t.Errorf("cargo settings applied = %+v, want exactly %+v", inst.cargo, wantCargo)
+	if len(inst.checkedCargo) != 1 || inst.checkedCargo[0] != wantCargo {
+		t.Errorf("cargo settings at check time = %+v, want %+v", inst.checkedCargo, wantCargo)
 	}
-	if len(inst.github) != 1 || inst.github[0].Host != projCfg.Github.Host || inst.github[0].Token != projCfg.Github.Token {
-		t.Errorf("github settings applied = %+v, want the project's github section", inst.github)
+	if len(inst.checkedGitHub) != 1 || inst.checkedGitHub[0].Host != projCfg.Github.Host || inst.checkedGitHub[0].Token != projCfg.Github.Token {
+		t.Errorf("github settings at check time = %+v, want the project's github section", inst.checkedGitHub)
 	}
 }
