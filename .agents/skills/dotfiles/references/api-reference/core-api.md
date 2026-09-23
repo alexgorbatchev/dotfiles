@@ -164,11 +164,19 @@ path, so `~/` reaches the configured home directory.
 .copy('./config.toml', '~/.config/tool/config.toml')
 ```
 
-Copies are applied by `dotfiles generate` and again by `dotfiles install`, so a target
-that is edited afterwards is restored on the next run. Whatever already sits at the
-target is kept as `<dest>.bak`, replacing an older backup; a target that already matches
-the source is left alone, which is what keeps the first backup rather than displacing it
-on every run. Removing the declaration removes the copy on the next `dotfiles generate`.
+Copies are applied by `dotfiles generate` and again by `dotfiles install`. Each copied
+file is settled under the `conflict` option, as described in
+[Conflict Policies](shell-integration.md#conflict-policies), and `dotfiles state diff`
+reports each one in the state the next run acts on. A symlink at the target counts as a
+file dotfiles never wrote, so the copy never reads or writes through it.
+
+A directory is settled file by file, so an edit to one file does not affect the others,
+and a file added inside the target that the source does not have is left alone. Every
+directory of the source is created at the target, empty ones included, and a file or
+symlink where one of them belongs counts as an entry dotfiles never wrote. A file
+removed from the source directory stops being declared, like the whole copy when the
+declaration is removed. `mode` is applied on every run to every copied file dotfiles
+owns; without it a newly created file starts with the permission of its source file.
 
 Use `.copy()` when the tool must own a real file -- something it rewrites in place, or a
 program that refuses to follow a symlink -- and [`.symlink()`](shell-integration.md#symbolic-links)

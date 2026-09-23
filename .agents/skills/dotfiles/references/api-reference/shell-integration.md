@@ -418,9 +418,41 @@ Render dynamic configuration templates using `.template()`. Variables support pr
 })
 ```
 
+## Conflict Policies
+
+A block, a template and each file of a copy are settled against three versions: the
+repository's version dotfiles last recorded, what is on disk now, and what the repository
+would write now. When only the repository moved, or the file dotfiles wrote was deleted, the
+new version is written. When the file already holds what would be written, it is left
+as it is. A template or copied file in that state that dotfiles had not written is
+adopted as dotfiles' own: it gets the declared `mode` and is removed with its
+declaration like any other. The `conflict` option decides the remaining cases:
+
+| Policy                | Edited on disk, repository unchanged  | Edited on disk and changed in the repository                                       | Already on disk, never written by dotfiles |
+| --------------------- | ------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------ |
+| `merge` (the default) | kept                                  | merged line by line; lines that cannot be merged are marked with `<<<<<<<` markers | moved aside to a backup, then written      |
+| `keep-local`          | kept                                  | kept                                                                               | kept                                       |
+| `overwrite`           | moved aside to a backup, then written | moved aside to a backup, then written                                              | moved aside to a backup, then written      |
+| `prompt`              | kept                                  | kept                                                                               | kept                                       |
+
+A kept file is reported with a warning and stays reported by `dotfiles state diff`
+until the two versions agree. `prompt` keeps the file because `generate` and `install`
+cannot ask; review it with `dotfiles state diff`. A file that cannot be merged (binary
+content) is kept with a warning. A merged file holds the user's side as well, so the
+next run treats it as edited on disk with the repository unchanged, and keeps it. A
+backup is named `<target>.bak`, or `<target>.bak.2` and upwards when that name is
+taken, so an earlier backup is never replaced.
+
+A kept template or copied file that dotfiles never wrote stays the user's: the declared
+`mode` is not applied to it and removing the declaration leaves it in place. A template
+or copied file that stops being declared, and a copied file whose tool is removed, is
+removed on the next `dotfiles generate` when it still holds what dotfiles wrote, and
+moved aside to a backup when it was edited since. Only files are removed: the
+directories a copy created stay in place.
+
 ## Declaration Checks
 
-The declarations below are checked when the configuration loads, before any command acts on it. A declaration that breaks one of the rules below fails the load with an error that names the tool's configuration file, the tool and the offending value, so nothing is linked, copied or written for any tool. A value that is not recognised is never replaced by its default: a misspelled `conflict` policy on a block or template would otherwise back up and replace a file the author asked to keep.
+The declarations below are checked when the configuration loads, before any command acts on it. A declaration that breaks one of the rules below fails the load with an error that names the tool's configuration file, the tool and the offending value, so nothing is linked, copied or written for any tool. A value that is not recognised is never replaced by its default: a misspelled `conflict` policy on a block, template or copy would otherwise back up and replace a file the author asked to keep.
 
 | Declaration    | Rule                                                                                                                                                                                                                                                            |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -433,11 +465,11 @@ The declarations below are checked when the configuration loads, before any comm
 
 The options are checked the same way wherever they appear. Leaving an option out selects its default; only an unrecognised value is rejected.
 
-| Option     | Accepted values                                                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `mode`     | An octal permission from `0000` to `0777`, written as `0600`, `600` or `0o600`                                                       |
-| `position` | `top` or `bottom` (the default), on `.block()`; decides where a block not yet in the file is inserted                                |
-| `conflict` | `merge` (the default), `keep-local`, `overwrite` or `prompt`, on `.block()` and `.template()`. `.copy()` rejects any other value too |
+| Option     | Accepted values                                                                                                                                       |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mode`     | An octal permission from `0000` to `0777`, written as `0600`, `600` or `0o600`                                                                        |
+| `position` | `top` or `bottom` (the default), on `.block()`; decides where a block not yet in the file is inserted                                                 |
+| `conflict` | `merge` (the default), `keep-local`, `overwrite` or `prompt`, on `.block()`, `.template()` and `.copy()`; see [Conflict Policies](#conflict-policies) |
 
 ### Conflicting File Declarations
 

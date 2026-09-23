@@ -176,6 +176,41 @@ func TestDeclaredAttributesReachTheRecord(t *testing.T) {
 	}
 }
 
+// TestSourcePathReachesWrittenFiles checks that a write made on behalf of a copy
+// records the file it came from, whether the file was written or only adopted, and
+// that a chmod made through the same filesystem does not claim one.
+func TestSourcePathReachesWrittenFiles(t *testing.T) {
+	memFS, reg, tfs := newTrackedTestFS(t)
+
+	const source = "/repo/tools/app/app.conf"
+	const written = "/home/user/.config/app.conf"
+	const adopted = "/home/user/.config/other.conf"
+	if err := memFS.MkdirAll("/home/user/.config", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := memFS.WriteFile(adopted, []byte("same"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	inTx(t, reg, tfs, func(tracked *TrackedFileSystem) error {
+		copying := tracked.WithSourcePath(source)
+		if err := copying.WriteFile(written, []byte("content"), 0644); err != nil {
+			return err
+		}
+		if err := copying.RecordExistingFile(adopted); err != nil {
+			return err
+		}
+		return copying.Chmod(written, 0600)
+	})
+
+	if op := latestOp(t, reg, adopted); op.TargetPath == nil || *op.TargetPath != source {
+		t.Errorf("adopted file target path = %v, want %q", op.TargetPath, source)
+	}
+	op := latestOp(t, reg, written)
+	if op.OperationType != "chmod" || op.TargetPath != nil {
+		t.Errorf("chmod record = %+v, want no target path", op)
+	}
+}
+
 // TestDeclaredAttributesAreScopedToTheirCopy checks that configuring a mode or a
 // block yields a new filesystem rather than mutating the shared one, so a tool that
 // declares a 0600 file does not silently impose it on every later write.

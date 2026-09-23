@@ -224,8 +224,9 @@ type CopyConfig struct {
 	Source string `json:"source" yaml:"source"`
 	Target string `json:"target" yaml:"target"`
 	Mode   string `json:"mode,omitempty" yaml:"mode,omitempty"`
-	// Conflict is what to do when both the copied file and its source have changed
-	// since dotfiles last wrote it. An empty value means the default, "merge".
+	// Conflict is the drift policy each copied file is settled under when it was
+	// edited since dotfiles last wrote it, or was never written by dotfiles. A
+	// directory copy applies it file by file. An empty value means the default, "merge".
 	Conflict string `json:"conflict,omitempty" yaml:"conflict,omitempty"`
 }
 

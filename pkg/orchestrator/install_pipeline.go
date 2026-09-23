@@ -633,13 +633,22 @@ func (o *Orchestrator) cleanupToolArtifacts(ctx context.Context, toolName string
 	fileStates, err := o.reg.GetFileStatesForTool(ctx, toolName)
 	if err == nil {
 		for _, fileState := range fileStates {
-			if fileState.FileType == "shim" || fileState.FileType == "symlink" || fileState.FileType == "copy" || fileState.FileType == "completion" {
-				if fileState.LastOperation != "rm" {
-					exists, err := o.fs.Exists(fileState.FilePath)
-					if err == nil && exists {
-						_ = o.fs.Remove(fileState.FilePath)
-					}
+			if fileState.LastOperation == "rm" {
+				continue
+			}
+			exists, err := o.fs.Exists(fileState.FilePath)
+			if err != nil || !exists {
+				continue
+			}
+			switch fileState.FileType {
+			case "copy":
+				// An edited copy is moved aside rather than deleted, as it is when only
+				// its declaration is removed.
+				if err := o.removeStaleFile(toolName, fileState, projCfg, fileState.FilePath); err != nil {
+					return err
 				}
+			case "shim", "symlink", "completion":
+				_ = o.fs.Remove(fileState.FilePath)
 			}
 		}
 	}

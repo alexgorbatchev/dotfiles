@@ -15,6 +15,7 @@ Drift detection, 3-way text merging, diff computation, and drift inspection acro
 - Refuse binary content: 3-way merge explicitly rejects binary content containing null bytes (`0x00`).
 - Unified diffing (`UnifiedDiff`): produces standard unified diffs between old and new text, returning empty string when identical and reporting binary diff notices when inputs contain null bytes.
 - Drift inspection (`Inspector`): inspects symlinks, copies, templates, and managed comment blocks against SQLite registry state and the injected `fs.FS` filesystem.
+- Copies are inspected per file: `CopyMembers` (`copies.go`) lists the directories and files a `.copy()` places, parents first, and `ForeignEntry` flags a target that is a symlink or the wrong kind of entry (reported as `StateUnmanaged`; nothing beneath a foreign directory is examined, since looking beneath a plain file fails on a real filesystem and beneath a symlink escapes the target). The orchestrator settles exactly the same members, so `state diff` and `generate` cannot disagree about which files a copy owns.
 - Symlink canonicalization: normalizes symlink target paths and common host aliases (such as macOS `/private/var`, `/private/tmp`, `/private/etc` prefixes) when evaluating symlink drift.
 
 ## Local gotchas

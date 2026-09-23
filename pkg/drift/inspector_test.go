@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -402,5 +404,134 @@ func TestUnifiedDiff_Binary(t *testing.T) {
 	diff := UnifiedDiff("a.bin", "b.bin", binary1, binary2)
 	if diff == "" || diff[:12] != "Binary files" {
 		t.Errorf("expected binary files diff message, got: %q", diff)
+	}
+}
+
+// A directory copy is reported file by file, the way generate settles it, and a
+// target a copy cannot treat as its own file or directory is reported as unmanaged.
+func TestInspector_CopyMembersAndForeignTargets(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	write := func(t *testing.T, mem fs.FS, path, content string) {
+		t.Helper()
+		if err := mem.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := mem.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+	newTool := func(source, target string) *config.ToolConfig {
+		return &config.ToolConfig{
+			Name:           "tool",
+			ConfigFilePath: "/repo/tools/tool/tool.tool.ts",
+			Copies:         []config.CopyConfig{{Source: source, Target: target}},
+		}
+	}
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.HomeDir = "/home/user"
+
+	t.Run("a directory copy yields one item per member", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		write(t, mem, "/repo/tools/tool/themes/b.toml", "b")
+		write(t, mem, "/repo/tools/tool/themes/nested/a.toml", "a")
+		write(t, mem, "/home/user/themes/b.toml", "b")
+
+		items, err := NewInspector(mem, reg, projCfg).InspectTool(ctx, newTool("./themes", "~/themes"))
+		if err != nil {
+			t.Fatalf("InspectTool: %v", err)
+		}
+		states := map[string]State{}
+		for _, item := range items {
+			states[item.FilePath] = item.State
+		}
+		want := map[string]State{
+			"/home/user/themes/b.toml":        StateInSync,
+			"/home/user/themes/nested/a.toml": StateNew,
+		}
+		if len(states) != len(want) {
+			t.Fatalf("items = %+v, want one per member", items)
+		}
+		for path, state := range want {
+			if states[path] != state {
+				t.Errorf("%s = %q, want %q", path, states[path], state)
+			}
+		}
+	})
+
+	t.Run("a symlink at a file copy's target is unmanaged", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		write(t, mem, "/repo/tools/tool/config.toml", "same")
+		if err := mem.MkdirAll("/home/user", 0755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		// The link names the source itself, so reading through it would look in sync.
+		if err := mem.Symlink("/repo/tools/tool/config.toml", "/home/user/config.toml"); err != nil {
+			t.Fatalf("symlink: %v", err)
+		}
+
+		items, err := NewInspector(mem, reg, projCfg).InspectTool(ctx, newTool("./config.toml", "~/config.toml"))
+		if err != nil {
+			t.Fatalf("InspectTool: %v", err)
+		}
+		if len(items) != 1 || items[0].State != StateUnmanaged || items[0].Diff == "" {
+			t.Errorf("items = %+v, want one unmanaged copy with an explanation", items)
+		}
+	})
+
+	t.Run("a file where a directory copy belongs is unmanaged", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		write(t, mem, "/repo/tools/tool/themes/a.toml", "a")
+		write(t, mem, "/home/user/themes", "not a directory")
+
+		items, err := NewInspector(mem, reg, projCfg).InspectTool(ctx, newTool("./themes", "~/themes"))
+		if err != nil {
+			t.Fatalf("InspectTool: %v", err)
+		}
+		if len(items) != 1 || items[0].FilePath != "/home/user/themes" || items[0].State != StateUnmanaged {
+			t.Errorf("items = %+v, want the target itself reported as unmanaged", items)
+		}
+	})
+}
+
+func TestCopyMembers(t *testing.T) {
+	mem := fs.NewMemFS()
+	for _, path := range []string{"/src/z.txt", "/src/a/b.txt", "/src/a/a.txt"} {
+		if err := mem.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := mem.WriteFile(path, []byte("x"), 0644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+
+	members, err := CopyMembers(mem, "/src", "/dst")
+	if err != nil {
+		t.Fatalf("CopyMembers: %v", err)
+	}
+	want := []CopyMember{
+		{Source: "/src", Target: "/dst", Dir: true},
+		{Source: "/src/a", Target: "/dst/a", Dir: true},
+		{Source: "/src/a/a.txt", Target: "/dst/a/a.txt"},
+		{Source: "/src/a/b.txt", Target: "/dst/a/b.txt"},
+		{Source: "/src/z.txt", Target: "/dst/z.txt"},
+	}
+	if !slices.Equal(members, want) {
+		t.Errorf("members = %+v, want %+v", members, want)
+	}
+
+	single, err := CopyMembers(mem, "/src/z.txt", "/dst/z.txt")
+	if err != nil || !slices.Equal(single, []CopyMember{{Source: "/src/z.txt", Target: "/dst/z.txt"}}) {
+		t.Errorf("single-file members = %+v, %v", single, err)
+	}
+
+	if _, err := CopyMembers(mem, "/absent", "/dst"); err == nil {
+		t.Error("expected an error for a missing source")
 	}
 }

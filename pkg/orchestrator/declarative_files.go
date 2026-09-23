@@ -150,7 +150,15 @@ type wholeFileRequest struct {
 	path     string
 	desired  string
 	mode     string
-	policy   drift.Policy
+	// source is the file the desired content came from (the source of a copy), which
+	// the record names; empty for content dotfiles rendered.
+	source string
+	// defaultMode is the permission a newly written file gets when mode is empty.
+	// Zero means defaultFileMode. Unlike a declared mode it is never enforced on an
+	// existing file: git carries only 0644 and 0755, so enforcing a source's
+	// permission would loosen a file the user tightened by hand.
+	defaultMode os.FileMode
+	policy      drift.Policy
 }
 
 // settleWholeFile writes a file dotfiles owns, deciding what to do about anything
@@ -198,7 +206,13 @@ func (o *Orchestrator) settleWholeFile(ctx context.Context, req wholeFileRequest
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 		tracked := o.getTrackedFS(ctx, tx, req.toolName, req.fileType)
+		if req.source != "" {
+			tracked = tracked.WithSourcePath(req.source)
+		}
 		mode := defaultFileMode
+		if req.defaultMode != 0 {
+			mode = req.defaultMode
+		}
 		if req.mode != "" {
 			if mode, err = config.ParseMode(req.mode); err != nil {
 				return err
@@ -207,14 +221,46 @@ func (o *Orchestrator) settleWholeFile(ctx context.Context, req wholeFileRequest
 		}
 
 		if !write {
-			// Nothing is written, and nothing is recorded either: recording would
-			// move the base forward to the version on disk, and the drift the user
-			// asked to keep would vanish from the next run's comparison.
-			return nil
+			if state == drift.StateUnmanaged {
+				// A file dotfiles never wrote that the policy keeps stays the user's:
+				// no permission is imposed on it and nothing is recorded, since a
+				// record would make it this tool's file, removed with the declaration.
+				return nil
+			}
+			if action == drift.ActionNothing && base != currentHash {
+				// The file already holds what would be written but that is not the
+				// version on record (none is, or an older one), so the file on disk
+				// becomes the base. Without it the next change to the source would
+				// find no base and treat the file as unmanaged.
+				if err := tracked.RecordExistingFile(req.path); err != nil {
+					return err
+				}
+			}
+			// Content that is kept is not recorded: recording would move the base
+			// forward to the version on disk, and the drift the user asked to keep
+			// would vanish from the next run's comparison. The permission is not
+			// part of that decision and is enforced either way, as a block's is.
+			return o.enforceMode(tracked, req.path, req.mode)
 		}
 
-		if err := tracked.MkdirAll(filepath.Dir(req.path), defaultDirMode); err != nil {
+		// The parent is created on the plain filesystem, as a block's is: recorded
+		// under the tool as a copy or template, it would be a file no declaration
+		// names, and CleanupStaleCopies would try to remove it on the next run.
+		if err := o.fs.MkdirAll(filepath.Dir(req.path), defaultDirMode); err != nil {
 			return fmt.Errorf("creating %s: %w", filepath.Dir(req.path), err)
+		}
+		if action == drift.ActionMerge {
+			// The merged file holds the user's side as well as the repository's, so
+			// it is not what dotfiles would write. It is written on the plain
+			// filesystem and recorded once, with the repository's version as the
+			// base, as a block is: recorded as the merged file, the next run would
+			// find it untouched and replace it with the source, discarding the
+			// user's side the merge had kept.
+			if err := o.fs.WriteFile(req.path, []byte(content), mode); err != nil {
+				return fmt.Errorf("writing %s: %w", req.path, err)
+			}
+			o.logger.WithTag(req.toolName).Info(logger.Message(fmt.Sprintf("merge %s", o.contract(req.path))))
+			return o.recordBase(ctx, tx, tracked, req, int64(len(content)), mode)
 		}
 		if err := tracked.WriteFile(req.path, []byte(content), mode); err != nil {
 			return fmt.Errorf("writing %s: %w", req.path, err)
@@ -228,6 +274,37 @@ func (o *Orchestrator) settleWholeFile(ctx context.Context, req wholeFileRequest
 		}
 		return o.enforceMode(tracked, req.path, req.mode)
 	})
+}
+
+// recordBase records the write of a merged file at req.path, with req.desired as the
+// version dotfiles last wrote, which is what the drift engine measures the file
+// against on the next run, and then applies the declared mode.
+func (o *Orchestrator) recordBase(ctx context.Context, tx *sql.Tx, tracked *fs.TrackedFileSystem, req wholeFileRequest, size int64, perm os.FileMode) error {
+	permissions := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
+	record := &registry.FileOperationRecord{
+		ToolName:      req.toolName,
+		OperationType: "writeFile",
+		FilePath:      req.path,
+		FileType:      req.fileType,
+		CreatedAt:     tracked.CreatedAt(),
+		OperationID:   tracked.OperationID(),
+		ContentHash:   ptrTo(fs.HashContent([]byte(req.desired))),
+		Metadata:      ptrTo(req.desired),
+		SizeBytes:     &size,
+		Permissions:   &permissions,
+	}
+	if req.source != "" {
+		record.TargetPath = &req.source
+	}
+	if req.mode != "" {
+		// Spelled from the parsed mode, as WithTargetMode spells it for every other
+		// write, whatever spelling the declaration used.
+		record.TargetMode = &permissions
+	}
+	if err := o.reg.RecordFileOperation(ctx, tx, record); err != nil {
+		return fmt.Errorf("recording %s: %w", req.path, err)
+	}
+	return o.enforceMode(tracked, req.path, req.mode)
 }
 
 // actionRequest is everything deciding the bytes to write needs.
@@ -247,6 +324,11 @@ type actionRequest struct {
 // here so that every kind of declaration settles the same way.
 func (o *Orchestrator) contentForAction(req actionRequest) (string, bool, error) {
 	log := o.logger.WithTag(req.tool)
+	// An entry that was there before dotfiles is not one the user changed.
+	why := "was changed since dotfiles last wrote it"
+	if req.state == drift.StateUnmanaged {
+		why = "was not written by dotfiles"
+	}
 
 	switch req.action {
 	case drift.ActionNothing:
@@ -257,8 +339,8 @@ func (o *Orchestrator) contentForAction(req actionRequest) (string, bool, error)
 
 	case drift.ActionKeep:
 		log.Warn(logger.Message(fmt.Sprintf(
-			"%s was changed since dotfiles last wrote it; keeping your version. Run `dotfiles state diff` to see it.",
-			o.contract(req.label),
+			"%s %s; keeping your version. Run `dotfiles state diff` to see it.",
+			o.contract(req.label), why,
 		)))
 		return req.current, false, nil
 
@@ -267,8 +349,8 @@ func (o *Orchestrator) contentForAction(req actionRequest) (string, bool, error)
 			return "", false, err
 		}
 		log.Warn(logger.Message(fmt.Sprintf(
-			"%s was changed since dotfiles last wrote it; replacing it and keeping a backup beside it.",
-			o.contract(req.label),
+			"%s %s; replacing it and keeping a backup beside it.",
+			o.contract(req.label), why,
 		)))
 		return req.desired, true, nil
 
@@ -295,9 +377,9 @@ func (o *Orchestrator) contentForAction(req actionRequest) (string, bool, error)
 		// the managed installer. The safe half of the answer is taken and the user is
 		// told where to make the other half.
 		log.Warn(logger.Message(fmt.Sprintf(
-			"%s was changed since dotfiles last wrote it; keeping your version because this run cannot prompt. "+
+			"%s %s; keeping your version because this run cannot prompt. "+
 				"Run `dotfiles state diff %s` to review it.",
-			o.contract(req.label), o.contract(req.label),
+			o.contract(req.label), why, req.tool,
 		)))
 		return req.current, false, nil
 	}

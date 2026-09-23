@@ -35,6 +35,9 @@ type TrackedFileSystem struct {
 	// targetMode is the permission the tool declared for what it writes, which the
 	// drift engine later measures the file on disk against.
 	targetMode *registry.Permission
+	// sourcePath names the file a written file was produced from (the source of a
+	// copy), recorded as the target path of every write that does not carry one.
+	sourcePath string
 }
 
 // NewTrackedFileSystem instantiates a new TrackedFileSystem wrapper.
@@ -95,6 +98,15 @@ func (t *TrackedFileSystem) WithTargetMode(mode os.FileMode) *TrackedFileSystem 
 	next := t.clone()
 	perm := registry.Permission(fmt.Sprintf("0%o", mode&os.ModePerm))
 	next.targetMode = &perm
+	return next
+}
+
+// WithSourcePath yields a copy whose writes record source as the file they were
+// produced from, as CopyFile does, so a copy settled by writing its content still
+// says where that content came from.
+func (t *TrackedFileSystem) WithSourcePath(source string) *TrackedFileSystem {
+	next := t.clone()
+	next.sourcePath = source
 	return next
 }
 
@@ -169,6 +181,9 @@ func (t *TrackedFileSystem) recordOperation(details operationDetails) error {
 	}
 	if t.blockID != "" {
 		record.BlockID = &t.blockID
+	}
+	if record.TargetPath == nil && t.sourcePath != "" && details.opType == "writeFile" {
+		record.TargetPath = &t.sourcePath
 	}
 	return t.reg.RecordFileOperation(t.ctx, t.tx, record)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/block"
@@ -163,57 +164,113 @@ func (ins *Inspector) inspectCopies(ctx context.Context, tool *config.ToolConfig
 		target := resolveTarget(cp.Target)
 		source := resolveSource(cp.Source)
 
-		sourceData, err := ins.fs.ReadFile(source)
-		desired := ""
-		sourceExists := err == nil
-		if sourceExists {
-			desired = string(sourceData)
+		if _, err := ins.fs.Stat(source); err != nil {
+			// A missing source still gets an item, so the declaration that generate
+			// will fail on is visible in the report rather than silently absent.
+			items = append(items, ins.copyItem(ctx, tool.Name, CopyMember{Source: filepath.Clean(source), Target: filepath.Clean(target)}))
+			continue
 		}
 
-		currentData, err := ins.fs.ReadFile(target)
-		current := ""
-		currentExists := err == nil
-		if currentExists {
-			current = string(currentData)
+		members, err := CopyMembers(ins.fs, source, target)
+		if err != nil {
+			return nil, fmt.Errorf("tool %q: copy %q: %w", tool.Name, cp.Source, err)
 		}
-
-		recorded, _ := ins.reg.GetFileState(ctx, target)
-		baseHash := ""
-		if recorded != nil && recorded.ContentHash != nil {
-			baseHash = *recorded.ContentHash
+		// Nothing beneath a foreign directory is looked at: generate moves it aside
+		// or keeps it before placing anything there.
+		var foreignDirs []CopyMember
+		for _, member := range members {
+			if slices.ContainsFunc(foreignDirs, func(dir CopyMember) bool { return dir.Contains(member) }) {
+				continue
+			}
+			item, foreign, err := ins.foreignCopyItem(tool.Name, member.Target, member.Dir)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case foreign:
+				if member.Dir {
+					foreignDirs = append(foreignDirs, member)
+				}
+				items = append(items, item)
+			case !member.Dir:
+				items = append(items, ins.copyItem(ctx, tool.Name, member))
+			}
 		}
-
-		currentHash := ""
-		if currentExists {
-			currentHash = fs.HashContent([]byte(current))
-		}
-		desiredHash := ""
-		if sourceExists {
-			desiredHash = fs.HashContent([]byte(desired))
-		}
-
-		state := Evaluate(Versions{
-			Base:    baseHash,
-			Current: currentHash,
-			Desired: desiredHash,
-		})
-
-		diffText := ""
-		if state != StateInSync {
-			diffText = UnifiedDiff(target+" (current)", target+" (desired)", current, desired)
-		}
-
-		items = append(items, Item{
-			ToolName:       tool.Name,
-			FilePath:       target,
-			Type:           "copy",
-			State:          state,
-			Diff:           diffText,
-			CurrentContent: current,
-			DesiredContent: desired,
-		})
 	}
 	return items, nil
+}
+
+// foreignCopyItem reports a target a copy cannot settle as its own (see ForeignEntry)
+// as unmanaged, which is how the orchestrator judges it too.
+func (ins *Inspector) foreignCopyItem(toolName, target string, wantDir bool) (Item, bool, error) {
+	foreign, err := ForeignEntry(ins.fs, target, wantDir)
+	if err != nil || !foreign {
+		return Item{}, false, err
+	}
+	want := "a file"
+	if wantDir {
+		want = "a directory"
+	}
+	return Item{
+		ToolName: toolName,
+		FilePath: target,
+		Type:     "copy",
+		State:    StateUnmanaged,
+		Diff:     fmt.Sprintf("%s is not %s dotfiles copied; generate moves it aside or keeps it according to the conflict policy\n", target, want),
+	}, true, nil
+}
+
+// copyItem measures one copied file against its source and its recorded base.
+func (ins *Inspector) copyItem(ctx context.Context, toolName string, member CopyMember) Item {
+	sourceData, err := ins.fs.ReadFile(member.Source)
+	desired := ""
+	sourceExists := err == nil
+	if sourceExists {
+		desired = string(sourceData)
+	}
+
+	currentData, err := ins.fs.ReadFile(member.Target)
+	current := ""
+	currentExists := err == nil
+	if currentExists {
+		current = string(currentData)
+	}
+
+	recorded, _ := ins.reg.GetFileState(ctx, member.Target)
+	baseHash := ""
+	if recorded != nil && recorded.ContentHash != nil {
+		baseHash = *recorded.ContentHash
+	}
+
+	currentHash := ""
+	if currentExists {
+		currentHash = fs.HashContent([]byte(current))
+	}
+	desiredHash := ""
+	if sourceExists {
+		desiredHash = fs.HashContent([]byte(desired))
+	}
+
+	state := Evaluate(Versions{
+		Base:    baseHash,
+		Current: currentHash,
+		Desired: desiredHash,
+	})
+
+	diffText := ""
+	if state != StateInSync {
+		diffText = UnifiedDiff(member.Target+" (current)", member.Target+" (desired)", current, desired)
+	}
+
+	return Item{
+		ToolName:       toolName,
+		FilePath:       member.Target,
+		Type:           "copy",
+		State:          state,
+		Diff:           diffText,
+		CurrentContent: current,
+		DesiredContent: desired,
+	}
 }
 
 func (ins *Inspector) inspectTemplates(ctx context.Context, tool *config.ToolConfig, resolveTarget, resolveSource func(string) string) ([]Item, error) {

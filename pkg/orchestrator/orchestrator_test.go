@@ -2229,10 +2229,11 @@ func recordedCopy(t *testing.T, orch *Orchestrator, toolName, path string) *regi
 	return nil
 }
 
-// .copy(src, dst) places the source at the target on generate, as v1 did. A target
-// that already holds something else is moved aside to a backup, an older backup being
-// kept rather than replaced, and a target that already matches the source is left
-// untouched so a repeated generate makes no new backup at all.
+// .copy(src, dst) places the source at the target on generate. A target that already
+// holds a file dotfiles never wrote is moved aside to a backup under the default
+// policy, an older backup being kept rather than replaced, and a target that already
+// matches the source is left untouched and adopted, so a repeated generate makes no
+// new backup at all.
 func TestGenerateTool_AppliesCopies(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -2410,9 +2411,10 @@ func TestInstallTool_AppliesCopies(t *testing.T) {
 	}
 }
 
-// A copied directory follows the same policy as a file: an identical tree is left
-// alone on a repeated generate, and any other content at the target, whether a
-// diverged tree, a plain file or a symlink, is moved aside to <target>.bak first.
+// A copied directory is settled file by file: an identical tree is left alone, a
+// member whose source changed is updated in place, a file the copy does not own is
+// left where it is, and only something that is not a directory at the target (a
+// plain file or a symlink) is moved aside to <target>.bak under the default policy.
 func TestGenerateTool_CopyDirectoryPolicy(t *testing.T) {
 	t.Parallel()
 	const themesTarget = "/home/user/.config/copy-tool/themes"
@@ -2432,14 +2434,13 @@ func TestGenerateTool_CopyDirectoryPolicy(t *testing.T) {
 			},
 		},
 		{
-			name: "a changed source member displaces the old tree",
+			name: "a changed source member is updated in place",
 			beforeSecond: func(t *testing.T, memFS fs.FS) {
 				writeMemFile(t, memFS, copyToolDir+"/themes/dark.toml", "darker")
 			},
 			wantBackup: func(t *testing.T, memFS fs.FS) {
-				old, err := memFS.ReadFile(themesTarget + ".bak/dark.toml")
-				if err != nil || string(old) != "dark" {
-					t.Errorf("backup dark.toml = %q, %v; want %q", string(old), err, "dark")
+				if exists, _ := memFS.Exists(themesTarget + ".bak"); exists {
+					t.Errorf("an untouched tree was backed up for an upstream update")
 				}
 				got, _ := memFS.ReadFile(themesTarget + "/dark.toml")
 				if string(got) != "darker" {
@@ -2448,17 +2449,17 @@ func TestGenerateTool_CopyDirectoryPolicy(t *testing.T) {
 			},
 		},
 		{
-			name: "an extra member at the target displaces the tree",
+			name: "an extra member at the target is left alone",
 			beforeSecond: func(t *testing.T, memFS fs.FS) {
 				writeMemFile(t, memFS, themesTarget+"/user.toml", "mine")
 			},
 			wantBackup: func(t *testing.T, memFS fs.FS) {
-				mine, err := memFS.ReadFile(themesTarget + ".bak/user.toml")
-				if err != nil || string(mine) != "mine" {
-					t.Errorf("backup user.toml = %q, %v; want %q", string(mine), err, "mine")
+				if exists, _ := memFS.Exists(themesTarget + ".bak"); exists {
+					t.Errorf("the tree was backed up for a file the copy does not own")
 				}
-				if exists, _ := memFS.Exists(themesTarget + "/user.toml"); exists {
-					t.Errorf("foreign member survived inside the managed tree")
+				mine, err := memFS.ReadFile(themesTarget + "/user.toml")
+				if err != nil || string(mine) != "mine" {
+					t.Errorf("user.toml = %q, %v; want %q", string(mine), err, "mine")
 				}
 			},
 		},

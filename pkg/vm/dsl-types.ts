@@ -477,11 +477,14 @@ export interface ISymlinkOptions {
  */
 export interface ICopyOptions {
   /**
-   * The permission the copy must have.
+   * The permission every copied file dotfiles owns must have, enforced on every run.
+   * Without it a newly created file starts with the permission of its source.
    */
   mode?: Mode;
   /**
-   * What to do when the copy and its source have both changed. Defaults to `merge`.
+   * What to do with a copied file that was edited since dotfiles last wrote it, or
+   * that dotfiles never wrote. A directory copy applies it to each file it contains.
+   * Defaults to `merge`.
    */
   conflict?: ConflictPolicy;
 }
