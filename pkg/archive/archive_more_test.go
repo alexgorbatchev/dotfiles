@@ -159,31 +159,6 @@ func TestExtractDmgErrors(t *testing.T) {
 	}
 }
 
-func TestCopyDirAndWalkFS(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	ext := NewExtractor(memFS, runner)
-
-	_ = memFS.MkdirAll("/src/dir1/dir2", 0755)
-	_ = memFS.WriteFile("/src/file1.txt", []byte("f1"), 0644)
-	_ = memFS.WriteFile("/src/dir1/file2.txt", []byte("f2"), 0644)
-
-	err := ext.copyDir("/src", "/dest-copy")
-	if err != nil {
-		t.Fatalf("copyDir failed: %v", err)
-	}
-
-	data1, err := memFS.ReadFile("/dest-copy/file1.txt")
-	if err != nil || string(data1) != "f1" {
-		t.Errorf("expected 'f1', got %q, err=%v", string(data1), err)
-	}
-
-	data2, err := memFS.ReadFile("/dest-copy/dir1/file2.txt")
-	if err != nil || string(data2) != "f2" {
-		t.Errorf("expected 'f2', got %q, err=%v", string(data2), err)
-	}
-}
-
 func TestExtractDmgAppBundle(t *testing.T) {
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()
@@ -209,34 +184,6 @@ func TestExtractDmgAppBundle(t *testing.T) {
 	data, err := memFS.ReadFile("/dest-app/TestApp.app/Contents/Info.plist")
 	if err != nil || string(data) != "plist" {
 		t.Errorf("expected 'plist', got %q, err=%v", string(data), err)
-	}
-}
-
-func TestWalkFSSkipDir(t *testing.T) {
-	memFS := fs.NewMemFS()
-	_ = memFS.MkdirAll("/src/skipped/sub", 0755)
-	_ = memFS.WriteFile("/src/file.txt", []byte("a"), 0644)
-	_ = memFS.WriteFile("/src/skipped/sub/file2.txt", []byte("b"), 0644)
-
-	var visited []string
-	err := walkFS(memFS, "/src", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() && filepath.Base(path) == "skipped" {
-			return filepath.SkipDir
-		}
-		visited = append(visited, path)
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("walkFS failed: %v", err)
-	}
-
-	for _, v := range visited {
-		if strings.Contains(v, "skipped/sub") {
-			t.Errorf("expected skipped directory contents not to be visited, got %q", v)
-		}
 	}
 }
 
@@ -723,27 +670,6 @@ func TestExtractTarBz2Invalid(t *testing.T) {
 	}
 }
 
-func TestCopyDirAndWalkFSErrors(t *testing.T) {
-	memFS := fs.NewMemFS()
-	runner := exec.NewMockRunner()
-	ext := NewExtractor(memFS, runner)
-
-	err := ext.copyDir("/nonexistent_src", "/dest")
-	if err == nil {
-		t.Error("expected error for non-existent srcDir in copyDir")
-	}
-
-	_ = memFS.MkdirAll("/src_err", 0755)
-	_ = memFS.WriteFile("/src_err/file.txt", []byte("data"), 0644)
-
-	errFS := &errorFS{FS: memFS, errOnCreate: true}
-	extErr := NewExtractor(errFS, runner)
-	err = extErr.copyDir("/src_err", "/dest_err")
-	if err == nil {
-		t.Error("expected create error in copyDir")
-	}
-}
-
 type failingWriter struct{}
 
 func (failingWriter) Write(p []byte) (int, error) {
@@ -776,17 +702,6 @@ func TestExtractorTarWriteError(t *testing.T) {
 	}
 }
 
-type errorFSWithOpenErr struct {
-	fs.FS
-}
-
-func (e *errorFSWithOpenErr) Open(path string) (io.ReadCloser, error) {
-	if filepath.Base(path) == "file.txt" {
-		return nil, fmt.Errorf("mock open error")
-	}
-	return e.FS.Open(path)
-}
-
 func TestArchiveTruncatedAndReadErrors(t *testing.T) {
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
@@ -810,15 +725,6 @@ func TestArchiveTruncatedAndReadErrors(t *testing.T) {
 		t.Error("expected error extracting truncated tar file")
 	}
 
-	memCopy := fs.NewMemFS()
-	_ = memCopy.MkdirAll("/src_open", 0755)
-	_ = memCopy.WriteFile("/src_open/file.txt", []byte("data"), 0644)
-
-	openErrFS := &errorFSWithOpenErr{FS: memCopy}
-	extCopyOpen := NewExtractor(openErrFS, runner)
-	if err := extCopyOpen.copyDir("/src_open", "/dest_open"); err == nil {
-		t.Error("expected open error in copyDir")
-	}
 }
 
 func TestDetectAndSetExecutablesMagicBytes(t *testing.T) {

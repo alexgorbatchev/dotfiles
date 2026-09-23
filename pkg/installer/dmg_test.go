@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -75,6 +76,11 @@ func TestDmgInstaller(t *testing.T) {
 		_ = fsys.MkdirAll(appSourceDir, 0755)
 		_ = fsys.WriteFile(filepath.Join(appSourceDir, "slack"), []byte("mock-slack-bin"), 0755)
 
+		// A previous install left a file the new version no longer ships.
+		const staleFile = "/Applications/Slack.app/Contents/Resources/removed-in-this-version"
+		_ = fsys.MkdirAll(filepath.Dir(staleFile), 0755)
+		_ = fsys.WriteFile(staleFile, []byte("old"), 0644)
+
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -91,6 +97,10 @@ func TestDmgInstaller(t *testing.T) {
 		}
 		if string(copiedData) != "mock-slack-bin" {
 			t.Errorf("expected copied content to be 'mock-slack-bin', got %q", string(copiedData))
+		}
+
+		if exists, _ := fsys.Exists(staleFile); exists {
+			t.Errorf("reinstall kept %s; the previous bundle must be replaced, not merged into", staleFile)
 		}
 
 		// Verify hdiutil commands were executed
@@ -159,9 +169,11 @@ func TestDmgInstaller(t *testing.T) {
 		if len(runner.History) == 0 {
 			t.Fatal("expected uninstall command to run")
 		}
+		// What an interrupted or partly failed install left beside the bundle goes too.
 		cmd := runner.History[0]
-		if cmd.Name != "rm" || cmd.Args[0] != "-rf" || cmd.Args[1] != "/Applications/Slack.app" {
-			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
+		wantArgs := []string{"-rf", "/Applications/Slack.app", "/Applications/.dotfiles-new-Slack.app", "/Applications/.dotfiles-old-Slack.app"}
+		if cmd.Name != "rm" || !slices.Equal(cmd.Args, wantArgs) {
+			t.Errorf("unexpected command: %s %v, want rm %v", cmd.Name, cmd.Args, wantArgs)
 		}
 	})
 

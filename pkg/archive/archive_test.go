@@ -1076,7 +1076,9 @@ func (c *closeFailingFS) Chmod(path string, perm os.FileMode) error {
 
 // A write that fails only when the extracted file is closed leaves an incomplete file,
 // so Extract must fail, name that file, and neither set its permissions nor report the
-// tree to an after-extract hook.
+// tree to an after-extract hook. A .dmg is not among the formats: its volume is copied
+// with fs.CopyTree, whose files go through FS.CopyFile, and OSFS.CopyFile reports its
+// own close failure (TestOSFSCopyFileReportsACloseFailure in pkg/fs).
 func TestExtract_ReportsAFailureToCloseAnExtractedFile(t *testing.T) {
 	const content = "#!/bin/sh\necho tool"
 	const wantPath = "/dest/tool"
@@ -1123,22 +1125,6 @@ func TestExtract_ReportsAFailureToCloseAnExtractedFile(t *testing.T) {
 			},
 		},
 		{name: "gz", src: "/tool.gz", data: gzBuf.Bytes()},
-		{
-			name: "dmg",
-			src:  "/tool.dmg",
-			data: []byte("dmg"),
-			setup: func(memFS *fs.MemFS, runner *exec.MockRunner) {
-				runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
-					if len(c.Args) > 4 && c.Args[0] == "attach" {
-						if err := memFS.MkdirAll(c.Args[4], 0755); err != nil {
-							return err
-						}
-						return memFS.WriteFile(filepath.Join(c.Args[4], "tool"), []byte(content), 0755)
-					}
-					return nil
-				})
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -1173,6 +1159,162 @@ func TestExtract_ReportsAFailureToCloseAnExtractedFile(t *testing.T) {
 			}
 			if emitted {
 				t.Errorf("Extract(%q) emitted after-extract for a tree with an incompletely written file", tt.src)
+			}
+		})
+	}
+}
+
+// TestExtractDmgReproducesSymlinks covers the tree a mounted .dmg volume holds: the
+// drag-to-install link to /Applications and a framework's links to a directory, to
+// a file and to nothing are recreated as symlinks with their targets, and regular files
+// keep their permission bits. It runs on the host filesystem, where following a link to
+// a directory fails; the mocked hdiutil attach lays the volume out at the mount point.
+func TestExtractDmgReproducesSymlinks(t *testing.T) {
+	osFS := fs.NewOSFS()
+	dir := t.TempDir()
+	dmg := filepath.Join(dir, "app.dmg")
+	if err := osFS.WriteFile(dmg, []byte("dmg"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	dest := filepath.Join(dir, "extracted")
+	links := map[string]string{
+		"Applications": "/Applications",
+		"App.app/Contents/Frameworks/Sparkle.framework/Versions/Current": "A",
+		"App.app/Contents/Frameworks/Sparkle.framework/Sparkle":          "Versions/Current/Sparkle",
+		"App.app/Contents/Frameworks/Sparkle.framework/Dangling":         "Versions/B/Missing",
+	}
+	runner := exec.NewMockRunner()
+	runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
+		switch c.Args[0] {
+		case "attach":
+			writeDmgVolume(t, osFS, c.Args[4], links)
+			// A volume root can deny writing; the extraction directory must not
+			// take its mode.
+			return osFS.Chmod(c.Args[4], 0o555)
+		case "detach":
+			return osFS.Chmod(c.Args[1], 0o755)
+		}
+		return nil
+	})
+
+	if err := NewExtractor(osFS, runner).Extract(context.Background(), dmg, dest); err != nil {
+		t.Fatalf("Extract(%s) = %v, want nil", dmg, err)
+	}
+	// Extracting into a dest that already holds the volume replaces each of its entries
+	// wholesale rather than failing at the first link that already exists.
+	if err := NewExtractor(osFS, runner).Extract(context.Background(), dmg, dest); err != nil {
+		t.Fatalf("second Extract(%s) = %v, want nil", dmg, err)
+	}
+	t.Cleanup(func() { _ = osFS.Chmod(dest, 0o755) })
+	if info, err := osFS.Stat(dest); err != nil {
+		t.Fatalf("Stat(%s): %v", dest, err)
+	} else if info.Mode().Perm()&0o200 == 0 {
+		t.Errorf("%s mode = %v, want a directory its owner can write to", dest, info.Mode())
+	}
+
+	for rel, want := range links {
+		path := filepath.Join(dest, rel)
+		info, err := osFS.Lstat(path)
+		if err != nil {
+			t.Fatalf("Lstat(%s): %v", path, err)
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("%s mode = %v, want a symlink", rel, info.Mode())
+			continue
+		}
+		if got, err := osFS.Readlink(path); err != nil || got != want {
+			t.Errorf("%s links to %q (err %v), want %q", rel, got, err, want)
+		}
+	}
+	copied := filepath.Join(dest, dmgVolumeNotice)
+	info, err := osFS.Lstat(copied)
+	if err != nil {
+		t.Fatalf("Lstat(%s): %v", copied, err)
+	}
+	if got := info.Mode().Perm(); got != dmgVolumeNoticePerm {
+		t.Errorf("%s mode = %v, want %v", copied, got, dmgVolumeNoticePerm)
+	}
+}
+
+// dmgVolumeNotice is a file of the volume whose permission bits the extraction
+// heuristics leave alone, since it has an extension and no executable signature.
+const (
+	dmgVolumeNotice     = "App.app/Contents/Resources/notice.txt"
+	dmgVolumeNoticePerm = os.FileMode(0o640)
+)
+
+// writeDmgVolume lays out a volume holding an app bundle with a framework binary, a
+// notice file with dmgVolumeNoticePerm, and the given links.
+func writeDmgVolume(t *testing.T, osFS fs.FS, volume string, links map[string]string) {
+	t.Helper()
+	notice := filepath.Join(volume, dmgVolumeNotice)
+	if err := osFS.MkdirAll(filepath.Dir(notice), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := osFS.WriteFile(notice, []byte("notice"), dmgVolumeNoticePerm); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := osFS.Chmod(notice, dmgVolumeNoticePerm); err != nil {
+		t.Fatalf("Chmod: %v", err)
+	}
+	framework := filepath.Join(volume, "App.app", "Contents", "Frameworks", "Sparkle.framework")
+	binary := filepath.Join(framework, "Versions", "A", "Sparkle")
+	if err := osFS.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := osFS.WriteFile(binary, []byte("sparkle"), 0o755); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	for rel, target := range links {
+		if err := osFS.Symlink(target, filepath.Join(volume, rel)); err != nil {
+			t.Fatalf("Symlink(%s): %v", rel, err)
+		}
+	}
+}
+
+// volumeFaultFS fails ReadDir of the volume, RemoveAll of the entry replaced in dest,
+// or copying the volume's one file, whichever op names.
+type volumeFaultFS struct {
+	fs.FS
+	op string
+}
+
+var errVolumeFault = errors.New("injected fault")
+
+func (v volumeFaultFS) ReadDir(path string) ([]string, error) {
+	if v.op == "readdir" && path == "/volume" {
+		return nil, errVolumeFault
+	}
+	return v.FS.ReadDir(path)
+}
+
+func (v volumeFaultFS) RemoveAll(path string) error {
+	if v.op == "removeall" && path == "/dest/tool" {
+		return errVolumeFault
+	}
+	return v.FS.RemoveAll(path)
+}
+
+func (v volumeFaultFS) CopyFile(src, dest string) error {
+	if v.op == "copy" {
+		return errVolumeFault
+	}
+	return v.FS.CopyFile(src, dest)
+}
+
+func TestCopyVolumeReportsEachFailure(t *testing.T) {
+	for _, op := range []string{"readdir", "removeall", "copy"} {
+		t.Run(op, func(t *testing.T) {
+			memFS := fs.NewMemFS()
+			if err := memFS.MkdirAll("/volume", 0o755); err != nil {
+				t.Fatalf("MkdirAll: %v", err)
+			}
+			if err := memFS.WriteFile("/volume/tool", []byte("tool"), 0o755); err != nil {
+				t.Fatalf("WriteFile: %v", err)
+			}
+			ext := NewExtractor(volumeFaultFS{FS: memFS, op: op}, exec.NewMockRunner())
+			if err := ext.copyVolume("/volume", "/dest"); !errors.Is(err, errVolumeFault) {
+				t.Errorf("copyVolume = %v, want %v", err, errVolumeFault)
 			}
 		})
 	}

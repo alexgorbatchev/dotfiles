@@ -934,3 +934,337 @@ func TestOSFSCopyFileRefusesAHardLinkToTheSource(t *testing.T) {
 	}
 	assertFileContent(t, filesystem, src, copySourceContent)
 }
+
+// treeFile and treeLink describe the entries of a tree built by buildTree, relative
+// to its root.
+type treeFile struct {
+	path    string
+	content string
+	perm    os.FileMode
+}
+
+type treeLink struct {
+	path   string
+	target string
+}
+
+// frameworkBundleFiles and frameworkBundleLinks lay out an app bundle that ships a
+// versioned macOS framework: Versions/Current links to a directory, the framework's
+// top-level binary links to a file through it, and one link points nowhere.
+var (
+	frameworkBundleFiles = []treeFile{
+		{"Contents/Info.plist", "plist", 0o644},
+		{"Contents/MacOS/app", "app-binary", 0o755},
+		{"Contents/Frameworks/Sparkle.framework/Versions/A/Sparkle", "sparkle-binary", 0o755},
+		{"Contents/Resources/read-only/notice.txt", "notice", 0o444},
+		{"Contents/Resources/shared/notes.txt", "notes", 0o664},
+	}
+	frameworkBundleLinks = []treeLink{
+		{"Contents/Frameworks/Sparkle.framework/Versions/Current", "A"},
+		{"Contents/Frameworks/Sparkle.framework/Sparkle", "Versions/Current/Sparkle"},
+		{"Contents/Frameworks/Sparkle.framework/Dangling", "Versions/B/Missing"},
+	}
+)
+
+// readOnlyBundleDir is a directory of the bundle whose permission bits deny writing.
+const (
+	readOnlyBundleDir     = "Contents/Resources/read-only"
+	readOnlyBundleDirPerm = os.FileMode(0o555)
+	// sharedBundleDir is group-writable, which a umask would take away from a new
+	// directory.
+	sharedBundleDir     = "Contents/Resources/shared"
+	sharedBundleDirPerm = os.FileMode(0o775)
+)
+
+func buildTree(t *testing.T, filesystem FS, root string, files []treeFile, links []treeLink) {
+	t.Helper()
+	for _, f := range files {
+		path := filepath.Join(root, f.path)
+		if err := filesystem.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("MkdirAll(%s): %v", filepath.Dir(path), err)
+		}
+		if err := filesystem.WriteFile(path, []byte(f.content), f.perm); err != nil {
+			t.Fatalf("WriteFile(%s): %v", path, err)
+		}
+		if err := filesystem.Chmod(path, f.perm); err != nil {
+			t.Fatalf("Chmod(%s): %v", path, err)
+		}
+	}
+	for _, l := range links {
+		path := filepath.Join(root, l.path)
+		if err := filesystem.Symlink(l.target, path); err != nil {
+			t.Fatalf("Symlink(%s, %s): %v", l.target, path, err)
+		}
+	}
+}
+
+// buildFrameworkBundle builds the framework bundle at root, with readOnlyBundleDir
+// made read-only, and makes it writable again before t.TempDir removes it.
+func buildFrameworkBundle(t *testing.T, filesystem FS, root string) {
+	t.Helper()
+	buildTree(t, filesystem, root, frameworkBundleFiles, frameworkBundleLinks)
+	restrictDir(t, filesystem, filepath.Join(root, readOnlyBundleDir), readOnlyBundleDirPerm)
+	if err := filesystem.Chmod(filepath.Join(root, sharedBundleDir), sharedBundleDirPerm); err != nil {
+		t.Fatalf("Chmod: %v", err)
+	}
+}
+
+// restrictDir applies perm to dir and restores write access at cleanup, which the
+// removal of a t.TempDir holding a read-only directory needs.
+func restrictDir(t *testing.T, filesystem FS, dir string, perm os.FileMode) {
+	t.Helper()
+	if err := filesystem.Chmod(dir, perm); err != nil {
+		t.Fatalf("Chmod(%s): %v", dir, err)
+	}
+	t.Cleanup(func() { _ = filesystem.Chmod(dir, 0o755) })
+}
+
+func assertTreeCopy(t *testing.T, filesystem FS, root string, files []treeFile, links []treeLink) {
+	t.Helper()
+	for _, f := range files {
+		path := filepath.Join(root, f.path)
+		assertFileContent(t, filesystem, path, f.content)
+		info, err := filesystem.Lstat(path)
+		if err != nil {
+			t.Fatalf("Lstat(%s): %v", path, err)
+		}
+		if !info.Mode().IsRegular() || info.Mode().Perm() != f.perm {
+			t.Errorf("%s mode = %v, want a regular file with %v", path, info.Mode(), f.perm)
+		}
+	}
+	for _, l := range links {
+		path := filepath.Join(root, l.path)
+		info, err := filesystem.Lstat(path)
+		if err != nil {
+			t.Fatalf("Lstat(%s): %v", path, err)
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("%s mode = %v, want a symlink", path, info.Mode())
+			continue
+		}
+		target, err := filesystem.Readlink(path)
+		if err != nil {
+			t.Fatalf("Readlink(%s): %v", path, err)
+		}
+		if target != l.target {
+			t.Errorf("%s links to %q, want %q", path, target, l.target)
+		}
+	}
+}
+
+// TestCopyTreeReproducesAFrameworkBundle covers the tree #144 describes: every symlink,
+// to a directory, to a file or dangling, is recreated with its target string, regular
+// files keep their content and permission bits, and a read-only directory is copied
+// with its contents and then made read-only.
+func TestCopyTreeReproducesAFrameworkBundle(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := filepath.Join(dir, "vol", "App.app")
+			dest := filepath.Join(dir, "Applications", "App.app")
+			buildFrameworkBundle(t, filesystem, src)
+			t.Cleanup(func() { _ = filesystem.Chmod(filepath.Join(dest, readOnlyBundleDir), 0o755) })
+
+			if err := CopyTree(filesystem, src, dest); err != nil {
+				t.Fatalf("CopyTree(%s, %s) = %v, want nil", src, dest, err)
+			}
+
+			assertTreeCopy(t, filesystem, dest, frameworkBundleFiles, frameworkBundleLinks)
+			for dir, want := range map[string]os.FileMode{readOnlyBundleDir: readOnlyBundleDirPerm, sharedBundleDir: sharedBundleDirPerm} {
+				path := filepath.Join(dest, dir)
+				info, err := filesystem.Stat(path)
+				if err != nil {
+					t.Fatalf("Stat(%s): %v", path, err)
+				}
+				if got := info.Mode().Perm(); got != want {
+					t.Errorf("%s mode = %v, want %v", path, got, want)
+				}
+			}
+		})
+	}
+}
+
+// TestCopyTreeMergesIntoAnExistingDirectory pins the documented contract: an existing
+// destination directory is merged into, and an existing entry at a symlink's
+// destination is an error rather than something silently written through.
+func TestCopyTreeMergesIntoAnExistingDirectory(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := filepath.Join(dir, "src")
+			dest := filepath.Join(dir, "dest")
+			buildTree(t, filesystem, src, []treeFile{{"new.txt", "new", 0o644}}, nil)
+			buildTree(t, filesystem, dest, []treeFile{{"kept.txt", "kept", 0o644}}, nil)
+
+			if err := CopyTree(filesystem, src, dest); err != nil {
+				t.Fatalf("CopyTree = %v, want nil", err)
+			}
+			assertFileContent(t, filesystem, filepath.Join(dest, "new.txt"), "new")
+			assertFileContent(t, filesystem, filepath.Join(dest, "kept.txt"), "kept")
+
+			if err := filesystem.Symlink("new.txt", filepath.Join(src, "link")); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+			if err := filesystem.Symlink("kept.txt", filepath.Join(dest, "link")); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+			if err := CopyTree(filesystem, src, dest); !errors.Is(err, os.ErrExist) {
+				t.Errorf("CopyTree over an existing link = %v, want %v", err, os.ErrExist)
+			}
+
+			// A source directory landing on a link to a directory must not be written
+			// through the link into whatever it names.
+			outside := filepath.Join(dir, "outside")
+			buildTree(t, filesystem, outside, []treeFile{{"marker", "outside", 0o644}}, nil)
+			buildTree(t, filesystem, filepath.Join(src, "sub"), []treeFile{{"planted", "planted", 0o644}}, nil)
+			if err := filesystem.Remove(filepath.Join(src, "link")); err != nil {
+				t.Fatalf("Remove: %v", err)
+			}
+			if err := filesystem.Symlink(outside, filepath.Join(dest, "sub")); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+			if err := CopyTree(filesystem, src, dest); !errors.Is(err, os.ErrExist) {
+				t.Errorf("CopyTree of a directory over a link = %v, want %v", err, os.ErrExist)
+			}
+			if exists, _ := filesystem.Exists(filepath.Join(outside, "planted")); exists {
+				t.Errorf("CopyTree wrote through %s into %s", filepath.Join(dest, "sub"), outside)
+			}
+		})
+	}
+}
+
+// unsupportedTypeFS reports one path as a named pipe, which a portable test cannot
+// create on every platform.
+type unsupportedTypeFS struct {
+	FS
+	pipe string
+}
+
+type pipeInfo struct{ os.FileInfo }
+
+func (pipeInfo) Mode() os.FileMode { return os.ModeNamedPipe | 0o644 }
+
+func (u unsupportedTypeFS) Lstat(path string) (os.FileInfo, error) {
+	info, err := u.FS.Lstat(path)
+	if err != nil || path != u.pipe {
+		return info, err
+	}
+	return pipeInfo{info}, nil
+}
+
+func TestCopyTreeRefusesAnUnsupportedFileType(t *testing.T) {
+	memFS := NewMemFS()
+	pipe := "/src/pipe"
+	buildTree(t, memFS, "/src", []treeFile{{"pipe", "", 0o644}}, nil)
+
+	err := CopyTree(unsupportedTypeFS{FS: memFS, pipe: pipe}, "/src", "/dest")
+	if !errors.Is(err, errUnsupportedFileType) {
+		t.Fatalf("CopyTree = %v, want %v", err, errUnsupportedFileType)
+	}
+	if !strings.Contains(err.Error(), pipe) {
+		t.Errorf("CopyTree error %q does not name %s", err, pipe)
+	}
+	if exists, _ := memFS.Exists("/dest/pipe"); exists {
+		t.Error("CopyTree created /dest/pipe for an entry it refused")
+	}
+}
+
+// copyTreeFaultFS fails one operation on one path.
+type copyTreeFaultFS struct {
+	FS
+	op   string
+	path string
+}
+
+var errCopyTreeFault = errors.New("injected fault")
+
+func (f copyTreeFaultFS) fault(op, path string) error {
+	if op == f.op && path == f.path {
+		return errCopyTreeFault
+	}
+	return nil
+}
+
+func (f copyTreeFaultFS) Readlink(path string) (string, error) {
+	if err := f.fault("readlink", path); err != nil {
+		return "", err
+	}
+	return f.FS.Readlink(path)
+}
+
+func (f copyTreeFaultFS) Lstat(path string) (os.FileInfo, error) {
+	if err := f.fault("lstat", path); err != nil {
+		return nil, err
+	}
+	return f.FS.Lstat(path)
+}
+
+func (f copyTreeFaultFS) MkdirAll(path string, perm os.FileMode) error {
+	if err := f.fault("mkdir", path); err != nil {
+		return err
+	}
+	return f.FS.MkdirAll(path, perm)
+}
+
+func (f copyTreeFaultFS) ReadDir(path string) ([]string, error) {
+	if err := f.fault("readdir", path); err != nil {
+		return nil, err
+	}
+	return f.FS.ReadDir(path)
+}
+
+func (f copyTreeFaultFS) Chmod(path string, perm os.FileMode) error {
+	if err := f.fault("chmod", path); err != nil {
+		return err
+	}
+	return f.FS.Chmod(path, perm)
+}
+
+func (f copyTreeFaultFS) CopyFile(src, dest string) error {
+	if err := f.fault("copy", src); err != nil {
+		return err
+	}
+	return f.FS.CopyFile(src, dest)
+}
+
+// TestCopyTreeReportsEachFailure covers every step of the copy failing: the error is
+// returned rather than the entry being skipped.
+func TestCopyTreeReportsEachFailure(t *testing.T) {
+	const src = "/vol/App.app"
+	tests := []struct {
+		name string
+		op   string
+		path string
+	}{
+		{"missing source", "", ""},
+		{"readlink", "readlink", src + "/Contents/Frameworks/Sparkle.framework/Versions/Current"},
+		{"mkdir", "mkdir", "/Applications/App.app/Contents"},
+		{"lstat destination", "lstat", "/Applications/App.app/Contents"},
+		{"readdir", "readdir", src + "/Contents/MacOS"},
+		{"copy", "copy", src + "/Contents/MacOS/app"},
+		{"chmod", "chmod", "/Applications/App.app/" + readOnlyBundleDir},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS := NewMemFS()
+			from := src
+			if tt.op == "" {
+				from = "/vol/Missing.app"
+			} else {
+				buildFrameworkBundle(t, memFS, src)
+			}
+			faulty := copyTreeFaultFS{FS: memFS, op: tt.op, path: tt.path}
+
+			err := CopyTree(faulty, from, "/Applications/App.app")
+			if tt.op == "" {
+				if !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("CopyTree = %v, want %v", err, os.ErrNotExist)
+				}
+				return
+			}
+			if !errors.Is(err, errCopyTreeFault) {
+				t.Errorf("CopyTree = %v, want %v", err, errCopyTreeFault)
+			}
+		})
+	}
+}
