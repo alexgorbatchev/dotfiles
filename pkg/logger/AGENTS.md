@@ -15,6 +15,7 @@ Type-safe structured logger and tab-delimited handler for dotfiles CLI output.
 ## Local gotchas
 
 - Unpadded level strings break column alignment -> always pad level strings to 7 characters left-aligned (`%-7s`).
+- Logger args are positional values, not slog key/value pairs: `"error", err` prints the literal `error`, and outside `--trace` `filterArgs` drops any `error` arg whose text names no `.tool.ts` location (`FormatErrorForUser`) -> fold a cause the user must see into the `logger.Message` with `%v`.
 
 ## Boundaries
 
