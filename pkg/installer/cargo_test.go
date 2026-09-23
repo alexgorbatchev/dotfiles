@@ -768,6 +768,93 @@ func TestCargoCompileFallbackInstallsResolvedVersion(t *testing.T) {
 	}
 }
 
+// TestCargoPinnedVersionIsBareOnEveryPath is the regression test for issue #125. A
+// .version() pin may be written with a leading "v", which cargo install --version
+// rejects ("the version provided, `v1.2.3` is not a valid SemVer requirement"). The pin
+// is normalised once, so the prebuilt download, the compile fallback and the version
+// the install returns all use the bare form, whichever path ran.
+func TestCargoPinnedVersionIsBareOnEveryPath(t *testing.T) {
+	quickinstallDownload := "/cargo-bins/cargo-quickinstall/releases/download/mycrate-1.2.3/mycrate-1.2.3-x86_64-unknown-linux-gnu.tar.gz"
+	githubAsset := "mycrate-1.2.3-unknown-linux-gnu-x86_64.tar.gz"
+	githubDownloads := []string{
+		"/owner/mycrate/releases/download/v1.2.3/" + githubAsset,
+		"/owner/mycrate/releases/download/1.2.3/" + githubAsset,
+	}
+	githubParams := map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/mycrate"}
+	tests := []struct {
+		name          string
+		pinned        string
+		params        map[string]interface{}
+		wantDownloads []string
+	}{
+		{name: "quickinstall pin written with v", pinned: "v1.2.3", params: map[string]interface{}{}, wantDownloads: []string{quickinstallDownload}},
+		{name: "quickinstall bare pin", pinned: "1.2.3", params: map[string]interface{}{}, wantDownloads: []string{quickinstallDownload}},
+		{name: "github-releases pin written with v", pinned: "v1.2.3", params: githubParams, wantDownloads: githubDownloads},
+		{name: "github-releases bare pin", pinned: "1.2.3", params: githubParams, wantDownloads: githubDownloads},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Every download answers 404, so the compile fallback runs.
+			server := newRecordingServer(t, func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			})
+			runner := exec.NewMockRunner()
+			inst, fsys := newCargoGithubInstaller(server, runner)
+			inst.SetLogger(logger.New(logger.Config{Writer: io.Discard}))
+			_ = fsys.MkdirAll("/test/bin/bin", 0755)
+			_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
+
+			pinned := tt.pinned
+			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", Version: &pinned, InstallParams: tt.params})
+			if err != nil {
+				t.Fatalf("Install() error = %v", err)
+			}
+			if !slices.Equal(server.paths, tt.wantDownloads) {
+				t.Fatalf("requests = %v, want exactly %v", server.paths, tt.wantDownloads)
+			}
+			if len(runner.History) != 1 {
+				t.Fatalf("cargo runs = %d, want exactly one cargo install", len(runner.History))
+			}
+			wantArgs := []string{"install", "--root", "/test/bin", "--version", "1.2.3", "mycrate"}
+			if got := runner.History[0]; got.Name != "cargo" || !slices.Equal(got.Args, wantArgs) {
+				t.Fatalf("ran %s %v, want cargo %v", got.Name, got.Args, wantArgs)
+			}
+			if res.Version != "1.2.3" {
+				t.Fatalf("Install() Version = %q, want %q", res.Version, "1.2.3")
+			}
+		})
+	}
+}
+
+// TestCargoRejectsPinWithoutVersion pins that a pin which is no version once its one
+// leading "v" is stripped fails the install: .version("v") instead of silently
+// installing the latest version, .version("vv1.2.3") instead of passing cargo install
+// a --version it rejects. A dry run rejects them as the real install does.
+func TestCargoRejectsPinWithoutVersion(t *testing.T) {
+	for _, tt := range []struct {
+		pin    string
+		dryRun bool
+	}{{"v", false}, {"v", true}, {"vv1.2.3", false}, {"vv1.2.3", true}} {
+		t.Run(fmt.Sprintf("%s dry run %t", tt.pin, tt.dryRun), func(t *testing.T) {
+			server := newRecordingServer(t, func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			})
+			runner := exec.NewMockRunner()
+			inst, _ := newCargoGithubInstaller(server, runner)
+
+			pinned := tt.pin
+			ctx := config.WithDryRun(context.Background(), tt.dryRun)
+			_, err := inst.Install(ctx, &config.ToolConfig{Name: "mycrate", Version: &pinned})
+			if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("%q", tt.pin)) || !strings.Contains(err.Error(), "mycrate") {
+				t.Fatalf("Install() error = %v, want an error naming the pin %q and the tool", err, tt.pin)
+			}
+			if len(server.paths) != 0 || len(runner.History) != 0 {
+				t.Fatalf("requests = %v, cargo runs = %d; want neither for an invalid pin", server.paths, len(runner.History))
+			}
+		})
+	}
+}
+
 // TestCargoCompileFallbackTrustsOnlyCratesIO pins that without a prerelease opt-in,
 // the compile fallback names a version only when crates.io resolved it, since only then
 // is it known to be published there. A Cargo.toml on a branch is often ahead of the
