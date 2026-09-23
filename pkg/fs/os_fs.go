@@ -163,7 +163,7 @@ func copyFile(src, dest string, destWriter func(*os.File) io.WriteCloser) (err e
 		_ = tmp.Close() // the chmod error is the one to report
 		return copyError(dest, tmp.Name(), err)
 	}
-	if err := writeAndClose(destWriter(tmp), srcFile); err != nil {
+	if err := WriteAndClose(destWriter(tmp), srcFile); err != nil {
 		return copyError(dest, tmp.Name(), err)
 	}
 	if err := os.Rename(tmp.Name(), dest); err != nil {
@@ -185,14 +185,4 @@ func copyError(dest, tmpPath string, err error) error {
 		err = linkErr.Err
 	}
 	return &os.PathError{Op: "copyfile", Path: dest, Err: err}
-}
-
-// writeAndClose copies r into w and closes w, reporting the close error when the copy
-// succeeded, since a write can fail only once the file is closed.
-func writeAndClose(w io.WriteCloser, r io.Reader) error {
-	_, err := io.Copy(w, r)
-	if closeErr := w.Close(); err == nil {
-		err = closeErr
-	}
-	return err
 }

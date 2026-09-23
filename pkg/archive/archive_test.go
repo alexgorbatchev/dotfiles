@@ -8,8 +8,12 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -1035,4 +1039,141 @@ func TestZipSlipPrevention(t *testing.T) {
 			t.Errorf("expected ErrZipSlipDetected, got %v", err)
 		}
 	})
+}
+
+// closeFailingFS stands in for a file system that reports a deferred write failure,
+// such as a full disk, an exceeded quota or an NFS home directory, only when a written
+// file is closed. Every file it creates keeps the bytes written to it, but its Close
+// returns EIO. It records the paths it was asked to chmod.
+type closeFailingFS struct {
+	fs.FS
+	chmodded []string
+}
+
+type closeFailingWriter struct {
+	io.WriteCloser
+}
+
+func (w closeFailingWriter) Close() error {
+	if err := w.WriteCloser.Close(); err != nil {
+		return err
+	}
+	return syscall.EIO
+}
+
+func (c *closeFailingFS) Create(path string) (io.WriteCloser, error) {
+	w, err := c.FS.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	return closeFailingWriter{w}, nil
+}
+
+func (c *closeFailingFS) Chmod(path string, perm os.FileMode) error {
+	c.chmodded = append(c.chmodded, path)
+	return c.FS.Chmod(path, perm)
+}
+
+// A write that fails only when the extracted file is closed leaves an incomplete file,
+// so Extract must fail, name that file, and neither set its permissions nor report the
+// tree to an after-extract hook.
+func TestExtract_ReportsAFailureToCloseAnExtractedFile(t *testing.T) {
+	const content = "#!/bin/sh\necho tool"
+	const wantPath = "/dest/tool"
+
+	tarBytes, err := createTarBytes(map[string]string{"tool": content})
+	if err != nil {
+		t.Fatalf("building the tar archive: %v", err)
+	}
+	tarGzBytes, err := createTarGzBytes(map[string]string{"tool": content})
+	if err != nil {
+		t.Fatalf("building the tar.gz archive: %v", err)
+	}
+	zipBytes, err := createZipBytes(map[string]string{"tool": content})
+	if err != nil {
+		t.Fatalf("building the zip archive: %v", err)
+	}
+	var gzBuf bytes.Buffer
+	gw := gzip.NewWriter(&gzBuf)
+	if _, err := gw.Write([]byte(content)); err != nil {
+		t.Fatalf("building the gz stream: %v", err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatalf("building the gz stream: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		src   string
+		data  []byte
+		setup func(memFS *fs.MemFS, runner *exec.MockRunner)
+	}{
+		{name: "zip", src: "/tool.zip", data: zipBytes},
+		{name: "tar", src: "/tool.tar", data: tarBytes},
+		{name: "tar.gz", src: "/tool.tar.gz", data: tarGzBytes},
+		{
+			name: "tar.xz",
+			src:  "/tool.tar.xz",
+			data: []byte("xz data"),
+			setup: func(_ *fs.MemFS, runner *exec.MockRunner) {
+				runner.RegisterFunc("xz", func(c *exec.MockCmd) error {
+					_, err := c.Stdout().Write(tarBytes)
+					return err
+				})
+			},
+		},
+		{name: "gz", src: "/tool.gz", data: gzBuf.Bytes()},
+		{
+			name: "dmg",
+			src:  "/tool.dmg",
+			data: []byte("dmg"),
+			setup: func(memFS *fs.MemFS, runner *exec.MockRunner) {
+				runner.RegisterFunc("hdiutil", func(c *exec.MockCmd) error {
+					if len(c.Args) > 4 && c.Args[0] == "attach" {
+						if err := memFS.MkdirAll(c.Args[4], 0755); err != nil {
+							return err
+						}
+						return memFS.WriteFile(filepath.Join(c.Args[4], "tool"), []byte(content), 0755)
+					}
+					return nil
+				})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS := fs.NewMemFS()
+			runner := exec.NewMockRunner()
+			if tt.setup != nil {
+				tt.setup(memFS, runner)
+			}
+			if err := memFS.WriteFile(tt.src, tt.data, 0644); err != nil {
+				t.Fatalf("writing the archive: %v", err)
+			}
+			failing := &closeFailingFS{FS: memFS}
+
+			emitted := false
+			ctx := lifecycle.WithEmitter(context.Background(), func(_ context.Context, event lifecycle.Event, _ lifecycle.Details) error {
+				if event == lifecycle.AfterExtract {
+					emitted = true
+				}
+				return nil
+			})
+
+			err := NewExtractor(failing, runner).Extract(ctx, tt.src, "/dest")
+			if !errors.Is(err, syscall.EIO) {
+				t.Errorf("Extract(%q) error = %v, want one wrapping EIO", tt.src, err)
+			}
+			if err != nil && !strings.Contains(err.Error(), wantPath) {
+				t.Errorf("Extract(%q) error = %q, want it to name %s", tt.src, err, wantPath)
+			}
+			if slices.Contains(failing.chmodded, wantPath) {
+				t.Errorf("Extract(%q) set permissions on %s after its close failed", tt.src, wantPath)
+			}
+			if emitted {
+				t.Errorf("Extract(%q) emitted after-extract for a tree with an incompletely written file", tt.src)
+			}
+		})
+	}
 }

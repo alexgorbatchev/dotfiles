@@ -823,6 +823,58 @@ func TestOSFSCopyFileReportsACloseFailure(t *testing.T) {
 	}
 }
 
+// recordingWriteCloser collects what is written to it and fails its Close with closeErr.
+type recordingWriteCloser struct {
+	strings.Builder
+	closed   bool
+	closeErr error
+}
+
+func (w *recordingWriteCloser) Close() error {
+	w.closed = true
+	return w.closeErr
+}
+
+// failingReader fails every read with errRead.
+type failingReader struct{}
+
+var errRead = errors.New("read failed")
+
+func (failingReader) Read([]byte) (int, error) { return 0, errRead }
+
+// TestWriteAndClose covers the result WriteAndClose reports: a failed close is a failed
+// write, a failed copy is reported over the close that follows it, and the writer is
+// closed either way.
+func TestWriteAndClose(t *testing.T) {
+	cases := []struct {
+		name     string
+		r        io.Reader
+		closeErr error
+		want     error
+		content  string
+	}{
+		{"copy and close succeed", strings.NewReader("payload"), nil, nil, "payload"},
+		{"close fails", strings.NewReader("payload"), errClose, errClose, "payload"},
+		{"copy fails", failingReader{}, nil, errRead, ""},
+		{"copy and close fail", failingReader{}, errClose, errRead, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := &recordingWriteCloser{closeErr: tc.closeErr}
+			err := WriteAndClose(w, tc.r)
+			if !errors.Is(err, tc.want) || (tc.want == nil && err != nil) {
+				t.Errorf("WriteAndClose = %v, want %v", err, tc.want)
+			}
+			if !w.closed {
+				t.Error("WriteAndClose left the writer open")
+			}
+			if got := w.String(); got != tc.content {
+				t.Errorf("WriteAndClose wrote %q, want %q", got, tc.content)
+			}
+		})
+	}
+}
+
 // TestCopyErrorNamesTheDestination covers the error a failed copy step reports: it
 // names dest, drops the temporary file's name, and keeps an error about src whole.
 func TestCopyErrorNamesTheDestination(t *testing.T) {
