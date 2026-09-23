@@ -156,6 +156,20 @@ func TestRunQuery(t *testing.T) {
 	}
 }
 
+// TestQueryResultRefuse pins that refuse names the command and wraps its cause but
+// leaves out what the command printed, which fail would append.
+func TestQueryResultRefuse(t *testing.T) {
+	r := queryResult{command: "apt-cache policy jq", stdout: "jq:\n  Installed: (none)\n", stderr: "W: noise\n"}
+	cause := errors.New("apt package jq is not installed")
+	err := r.refuse(cause)
+	if !errors.Is(err, cause) {
+		t.Errorf("refuse() = %v; want it to wrap %v", err, cause)
+	}
+	if want := "running apt-cache policy jq: apt package jq is not installed"; err.Error() != want {
+		t.Errorf("refuse() = %q, want %q", err, want)
+	}
+}
+
 // TestShellCommandLine pins that the command an update-check error names can be pasted
 // into a shell as it is printed, on one line.
 func TestShellCommandLine(t *testing.T) {

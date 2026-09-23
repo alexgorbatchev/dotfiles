@@ -71,9 +71,16 @@ func (r queryResult) fail(cause error) error {
 		printed = strings.TrimSpace(r.stdout)
 	}
 	if printed == "" {
-		return fmt.Errorf("running %s: %w", r.command, cause)
+		return r.refuse(cause)
 	}
 	return fmt.Errorf("running %s: %w: %s", r.command, cause, printed)
+}
+
+// refuse describes the query as failed because of cause, naming the command but not
+// what it printed. It is for a query that ran and answered, when cause already quotes
+// the part of the answer that decided and the rest of the output would bury it.
+func (r queryResult) refuse(cause error) error {
+	return fmt.Errorf("running %s: %w", r.command, cause)
 }
 
 // shellCommandLine renders name and args as a command line that can be pasted into a
