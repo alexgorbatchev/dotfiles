@@ -780,6 +780,13 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 		return
 	}
 
+	// A pinned tool is refused before its installer is asked anything, as the CLI's
+	// update refuses it, so the latest release never replaces the pin.
+	if reason, refused := targetTool.UpdateRefusal(); refused {
+		writeJSON(w, false, nil, reason)
+		return
+	}
+
 	if s.orchestrator == nil {
 		writeJSON(w, false, nil, "Orchestrator not initialized")
 		return
@@ -788,6 +795,9 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	ctx := context.Background()
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
 
+	// The release this picks is set on a copy: the server keeps the configuration for
+	// its lifetime, and a version written into it would read as a pin to the next update.
+	updateTarget := *targetTool
 	if targetTool.InstallationMethod != "" {
 		if inst, err := installer.Get(targetTool.InstallationMethod); err == nil {
 			// Only the update check runs here; the install directory is set by the
@@ -802,12 +812,12 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 			// endpoint may install, however new it is.
 			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" &&
 				version.MatchesConstraint(res.LatestVersion, targetTool.UpdateCheckConstraint()) {
-				targetTool.Version = &res.LatestVersion
+				updateTarget.Version = &res.LatestVersion
 			}
 		}
 	}
 
-	err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
+	err := s.orchestrator.InstallTool(ctx, &updateTarget, s.projectConfig)
 	if err != nil {
 		s.logger.WithTag(toolName).Error("Update failed", err)
 		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))

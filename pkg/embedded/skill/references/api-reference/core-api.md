@@ -159,8 +159,10 @@ bounds which releases count as an available update. A release outside the range 
 reported as the latest version upstream, but not as an update: with `~1.2.0` installed at
 `1.2.3`, `1.2.9` is an update and `1.3.0` is not.
 
-Neither setting changes which version `dotfiles install` or `dotfiles update` installs;
-pin that with `.version()`.
+Neither setting changes which version `dotfiles install` or `dotfiles update` installs.
+To hold a tool at one version, pin it with `.version()`: `dotfiles install` installs that
+version, and `dotfiles update` refuses the tool
+([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
 
 ### Base Install Parameters
 

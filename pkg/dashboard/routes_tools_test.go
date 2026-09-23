@@ -48,7 +48,8 @@ func TestDashboardMutationRoutes(t *testing.T) {
 		},
 	}
 
-	ver := "1.0.0"
+	// Unpinned, so the update route installs it rather than refusing a pin.
+	ver := "latest"
 	toolConfigs := []*config.ToolConfig{
 		{
 			Name:               "bat",

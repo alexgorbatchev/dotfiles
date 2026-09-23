@@ -118,12 +118,14 @@ _(Alias: `u`, Root shortcuts: `dotfiles update`, `dotfiles u`)_
 
 Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed are skipped during batch updates.
 
+A tool whose configuration pins a version with `.version()` (any value other than `"latest"`) is not updated, whatever its installation method. This holds for named tools, for updating everything, for `<binary> @update` from a shim, and for the dashboard's update action, with or without `--force`. Nothing is checked upstream or installed for the tool, and `update` reports ``Tool "<tool>" is pinned to version `<version>`. Set version to "latest" in the tool config to enable updates``; the dashboard returns the same message as its error, and `--shim-mode` suppresses it like every other status message. [`tool check`](#dotfiles-tool-check-tool) still reports a newer upstream release for a pinned tool, since reporting installs nothing.
+
 Some installation methods have no way to learn the latest version upstream: `manual`, `curl-binary`, `curl-tar`, `curl-script`, `zsh-plugin`, and `dmg`/`pkg` downloaded from a direct URL rather than a GitHub release. Nothing can tell whether such a tool is current, so `update` never reports it as up to date:
 
 - Named tools (`dotfiles tool update <tool>`, and `<binary> @update` from a shim): warns `Update check not supported for installer "<method>", performing regular install instead` and reinstalls the tool, with or without `--force`.
 - Updating everything (no tool names): warns `Update check not supported for installer "<method>"` and skips the tool. With `--force` it is reinstalled like every other installed tool.
 
-Reinstalling such a tool records the version its configuration pins with `.version()`. Without one, the reinstall records the version the installer detects, such as through the `versionArgs` of [`curl-script`](../installation-methods/curl-script.md). If the installer detects none, the reinstall records a new `YYYY-MM-DD-HH-MM-SS` timestamp. It never records the version the previous installation left.
+Reinstalling such a tool records the version the installer detects, such as through the `versionArgs` of [`curl-script`](../installation-methods/curl-script.md). If the installer detects none, the reinstall records a new `YYYY-MM-DD-HH-MM-SS` timestamp. It never records the version the previous installation left.
 
 - `-f, --force`: Re-download and reinstall even if already up to date.
 - `--shim-mode`: Quiet output, used by generated shims running `<binary> @update`.

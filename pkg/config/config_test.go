@@ -141,6 +141,43 @@ func TestToolConfigUpdateCheckAccessors(t *testing.T) {
 	}
 }
 
+// TestToolConfigUpdateRefusal pins which configurations update must leave alone: any
+// .version() other than "latest" is a pin, and the refusal says so in v1's words.
+func TestToolConfigUpdateRefusal(t *testing.T) {
+	tests := []struct {
+		name        string
+		version     *string
+		wantRefused bool
+		wantReason  string
+	}{
+		{name: "no version", version: nil},
+		{name: "empty version", version: new("")},
+		{name: "latest", version: new("latest")},
+		{
+			name:        "exact version",
+			version:     new("v1.2.3"),
+			wantRefused: true,
+			wantReason:  "Tool \"tool\" is pinned to version `v1.2.3`. Set version to \"latest\" in the tool config to enable updates",
+		},
+		{
+			name:        "range",
+			version:     new("^1.2.0"),
+			wantRefused: true,
+			wantReason:  "Tool \"tool\" is pinned to version `^1.2.0`. Set version to \"latest\" in the tool config to enable updates",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := &ToolConfig{Name: "tool", Version: tt.version}
+			reason, refused := tc.UpdateRefusal()
+			if refused != tt.wantRefused || reason != tt.wantReason {
+				t.Errorf("UpdateRefusal() = (%q, %v), want (%q, %v)", reason, refused, tt.wantReason, tt.wantRefused)
+			}
+		})
+	}
+}
+
 func TestProjectConfigInstantiationAndValidation(t *testing.T) {
 	pc := ProjectConfig{
 		Paths: PathsConfig{

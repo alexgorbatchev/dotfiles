@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"time"
 
@@ -110,11 +111,7 @@ func (p updatePlan) targetDescription() string {
 // or a fresh timestamp.
 func reinstallTool(ctx context.Context, services *Services, tool *config.ToolConfig, plan updatePlan) (string, error) {
 	if plan.targetVersion != "" {
-		targetVersion := plan.targetVersion
-		tool.Version = &targetVersion
-		if tool.InstallParams != nil {
-			tool.InstallParams["version"] = targetVersion
-		}
+		tool = withTargetVersion(tool, plan.targetVersion)
 	}
 	if err := services.Orchestrator.InstallTool(config.WithForce(ctx, true), tool, services.ProjectConfig); err != nil {
 		return "", err
@@ -127,13 +124,29 @@ func reinstallTool(ctx context.Context, services *Services, tool *config.ToolCon
 	return recorded, nil
 }
 
-// configuredVersion returns the version tool's configuration pins, or "" when it
-// leaves the version to the installation ("latest" or no version at all).
-func configuredVersion(tool *config.ToolConfig) string {
-	if tool.Version == nil || *tool.Version == "latest" {
-		return ""
+// withTargetVersion returns a copy of tool that installs targetVersion. The loaded
+// configuration still says what the user wrote, so a later mention of the same tool is
+// not refused as pinned to the version this update installs.
+func withTargetVersion(tool *config.ToolConfig, targetVersion string) *config.ToolConfig {
+	targeted := *tool
+	targeted.Version = &targetVersion
+	if tool.InstallParams != nil {
+		targeted.InstallParams = maps.Clone(tool.InstallParams)
+		targeted.InstallParams["version"] = targetVersion
 	}
-	return *tool.Version
+	return &targeted
+}
+
+// refusePinned reports whether update leaves tool alone because its configuration pins
+// a version (config.ToolConfig.UpdateRefusal), and logs why when it does. It runs before
+// the tool's update check, so a pinned tool is neither checked nor reinstalled, with or
+// without --force.
+func refusePinned(toolLog *logger.Logger, tool *config.ToolConfig) bool {
+	reason, refused := tool.UpdateRefusal()
+	if refused {
+		toolLog.Info(logger.Message(reason))
+	}
+	return refused
 }
 
 // planUpdate answers what update does for tool given its installer's answer. res is nil
@@ -155,13 +168,15 @@ func planUpdate(tool *config.ToolConfig, installedVersion string, res *installer
 // nothing. The availability decision is version.UpdateAvailable, the same one
 // check-updates and the dashboard make, so the three cannot disagree about a tool.
 //
+// A tool whose configuration pins a version never gets here (refusePinned).
+//
 // An empty target means the reinstall asks for no particular version. That is the
-// answer for a tool whose installer cannot check upstream, unless its configuration
-// pins a version: such an installer has no version to be asked for, and the version
-// recorded by the previous installation is either one the installer detected then or a
-// timestamp generated then. Reusing it would override what the installer detects now
-// and freeze a generated timestamp at the first installation, so, as v1 did, the
-// installation records the detected version or a fresh timestamp instead.
+// answer for a tool whose installer cannot check upstream: such an installer has no
+// version to be asked for, and the version recorded by the previous installation is
+// either one the installer detected then or a timestamp generated then. Reusing it
+// would override what the installer detects now and freeze a generated timestamp at
+// the first installation, so, as v1 did, the installation records the detected
+// version or a fresh timestamp instead.
 func resolveUpdate(tool *config.ToolConfig, installedVersion string, res *installer.UpdateCheckResult) (hasUpdate bool, targetVersion string) {
 	var latest string
 	var outdated *bool
@@ -184,7 +199,7 @@ func resolveUpdate(tool *config.ToolConfig, installedVersion string, res *instal
 	case installable:
 		targetVersion = latest
 	case res == nil:
-		targetVersion = configuredVersion(tool)
+		// Nothing upstream answered, so the installation decides what it records.
 	case installedVersion != "" && installedVersion != "unknown":
 		targetVersion = installedVersion
 	default:
@@ -202,7 +217,7 @@ var toolUpdateCmd = &cobra.Command{
 	ValidArgsFunction: completeToolNames,
 	Long: `Evaluates tool versions and updates software packages if newer versions are available.
 
-When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating.`,
+When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version with .version() is never updated, even with --force; set its version to "latest" to enable updates.`,
 	Example: `  # Update all installed tools
   dotfiles tool update
 
@@ -240,6 +255,11 @@ When run without arguments, checks all installed tools for updates and installs 
 					continue // skip uninstalled
 				}
 
+				toolLog := log.WithTag(targetTool.Name)
+				if refusePinned(toolLog, targetTool) {
+					continue
+				}
+
 				inst, err := services.Installers.Get(targetTool.InstallationMethod)
 				if err != nil {
 					continue
@@ -254,7 +274,6 @@ When run without arguments, checks all installed tools for updates and installs 
 					continue
 				}
 
-				toolLog := log.WithTag(targetTool.Name)
 				// Unlike updating one named tool, updating everything does not reinstall a
 				// tool nothing could check unless --force asks for it.
 				if unsupported && !force {
@@ -292,6 +311,11 @@ When run without arguments, checks all installed tools for updates and installs 
 				continue
 			}
 
+			toolLog := log.WithTag(targetTool.Name)
+			if refusePinned(toolLog, targetTool) {
+				continue
+			}
+
 			inst, err := services.Installers.Get(targetTool.InstallationMethod)
 			if err != nil {
 				return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
@@ -300,7 +324,6 @@ When run without arguments, checks all installed tools for updates and installs 
 			toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
 			configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
-			toolLog := log.WithTag(targetTool.Name)
 			toolLog.Info(logger.Message("Checking for updates..."))
 			res, err := inst.CheckUpdate(ctx, targetTool)
 			unsupported := errors.Is(err, installer.ErrUpdateCheckUnsupported)

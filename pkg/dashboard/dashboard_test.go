@@ -351,11 +351,13 @@ type mockCheckUpdateInstaller struct {
 	outdated      *bool
 	err           error
 	calls         atomic.Int32
+	installs      atomic.Int32
 }
 
 func (m *mockCheckUpdateInstaller) Name() string       { return m.name }
 func (m *mockCheckUpdateInstaller) SupportsSudo() bool { return false }
 func (m *mockCheckUpdateInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
+	m.installs.Add(1)
 	return &installer.InstallResult{}, nil
 }
 func (m *mockCheckUpdateInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) error {
@@ -466,6 +468,122 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 		data := checkUpdate(t, "constrained-in")
 		if data["hasUpdate"] != true {
 			t.Errorf("hasUpdate = %v, want true: 2.0.0 satisfies >=1.0.0", data["hasUpdate"])
+		}
+	})
+}
+
+// TestDashboard_UpdateRoute_RefusesPinnedTool is the regression test for the update
+// endpoint installing the latest upstream release over a .version() pin. As in v1, a
+// pinned tool is refused before its installer is asked anything, with a message naming
+// the pin and how to enable updates; an unpinned tool on the same installer is still
+// checked and installed, so the refusal is not the harness failing to install.
+func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+
+	ctx := context.Background()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("connecting to db: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	mockInst := &mockCheckUpdateInstaller{name: "mock-update-pinned-inst", latestVersion: "v9.9.9"}
+	if err := installer.Register(mockInst); err != nil {
+		t.Fatalf("registering mock installer: %v", err)
+	}
+	instReg := installer.NewRegistry()
+	if err := instReg.Register(mockInst); err != nil {
+		t.Fatalf("registering mock installer with the orchestrator: %v", err)
+	}
+	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
+
+	tempDir := t.TempDir()
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}
+	pinned, latest := "v1.0.0", "latest"
+	toolConfigs := []*config.ToolConfig{
+		{Name: "pinned", Version: &pinned, InstallationMethod: mockInst.name},
+		{Name: "unpinned", Version: &latest, InstallationMethod: mockInst.name},
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	if err := server.Start(); err != nil {
+		t.Fatalf("starting server: %v", err)
+	}
+	defer server.Stop()
+
+	update := func(t *testing.T, tool string) (int, map[string]any) {
+		t.Helper()
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/%s/update", server.Port(), tool)
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST update for %s: %v", tool, err)
+		}
+		defer resp.Body.Close()
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding update response for %s: %v", tool, err)
+		}
+		return resp.StatusCode, body
+	}
+
+	t.Run("a pinned tool is refused without asking or running the installer", func(t *testing.T) {
+		checks, installs := mockInst.calls.Load(), mockInst.installs.Load()
+		status, body := update(t, "pinned")
+		if status != http.StatusOK {
+			t.Errorf("status = %d, want %d, the status every refusal from this route carries", status, http.StatusOK)
+		}
+		if body["success"] != false {
+			t.Errorf("success = %v, want false for a refused update", body["success"])
+		}
+		want := "Tool \"pinned\" is pinned to version `v1.0.0`. Set version to \"latest\" in the tool config to enable updates"
+		if body["error"] != want {
+			t.Errorf("error = %v, want %q", body["error"], want)
+		}
+		if got := mockInst.calls.Load() - checks; got != 0 {
+			t.Errorf("the installer was asked for updates %d time(s); a pinned tool is refused before its check", got)
+		}
+		if got := mockInst.installs.Load() - installs; got != 0 {
+			t.Errorf("the installer installed %d time(s); a pinned tool must not be installed", got)
+		}
+		if got := toolConfigs[0].Version; got == nil || *got != pinned {
+			t.Errorf("the pinned tool configuration lost its version %s", pinned)
+		}
+	})
+
+	t.Run("an unpinned tool is checked and installed", func(t *testing.T) {
+		checks, installs := mockInst.calls.Load(), mockInst.installs.Load()
+		_, body := update(t, "unpinned")
+		if body["success"] != true {
+			t.Fatalf("success = %v, error = %v, want the update to succeed", body["success"], body["error"])
+		}
+		if mockInst.calls.Load() == checks || mockInst.installs.Load() == installs {
+			t.Errorf("checks %d -> %d, installs %d -> %d; an unpinned tool must be checked and installed",
+				checks, mockInst.calls.Load(), installs, mockInst.installs.Load())
+		}
+	})
+
+	// The release an update installs is not written into the server's configuration,
+	// where the next update would read it as a pin and refuse the tool.
+	t.Run("updating an unpinned tool again is not refused as pinned", func(t *testing.T) {
+		checks := mockInst.calls.Load()
+		_, body := update(t, "unpinned")
+		if body["success"] != true {
+			t.Fatalf("success = %v, error = %v, want the update to succeed", body["success"], body["error"])
+		}
+		if mockInst.calls.Load() == checks {
+			t.Error("the installer was not asked for updates; an unpinned tool must be checked every time")
+		}
+		if got := toolConfigs[1].Version; got == nil || *got != latest {
+			t.Errorf("the unpinned tool configuration no longer says %q", latest)
 		}
 	})
 }
@@ -922,7 +1040,8 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	defer sqlDB.Close()
 	reg := registry.NewRegistry(sqlDB)
 
-	ver := "1.0.0"
+	// Unpinned, so the update route reaches its missing orchestrator rather than refusing a pin.
+	ver := "latest"
 	toolNoFiles := []*config.ToolConfig{
 		{
 			Name:     "no-files",
@@ -1550,7 +1669,8 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 		t.Fatalf("seeding registry: %v", err)
 	}
 
-	ver := "1.0.0"
+	// Unpinned, so the update route installs it rather than refusing a pin.
+	ver := "latest"
 	toolConfigs := []*config.ToolConfig{
 		{Name: "bat", Version: &ver, InstallationMethod: "github-release", ConfigFilePath: toolPath},
 		{Name: "no-method-tool"},

@@ -332,6 +332,19 @@ func (tc *ToolConfig) UpdateCheckConstraint() string {
 	return *tc.UpdateCheck.Constraint
 }
 
+// UpdateRefusal reports whether an update must leave tc as it is installed, and why.
+// A tool whose .version() names anything other than "latest" is pinned, and, as in v1,
+// update refuses it before checking upstream: the pin is how a user holds a tool back,
+// so neither the newest release nor a forced reinstall may replace what it names. The
+// reason names the pinned version and how to enable updates, in v1's words. Update
+// checks are not refused; reporting a newer release installs nothing.
+func (tc *ToolConfig) UpdateRefusal() (reason string, refused bool) {
+	if tc.Version == nil || *tc.Version == "" || *tc.Version == "latest" {
+		return "", false
+	}
+	return fmt.Sprintf("Tool %q is pinned to version `%s`. Set version to \"latest\" in the tool config to enable updates", tc.Name, *tc.Version), true
+}
+
 // ToolConfig matches complete configurations of individual packages or tools.
 type ToolConfig struct {
 	Name               string                 `json:"name" yaml:"name"`
