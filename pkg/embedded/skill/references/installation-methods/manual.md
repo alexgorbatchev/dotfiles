@@ -75,6 +75,25 @@ runs the script itself and links the binary to where the script put it; see
 Symlinks are not followed: the result is the path as written. The generated shim runs
 the same resolved path, so the installer and the shim cannot disagree about it.
 
+### binaryPath and Binary Patterns
+
+`binaryPath` names the one file that is installed under every declared `.bin()` name, so
+nothing is searched for and a [binary pattern](../api-reference/core-api.md#binary-patterns)
+has nothing to select. A tool that sets `binaryPath` and gives any `.bin()` a pattern,
+whether as `.bin(name, pattern)` or `.bin(name, { pattern })`, is rejected when the
+configuration loads, with an error naming the tool file, the tool, the binary, the pattern
+and `binaryPath`:
+
+```
+invalid tool configuration in "<tool file>": tool "<tool>": binary "<binary>" declares pattern "<pattern>", but manual binaryPath "<binaryPath>" already names the file to install, so the pattern would never be used; drop the pattern from .bin()
+```
+
+`.bin(name, { shim: false })` declares no pattern and is accepted. The same rule applies to
+[`curl-script`'s `binaryPath`](curl-script.md#scripts-that-install-themselves). Its error
+says `curl-script binaryPath` and also offers the other fix, since a `curl-script` without
+`binaryPath` does search `stagingDir` with the pattern:
+`...; drop the pattern from .bin(), or drop binaryPath and point the script at {stagingDir} through args or env`.
+
 ## Examples
 
 ### Pre-built Binary

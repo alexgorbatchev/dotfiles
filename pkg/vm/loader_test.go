@@ -2125,3 +2125,73 @@ func TestLoaderRejectsCurlScriptBinaryPathWithSeveralBinaries(t *testing.T) {
 		})
 	}
 }
+
+func TestLoaderRejectsBinaryPatternWithBinaryPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		install string
+		bins    string
+		want    []string
+	}{
+		{
+			name:    "manual string pattern",
+			install: `install("manual", { binaryPath: "./vendor/tool" })`,
+			bins:    `.bin("tool", "*/bin/tool")`,
+			want:    []string{`binary "tool"`, `pattern "*/bin/tool"`, `manual binaryPath "./vendor/tool"`},
+		},
+		{
+			name:    "manual RegExp pattern",
+			install: `install("manual", { binaryPath: "./vendor/tool" })`,
+			bins:    `.bin("tool", /^tool$/i)`,
+			want:    []string{`binary "tool"`, `pattern "/^tool$/i"`, `manual binaryPath "./vendor/tool"`},
+		},
+		{
+			name:    "curl-script options-form pattern",
+			install: `install("curl-script", { url: "https://example.com/install.sh", binaryPath: "~/.local/bin/tool" })`,
+			bins:    `.bin("tool", { pattern: "*/bin/tool", shim: false })`,
+			want:    []string{`binary "tool"`, `pattern "*/bin/tool"`, `curl-script binaryPath "~/.local/bin/tool"`},
+		},
+		{
+			name:    "curl-script options-form RegExp pattern",
+			install: `install("curl-script", { url: "https://example.com/install.sh", binaryPath: "~/.local/bin/tool" })`,
+			bins:    `.bin("tool", { pattern: /^tool$/i, shim: true })`,
+			want:    []string{`binary "tool"`, `pattern "/^tool$/i"`, `curl-script binaryPath "~/.local/bin/tool"`},
+		},
+		{
+			name:    "curl-script shim option without pattern",
+			install: `install("curl-script", { url: "https://example.com/install.sh", binaryPath: "~/.local/bin/tool" })`,
+			bins:    `.bin("tool", { shim: false })`,
+		},
+		{
+			name:    "manual pattern without binaryPath",
+			install: `install("manual")`,
+			bins:    `.bin("tool", "*/bin/tool")`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tool := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+				"export default defineTool((install) => " + tt.install + tt.bins + ");"
+
+			toolConfigs, err := loadToolSource(t, tool)
+			if len(tt.want) == 0 {
+				if err != nil {
+					t.Fatalf("load failed: %v", err)
+				}
+				if _, ok := toolConfigs["probe"]; !ok {
+					t.Fatalf("expected the probe tool to be loaded, got %v", toolConfigs)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("expected loading to fail")
+			}
+			for _, want := range append([]string{"probe.tool.ts", `tool "probe"`}, tt.want...) {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected the error to mention %q, got: %v", want, err)
+				}
+			}
+		})
+	}
+}

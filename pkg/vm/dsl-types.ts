@@ -568,6 +568,8 @@ export type VersionRegex = string | RegExp;
 export interface IManualInstallParams extends ICommonInstallParams {
   /**
    * Path to a pre-existing executable, relative to the `.tool.ts` file or absolute.
+   * It names the file installed under every declared binary, so a `.bin()` pattern
+   * cannot be declared alongside it.
    */
   binaryPath?: string;
   /**
@@ -1072,7 +1074,8 @@ export interface ICurlScriptInstallParams extends ICommonInstallParams {
    * After the script runs, the declared binary is always a symlink to this path as
    * written, never a copy and never the path's own resolved target, so a tool that
    * updates itself by repointing its launcher stays current. Installation fails if
-   * nothing exists at the path. Only one `.bin()` may be declared alongside it.
+   * nothing exists at the path. Only one `.bin()` may be declared alongside it, and
+   * that `.bin()` cannot declare a pattern.
    */
   binaryPath?: string;
   /**
