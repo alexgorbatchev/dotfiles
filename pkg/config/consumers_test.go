@@ -14,8 +14,12 @@ import (
 // "downloader.cache.ttl".
 func acceptedProjectKeys() []string {
 	host := func(prefix string) []string {
+		allowed := hostKeys
+		if prefix == "cargo.githubRelease" {
+			allowed = cargoReleaseHostKeys
+		}
 		var keys []string
-		for _, k := range hostKeys {
+		for _, k := range allowed {
 			if k == "cache" {
 				for _, c := range cacheKeys {
 					keys = append(keys, prefix+".cache."+c)
@@ -98,22 +102,23 @@ var projectConfigConsumers = map[string]string{
 	"features.catalog.generate": "",
 	"features.catalog.filePath": "",
 
-	"cargo.userAgent":                   "",
-	"cargo.cratesIo.host":               "",
-	"cargo.cratesIo.token":              "",
-	"cargo.cratesIo.userAgent":          "",
-	"cargo.cratesIo.cache.enabled":      "",
-	"cargo.cratesIo.cache.ttl":          "",
-	"cargo.githubRaw.host":              "",
-	"cargo.githubRaw.token":             "",
-	"cargo.githubRaw.userAgent":         "",
-	"cargo.githubRaw.cache.enabled":     "",
-	"cargo.githubRaw.cache.ttl":         "",
-	"cargo.githubRelease.host":          "",
-	"cargo.githubRelease.token":         "",
-	"cargo.githubRelease.userAgent":     "",
-	"cargo.githubRelease.cache.enabled": "",
-	"cargo.githubRelease.cache.ttl":     "",
+	"cargo.userAgent":               "installer.CargoSettings.UserAgent, sent with crates.io and Cargo.toml requests",
+	"cargo.cratesIo.host":           "installer.CargoSettings.CratesIO.Host, the crates.io site root CargoInstaller queries under /api/v1/crates",
+	"cargo.cratesIo.token":          "installer.CargoSettings.CratesIO.Token, the Authorization header of crates.io API requests",
+	"cargo.cratesIo.cache.enabled":  "installer.CargoSettings.CratesIOCache.Enabled, CargoInstaller crates.io response cache",
+	"cargo.cratesIo.cache.ttl":      "installer.CargoSettings.CratesIOCache.TTL, CargoInstaller crates.io response cache",
+	"cargo.githubRaw.host":          "installer.CargoSettings.GitHubRaw.Host, the host CargoInstaller reads a githubRepo's Cargo.toml from",
+	"cargo.githubRaw.token":         "installer.CargoSettings.GitHubRaw.Token, authenticates Cargo.toml fetches from that host",
+	"cargo.githubRaw.cache.enabled": "installer.CargoSettings.GitHubRawCache.Enabled, CargoInstaller Cargo.toml response cache",
+	"cargo.githubRaw.cache.ttl":     "installer.CargoSettings.GitHubRawCache.TTL, CargoInstaller Cargo.toml response cache",
+	"cargo.githubRelease.host":      "installer.CargoSettings.GitHubRelease.Host, the host of quickinstall and github-releases archive downloads",
+	"cargo.githubRelease.token":     "installer.CargoSettings.GitHubRelease.Token, authenticates those archive downloads",
+
+	// v1 declared a per-host userAgent, but its cargo client only ever sent
+	// cargo.userAgent; whether these are wired or removed is for the owner to decide.
+	"cargo.cratesIo.userAgent":      "",
+	"cargo.githubRaw.userAgent":     "",
+	"cargo.githubRelease.userAgent": "",
 }
 
 // keysAwaitingRemoval are the accepted keys that change nothing today. Every one of
@@ -122,22 +127,9 @@ var projectConfigConsumers = map[string]string{
 // keys are in that state, and the test below fails if the set and the consumer table
 // disagree. It is expected to end up empty.
 var keysAwaitingRemoval = []string{
-	"cargo.cratesIo.cache.enabled",
-	"cargo.cratesIo.cache.ttl",
-	"cargo.cratesIo.host",
-	"cargo.cratesIo.token",
 	"cargo.cratesIo.userAgent",
-	"cargo.githubRaw.cache.enabled",
-	"cargo.githubRaw.cache.ttl",
-	"cargo.githubRaw.host",
-	"cargo.githubRaw.token",
 	"cargo.githubRaw.userAgent",
-	"cargo.githubRelease.cache.enabled",
-	"cargo.githubRelease.cache.ttl",
-	"cargo.githubRelease.host",
-	"cargo.githubRelease.token",
 	"cargo.githubRelease.userAgent",
-	"cargo.userAgent",
 	"features.catalog.filePath",
 	"features.catalog.generate",
 }

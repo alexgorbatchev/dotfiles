@@ -1561,6 +1561,18 @@ func TestConfigureInstallerForUpdate(t *testing.T) {
 		}
 	})
 
+	t.Run("cargo installer takes the cargo section from the project", func(t *testing.T) {
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.GeneratedDir = "gen"
+		projCfg.Cargo.CratesIo.Host = "https://crates.mirror.example"
+		projCfg.Cargo.UserAgent = "my-bot"
+		cargo := &installer.CargoInstaller{}
+		configureInstallerForUpdate(cargo, destDir, projCfg)
+		if want := installer.NewCargoSettings(projCfg); cargo.Cargo != want {
+			t.Errorf("Cargo = %+v, want %+v", cargo.Cargo, want)
+		}
+	})
+
 	cargo := &installer.CargoInstaller{}
 	curlBinary := &installer.CurlBinaryInstaller{}
 	curlScript := &installer.CurlScriptInstaller{}
@@ -2226,20 +2238,19 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 type cargoUpstream struct {
 	crates   map[string]string
 	releases map[string]string
+	// observe, when set, sees every request before it is answered.
+	observe func(r *http.Request)
 }
 
 // newCratesServer serves crates.io metadata and the cargo-quickinstall archive of
 // every crate version, plus each repository's latest GitHub release and its release
-// assets, and points the real cargo installer at it. Crates not listed answer 500 so
-// a failed check can be exercised; a download from another tag answers 404. The
-// returned function lists the paths requested so far.
-//
-// The crates.io and download endpoints are set on the installer directly because the
-// project's cargo hosts are not read by it (keysAwaitingRemoval in pkg/config), so
-// MOCK_SERVER_PORT reaches only its GitHub API host.
+// assets, and routes the CLI to it through MOCK_SERVER_PORT, which points the github
+// host and all three cargo hosts at it. Crates not listed answer 500 so a failed check
+// can be exercised; a download from another tag answers 404. The returned function
+// lists the paths requested so far.
 func newCratesServer(t *testing.T, upstream cargoUpstream) func() []string {
 	t.Helper()
-	const cratesPrefix, downloadPrefix, reposPrefix = "/api/v1/crates/", "/dl/", "/repos/"
+	const cratesPrefix, quickinstallPrefix, reposPrefix = "/api/v1/crates/", "/cargo-bins/cargo-quickinstall/releases/download/", "/repos/"
 	var mu sync.Mutex
 	var requested []string
 	archive := func(w http.ResponseWriter, binary, version string) {
@@ -2250,6 +2261,9 @@ func newCratesServer(t *testing.T, upstream cargoUpstream) func() []string {
 		mu.Lock()
 		requested = append(requested, r.URL.Path)
 		mu.Unlock()
+		if upstream.observe != nil {
+			upstream.observe(r)
+		}
 		if crate, ok := strings.CutPrefix(r.URL.Path, cratesPrefix); ok {
 			version, known := upstream.crates[crate]
 			if !known {
@@ -2267,13 +2281,13 @@ func newCratesServer(t *testing.T, upstream cargoUpstream) func() []string {
 				return
 			}
 			// <owner>/<repo>/releases/download/<tag>/<asset>
-			if strings.HasPrefix(r.URL.Path, downloadPrefix+repo+"/releases/download/"+tag+"/") {
+			if strings.HasPrefix(r.URL.Path, "/"+repo+"/releases/download/"+tag+"/") {
 				archive(w, path.Base(repo), tag)
 				return
 			}
 		}
 		// <crate>-<version>/<crate>-<version>-<arch>-<platform>.tar.gz
-		if release, ok := strings.CutPrefix(r.URL.Path, downloadPrefix); ok {
+		if release, ok := strings.CutPrefix(r.URL.Path, quickinstallPrefix); ok {
 			dir, _, _ := strings.Cut(release, "/")
 			for crate := range upstream.crates {
 				if version, isCrate := strings.CutPrefix(dir, crate+"-"); isCrate {
@@ -2290,21 +2304,6 @@ func newCratesServer(t *testing.T, upstream cargoUpstream) func() []string {
 		t.Fatalf("parsing test server URL: %v", err)
 	}
 	t.Setenv("MOCK_SERVER_PORT", u.Port())
-
-	inst, err := installer.DefaultRegistry().Get("cargo")
-	if err != nil {
-		t.Fatalf("resolving the cargo installer: %v", err)
-	}
-	cargo, ok := inst.(*installer.CargoInstaller)
-	if !ok {
-		t.Fatalf("cargo installer is %T, want *installer.CargoInstaller", inst)
-	}
-	prevCratesIO, prevBase, prevAPI := cargo.CratesIOURL, cargo.BaseURL, cargo.GitHubAPIURL
-	cargo.CratesIOURL = server.URL + strings.TrimSuffix(cratesPrefix, "/")
-	cargo.BaseURL = server.URL + strings.TrimSuffix(downloadPrefix, "/")
-	t.Cleanup(func() {
-		cargo.CratesIOURL, cargo.BaseURL, cargo.GitHubAPIURL = prevCratesIO, prevBase, prevAPI
-	})
 	return func() []string {
 		mu.Lock()
 		defer mu.Unlock()
@@ -2342,8 +2341,8 @@ func TestCargoUpdateInstallsReleaseTaggedWithoutV(t *testing.T) {
 	// tries both tag spellings against the download URL and never asks the API.
 	want := []string{
 		"/repos/acme/baretag/releases/latest",
-		"/dl/acme/baretag/releases/download/v14.1.1/baretag-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
-		"/dl/acme/baretag/releases/download/14.1.1/baretag-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
+		"/acme/baretag/releases/download/v14.1.1/baretag-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
+		"/acme/baretag/releases/download/14.1.1/baretag-14.1.1-unknown-linux-gnu-x86_64.tar.gz",
 	}
 	if paths := requested(); !slices.Equal(paths, want) {
 		t.Errorf("requests = %v, want exactly %v", paths, want)
@@ -2500,6 +2499,70 @@ func TestCargoUpdateRefusesPinnedCrate(t *testing.T) {
 		}
 		mustContain(t, "stdout", out.Stdout, "pinned: update available (1.0.0 -> 2.0.0)")
 	})
+}
+
+// TestCargoProjectSettingsReachTheInstaller pins that the project's cargo section
+// reaches the cargo installer on every CLI path that configures it: tool check asks
+// crates.io with cargo.userAgent and cargo.cratesIo.token, and the install `tool update`
+// performs downloads the quickinstall archive with cargo.githubRelease.token, each
+// from the host MOCK_SERVER_PORT names.
+func TestCargoProjectSettingsReachTheInstaller(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	type seen struct{ userAgent, authorization string }
+	var mu sync.Mutex
+	received := map[string][]seen{}
+	newCratesServer(t, cargoUpstream{
+		crates: map[string]string{"mycrate": "2.0.0"},
+		observe: func(r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			received[r.URL.Path] = append(received[r.URL.Path], seen{r.Header.Get("User-Agent"), r.Header.Get("Authorization")})
+		},
+	})
+
+	tools := `"mycrate": {"name": "mycrate", "installationMethod": "cargo", "installParams": {"crateName": "mycrate"}, "binaries": [{"name": "mycrate"}]}`
+	p := newE2EProject(t, tools)
+	p.writeConfig(t, tools, "", `"cargo": {"userAgent": "my-bot (me@example.com)", "cratesIo": {"token": "crates-secret"}, "githubRelease": {"token": "release-secret"}}`)
+	dir := filepath.Join(p.Root, "installed", "mycrate")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("creating install dir: %v", err)
+	}
+	p.seedInstallation(t, "mycrate", "1.0.0", dir)
+
+	out, err := p.run("tool", "check", "--json")
+	if err != nil {
+		t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
+	}
+	var results []ToolUpdateResult
+	if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+		t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
+	}
+	if len(results) != 1 || results[0].LatestVersion != "2.0.0" {
+		t.Fatalf("tool check results = %+v, want mycrate at 2.0.0", results)
+	}
+
+	out, err = p.run("--platform", "linux", "--arch", "amd64", "tool", "update", "mycrate")
+	if err != nil {
+		t.Fatalf("tool update mycrate: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "Successfully updated to version 2.0.0")
+	mustNotContain(t, "stderr", out.Stderr, "falling back to local compilation")
+
+	mu.Lock()
+	defer mu.Unlock()
+	crates := received["/api/v1/crates/mycrate"]
+	if len(crates) == 0 {
+		t.Fatalf("crates.io was never asked; requests: %v", received)
+	}
+	for _, r := range crates {
+		if r != (seen{"my-bot (me@example.com)", "crates-secret"}) {
+			t.Errorf("crates.io request carried %+v, want the configured User-Agent and crates.io token", r)
+		}
+	}
+	archive := received["/cargo-bins/cargo-quickinstall/releases/download/mycrate-2.0.0/mycrate-2.0.0-x86_64-unknown-linux-gnu.tar.gz"]
+	if len(archive) != 1 || archive[0].authorization != "token release-secret" {
+		t.Errorf("quickinstall download carried %+v, want exactly one with the githubRelease token; requests: %v", archive, received)
+	}
 }
 
 func TestLogCommand_OperationsAndStatus(t *testing.T) {

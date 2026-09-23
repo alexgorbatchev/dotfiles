@@ -22,10 +22,15 @@ export interface PathsConfig {
 export interface SystemConfig {
   sudoPrompt: string;
 }
+export interface CargoReleaseHostConfig {
+  host: string;
+  token: string;
+  userAgent: string;
+}
 export interface CargoConfig {
   cratesIo: HostConfig;
   githubRaw: HostConfig;
-  githubRelease: HostConfig;
+  githubRelease: CargoReleaseHostConfig;
   userAgent: string;
 }
 export interface DownloaderConfig {

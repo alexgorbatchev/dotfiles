@@ -28,6 +28,9 @@ type DownloadOptions struct {
 	OnProgress func(bytesDownloaded int64, totalBytes int64)
 	SkipCache  bool
 	Quiet      bool
+	// HostScopedHeaders drops the Authorization header on a redirect that leaves the
+	// host of url (HostScopedClient), for a token configured for that host alone.
+	HostScopedHeaders bool
 }
 
 type cacheKeyPayload struct {
@@ -362,7 +365,7 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", localSize))
 	}
 
-	resp, err := d.client.Do(req)
+	resp, err := d.requestClient(opts...).Do(req)
 	if err != nil {
 		return fmt.Errorf("executing download request: %w", err)
 	}
@@ -459,7 +462,7 @@ func (d *Downloader) doDownload(ctx context.Context, url string, destPath string
 			cleanReq.Header.Set("User-Agent", "dotfiles-installer/1.0")
 		}
 
-		cleanResp, err := d.client.Do(cleanReq)
+		cleanResp, err := d.requestClient(opts...).Do(cleanReq)
 		if err != nil {
 			return fmt.Errorf("executing recovery request: %w", err)
 		}

@@ -23,6 +23,7 @@ func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, p
 		UserAgent:    projCfg.Github.UserAgent,
 		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
 	})
+	installer.SetCargoSettings(inst, installer.NewCargoSettings(projCfg))
 
 	switch instInstance := inst.(type) {
 	case *installer.GitHubInstaller:

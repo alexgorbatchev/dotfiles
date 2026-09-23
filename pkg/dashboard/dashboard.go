@@ -192,6 +192,7 @@ func (s *Server) Host() string {
 // Start imports the shim usage log and launches the HTTP server for serving the dashboard.
 func (s *Server) Start() error {
 	s.importShimUsage()
+	s.configureInstallers()
 
 	subFS, err := iofs.Sub(assets, "dist")
 	if err != nil {

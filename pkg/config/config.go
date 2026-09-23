@@ -84,12 +84,21 @@ type SystemConfig struct {
 	SudoPrompt string `json:"sudoPrompt" yaml:"sudoPrompt"`
 }
 
+// CargoReleaseHostConfig is the host cargo downloads quickinstall and GitHub release
+// archives from. Unlike the other hosts it has no response cache: an archive is a
+// download, which the downloader section's cache already covers.
+type CargoReleaseHostConfig struct {
+	Host      string `json:"host" yaml:"host"`
+	Token     string `json:"token" yaml:"token"`
+	UserAgent string `json:"userAgent" yaml:"userAgent"`
+}
+
 // CargoConfig defines Cargo registry and repository hosts.
 type CargoConfig struct {
-	CratesIo      HostConfig `json:"cratesIo" yaml:"cratesIo"`
-	GithubRaw     HostConfig `json:"githubRaw" yaml:"githubRaw"`
-	GithubRelease HostConfig `json:"githubRelease" yaml:"githubRelease"`
-	UserAgent     string     `json:"userAgent" yaml:"userAgent"`
+	CratesIo      HostConfig             `json:"cratesIo" yaml:"cratesIo"`
+	GithubRaw     HostConfig             `json:"githubRaw" yaml:"githubRaw"`
+	GithubRelease CargoReleaseHostConfig `json:"githubRelease" yaml:"githubRelease"`
+	UserAgent     string                 `json:"userAgent" yaml:"userAgent"`
 }
 
 // DownloaderConfig defines general downloader configurations.
