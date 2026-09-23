@@ -89,9 +89,8 @@ Sequential build steps (failure at any step aborts the workflow):
 6. **Write launcher**: emits `cli.js` cross-platform Node launcher
 7. **Copy skill & assets**: copies README, LICENSE, and `.agents/skills/dotfiles` into `.dist/`
 8. **Run tsd type tests**: verifies type declarations with `tsd`
-9. **Compile Go binaries**: compiles native Go binaries for all supported OS/arch targets (`./cmd/dotfiles`)
-10. **Check binary size limit**: ensures binaries remain within the 26MB budget
-11. **Print summary**: outputs build summary
+9. **Compile Go binaries**: compiles native Go binaries for all supported OS/arch targets (`./cmd/dotfiles`), packages them, and measures every target's uncompressed binary against the size budget (`maxBinarySizeBytes` in `scripts/build/main.go`) before writing checksums
+10. **Print summary**: outputs build summary
 
 ### Common Build Failures
 
@@ -100,7 +99,7 @@ The build runs `tsd` against the generated `.d.ts` files in `.dist/`.
 _Debugging_: Inspect failing `tests/type-tests/*.test-d.ts` test files and `.dist/index.d.ts` to see how declaration types diverge.
 
 **Binary Size Exceeded**
-Compiled Go binaries must remain within the 26MB budget per platform binary.
+The build fails when any release target's binary is over `maxBinarySizeBytes`, and the error names each such binary with its size. See the binary size budget gotcha in `scripts/build/AGENTS.md` for what the budget is for and how to respond.
 
 ## Key Architecture Paths
 
