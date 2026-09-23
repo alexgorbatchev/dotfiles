@@ -3,6 +3,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -110,6 +111,39 @@ func TestE2EInstall(t *testing.T) {
 		// Verify hook output logging format and prefixes
 		if !strings.Contains(output, "shell-output-for-hook-test-tool") {
 			t.Fatalf("expected output to contain hook command output, but got:\n%s", output)
+		}
+	})
+
+	// The fixture configuration points the cargo section's hosts at the mock server, so
+	// the latest version comes from its crates.io API and the prebuilt archive from its
+	// cargo-quickinstall releases, never from crates.io or github.com.
+	t.Run("should install cargo-quickinstall-tool through the configured cargo hosts", func(t *testing.T) {
+		cargoBinPath := filepath.Join(h.TempDir, ".generated", "binaries", "cargo-quickinstall-tool", "current", "cargo-quickinstall-tool")
+
+		stdout, stderr, exitCode, err := h.Install([]string{"cargo-quickinstall-tool"}, "--platform", "linux", "--arch", "amd64")
+		if err != nil || exitCode != 0 {
+			t.Fatalf("install cargo-quickinstall-tool failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		}
+		if strings.Contains(stderr, "falling back to local compilation") {
+			t.Fatalf("expected the prebuilt quickinstall archive, but the install fell back to cargo:\n%s", stderr)
+		}
+		if _, err := os.Stat(cargoBinPath); err != nil {
+			t.Fatalf("expected cargo-quickinstall-tool binary to exist: %v", err)
+		}
+		h.AssertDBToolInstalled("cargo-quickinstall-tool", "1.0.0")
+
+		want := []string{
+			"/api/v1/crates/cargo-quickinstall-tool",
+			"/cargo-bins/cargo-quickinstall/releases/download/cargo-quickinstall-tool-1.0.0/cargo-quickinstall-tool-1.0.0-x86_64-unknown-linux-gnu.tar.gz",
+		}
+		var cargoRequests []string
+		for _, d := range ms.Downloads() {
+			if strings.Contains(d, "cargo-quickinstall-tool") {
+				cargoRequests = append(cargoRequests, d)
+			}
+		}
+		if !slices.Equal(cargoRequests, want) {
+			t.Fatalf("mock server cargo requests = %v, want exactly %v", cargoRequests, want)
 		}
 	})
 }
