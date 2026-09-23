@@ -17,6 +17,7 @@ Filesystem abstractions (`OSFS`, `MemFS`, `ResolvedFS`, `TrackedFileSystem`).
 ## Local gotchas
 
 - Dry-run `MemFS` missing host files causes false `Stat`/`Lstat` errors -> fallback to `os.Stat`/`os.Lstat` for reading existing host files in dry-run mode.
+- Host fallback covers metadata only, so `Stat` can report a host file that `MemFS.OpenFile` cannot append to -> like `os.OpenFile`, `MemFS.OpenFile` creates a missing file only with `O_CREATE`, and an append to a host-only file fails with `os.ErrNotExist`.
 
 ## Boundaries
 
