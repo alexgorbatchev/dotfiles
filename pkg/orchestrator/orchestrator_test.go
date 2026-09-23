@@ -3492,3 +3492,250 @@ func TestSymlinkAndCopyRejectsUnresolvablePlaceholder(t *testing.T) {
 		})
 	}
 }
+
+// TestResolveUpdate_TargetVersion pins which version an update installs. A tool whose
+// installer cannot check upstream has no version to ask for; the target is then empty,
+// so the installation records what the installer detects or a fresh timestamp, as v1's
+// installer did, instead of the version recorded by the previous installation. A tool
+// whose configuration pins a version is refused before this is asked
+// (cmd/dotfiles TestUpdateCommand_RefusesPinnedTools).
+func TestResolveUpdate_TargetVersion(t *testing.T) {
+	latestTag, constraint := "latest", "<2.0.0"
+	tests := []struct {
+		name      string
+		tool      *config.ToolConfig
+		installed string
+		res       *installer.UpdateCheckResult
+		want      string
+	}{
+		{
+			name:      "an installable upstream release is installed",
+			tool:      &config.ToolConfig{Name: "gh"},
+			installed: "v1.0.0",
+			res:       &installer.UpdateCheckResult{LatestVersion: "v2.0.0"},
+			want:      "v2.0.0",
+		},
+		{
+			name:      "a release the constraint excludes reinstalls the installed one",
+			tool:      &config.ToolConfig{Name: "gh", UpdateCheck: &config.ToolConfigUpdateCheck{Constraint: &constraint}},
+			installed: "v1.0.0",
+			res:       &installer.UpdateCheckResult{LatestVersion: "v2.0.0"},
+			want:      "v1.0.0",
+		},
+		{
+			name:      "an unpinned tool nothing could check does not reuse its recorded timestamp",
+			tool:      &config.ToolConfig{Name: "stamped"},
+			installed: "2000-01-01-00-00-00",
+			want:      "",
+		},
+		{
+			name:      "an unpinned tool nothing could check does not reuse its recorded version",
+			tool:      &config.ToolConfig{Name: "detected"},
+			installed: "1.0.0",
+			want:      "",
+		},
+		{
+			name:      "latest is not a pin",
+			tool:      &config.ToolConfig{Name: "stamped", Version: &latestTag},
+			installed: "2000-01-01-00-00-00",
+			want:      "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, got := resolveUpdate(tt.tool, tt.installed, tt.res); got != tt.want {
+				t.Fatalf("resolveUpdate target = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPlanUpdate pins how an update reads its installer's answer: a failed check is an
+// error naming the tool and keeping the cause, never a plan, while
+// installer.ErrUpdateCheckUnsupported plans a reinstall that asks for no version.
+func TestPlanUpdate(t *testing.T) {
+	t.Parallel()
+	tool := &config.ToolConfig{Name: "gh", InstallationMethod: "manual"}
+	queryErr := errors.New("API rate limit exceeded")
+	tests := []struct {
+		name          string
+		res           *installer.UpdateCheckResult
+		checkErr      error
+		force         bool
+		want          UpdatePlan
+		wantReinstall bool
+		wantErr       error
+	}{
+		{
+			name:     "a failed check is an error",
+			checkErr: queryErr,
+			wantErr:  queryErr,
+		},
+		{
+			name:          "an unsupported check reinstalls without a target",
+			checkErr:      fmt.Errorf("manual: %w", installer.ErrUpdateCheckUnsupported),
+			want:          UpdatePlan{Unsupported: true, InstalledVersion: "1.0.0"},
+			wantReinstall: true,
+		},
+		{
+			name:          "a newer release is installed",
+			res:           &installer.UpdateCheckResult{LatestVersion: "2.0.0"},
+			want:          UpdatePlan{HasUpdate: true, InstalledVersion: "1.0.0", TargetVersion: "2.0.0"},
+			wantReinstall: true,
+		},
+		{
+			name: "the installed release is left alone",
+			res:  &installer.UpdateCheckResult{LatestVersion: "1.0.0"},
+			want: UpdatePlan{InstalledVersion: "1.0.0", TargetVersion: "1.0.0"},
+		},
+		{
+			name:          "force reinstalls the installed release",
+			res:           &installer.UpdateCheckResult{LatestVersion: "1.0.0"},
+			force:         true,
+			want:          UpdatePlan{Force: true, InstalledVersion: "1.0.0", TargetVersion: "1.0.0"},
+			wantReinstall: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := PlanUpdate(tool, "1.0.0", tt.res, tt.checkErr, tt.force)
+			if tt.wantErr != nil {
+				want := `checking update for "gh": ` + tt.wantErr.Error()
+				if !errors.Is(err, tt.wantErr) || err.Error() != want {
+					t.Fatalf("PlanUpdate error = %v, want %q wrapping the check's error", err, want)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("PlanUpdate: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("PlanUpdate = %+v, want %+v", got, tt.want)
+			}
+			if got.Reinstall() != tt.wantReinstall {
+				t.Errorf("Reinstall() = %t, want %t", got.Reinstall(), tt.wantReinstall)
+			}
+		})
+	}
+}
+
+// TestUpdatePlan_Messages pins what an update says about a reinstall, which the CLI and
+// the dashboard both print.
+func TestUpdatePlan_Messages(t *testing.T) {
+	t.Parallel()
+	tool := &config.ToolConfig{Name: "gh", InstallationMethod: "manual"}
+	tests := []struct {
+		name             string
+		plan             UpdatePlan
+		wantAnnouncement string
+		wantTarget       string
+	}{
+		{
+			name:             "unsupported",
+			plan:             UpdatePlan{Unsupported: true},
+			wantAnnouncement: `Update check not supported for installer "manual", performing regular install instead`,
+		},
+		{
+			name:             "new version",
+			plan:             UpdatePlan{HasUpdate: true, InstalledVersion: "1.0.0", TargetVersion: "2.0.0"},
+			wantAnnouncement: "New version available: 1.0.0 -> 2.0.0",
+			wantTarget:       " to version 2.0.0",
+		},
+		{
+			name:             "forced",
+			plan:             UpdatePlan{Force: true, InstalledVersion: "1.0.0", TargetVersion: "1.0.0"},
+			wantAnnouncement: "Force updating: reinstalling version 1.0.0",
+			wantTarget:       " to version 1.0.0",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.plan.Announcement(tool); got != tt.wantAnnouncement {
+				t.Errorf("Announcement = %q, want %q", got, tt.wantAnnouncement)
+			}
+			if got := tt.plan.TargetDescription(); got != tt.wantTarget {
+				t.Errorf("TargetDescription = %q, want %q", got, tt.wantTarget)
+			}
+		})
+	}
+}
+
+// TestOrchestrator_ApplyUpdate pins that an update installs its target over a healthy
+// installation, which an unforced InstallTool would skip as already installed, records
+// that version, and leaves the tool configuration it was given untouched.
+func TestOrchestrator_ApplyUpdate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	mockInst := &mockInstaller{name: "github-release", binaries: []string{"gh"}}
+	_ = instReg.Register(mockInst)
+	orch := NewOrchestrator(nil, fsys, exec.NewMockRunner(), reg, instReg)
+	orch.SetSymlinkFS(fsys)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+	latest := "latest"
+	tool := &config.ToolConfig{
+		Name:               "gh",
+		Version:            &latest,
+		InstallationMethod: "github-release",
+		InstallParams:      map[string]any{"repo": "cli/cli"},
+		Binaries:           testutil.DeclaredBinaries("gh"),
+	}
+	installed := tool.WithRequestedVersion("1.0.0")
+	if err := orch.InstallTool(ctx, installed, projCfg); err != nil {
+		t.Fatalf("installing 1.0.0: %v", err)
+	}
+	// The mock installer writes nothing, so the binary a healthy installation has is
+	// put where the already-installed check looks for it.
+	currentBinary := filepath.Join(projCfg.Paths.BinariesDir, "gh", "current", "gh")
+	if err := fsys.MkdirAll(filepath.Dir(currentBinary), 0755); err != nil {
+		t.Fatalf("creating the current directory: %v", err)
+	}
+	if err := fsys.WriteFile(currentBinary, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatalf("writing the installed binary: %v", err)
+	}
+	baseline := mockInst.installCount
+	if err := orch.InstallTool(ctx, installed, projCfg); err != nil {
+		t.Fatalf("installing 1.0.0 again: %v", err)
+	}
+	if mockInst.installCount != baseline {
+		t.Fatalf("an unforced install of the healthy 1.0.0 installation ran the installer; the test needs one it skips")
+	}
+
+	for _, target := range []string{"1.0.0", "2.0.0"} {
+		installs := mockInst.installCount
+		recorded, err := orch.ApplyUpdate(ctx, tool, projCfg, UpdatePlan{Force: true, InstalledVersion: "1.0.0", TargetVersion: target})
+		if err != nil {
+			t.Fatalf("ApplyUpdate to %s: %v", target, err)
+		}
+		if got := mockInst.installCount - installs; got != 1 {
+			t.Errorf("ApplyUpdate to %s installed %d time(s), want 1 even over a healthy installation", target, got)
+		}
+		if recorded != target {
+			t.Errorf("ApplyUpdate to %s recorded %q", target, recorded)
+		}
+	}
+	if tool.Version == nil || *tool.Version != latest || tool.InstallParams["version"] != nil {
+		t.Errorf("tool configuration = %+v, want it untouched by the update", tool)
+	}
+
+	mockInst.err = errors.New("download failed")
+	if _, err := orch.ApplyUpdate(ctx, tool, projCfg, UpdatePlan{HasUpdate: true, TargetVersion: "3.0.0"}); !errors.Is(err, mockInst.err) {
+		t.Errorf("ApplyUpdate error = %v, want the installer's %v", err, mockInst.err)
+	}
+}

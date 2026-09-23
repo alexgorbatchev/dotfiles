@@ -18,6 +18,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/github"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/version"
 )
@@ -807,6 +808,25 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 		return
 	}
 
+	if s.orchestrator == nil {
+		writeJSON(w, false, nil, "Orchestrator not initialized")
+		return
+	}
+
+	ctx := context.Background()
+	// Only an installed tool is updated, as the CLI's tool update <tool> refuses one that
+	// is not; the version it was installed at is what the update is measured against.
+	installed, err := s.registry.GetToolInstallation(ctx, toolName)
+	if err != nil {
+		s.failUpdate(w, toolName, fmt.Errorf("reading the installation of %q: %w", toolName, err))
+		return
+	}
+	if installed == nil {
+		writeJSON(w, false, nil, fmt.Sprintf("Tool %q is not installed", toolName))
+		return
+	}
+	oldVersion := installed.Version
+
 	// A pinned tool is refused before its installer is asked anything, as the CLI's
 	// update refuses it, so the latest release never replaces the pin.
 	if reason, refused := targetTool.UpdateRefusal(); refused {
@@ -814,44 +834,67 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 		return
 	}
 
-	if s.orchestrator == nil {
-		writeJSON(w, false, nil, "Orchestrator not initialized")
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
+
+	// Only the update check runs on this installer, with the settings configureInstallers
+	// applied at start; the orchestrator configures its own installer when it installs.
+	inst, err := installer.Get(targetTool.InstallationMethod)
+	if err != nil {
+		s.failUpdate(w, toolName, fmt.Errorf("getting installer for %q: %w", toolName, err))
+		return
+	}
+	res, err := inst.CheckUpdate(ctx, targetTool)
+	plan, err := orchestrator.PlanUpdate(targetTool, oldVersion, res, err, false)
+	if err != nil {
+		s.failUpdate(w, toolName, err)
 		return
 	}
 
-	ctx := context.Background()
-	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting update...\n", toolName))
-
-	// The release this picks is set on a copy (WithRequestedVersion): the server keeps
-	// the configuration for its lifetime, and a version written into it would read as a
-	// pin to the next update.
-	updateTarget := targetTool
-	if targetTool.InstallationMethod != "" {
-		if inst, err := installer.Get(targetTool.InstallationMethod); err == nil {
-			// Only the update check runs here, with the settings configureInstallers
-			// applied at start; the install directory is set by the orchestrator when it
-			// installs the release this picks.
-			// A release the tool's updateCheck.constraint excludes is not one this
-			// endpoint may install, however new it is.
-			if res, err := inst.CheckUpdate(ctx, targetTool); err == nil && res != nil && res.LatestVersion != "" &&
-				version.MatchesConstraint(res.LatestVersion, targetTool.UpdateCheckConstraint()) {
-				updateTarget = targetTool.WithRequestedVersion(res.LatestVersion)
-			}
-		}
+	if !plan.Reinstall() {
+		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Already up to date (%s)\n", toolName, oldVersion))
+		writeJSON(w, true, updateResponse(oldVersion, oldVersion, true, false), "")
+		return
 	}
 
-	err := s.orchestrator.InstallTool(ctx, updateTarget, s.projectConfig)
+	level := "INFO"
+	if plan.Unsupported {
+		level = "WARN"
+	}
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("%s\t[%s] %s\n", level, toolName, plan.Announcement(targetTool)))
+	// ApplyUpdate installs from a copy of targetTool: the server keeps the configuration
+	// for its lifetime and shares it between requests, and a version written into it
+	// would read as a pin to the next update.
+	newVersion, err := s.orchestrator.ApplyUpdate(ctx, targetTool, s.projectConfig, plan)
 	if err != nil {
-		s.logger.WithTag(toolName).Error("Update failed", err)
-		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
-		writeJSON(w, false, nil, fmt.Sprintf("Update failed: %v", err))
+		s.failUpdate(w, toolName, err)
 		return
 	}
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Update completed successfully\n", toolName))
 
-	writeJSON(w, true, map[string]any{
-		"updated": true,
-	}, "")
+	writeJSON(w, true, updateResponse(oldVersion, newVersion, !plan.Unsupported, true), "")
+}
+
+// updateResponse is the update route's answer, IUpdateToolResponse in the client:
+// updated says whether the installation now records a different version than before,
+// as v1 answered, supported whether the installer could check upstream at all, and
+// reinstalled whether the tool was installed again, the only thing that tells a
+// reinstall recording the version it had before apart from a tool with no update.
+func updateResponse(oldVersion, newVersion string, supported, reinstalled bool) map[string]any {
+	return map[string]any{
+		"updated":     oldVersion != newVersion,
+		"oldVersion":  oldVersion,
+		"newVersion":  newVersion,
+		"supported":   supported,
+		"reinstalled": reinstalled,
+	}
+}
+
+// failUpdate reports an update that did not happen to the server log, the tool's log
+// stream and the client.
+func (s *Server) failUpdate(w http.ResponseWriter, toolName string, err error) {
+	s.logger.WithTag(toolName).Error("Update failed", err)
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
+	writeJSON(w, false, nil, fmt.Sprintf("Update failed: %v", err))
 }
 
 // GET /api/drift

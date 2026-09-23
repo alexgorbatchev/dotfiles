@@ -93,7 +93,16 @@ export function useToolActions(): IUseToolActions {
     try {
       const response = await postApi<IUpdateToolResponse>(`/tools/${encodeURIComponent(toolName)}/update`, {});
 
-      if (response.updated) {
+      if (!response.supported) {
+        // Nothing upstream was asked, so whatever version the reinstall recorded says nothing about newer releases.
+        setOutcome({
+          toolName,
+          kind: "update",
+          message: `Reinstalled ${response.newVersion}; update checking is not supported for this tool`,
+          tone: "info",
+        });
+        scheduleReload();
+      } else if (response.updated) {
         setOutcome({
           toolName,
           kind: "update",
@@ -101,12 +110,15 @@ export function useToolActions(): IUseToolActions {
           tone: "success",
         });
         scheduleReload();
+      } else if (response.reinstalled) {
+        setOutcome({ toolName, kind: "update", message: `Reinstalled ${response.newVersion}`, tone: "success" });
+        scheduleReload();
       } else {
         setOutcome({
           toolName,
           kind: "update",
-          message: response.error ?? "Update failed",
-          tone: "error",
+          message: `Already up to date (${response.newVersion})`,
+          tone: "success",
         });
       }
     } catch (error) {
