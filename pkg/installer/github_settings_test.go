@@ -117,7 +117,7 @@ func TestGitHubHostReachesEveryReleaseInstaller(t *testing.T) {
 					Name:          "tool",
 					InstallParams: map[string]interface{}{"githubRepo": "owner/tool"},
 				}
-				_, err := inst.resolveVersion(context.Background(), tool, "tool", cargoBinarySourceGitHub)
+				_, err := inst.resolveVersion(context.Background(), tool, "tool", cargoBinarySourceGitHub, false)
 				return err
 			},
 		},
