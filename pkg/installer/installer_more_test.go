@@ -143,7 +143,7 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	// PromoteBinaries in nested dir
 	_ = memFS.MkdirAll("/nested/deep", 0755)
 	_ = memFS.WriteFile("/nested/deep/nestedbin", []byte("bin"), 0755)
-	promoted, err := PromoteBinaries(memFS, "/nested", "nestedbin", nil)
+	promoted, err := PromoteBinaries(memFS, "/nested", "nestedbin", nil, RejectOutsideLinks)
 	if err != nil || len(promoted) != 1 || promoted[0] != "nestedbin" {
 		t.Errorf("PromoteBinaries nested failed: promoted=%v, err=%v", promoted, err)
 	}
@@ -672,7 +672,7 @@ func TestPromoteBinaries_NotFound(t *testing.T) {
 	memFS := fs.NewMemFS()
 	_ = memFS.MkdirAll("/dest", 0755)
 
-	_, err := PromoteBinaries(memFS, "/dest", "missing-tool", testutil.DeclaredBinaries("missing-bin"))
+	_, err := PromoteBinaries(memFS, "/dest", "missing-tool", testutil.DeclaredBinaries("missing-bin"), RejectOutsideLinks)
 	if err == nil {
 		t.Errorf("expected error when binary is not found in destDir")
 	}
@@ -680,7 +680,7 @@ func TestPromoteBinaries_NotFound(t *testing.T) {
 	resolvedFS := fs.NewResolvedFS(memFS, "/home/user")
 	_ = resolvedFS.MkdirAll("/home/user/.dotfiles/.generated/binaries/bun/.staging", 0755)
 
-	_, err = PromoteBinaries(resolvedFS, "/home/user/.dotfiles/.generated/binaries/bun/.staging", "bun", nil)
+	_, err = PromoteBinaries(resolvedFS, "/home/user/.dotfiles/.generated/binaries/bun/.staging", "bun", nil, RejectOutsideLinks)
 	if err == nil {
 		t.Fatalf("expected error")
 	}

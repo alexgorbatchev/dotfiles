@@ -279,7 +279,7 @@ func substituteStagingDir(values []string, stagingDir string) []string {
 // repoints its launcher, keeps the managed binary current.
 func (c *CurlScriptInstaller) stageBinaries(tool *config.ToolConfig, stagingDir, binaryPath string) ([]string, error) {
 	if binaryPath == "" {
-		binaries, err := PromoteBinaries(c.fsys, stagingDir, tool.Name, tool.Binaries)
+		binaries, err := PromoteBinaries(c.fsys, stagingDir, tool.Name, tool.Binaries, KeepOutsideLinks)
 		var notFound *BinaryNotFoundError
 		if errors.As(err, &notFound) {
 			return nil, fmt.Errorf("%s: the install script left no %q in the staging directory %s (nothing matches pattern %q); "+

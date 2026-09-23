@@ -95,7 +95,8 @@ func defaultBinaryPattern(name string) string {
 // name is binName, then any executable. v1 stopped there and reported the binary missing
 // when no match was executable; here a file named binName and then the first match in
 // path order are still accepted, because archives built on Windows lose the executable
-// bit and the promoted binary is made executable anyway.
+// bit and the promoted binary is made executable anyway (unless it links outside destDir;
+// see OutsideLinkPolicy).
 func findBinaryByPattern(fsys fs.FS, destDir, pattern, binName string) (string, error) {
 	files, err := listFiles(fsys, destDir, "")
 	if err != nil {

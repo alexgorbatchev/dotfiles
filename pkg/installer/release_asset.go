@@ -178,7 +178,7 @@ func (r releaseAssetInstaller) extract(ctx context.Context, assetPath, destDir s
 		return nil, fmt.Errorf("extracting asset archive: %w", err)
 	}
 	_ = r.fsys.Remove(assetPath)
-	return PromoteBinaries(r.fsys, destDir, tool.Name, tool.Binaries)
+	return PromoteBinaries(r.fsys, destDir, tool.Name, tool.Binaries, RejectOutsideLinks)
 }
 
 func (r releaseAssetInstaller) installRawBinary(assetPath, destDir string, tool *config.ToolConfig) ([]string, error) {

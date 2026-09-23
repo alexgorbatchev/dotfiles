@@ -222,9 +222,11 @@ func (d *DmgInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 }
 
 // findFileWithExtension returns the first entry under dir, depth first in name order,
-// whose name ends in ext. It descends only into real directories, never through a
-// symlink: an extracted .dmg volume keeps its links, such as the drag-to-install link to
-// /Applications, and following one would search outside the extraction or loop.
+// whose name ends in ext and which is a regular file or a real directory (a .app, or a
+// bundle-format .pkg). It never returns or descends through a symlink: an extracted .dmg
+// volume keeps its links, such as the drag-to-install link to /Applications, and
+// following one would search outside the extraction or loop, while returning one would
+// have installer -pkg or hdiutil attach open whatever file it names.
 func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {
 	entries, err := fsys.ReadDir(dir)
 	if err != nil {
@@ -232,12 +234,15 @@ func findFileWithExtension(fsys fs.FS, dir string, ext string) (string, error) {
 	}
 	for _, entry := range entries {
 		fullPath := filepath.Join(dir, entry)
-		if strings.HasSuffix(strings.ToLower(entry), ext) {
-			return fullPath, nil
-		}
 		info, err := fsys.Lstat(fullPath)
 		if err != nil {
 			return "", err
+		}
+		if !info.Mode().IsRegular() && !info.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(strings.ToLower(entry), ext) {
+			return fullPath, nil
 		}
 		if !info.IsDir() {
 			continue
