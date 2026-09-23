@@ -788,11 +788,35 @@ func TestPathsConfig_GetToolConfigsDirs(t *testing.T) {
 
 func TestToolConfigValidateInstallParams(t *testing.T) {
 	bin := func(name string) interface{} { return map[string]interface{}{"name": name} }
+	// binPattern is the entry the loader records for .bin(name, pattern).
+	binPattern := func(name, pattern string) interface{} {
+		return map[string]interface{}{"name": name, "pattern": pattern}
+	}
+	// patternErr is what a rejected pattern must name: the tool, the binary, the
+	// pattern, the method's binaryPath, and that binaryPath already names the file.
+	// The remedy differs by method: manual never reads a pattern, so dropping
+	// binaryPath is offered only to curl-script, which then searches {stagingDir}.
+	patternErr := func(tool, binary, pattern, method, binaryPath string) []string {
+		remedy := "; drop the pattern from .bin()"
+		if method == "curl-script" {
+			remedy += ", or drop binaryPath and point the script at {stagingDir}"
+		}
+		return []string{
+			fmt.Sprintf("tool %q", tool),
+			fmt.Sprintf("binary %q", binary),
+			fmt.Sprintf("pattern %q", pattern),
+			fmt.Sprintf("%s binaryPath %q", method, binaryPath),
+			"already names the file",
+			remedy,
+		}
+	}
+	shimOff := false
 
 	tests := []struct {
-		name     string
-		tool     ToolConfig
-		wantErrs []string
+		name        string
+		tool        ToolConfig
+		wantErrs    []string
+		notWantErrs []string
 	}{
 		{
 			name: "curl-script binaryPath with one binary",
@@ -839,6 +863,116 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 			},
 			wantErrs: []string{`"uv"`, "binaryPath", `"~/.local/bin/uv"`, `"uvx"`, "{stagingDir}"},
 		},
+		{
+			name: "manual binaryPath with a string pattern",
+			tool: ToolConfig{
+				Name:               "my-tool",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": "./vendor/my-tool"},
+				Binaries:           []interface{}{binPattern("my-tool", "no-such-dir/*/my-tool")},
+			},
+			wantErrs:    patternErr("my-tool", "my-tool", "no-such-dir/*/my-tool", "manual", "./vendor/my-tool"),
+			notWantErrs: []string{"drop binaryPath"},
+		},
+		{
+			name: "curl-script binaryPath with a string pattern",
+			tool: ToolConfig{
+				Name:               "curl-tool",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"binaryPath": "./vendor/my-tool"},
+				Binaries:           []interface{}{binPattern("curl-tool", "no-such-dir/*/curl-tool")},
+			},
+			wantErrs: patternErr("curl-tool", "curl-tool", "no-such-dir/*/curl-tool", "curl-script", "./vendor/my-tool"),
+		},
+		{
+			name: "manual binaryPath with a pattern in the options form",
+			tool: ToolConfig{
+				Name:               "my-tool",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": "./vendor/my-tool"},
+				Binaries: []interface{}{
+					map[string]interface{}{"name": "my-tool", "pattern": "*/bin/my-tool", "shim": false},
+				},
+			},
+			wantErrs:    patternErr("my-tool", "my-tool", "*/bin/my-tool", "manual", "./vendor/my-tool"),
+			notWantErrs: []string{"drop binaryPath"},
+		},
+		{
+			name: "curl-script binaryPath with a pattern in the options form",
+			tool: ToolConfig{
+				Name:               "claude",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"binaryPath": "~/.local/bin/claude"},
+				Binaries: []interface{}{
+					map[string]interface{}{"name": "claude", "pattern": "/^claude$/i", "shim": true},
+				},
+			},
+			wantErrs: patternErr("claude", "claude", "/^claude$/i", "curl-script", "~/.local/bin/claude"),
+		},
+		{
+			name: "manual binaryPath with a pattern on a BinaryConfig value",
+			tool: ToolConfig{
+				Name:               "alpha",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": "alpha"},
+				Binaries:           []interface{}{bin("alpha"), BinaryConfig{Name: "alpha-extra", Pattern: "bin/alpha"}},
+			},
+			wantErrs:    patternErr("alpha", "alpha-extra", "bin/alpha", "manual", "alpha"),
+			notWantErrs: []string{"drop binaryPath"},
+		},
+		{
+			name: "curl-script binaryPath with a pattern on a BinaryConfig pointer",
+			tool: ToolConfig{
+				Name:               "claude",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"binaryPath": "~/.local/bin/claude"},
+				Binaries:           []interface{}{&BinaryConfig{Name: "claude", Pattern: "bin/claude"}},
+			},
+			wantErrs: patternErr("claude", "claude", "bin/claude", "curl-script", "~/.local/bin/claude"),
+		},
+		{
+			name: "manual binaryPath with shim false and no pattern",
+			tool: ToolConfig{
+				Name:               "my-tool",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": "./vendor/my-tool"},
+				Binaries: []interface{}{
+					map[string]interface{}{"name": "my-tool", "shim": false},
+					// An empty or non-string pattern selects nothing: the installer
+					// reads either as "no pattern", as it does a BinaryConfig's "".
+					map[string]interface{}{"name": "my-tool-empty", "pattern": ""},
+					map[string]interface{}{"name": "my-tool-null", "pattern": nil},
+					BinaryConfig{Name: "my-tool-extra", Shim: &shimOff},
+					(*BinaryConfig)(nil),
+				},
+			},
+		},
+		{
+			name: "curl-script binaryPath with shim false and no pattern",
+			tool: ToolConfig{
+				Name:               "claude",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"binaryPath": "~/.local/bin/claude"},
+				Binaries:           []interface{}{map[string]interface{}{"name": "claude", "shim": false}},
+			},
+		},
+		{
+			name: "manual pattern without binaryPath",
+			tool: ToolConfig{
+				Name:               "my-tool",
+				InstallationMethod: "manual",
+				Binaries:           []interface{}{binPattern("my-tool", "*/bin/my-tool")},
+			},
+		},
+		{
+			name: "curl-script pattern without binaryPath",
+			tool: ToolConfig{
+				Name:               "uv",
+				InstallationMethod: "curl-script",
+				InstallParams:      map[string]interface{}{"env": map[string]interface{}{"UV_INSTALL_DIR": "{stagingDir}"}},
+				Binaries:           []interface{}{binPattern("uv", "*/bin/uv"), binPattern("uvx", "*/bin/uvx")},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -856,6 +990,11 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 			for _, want := range tt.wantErrs {
 				if !strings.Contains(err.Error(), want) {
 					t.Errorf("ValidateInstallParams() = %v, want it to contain %s", err, want)
+				}
+			}
+			for _, notWant := range tt.notWantErrs {
+				if strings.Contains(err.Error(), notWant) {
+					t.Errorf("ValidateInstallParams() = %v, want it not to contain %s", err, notWant)
 				}
 			}
 		})

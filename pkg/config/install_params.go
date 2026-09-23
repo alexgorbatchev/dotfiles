@@ -10,17 +10,84 @@ import (
 // written, whatever the target: a combination that only fails once the installation
 // has already run a script is reported while the configuration loads instead.
 func (tc *ToolConfig) ValidateInstallParams() error {
-	if tc.InstallationMethod == "curl-script" {
-		return tc.validateCurlScriptBinaryPath()
+	switch tc.InstallationMethod {
+	case "curl-script":
+		if err := tc.validateCurlScriptBinaryPath(); err != nil {
+			return err
+		}
+		return tc.validateBinaryPathPatterns()
+	case "manual":
+		return tc.validateBinaryPathPatterns()
 	}
 	return nil
+}
+
+// binaryPath returns the binaryPath install parameter, or "" when none is set.
+func (tc *ToolConfig) binaryPath() string {
+	binaryPath, _ := tc.InstallParams["binaryPath"].(string)
+	return binaryPath
+}
+
+// validateBinaryPathPatterns rejects a .bin() pattern on a tool whose binaryPath names
+// the file to install. manual and curl-script install that one file under every
+// declared name and never search a tree, so neither installer reads the pattern, and
+// the tool could install a different file than the pattern describes. The shim
+// generator does read a literal pattern such as "bin/tool" and would point the shim
+// at that path under the tool's current directory instead of the file binaryPath
+// installs, so the shim and the installed binary could disagree.
+func (tc *ToolConfig) validateBinaryPathPatterns() error {
+	binaryPath := tc.binaryPath()
+	if binaryPath == "" {
+		return nil
+	}
+	for _, b := range tc.Binaries {
+		pattern, declared := declaredBinaryPattern(b)
+		if !declared {
+			continue
+		}
+		return fmt.Errorf(
+			"tool %q: binary %q declares pattern %q, but %s binaryPath %q already names the file to install, "+
+				"so the pattern would never be used; %s",
+			tc.Name, getBinaryName(b), pattern, tc.InstallationMethod, binaryPath, tc.binaryPatternRemedy())
+	}
+	return nil
+}
+
+// binaryPatternRemedy says how to fix a pattern declared alongside binaryPath. Only
+// curl-script searches a tree for a pattern, and only when it stages into
+// {stagingDir}; manual never reads a pattern, so dropping the pattern is its only fix.
+func (tc *ToolConfig) binaryPatternRemedy() string {
+	if tc.InstallationMethod == "curl-script" {
+		return "drop the pattern from .bin(), or drop binaryPath and point the script at {stagingDir} through args or env"
+	}
+	return "drop the pattern from .bin()"
+}
+
+// declaredBinaryPattern returns the pattern a binary entry declares and whether it
+// declares one, reading every entry shape the way installer.getPatternForBinary does:
+// only a non-empty string selects a file, and anything else leaves the default glob.
+// The loader records a pattern only when .bin() was given one (a RegExp arrives as its
+// /source/flags text), so the default glob never counts as declared.
+func declaredBinaryPattern(b interface{}) (string, bool) {
+	switch val := b.(type) {
+	case map[string]interface{}:
+		pattern, _ := val["pattern"].(string)
+		return pattern, pattern != ""
+	case BinaryConfig:
+		return val.Pattern, val.Pattern != ""
+	case *BinaryConfig:
+		if val != nil {
+			return val.Pattern, val.Pattern != ""
+		}
+	}
+	return "", false
 }
 
 // validateCurlScriptBinaryPath enforces that a curl-script binaryPath stands for one
 // binary. It is a single path, so with several binaries it cannot say which one it is,
 // and a script that installs several can be pointed at the staging directory instead.
 func (tc *ToolConfig) validateCurlScriptBinaryPath() error {
-	binaryPath, _ := tc.InstallParams["binaryPath"].(string)
+	binaryPath := tc.binaryPath()
 	if binaryPath == "" || len(tc.Binaries) <= 1 {
 		return nil
 	}

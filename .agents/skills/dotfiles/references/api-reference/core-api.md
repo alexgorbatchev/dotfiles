@@ -125,6 +125,10 @@ When several files match, the one that is executable and named after the binary 
 then any executable, then a file named after the binary, then the first match in path
 order.
 
+A `manual` or `curl-script` tool that sets `binaryPath` installs that one file and
+searches nothing, so a pattern cannot be combined with it; see
+[binaryPath and Binary Patterns](../installation-methods/manual.md#binarypath-and-binary-patterns).
+
 #### `.copy(src, dest)`
 
 Copies a file, or a directory and everything under it, to `dest`. A relative `src`
