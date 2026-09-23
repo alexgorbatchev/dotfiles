@@ -497,14 +497,11 @@ func (c *CargoInstaller) fetchGitHubReleaseTag(ctx context.Context, tool *config
 	return release.TagName, nil
 }
 
-// releaseTagCandidates are the tags a release of version can carry, in the order to
-// try them. A version does not record whether its tag has a "v" (sharkdp/bat tags
-// v0.24.0, BurntSushi/ripgrep tags 14.1.1). The "v" spelling comes first either way:
-// it is the common convention, and a version written as "v1.2.3" names it outright.
+// releaseTagCandidates are the tags a release of the bare version can carry, in the
+// order to try them. A version does not record whether its tag has a "v" (sharkdp/bat
+// tags v0.24.0, BurntSushi/ripgrep tags 14.1.1). The "v" spelling comes first because
+// it is the common convention.
 func releaseTagCandidates(version string) []string {
-	if bare, ok := strings.CutPrefix(version, "v"); ok {
-		return []string{version, bare}
-	}
 	return []string{"v" + version, version}
 }
 
@@ -573,7 +570,7 @@ func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.Too
 
 	tags := []string{ver.tag}
 	if ver.tag == "" {
-		tags = releaseTagCandidates(ver.version)
+		tags = releaseTagCandidates(ver.bare())
 	}
 
 	assetPattern := getStringParam(tool.InstallParams, "assetPattern", "{crateName}-{version}-{platform}-{arch}.tar.gz")
@@ -663,16 +660,27 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	if err := ValidateSudo(c, tool); err != nil {
 		return nil, err
 	}
+	// A pin may be written "v1.2.3", but cargo install --version rejects a leading "v",
+	// so the pin is made bare here, once, for the prebuilt download, the compile
+	// fallback and the version the install reports alike. It is checked before the dry
+	// run returns, so a dry run rejects a pin that names no version as an install does.
+	requested := tool.RequestedVersion()
+	pinned := ""
+	if requested != "latest" {
+		pinned = cargoVersion{version: requested}.bare()
+		// "v" alone strips to nothing and "vv1.2.3" to another "v" form; neither is a
+		// version, and taking them as one would install the latest release or pass cargo
+		// the very form it rejects.
+		if requested != "" && (pinned == "" || strings.HasPrefix(pinned, "v")) {
+			return nil, fmt.Errorf("cargo version pin %q of %s is not a version", requested, tool.Name)
+		}
+	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil
 	}
 	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
-	pinned := tool.RequestedVersion()
-	if pinned == "latest" {
-		pinned = ""
-	}
 
 	// version is what cargo install compiles; empty lets cargo pick its newest stable.
 	version := pinned
