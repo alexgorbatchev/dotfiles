@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
@@ -665,14 +666,28 @@ func cargoFallbackVersion(crateName string, ver cargoVersion, prerelease bool, p
 	if resolved == "" {
 		return "", fmt.Errorf("installing a prerelease of %s: %w", crateName, prebuiltErr)
 	}
-	return "", fmt.Errorf("installing a prerelease of %s: cargo install cannot compile %q, which is not a MAJOR.MINOR.PATCH crate version: %w", crateName, resolved, prebuiltErr)
+	return "", fmt.Errorf("installing a prerelease of %s: cargo install cannot compile %q, which is not an exact crate version cargo install --version accepts: %w", crateName, resolved, prebuiltErr)
 }
 
 // isCrateVersion reports whether version is exactly MAJOR.MINOR.PATCH with an optional
-// prerelease, the only form cargo install --version accepts without an operator.
+// prerelease and optional build metadata, the only form cargo install --version accepts
+// without an operator (a full semver::Version). crates.io publishes versions with build
+// metadata, such as libgit2-sys 0.18.8+1.9.7. semver.Canonical discards build metadata,
+// so it is appended back before comparing; the comparison still rejects a shortened
+// version such as 1.2, which Canonical would fill in. The semver crate also holds
+// MAJOR, MINOR and PATCH as u64 and rejects a larger one, which x/mod/semver accepts.
 func isCrateVersion(version string) bool {
 	v := "v" + version
-	return semver.IsValid(v) && semver.Canonical(v) == v
+	if !semver.IsValid(v) || semver.Canonical(v)+semver.Build(v) != v {
+		return false
+	}
+	core := strings.TrimSuffix(semver.Canonical(v), semver.Prerelease(v))
+	for _, n := range strings.Split(strings.TrimPrefix(core, "v"), ".") {
+		if _, err := strconv.ParseUint(n, 10, 64); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error) {
