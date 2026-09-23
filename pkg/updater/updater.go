@@ -38,6 +38,9 @@ var (
 	ErrChecksumNotFound = errors.New("asset checksum not found in checksums.txt")
 	// ErrChecksumMismatch is returned when downloaded archive hash does not match expected checksum.
 	ErrChecksumMismatch = errors.New("checksum mismatch for downloaded release archive")
+	// ErrBinaryTooLarge is returned when the release archive's binary is larger than
+	// the decompression limit, which guards against a decompression bomb.
+	ErrBinaryTooLarge = errors.New("binary in release archive exceeds the size limit")
 )
 
 // Config configures the Updater instance.
@@ -386,7 +389,7 @@ func (u *Updater) Upgrade(ctx context.Context, opts Options) (*UpdateResult, err
 	}
 
 	// 4. Extract target binary from tarball
-	extractedBinPath, err := extractBinaryFromTarGz(tmpTarPath, tmpDir)
+	extractedBinPath, err := extractBinaryFromTarGz(u.fsys, tmpTarPath, tmpDir, maxBinaryDecompressedSize)
 	if err != nil {
 		return nil, fmt.Errorf("extracting binary from release archive: %w", err)
 	}
@@ -438,8 +441,8 @@ func parseChecksum(checksumsText, targetFilename string) (string, error) {
 	return "", fmt.Errorf("%w for %s", ErrChecksumNotFound, targetFilename)
 }
 
-func extractBinaryFromTarGz(tarPath, outDir string) (string, error) {
-	f, err := os.Open(tarPath)
+func extractBinaryFromTarGz(fsys fs.FS, tarPath, outDir string, maxSize int64) (string, error) {
+	f, err := fsys.Open(tarPath)
 	if err != nil {
 		return "", err
 	}
@@ -469,20 +472,36 @@ func extractBinaryFromTarGz(tarPath, outDir string) (string, error) {
 		baseName := filepath.Base(hdr.Name)
 		if baseName == expectedBinName && hdr.Typeflag == tar.TypeReg {
 			destPath := filepath.Join(outDir, expectedBinName)
-			out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-			if err != nil {
+			if err := writeBinary(fsys, destPath, tr, hdr.Size, maxSize); err != nil {
 				return "", err
 			}
-			if _, err := io.Copy(out, io.LimitReader(tr, maxBinaryDecompressedSize)); err != nil {
-				out.Close()
-				return "", err
-			}
-			_ = out.Close()
 			return destPath, nil
 		}
 	}
 
 	return "", fmt.Errorf("binary executable %q not found in archive", expectedBinName)
+}
+
+// writeBinary writes the size bytes of r to destPath as the new executable. A binary
+// larger than maxSize is rejected before anything is written; tar.Reader yields
+// exactly the size its header declares, so the check covers every byte copied. The
+// close result is part of the write, and a failed write removes what it left at
+// destPath, so a binary that was not written in full is never installed.
+func writeBinary(fsys fs.FS, destPath string, r io.Reader, size, maxSize int64) error {
+	if size > maxSize {
+		return fmt.Errorf("%w: %d bytes, limit %d", ErrBinaryTooLarge, size, maxSize)
+	}
+	out, err := fsys.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return fmt.Errorf("creating %q: %w", destPath, err)
+	}
+	if err := fs.WriteAndClose(out, r); err != nil {
+		if rmErr := fsys.Remove(destPath); rmErr != nil && !errors.Is(rmErr, os.ErrNotExist) {
+			err = errors.Join(err, fmt.Errorf("removing incomplete binary: %w", rmErr))
+		}
+		return fmt.Errorf("writing %q: %w", destPath, err)
+	}
+	return nil
 }
 
 func replaceBinary(newBinPath, targetPath string) error {

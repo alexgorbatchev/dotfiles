@@ -6,14 +6,19 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"syscall"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/updater"
 )
 
@@ -635,7 +640,7 @@ func TestExtractBinaryFromTarGz_Errors(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	t.Run("non-existent tar file", func(t *testing.T) {
-		_, err := updater.ExtractBinaryFromTarGz(filepath.Join(tmpDir, "missing.tar.gz"), tmpDir)
+		_, err := updater.ExtractBinaryFromTarGz(fs.NewOSFS(), filepath.Join(tmpDir, "missing.tar.gz"), tmpDir, updater.MaxBinaryDecompressedSize)
 		if err == nil {
 			t.Errorf("expected error for missing file")
 		}
@@ -644,7 +649,7 @@ func TestExtractBinaryFromTarGz_Errors(t *testing.T) {
 	t.Run("corrupt gzip file", func(t *testing.T) {
 		corruptPath := filepath.Join(tmpDir, "corrupt.tar.gz")
 		_ = os.WriteFile(corruptPath, []byte("not a gzip"), 0644)
-		_, err := updater.ExtractBinaryFromTarGz(corruptPath, tmpDir)
+		_, err := updater.ExtractBinaryFromTarGz(fs.NewOSFS(), corruptPath, tmpDir, updater.MaxBinaryDecompressedSize)
 		if err == nil {
 			t.Errorf("expected error for corrupt gzip")
 		}
@@ -669,4 +674,147 @@ func TestReplaceBinary_Errors(t *testing.T) {
 			t.Errorf("expected error when target directory does not exist")
 		}
 	})
+}
+
+// closeFailFS wraps a real file system so that every writer it hands out for a file
+// other than a release archive writes and closes normally but then reports EIO from
+// Close, the way close(2) reports a write the operating system could not commit.
+type closeFailFS struct {
+	fs.FS
+}
+
+// goneFS removes a file and then reports it as not existing, as a Remove racing
+// another removal would: there was nothing left to clean up, so it is not an error.
+type goneFS struct {
+	closeFailFS
+}
+
+func (g goneFS) Remove(path string) error {
+	if err := g.closeFailFS.Remove(path); err != nil {
+		return err
+	}
+	return &os.PathError{Op: "remove", Path: path, Err: os.ErrNotExist}
+}
+
+type closeFailWriter struct {
+	io.WriteCloser
+}
+
+func (w closeFailWriter) Close() error {
+	if err := w.WriteCloser.Close(); err != nil {
+		return err
+	}
+	return syscall.EIO
+}
+
+func (c closeFailFS) wrap(path string, w io.WriteCloser, err error) (io.WriteCloser, error) {
+	if err != nil || strings.HasSuffix(path, ".tar.gz") {
+		return w, err
+	}
+	return closeFailWriter{w}, nil
+}
+
+func (c closeFailFS) Create(path string) (io.WriteCloser, error) {
+	w, err := c.FS.Create(path)
+	return c.wrap(path, w, err)
+}
+
+func (c closeFailFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+	w, err := c.FS.OpenFile(path, flag, perm)
+	return c.wrap(path, w, err)
+}
+
+// TestExtractBinaryFromTarGz_RejectsABinaryItCannotWriteInFull covers the extracted
+// binary that Upgrade would rename over the running executable: one whose close fails
+// or that is larger than the limit is an error, never a truncated or unverified file,
+// and nothing is left where the binary would have been.
+func TestExtractBinaryFromTarGz_RejectsABinaryItCannotWriteInFull(t *testing.T) {
+	const content = "#!/bin/sh\necho v2.0.1"
+	tests := []struct {
+		name    string
+		fsys    fs.FS
+		maxSize int64
+		wantErr error
+	}{
+		{"close fails", closeFailFS{fs.NewOSFS()}, updater.MaxBinaryDecompressedSize, syscall.EIO},
+		{"close fails and the binary is already gone", goneFS{closeFailFS{fs.NewOSFS()}}, updater.MaxBinaryDecompressedSize, syscall.EIO},
+		{"one byte over the limit", fs.NewOSFS(), int64(len(content)) - 1, updater.ErrBinaryTooLarge},
+		{"exactly at the limit", fs.NewOSFS(), int64(len(content)), nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			tarPath := filepath.Join(dir, "release.tar.gz")
+			if err := os.WriteFile(tarPath, createTestTarGz(t, content), 0644); err != nil {
+				t.Fatalf("writing release archive: %v", err)
+			}
+			outDir := filepath.Join(dir, "out")
+			if err := os.Mkdir(outDir, 0755); err != nil {
+				t.Fatalf("creating output directory: %v", err)
+			}
+
+			binPath, err := updater.ExtractBinaryFromTarGz(tt.fsys, tarPath, outDir, tt.maxSize)
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Fatalf("ExtractBinaryFromTarGz() error = %v", err)
+				}
+				if got, _ := os.ReadFile(binPath); string(got) != content {
+					t.Errorf("extracted binary = %q, want %q", got, content)
+				}
+				return
+			}
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("ExtractBinaryFromTarGz() error = %v, want one wrapping %v", err, tt.wantErr)
+			}
+			if errors.Is(err, os.ErrNotExist) {
+				t.Errorf("ExtractBinaryFromTarGz() error = %v, want no removal failure for a binary already gone", err)
+			}
+			if entries, _ := os.ReadDir(outDir); len(entries) != 0 {
+				t.Errorf("ExtractBinaryFromTarGz() left %v behind", entries)
+			}
+		})
+	}
+}
+
+// TestUpgrade_KeepsTheExecutableWhenTheNewBinaryCannotBeWritten covers a self-upgrade
+// whose extracted binary fails at close: the upgrade fails and the running executable
+// is left as it was, instead of being replaced by a binary that may be incomplete.
+func TestUpgrade_KeepsTheExecutableWhenTheNewBinaryCannotBeWritten(t *testing.T) {
+	tarData := createTestTarGz(t, "#!/bin/sh\necho v2.0.1")
+	sum := sha256.Sum256(tarData)
+	tarName := fmt.Sprintf("dotfiles_2.0.1_%s_%s.tar.gz", runtime.GOOS, runtime.GOARCH)
+
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/alexgorbatchev/dotfiles/releases":
+			fmt.Fprintf(w, `[{"tag_name": "v2.0.1", "assets": [
+				{"name": %q, "browser_download_url": "%s/download/archive"},
+				{"name": "checksums.txt", "browser_download_url": "%s/download/checksums.txt"}
+			]}]`, tarName, serverURL, serverURL)
+		case "/download/archive":
+			_, _ = w.Write(tarData)
+		case "/download/checksums.txt":
+			fmt.Fprintf(w, "%s  %s\n", hex.EncodeToString(sum[:]), tarName)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	serverURL = server.URL
+	defer server.Close()
+
+	const oldBinary = "#!/bin/sh\necho v2.0.0"
+	execPath := filepath.Join(t.TempDir(), "dotfiles")
+	if err := os.WriteFile(execPath, []byte(oldBinary), 0755); err != nil {
+		t.Fatalf("writing current executable: %v", err)
+	}
+
+	u := updater.New(updater.Config{BaseURL: server.URL, FS: closeFailFS{fs.NewOSFS()}})
+	res, err := u.Upgrade(context.Background(), updater.Options{CurrentVersion: "2.0.0", ExecPath: execPath})
+	if !errors.Is(err, syscall.EIO) {
+		t.Fatalf("Upgrade() = %+v, %v, want an error wrapping EIO", res, err)
+	}
+	if got, _ := os.ReadFile(execPath); string(got) != oldBinary {
+		t.Errorf("executable = %q after a failed upgrade, want it unchanged as %q", got, oldBinary)
+	}
 }
