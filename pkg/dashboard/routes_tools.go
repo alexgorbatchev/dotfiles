@@ -17,6 +17,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/github"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
@@ -643,9 +644,7 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))
 	err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
 	if err != nil {
-		s.logger.WithTag(toolName).Error("Installation failed", err)
-		s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Installation failed: %v\n", toolName, err))
-		writeJSON(w, false, nil, fmt.Sprintf("Installation failed: %v", err))
+		s.reportFailure(w, toolName, fmt.Sprintf("Installation failed: %v", err))
 		return
 	}
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Installation completed successfully\n", toolName))
@@ -884,12 +883,18 @@ func updateResponse(oldVersion, newVersion string, plan orchestrator.UpdatePlan,
 	}
 }
 
-// failUpdate reports an update that did not happen to the server log, the tool's log
-// stream and the client.
+// failUpdate reports an update that did not happen.
 func (s *Server) failUpdate(w http.ResponseWriter, toolName string, err error) {
-	s.logger.WithTag(toolName).Error("Update failed", err)
-	s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] Update failed: %v\n", toolName, err))
-	writeJSON(w, false, nil, fmt.Sprintf("Update failed: %v", err))
+	s.reportFailure(w, toolName, fmt.Sprintf("Update failed: %v", err))
+}
+
+// reportFailure reports a failed action on a tool, with its cause, to the server log,
+// the tool's log stream and the client alike. The cause is part of the message because
+// the logger keeps an error argument's text for --trace.
+func (s *Server) reportFailure(w http.ResponseWriter, toolName, message string) {
+	s.logger.WithTag(toolName).Error(logger.Message(message))
+	s.broadcaster.Broadcast(toolName, fmt.Sprintf("ERROR\t[%s] %s\n", toolName, message))
+	writeJSON(w, false, nil, message)
 }
 
 // GET /api/drift

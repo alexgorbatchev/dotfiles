@@ -82,12 +82,12 @@ var toolCheckCmd = &cobra.Command{
 
 			installed, err := services.Registry.GetToolInstallation(ctx, tool.Name)
 			if err != nil {
-				toolLog.Error("Reading the installation record failed", err)
+				toolLog.Error(installationReadFailed(err))
 				continue
 			}
 			check, err := orchestrator.CheckTool(ctx, inst, tool, installed)
 			if err != nil {
-				toolLog.Error("Update check failed", err)
+				toolLog.Error(updateCheckFailed(err))
 				continue
 			}
 
@@ -133,6 +133,17 @@ func logCheckResult(toolLog *logger.Logger, tool *config.ToolConfig, r ToolUpdat
 	default:
 		toolLog.Info(logger.Message("Up to date" + versionSuffix(r.CurrentVersion, r.Cached)))
 	}
+}
+
+// installationReadFailed and updateCheckFailed are how tool check and tool update log a
+// tool they cannot check. The cause is part of the message because the logger keeps an
+// error argument's text for --trace.
+func installationReadFailed(err error) logger.Message {
+	return logger.Message(fmt.Sprintf("Reading the installation record failed: %v", err))
+}
+
+func updateCheckFailed(err error) logger.Message {
+	return logger.Message(fmt.Sprintf("Update check failed: %v", err))
 }
 
 // printCheckResult writes one tool's check to stdout, as a compact key-value line in

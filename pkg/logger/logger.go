@@ -48,6 +48,13 @@ type Config struct {
 }
 
 // Logger is a type-safe wrapper around slog.Logger.
+//
+// The message of a log call describes what happened, including the cause of a failure,
+// as v1's SafeLogger required. Arguments after the message are positional values, not
+// slog key/value pairs. Outside trace mode an error argument is reduced to the .tool.ts
+// locations its text names (FormatErrorForUser) and dropped when it names none, so a
+// cause the user must see is folded into the message with %v instead of passed as an
+// argument; TestProductionLogCallsCarryTheCauseInTheMessage enforces this.
 type Logger struct {
 	mu       sync.RWMutex
 	level    LogLevel
@@ -310,10 +317,12 @@ func (l *Logger) Info(msg Message, args ...any) {
 	l.log(context.Background(), LevelInfo, msg, args)
 }
 
+// Warn logs msg at the warning level. msg carries the cause; see Logger.
 func (l *Logger) Warn(msg Message, args ...any) {
 	l.log(context.Background(), LevelWarn, msg, args)
 }
 
+// Error logs msg at the error level. msg carries the cause; see Logger.
 func (l *Logger) Error(msg Message, args ...any) {
 	l.log(context.Background(), LevelError, msg, args)
 }

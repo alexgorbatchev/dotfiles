@@ -743,7 +743,9 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 // route has to report what the check and the installation records actually say, as the
 // CLI's tool update does.
 func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
-	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+	// The server log is kept to check that a failure is logged with its cause (#131).
+	serverLog := &lockedBuffer{}
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: serverLog})
 
 	ctx := context.Background()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -878,6 +880,9 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 		}
 		if !strings.Contains(broadcast, `ERROR	[failing] `+want) {
 			t.Errorf("broadcast = %q, want the failure in the tool's log stream", broadcast)
+		}
+		if !strings.Contains(serverLog.String(), "[failing] "+want) {
+			t.Errorf("server log = %q, want the failure with its cause", serverLog.String())
 		}
 		if got := failing.installs.Load(); got != 0 {
 			t.Errorf("the installer installed %d time(s) after its update check failed, want 0", got)
@@ -1745,7 +1750,8 @@ func (m *mockFailingInstaller) CheckUpdate(ctx context.Context, tool *config.Too
 }
 
 func TestDashboard_InstallErrorResponse(t *testing.T) {
-	log := logger.New(logger.Config{Writer: io.Discard})
+	serverLog := &lockedBuffer{}
+	log := logger.New(logger.Config{Writer: serverLog})
 	ctx := context.Background()
 
 	sqlDB, _ := db.NewConnection(ctx, ":memory:")
@@ -1796,6 +1802,28 @@ func TestDashboard_InstallErrorResponse(t *testing.T) {
 	if body["success"] != false {
 		t.Errorf("expected success: false on failed install, got %v", body["success"])
 	}
+	// The server log names the cause outside --trace, as the response does (#131).
+	if want := "[fail-tool] Installation failed: "; !strings.Contains(serverLog.String(), want) || !strings.Contains(serverLog.String(), "mock download error") {
+		t.Errorf("server log = %q, want %q with the installer's error", serverLog.String(), want)
+	}
+}
+
+// lockedBuffer is a log writer a test can read while the server's handlers write to it.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 func TestDashboardServer_CustomHost(t *testing.T) {
