@@ -62,6 +62,14 @@ function describeCheck(response: ICheckUpdateResponse): CheckDescription {
       };
     case "up-to-date":
       return { message: `Up to date (${response.currentVersion})`, tone: "success" };
+    case "not-installed":
+      return {
+        message:
+          response.latestVersion === "unknown"
+            ? "Not installed"
+            : `Not installed; the latest available version is ${response.latestVersion}`,
+        tone: "info",
+      };
   }
 }
 

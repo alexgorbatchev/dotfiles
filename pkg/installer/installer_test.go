@@ -429,6 +429,60 @@ func TestAllInstallers_SupportsSudo(t *testing.T) {
 	}
 }
 
+// productionInstallers are the installers the package registers itself, captured before
+// any test adds one of its own to the default registry.
+var productionInstallers []string
+
+func TestMain(m *testing.M) {
+	productionInstallers = DefaultRegistry().List()
+	os.Exit(m.Run())
+}
+
+// TestUpdateCheckNeedsInstallation pins which installers ask about the package
+// installed on this machine rather than about a release upstream, so that a tool
+// dotfiles never installed is not asked about at all (#151).
+func TestUpdateCheckNeedsInstallation(t *testing.T) {
+	tests := []struct {
+		name  string
+		inst  Installer
+		needs bool
+	}{
+		{"apt", NewAptInstaller(nil, nil, nil), true},
+		{"brew", NewBrewInstaller(nil, nil, nil), true},
+		{"dnf", NewDnfInstaller(nil, nil, nil), true},
+		{"pacman", NewPacmanInstaller(nil, nil, nil), true},
+		{"cargo", NewCargoInstaller(nil, nil, nil, nil), false},
+		{"curl-binary", NewCurlBinaryInstaller(nil, nil, nil, nil), false},
+		{"curl-script", NewCurlScriptInstaller(nil, nil, nil, nil), false},
+		{"curl-tar", NewCurlTarInstaller(nil, nil, nil, nil), false},
+		{"dmg", NewDmgInstaller(nil, nil, nil, nil), false},
+		{"gitea", NewGiteaInstaller(nil, nil, nil, nil), false},
+		{"github", NewGitHubInstaller(nil, nil, nil, nil), false},
+		{"manual", NewManualInstaller(nil, nil), false},
+		{"npm", NewNpmInstaller(nil, nil, nil), false},
+		{"pkg", NewPkgInstaller(nil, nil, nil, nil), false},
+		{"zsh-plugin", NewZshPluginInstaller(nil, nil, nil), false},
+	}
+	// Every registered installer must be listed, so one added without deciding this
+	// cannot slip past.
+	listed := map[string]bool{}
+	for _, tt := range tests {
+		listed[tt.inst.Name()] = true
+	}
+	for _, name := range productionInstallers {
+		if !listed[name] {
+			t.Errorf("installer %q is registered but not listed here; decide whether its update check needs an installation", name)
+		}
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := UpdateCheckNeedsInstallation(tt.inst); got != tt.needs {
+				t.Errorf("UpdateCheckNeedsInstallation(%s) = %t, want %t", tt.name, got, tt.needs)
+			}
+		})
+	}
+}
+
 // faultyFS wraps a file system and fails one operation, named by failOp, to exercise the
 // error paths of binary promotion and staging. ReadDir on ghostDir additionally reports an entry that
 // does not exist.

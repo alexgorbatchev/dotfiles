@@ -50,7 +50,7 @@ install("dnf", {
 
 ## Update Checks
 
-An update check first confirms the package is installed with `rpm -q`, then runs `dnf check-update --setopt=*.skip_if_unavailable=False <package>`. dnf exits 100 and lists the package when an upgrade is available, and exits 0 when there is none; its verdict decides, since RPM versions are not semantic versions. The `--setopt` makes a repository that cannot be reached fail the query, even one configured with `skip_if_unavailable`, because the package's upgrade could be in it. A package that is not installed, an unreachable repository, or any other exit status fails the check ([`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool)).
+An update check first confirms the package is installed with `rpm -q`, then runs `dnf check-update --setopt=*.skip_if_unavailable=False <package>`. dnf exits 100 and lists the package when an upgrade is available, and exits 0 when there is none; its verdict decides, since RPM versions are not semantic versions. The `--setopt` makes a repository that cannot be reached fail the query, even one configured with `skip_if_unavailable`, because the package's upgrade could be in it. For a tool dotfiles installed, a package that is no longer installed, an unreachable repository, or any other exit status fails the check. A tool dotfiles never installed is not checked; [`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool) reports it as not installed.
 
 ## Platform Support
 

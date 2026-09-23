@@ -300,6 +300,30 @@ describe("useToolActions", () => {
     });
   });
 
+  // A tool dotfiles never installed is neither outdated nor a failed check (#151).
+  test("reports a tool that is not installed with the latest release", async () => {
+    mockApiData({ status: "not-installed", currentVersion: "unknown", latestVersion: "1.6.0" });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.checkTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "check",
+      message: "Not installed; the latest available version is 1.6.0",
+      tone: "info",
+    });
+  });
+
+  test("reports a tool that is not installed when no latest release could be named", async () => {
+    mockApiData({ status: "not-installed", currentVersion: "unknown", latestVersion: "unknown" });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.checkTool("eza"));
+
+    expect(result.current.outcome).toEqual({ toolName: "eza", kind: "check", message: "Not installed", tone: "info" });
+  });
+
   test("dismisses outcome when dismissOutcome is called", async () => {
     mockApiData({ status: "up-to-date", currentVersion: "0.2.0", latestVersion: "0.2.0" });
 

@@ -376,6 +376,10 @@ func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) 
 	return cmd.Run()
 }
 
+// checksInstalledPackage marks the update check as one about the installed package
+// (installedPackageChecker).
+func (*BrewInstaller) checksInstalledPackage() {}
+
 func (b *BrewInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
 	isCask := getBoolParam(tool.InstallParams, "cask", false)
