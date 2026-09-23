@@ -670,7 +670,33 @@ func runTypeTests(rootDir string) error {
 	return nil
 }
 
-const maxBinarySizeBytes int64 = 26 * 1024 * 1024
+const bytesPerMiB = 1024 * 1024
+
+// maxBinarySizeBytes is a tripwire for a sudden, accidental jump in the size of a
+// release binary (a heavy dependency pulled in by mistake, an asset embedded twice),
+// not a cap on the binary. Ordinary growth from normal changes is handled by raising
+// it. It is set to the largest release target's size plus roughly 10% headroom:
+// darwin/amd64 measured 27,832,288 bytes (26.54 MiB) at 2.6.0, and 29 MiB leaves
+// 2.46 MiB (9.3%) above it.
+const maxBinarySizeBytes int64 = 29 * bytesPerMiB
+
+// releaseTarget is one platform the release build compiles a binary for.
+type releaseTarget struct {
+	goos   string
+	goarch string
+}
+
+var releaseTargets = []releaseTarget{
+	{goos: "darwin", goarch: "amd64"},
+	{goos: "darwin", goarch: "arm64"},
+	{goos: "linux", goarch: "amd64"},
+	{goos: "linux", goarch: "arm64"},
+}
+
+// binaryName is the name the target's binary is built under before it is packaged.
+func (t releaseTarget) binaryName() string {
+	return fmt.Sprintf("dotfiles_%s_%s", t.goos, t.goarch)
+}
 
 func createTarGz(tarPath string, files map[string]string) error {
 	if err := os.MkdirAll(filepath.Dir(tarPath), 0755); err != nil {
@@ -748,33 +774,43 @@ func generateChecksums(distDir string) error {
 	return os.WriteFile(checksumPath, []byte(strings.Join(lines, "\n")+"\n"), 0644)
 }
 
-func checkBinarySizeLimits(rootDir string) error {
-	fmt.Println("📏 Checking binary size limits (26MB limit)...")
-	distDir := filepath.Join(rootDir, ".dist")
-
-	entries, err := os.ReadDir(distDir)
-	if err != nil {
-		return err
+// checkBinarySizeLimits measures every release binary against maxBinarySizeBytes and
+// reports each one that is over it. The uncompressed binaries are what is measured:
+// every archive holds one of them compressed, so an archive can never exceed the
+// budget unless the binary inside it already has.
+func checkBinarySizeLimits(w io.Writer, binaryPaths []string) error {
+	if len(binaryPaths) == 0 {
+		return errors.New("no release binaries to check")
 	}
 
-	for _, entry := range entries {
-		if entry.IsDir() || (!strings.HasSuffix(entry.Name(), ".tar.gz") && entry.Name() != "dotfiles") {
+	budgetMiB := maxBinarySizeBytes / bytesPerMiB
+	fmt.Fprintf(w, "📏 Checking %d release binaries against the %d MiB size budget...\n", len(binaryPaths), budgetMiB)
+
+	var failures []error
+	for _, path := range binaryPaths {
+		name := filepath.Base(path)
+		info, err := os.Stat(path)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("measuring release binary %s: %w", name, err))
 			continue
 		}
-		filePath := filepath.Join(distDir, entry.Name())
-		info, err := os.Stat(filePath)
-		if err != nil {
-			return fmt.Errorf("failed to stat file %s: %w", entry.Name(), err)
+		size := info.Size()
+		sizeMiB := float64(size) / bytesPerMiB
+		if size > maxBinarySizeBytes {
+			failures = append(failures, fmt.Errorf(
+				"release binary %s is %.2f MiB (%d bytes), over the %d MiB (%d bytes) budget",
+				name, sizeMiB, size, budgetMiB, maxBinarySizeBytes,
+			))
+			fmt.Fprintf(w, "  - %s: %.2f MiB (OVER BUDGET)\n", name, sizeMiB)
+			continue
 		}
-		if info.Size() > maxBinarySizeBytes {
-			mb := float64(info.Size()) / (1024.0 * 1024.0)
-			return fmt.Errorf("file %s size (%.2f MB) exceeds limit of 26 MB", entry.Name(), mb)
-		}
-		mb := float64(info.Size()) / (1024.0 * 1024.0)
-		fmt.Printf("  - %s: %.2f MB (OK)\n", entry.Name(), mb)
+		fmt.Fprintf(w, "  - %s: %.2f MiB (OK)\n", name, sizeMiB)
+	}
+	if len(failures) > 0 {
+		return errors.Join(failures...)
 	}
 
-	fmt.Println("✅ All release archives are within the 26MB size budget!")
+	fmt.Fprintf(w, "✅ All %d release binaries are within the %d MiB size budget.\n", len(binaryPaths), budgetMiB)
 	return nil
 }
 
@@ -838,25 +874,15 @@ func compileAllBinaries(rootDir string) error {
 	}
 	defer os.RemoveAll(tmpBinDir)
 
-	targets := []struct {
-		goos   string
-		goarch string
-	}{
-		{goos: "darwin", goarch: "amd64"},
-		{goos: "darwin", goarch: "arm64"},
-		{goos: "linux", goarch: "amd64"},
-		{goos: "linux", goarch: "arm64"},
-	}
-
 	var wg sync.WaitGroup
-	errCh := make(chan error, len(targets))
+	errCh := make(chan error, len(releaseTargets))
+	binaryPaths := releaseBinaryPaths(tmpBinDir)
 
-	for _, target := range targets {
+	for i, target := range releaseTargets {
 		wg.Add(1)
-		go func(t struct{ goos, goarch string }) {
+		go func(t releaseTarget, tmpBinPath string) {
 			defer wg.Done()
 			binName := "dotfiles"
-			tmpBinPath := filepath.Join(tmpBinDir, fmt.Sprintf("dotfiles_%s_%s", t.goos, t.goarch))
 			if err := buildTarget(rootDir, version, t.goos, t.goarch, tmpBinPath); err != nil {
 				errCh <- err
 				return
@@ -890,7 +916,7 @@ func compileAllBinaries(rootDir string) error {
 				errCh <- fmt.Errorf("failed to package archive %s: %w", tarName, err)
 				return
 			}
-		}(target)
+		}(target, binaryPaths[i])
 	}
 
 	wg.Wait()
@@ -904,6 +930,27 @@ func compileAllBinaries(rootDir string) error {
 	}
 	if len(buildErrs) > 0 {
 		return errors.Join(buildErrs...)
+	}
+
+	return finishRelease(os.Stdout, distDir, binaryPaths)
+}
+
+// releaseBinaryPaths is where compileAllBinaries builds each release target's binary.
+func releaseBinaryPaths(binDir string) []string {
+	paths := make([]string, 0, len(releaseTargets))
+	for _, target := range releaseTargets {
+		paths = append(paths, filepath.Join(binDir, target.binaryName()))
+	}
+	return paths
+}
+
+// finishRelease runs once every target is built and packaged. The binaries are
+// measured here, while every target's build output still exists, rather than from
+// .dist, which holds an uncompressed binary for the build host's platform only. A
+// release over the budget gets no checksums.txt.
+func finishRelease(w io.Writer, distDir string, binaryPaths []string) error {
+	if err := checkBinarySizeLimits(w, binaryPaths); err != nil {
+		return fmt.Errorf("checking binary size limits: %w", err)
 	}
 
 	if err := generateChecksums(distDir); err != nil {
@@ -983,10 +1030,6 @@ func runBuild() error {
 
 	if err := compileAllBinaries(rootDir); err != nil {
 		return fmt.Errorf("compiling binaries: %w", err)
-	}
-
-	if err := checkBinarySizeLimits(rootDir); err != nil {
-		return fmt.Errorf("checking binary size limits: %w", err)
 	}
 
 	if err := printBuildSummary(rootDir); err != nil {

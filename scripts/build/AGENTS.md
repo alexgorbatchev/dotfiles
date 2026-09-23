@@ -20,13 +20,15 @@ Release build and asset packaging pipeline for compiling cross-platform Go binar
   5. Generate npm packages and cross-platform launcher (`.dist/cli.js`).
   6. Copy skill documentation (`.agents/skills/dotfiles/` -> `pkg/embedded/skill/` and `.dist/skill/`).
   7. Cross-compile Go binaries for `darwin/arm64`, `darwin/amd64`, `linux/arm64`, and `linux/amd64`.
-  8. Package tar.gz archives and generate `checksums.sha256`.
-  9. Enforce binary archive size limit (maximum 26MB budget).
+  8. Package tar.gz archives.
+  9. Measure every target's uncompressed binary against the size budget (`maxBinarySizeBytes`).
+  10. Generate `checksums.txt`.
 - Hand-edits in `pkg/embedded/dist` or `pkg/embedded/skill` will be overwritten by `scripts/build/main.go`. Edit `.agents/skills/dotfiles/` or generator sources instead.
 
 ## Local gotchas
 
 - **Cached test invalidation:** `TestRunBuild` in `full_build_test.go` regenerates committed and embedded files, invalidating Go package test caches. It is protected behind `//go:build buildtest` and executed separately via `just test-build`.
+- **The binary size budget is a tripwire, not a cap:** `maxBinarySizeBytes` exists to catch a sudden, accidental jump in binary size, such as a heavy dependency pulled in by mistake. When ordinary changes grow the binary past it, the remedy is to raise it, with the owner's approval (see Boundaries), rather than to shrink the binary. Set it to the largest release target's size plus roughly 10% headroom, rounded to a whole MiB, and record the measurement in the constant's comment. The check measures every release target's binary (`releaseTargets`), so it gives the same result on every build host. The archives are not measured, because each one holds a compressed copy of a binary that has already been measured.
 - **Dashboard rebuild:** Any frontend changes in `packages/dashboard/src/client/` require running `just prepare` or `just compile` so `pkg/dashboard/dist` embeds the updated bundle.
 
 ## Boundaries

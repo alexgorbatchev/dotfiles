@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,77 +11,199 @@ import (
 	"testing"
 )
 
-func TestCheckBinarySizeLimits(t *testing.T) {
+// writeSizedFile creates a file of exactly size bytes. Truncate extends it sparsely,
+// so a budget-sized fixture costs no real disk space.
+func writeSizedFile(t *testing.T, path string, size int64) {
+	t.Helper()
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("creating %s: %v", path, err)
+	}
+	if err := f.Truncate(size); err != nil {
+		_ = f.Close()
+		t.Fatalf("sizing %s: %v", path, err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("closing %s: %v", path, err)
+	}
+}
+
+// writeReleaseBinaries lays out one binary per release target at the paths
+// compileAllBinaries builds them to, each of the size sizeOf returns for it.
+func writeReleaseBinaries(t *testing.T, sizeOf func(releaseTarget) int64) []string {
+	t.Helper()
+	paths := releaseBinaryPaths(t.TempDir())
+	for i, target := range releaseTargets {
+		writeSizedFile(t, paths[i], sizeOf(target))
+	}
+	return paths
+}
+
+// compileAllBinaries hands the size check one path per release target, not only the
+// build host's binary, so every platform is measured wherever the build runs.
+func TestReleaseBinaryPathsCoverEveryReleaseTarget(t *testing.T) {
+	dir := t.TempDir()
+	paths := releaseBinaryPaths(dir)
+	if len(paths) != len(releaseTargets) {
+		t.Fatalf("releaseBinaryPaths() returned %d paths for %d release targets: %v", len(paths), len(releaseTargets), paths)
+	}
+	for i, target := range releaseTargets {
+		if want := filepath.Join(dir, target.binaryName()); paths[i] != want {
+			t.Errorf("path for %s/%s = %q, want %q", target.goos, target.goarch, paths[i], want)
+		}
+	}
+}
+
+// A release with any target over the budget stops before its checksums are written,
+// so a release that failed the check has no checksums.txt beside its archives.
+func TestFinishReleaseWritesChecksumsOnlyWithinBudget(t *testing.T) {
 	tests := []struct {
-		name      string
-		fileSize  int64
-		expectErr bool
+		name          string
+		size          func(releaseTarget) int64
+		wantErr       bool
+		wantChecksums bool
 	}{
 		{
-			name:      "under size limit",
-			fileSize:  10 * 1024 * 1024, // 10 MB
-			expectErr: false,
+			name:          "every binary within budget",
+			size:          func(releaseTarget) int64 { return maxBinarySizeBytes },
+			wantChecksums: true,
 		},
 		{
-			name:      "exceeds size limit",
-			fileSize:  27 * 1024 * 1024, // 27 MB
-			expectErr: true,
+			name: "last target over budget",
+			size: func(target releaseTarget) int64 {
+				if target == releaseTargets[len(releaseTargets)-1] {
+					return maxBinarySizeBytes + 1
+				}
+				return maxBinarySizeBytes
+			},
+			wantErr: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			distDir := filepath.Join(tmpDir, ".dist")
-			if err := os.MkdirAll(distDir, 0755); err != nil {
-				t.Fatalf("failed to create .dist dir: %v", err)
-			}
+			distDir := t.TempDir()
+			paths := writeReleaseBinaries(t, tt.size)
 
-			nativeBin := "dotfiles"
-			if runtime.GOOS == "windows" {
-				nativeBin = "dotfiles.exe"
+			err := finishRelease(io.Discard, distDir, paths)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("finishRelease() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			nativePath := filepath.Join(distDir, nativeBin)
-
-			f, err := os.Create(nativePath)
-			if err != nil {
-				t.Fatalf("failed to create native binary file: %v", err)
-			}
-			if err := f.Truncate(tt.fileSize); err != nil {
-				_ = f.Close()
-				t.Fatalf("failed to truncate binary file: %v", err)
-			}
-			_ = f.Close()
-
-			targets := []string{
-				"alexgorbatchev/dotfiles-darwin-x64",
-				"alexgorbatchev/dotfiles-darwin-arm64",
-				"alexgorbatchev/dotfiles-linux-x64",
-				"alexgorbatchev/dotfiles-linux-arm64",
-			}
-
-			for _, target := range targets {
-				binDir := filepath.Join(distDir, "packages", target, "bin")
-				if err := os.MkdirAll(binDir, 0755); err != nil {
-					t.Fatalf("failed to create target bin dir: %v", err)
-				}
-				binPath := filepath.Join(binDir, "dotfiles")
-				tf, err := os.Create(binPath)
-				if err != nil {
-					t.Fatalf("failed to create target binary file: %v", err)
-				}
-				if err := tf.Truncate(tt.fileSize); err != nil {
-					_ = tf.Close()
-					t.Fatalf("failed to truncate target binary file: %v", err)
-				}
-				_ = tf.Close()
-			}
-
-			err = checkBinarySizeLimits(tmpDir)
-			if (err != nil) != tt.expectErr {
-				t.Fatalf("checkBinarySizeLimits() error = %v, expectErr %v", err, tt.expectErr)
+			_, statErr := os.Stat(filepath.Join(distDir, "checksums.txt"))
+			if gotChecksums := statErr == nil; gotChecksums != tt.wantChecksums {
+				t.Errorf("checksums.txt written = %v, want %v (stat error: %v)", gotChecksums, tt.wantChecksums, statErr)
 			}
 		})
+	}
+}
+
+// The budget applies to every release binary, not to whichever one happens to match
+// the machine running the build. Each target in turn is pushed one byte over the
+// budget while the others sit exactly on it, so the check has to fail for every
+// target, including the ones that are not the build host's platform.
+func TestCheckBinarySizeLimitsFailsForEveryTargetOverBudget(t *testing.T) {
+	const overBudget = maxBinarySizeBytes + 1
+	for _, over := range releaseTargets {
+		t.Run(over.binaryName(), func(t *testing.T) {
+			paths := writeReleaseBinaries(t, func(target releaseTarget) int64 {
+				if target == over {
+					return overBudget
+				}
+				return maxBinarySizeBytes
+			})
+
+			var out bytes.Buffer
+			err := checkBinarySizeLimits(&out, paths)
+			if err == nil {
+				t.Fatalf("checkBinarySizeLimits() passed with %s at %d bytes, over the %d-byte budget", over.binaryName(), overBudget, maxBinarySizeBytes)
+			}
+
+			msg := err.Error()
+			for _, want := range []string{
+				over.binaryName(),
+				fmt.Sprintf("%d bytes", overBudget),
+				fmt.Sprintf("%d MiB", maxBinarySizeBytes/bytesPerMiB),
+			} {
+				if !strings.Contains(msg, want) {
+					t.Errorf("error %q does not mention %q", msg, want)
+				}
+			}
+			for _, target := range releaseTargets {
+				if target != over && strings.Contains(msg, target.binaryName()) {
+					t.Errorf("error %q names %s, which is within the budget", msg, target.binaryName())
+				}
+			}
+			if strings.Contains(out.String(), "✅") {
+				t.Errorf("a failed check printed a success line:\n%s", out.String())
+			}
+		})
+	}
+}
+
+// Every binary over the budget is reported at once, so a release that has outgrown
+// the budget on several platforms is not discovered one platform per build.
+func TestCheckBinarySizeLimitsReportsEveryBinaryOverBudget(t *testing.T) {
+	paths := writeReleaseBinaries(t, func(releaseTarget) int64 { return maxBinarySizeBytes + 1 })
+
+	err := checkBinarySizeLimits(io.Discard, paths)
+	if err == nil {
+		t.Fatal("checkBinarySizeLimits() passed with every binary over the budget")
+	}
+	for _, target := range releaseTargets {
+		if !strings.Contains(err.Error(), target.binaryName()) {
+			t.Errorf("error %q does not name %s", err.Error(), target.binaryName())
+		}
+	}
+}
+
+// A passing check says exactly what it measured: how many binaries, which ones, and
+// the budget in the unit the arithmetic uses.
+func TestCheckBinarySizeLimitsPassesAndNamesWhatItChecked(t *testing.T) {
+	paths := writeReleaseBinaries(t, func(releaseTarget) int64 { return maxBinarySizeBytes })
+
+	var out bytes.Buffer
+	if err := checkBinarySizeLimits(&out, paths); err != nil {
+		t.Fatalf("checkBinarySizeLimits() error = %v with every binary exactly on the budget", err)
+	}
+
+	printed := out.String()
+	budget := fmt.Sprintf("%d MiB", maxBinarySizeBytes/bytesPerMiB)
+	success := fmt.Sprintf("✅ All %d release binaries are within the %s size budget", len(releaseTargets), budget)
+	if !strings.Contains(printed, success) {
+		t.Errorf("output does not contain %q:\n%s", success, printed)
+	}
+	for _, target := range releaseTargets {
+		line := fmt.Sprintf("%s: %.2f MiB (OK)", target.binaryName(), float64(maxBinarySizeBytes)/bytesPerMiB)
+		if !strings.Contains(printed, line) {
+			t.Errorf("output does not contain %q:\n%s", line, printed)
+		}
+	}
+	if strings.Contains(printed, " MB") {
+		t.Errorf("output reports sizes in MB while the arithmetic is MiB:\n%s", printed)
+	}
+}
+
+// With nothing to measure the check must not report that everything is within budget.
+func TestCheckBinarySizeLimitsRejectsAnEmptyBinaryList(t *testing.T) {
+	if err := checkBinarySizeLimits(io.Discard, nil); err == nil {
+		t.Fatal("checkBinarySizeLimits() passed without measuring any binary")
+	}
+}
+
+// A binary that cannot be measured does not hide the binaries measured over budget.
+func TestCheckBinarySizeLimitsReportsAMissingBinaryAlongsideOverBudgetOnes(t *testing.T) {
+	missing, over := releaseTargets[0], releaseTargets[1]
+	overPath := filepath.Join(t.TempDir(), over.binaryName())
+	writeSizedFile(t, overPath, maxBinarySizeBytes+1)
+	missingPath := filepath.Join(t.TempDir(), missing.binaryName())
+
+	err := checkBinarySizeLimits(io.Discard, []string{missingPath, overPath})
+	if err == nil {
+		t.Fatal("checkBinarySizeLimits() passed with one binary missing and one over the budget")
+	}
+	for _, want := range []string{"measuring release binary " + missing.binaryName(), "release binary " + over.binaryName() + " is"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err.Error(), want)
+		}
 	}
 }
 
@@ -348,11 +473,5 @@ func TestBuildErrorBranches(t *testing.T) {
 	err = runTypeTests(filepath.Join(tmpDir, "nonexistent"))
 	if err == nil {
 		t.Error("expected error running typeTests in nonexistent root")
-	}
-
-	// 10. checkBinarySizeLimits missing dist dir
-	err = checkBinarySizeLimits(tmpDir)
-	if err == nil {
-		t.Error("expected error from checkBinarySizeLimits with missing dist dir")
 	}
 }
