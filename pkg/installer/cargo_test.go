@@ -609,6 +609,10 @@ func newCargoPrereleaseServer(t *testing.T, tarData []byte) *recordingServer {
 		switch {
 		case r.URL.Path == "/api/v1/crates/mycrate":
 			_, _ = w.Write([]byte(`{"crate":{"max_version":"3.0.0-alpha.2","max_stable_version":"2.11.6","newest_version":"3.0.0-alpha.2"}}`))
+		case r.URL.Path == "/api/v1/crates/metacrate":
+			// Shaped like libgit2-sys on crates.io, whose versions carry the wrapped
+			// C library's version as build metadata.
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"0.19.0-alpha.1+1.9.7","max_stable_version":"0.18.8+1.9.7","newest_version":"0.19.0-alpha.1+1.9.7"}}`))
 		case r.URL.Path == "/api/v1/crates/early":
 			_, _ = w.Write([]byte(`{"crate":{"max_version":"0.1.0-alpha.1","max_stable_version":null,"newest_version":"0.1.0-alpha.1"}}`))
 		case r.URL.Path == "/repos/owner/mycrate/releases/latest":
@@ -728,15 +732,26 @@ func TestCargoPrereleaseOptIn(t *testing.T) {
 func TestCargoCompileFallbackInstallsResolvedVersion(t *testing.T) {
 	tests := []struct {
 		name        string
+		crate       string
 		params      map[string]interface{}
 		wantVersion string
 	}{
-		{name: "the newest stable release by default", params: map[string]interface{}{}, wantVersion: "2.11.6"},
-		{name: "the newest prerelease with prerelease true", params: map[string]interface{}{"prerelease": true}, wantVersion: "3.0.0-alpha.2"},
+		{name: "the newest stable release by default", crate: "mycrate", params: map[string]interface{}{}, wantVersion: "2.11.6"},
+		{name: "the newest prerelease with prerelease true", crate: "mycrate", params: map[string]interface{}{"prerelease": true}, wantVersion: "3.0.0-alpha.2"},
 		{
 			name:        "the release tag the github-releases source resolved",
+			crate:       "mycrate",
 			params:      map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/mycrate", "prerelease": true},
 			wantVersion: "3.0.0-alpha.2",
+		},
+		// Regression cases for issue #128: build metadata is part of the version cargo
+		// install --version takes, so the version crates.io resolved is kept.
+		{name: "a stable release with build metadata by default", crate: "metacrate", params: map[string]interface{}{}, wantVersion: "0.18.8+1.9.7"},
+		{
+			name:        "a prerelease with build metadata with prerelease true",
+			crate:       "metacrate",
+			params:      map[string]interface{}{"prerelease": true},
+			wantVersion: "0.19.0-alpha.1+1.9.7",
 		},
 	}
 	for _, tt := range tests {
@@ -748,16 +763,16 @@ func TestCargoCompileFallbackInstallsResolvedVersion(t *testing.T) {
 			inst.Cargo.CratesIO.Host = server.URL
 			inst.SetLogger(logger.New(logger.Config{Writer: io.Discard}))
 			_ = fsys.MkdirAll("/test/bin/bin", 0755)
-			_ = fsys.WriteFile("/test/bin/bin/mycrate", []byte("compiled"), 0755)
+			_ = fsys.WriteFile("/test/bin/bin/"+tt.crate, []byte("compiled"), 0755)
 
-			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
+			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: tt.crate, InstallParams: tt.params})
 			if err != nil {
 				t.Fatalf("Install() error = %v", err)
 			}
 			if len(runner.History) != 1 {
 				t.Fatalf("cargo runs = %v, want exactly one cargo install", runner.History)
 			}
-			wantArgs := []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, "mycrate"}
+			wantArgs := []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, tt.crate}
 			if got := runner.History[0]; got.Name != "cargo" || !slices.Equal(got.Args, wantArgs) {
 				t.Fatalf("ran %s %v, want cargo %v", got.Name, got.Args, wantArgs)
 			}
@@ -905,9 +920,10 @@ func TestCargoCompileFallbackTrustsOnlyCratesIO(t *testing.T) {
 
 // TestCargoCompileFallbackWithoutCrateVersion pins what the compile fallback does
 // when the resolved version cannot name a crate version, as a monorepo release tag
-// such as mycrate-v2.11.6 cannot: cargo install --version accepts only
-// MAJOR.MINOR.PATCH. Without prerelease cargo compiles its own newest stable release,
-// as before; with it, that would drop the opt-in, so the install fails naming both.
+// such as mycrate-v2.11.6 cannot: cargo install --version accepts only an exact
+// MAJOR.MINOR.PATCH[-pre][+build] version. Without prerelease cargo compiles its own
+// newest stable release, as before; with it, that would drop the opt-in, so the
+// install fails naming both.
 func TestCargoCompileFallbackWithoutCrateVersion(t *testing.T) {
 	params := func(prerelease bool) map[string]interface{} {
 		return map[string]interface{}{"binarySource": "github-releases", "githubRepo": "owner/monorepo", "prerelease": prerelease}
@@ -955,7 +971,8 @@ func TestCargoCompileFallbackWithoutCrateVersion(t *testing.T) {
 }
 
 // TestIsCrateVersion pins the spellings cargo install --version takes as an exact
-// version: MAJOR.MINOR.PATCH with an optional prerelease, and nothing shorter.
+// version: MAJOR.MINOR.PATCH with an optional prerelease and optional build metadata,
+// and nothing shorter.
 func TestIsCrateVersion(t *testing.T) {
 	tests := []struct {
 		version string
@@ -963,6 +980,20 @@ func TestIsCrateVersion(t *testing.T) {
 	}{
 		{"2.11.6", true},
 		{"3.0.0-alpha.2", true},
+		{"0.18.8+1.9.7", true},
+		{"3.0.0-alpha.2+build.5", true},
+		{"1.2+1.9.7", false},
+		{"v0.18.8+1.9.7", false},
+		{"0.18.8+", false},
+		// Leading zeros are refused in MAJOR.MINOR.PATCH and numeric prerelease
+		// identifiers but allowed in build metadata, as the semver crate does.
+		{"01.2.3", false},
+		{"1.2.3-01", false},
+		{"1.2.3+01", true},
+		// The semver crate holds MAJOR, MINOR and PATCH as u64.
+		{"18446744073709551615.0.0", true},
+		{"18446744073709551616.0.0", false},
+		{"1.2.18446744073709551616-alpha+build", false},
 		{"", false},
 		{"1.2", false},
 		{"v1.2.3", false},
