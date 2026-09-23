@@ -31,7 +31,7 @@ func TestInstallerCoverageCases(t *testing.T) {
 	// 1. PromoteBinaries with a glob pattern reaching two directories down
 	_ = memFS.MkdirAll("/src/bin/sub", 0755)
 	_ = memFS.WriteFile("/src/bin/sub/mytool-bin", []byte("mytool"), 0755)
-	promoted, err := PromoteBinaries(memFS, "/src", "mytool", []interface{}{config.BinaryConfig{Name: "mytool-bin", Pattern: "bin/*/mytool-bin"}})
+	promoted, err := PromoteBinaries(memFS, "/src", "mytool", []interface{}{config.BinaryConfig{Name: "mytool-bin", Pattern: "bin/*/mytool-bin"}}, RejectOutsideLinks)
 	if err != nil || len(promoted) == 0 {
 		t.Errorf("PromoteBinaries failed: promoted=%v, err=%v", promoted, err)
 	}
@@ -39,7 +39,7 @@ func TestInstallerCoverageCases(t *testing.T) {
 	// PromoteBinaries fallback
 	_ = memFS.MkdirAll("/src2/sub", 0755)
 	_ = memFS.WriteFile("/src2/sub/other", []byte("other"), 0755)
-	promoted2, err := PromoteBinaries(memFS, "/src2", "/dest2", testutil.DeclaredBinaries("other"))
+	promoted2, err := PromoteBinaries(memFS, "/src2", "/dest2", testutil.DeclaredBinaries("other"), RejectOutsideLinks)
 	if err != nil || len(promoted2) == 0 {
 		t.Errorf("PromoteBinaries fallback failed: %v", err)
 	}

@@ -131,6 +131,15 @@ When several files match, the one that is executable and named after the binary 
 then any executable, then a file named after the binary, then the first match in path
 order.
 
+A match that is a symlink is judged by the file its links finally name, which must be a
+regular file. dotfiles makes the binary executable only when that file is inside the
+directory it searched. A link out of an unpacked archive (a `.dmg` volume keeps its
+links, including ones pointing anywhere on the machine) fails the installation with an
+error naming the link and its target. A `curl-script` staging directory or a
+`cargo install --root` may leave the binary as a link to the tool's own files
+elsewhere: the link is kept, the file it names is left as it is, and the installation
+fails if that file is not executable.
+
 A `manual` or `curl-script` tool that sets `binaryPath` installs that one file and
 searches nothing, so a pattern cannot be combined with it; see
 [binaryPath and Binary Patterns](../installation-methods/manual.md#binarypath-and-binary-patterns).

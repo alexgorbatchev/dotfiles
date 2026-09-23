@@ -537,7 +537,11 @@ func (e *BinaryNotFoundError) Error() string {
 // All binaries are located before any is promoted: promoting one may move a directory
 // aside (see clearBinaryName), and a pattern written against the archive layout must not
 // be evaluated against the rearranged tree.
-func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries []interface{}) ([]string, error) {
+//
+// A binary that is a symlink is judged by the file its link chain finally names. Only a
+// file inside destDir is ever made executable; one outside it is handled as policy says
+// (see OutsideLinkPolicy), and every binary is checked before anything is changed.
+func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries []interface{}, policy OutsideLinkPolicy) ([]string, error) {
 	binaryNames := GetBinaryNames(toolName, toolBinaries)
 
 	located := make([]string, len(binaryNames))
@@ -556,8 +560,19 @@ func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries [
 		located[i] = foundPath
 	}
 
+	realDestDir, err := resolveLinks(fsys, destDir)
+	if err != nil {
+		return nil, err
+	}
+	p := binaryPromoter{fsys: fsys, destDir: destDir, realDestDir: realDestDir, policy: policy}
 	for i, binName := range binaryNames {
-		movedFrom, movedTo, err := promoteBinary(fsys, destDir, binName, located[i])
+		if _, err := p.executableTarget(binName, located[i]); err != nil {
+			return nil, err
+		}
+	}
+
+	for i, binName := range binaryNames {
+		movedFrom, movedTo, err := p.promote(binName, located[i])
 		if err != nil {
 			return nil, err
 		}
@@ -574,39 +589,64 @@ func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries [
 	return binaryNames, nil
 }
 
-// promoteBinary exposes foundPath as destDir/binName. When a directory occupying that
-// name had to be moved aside, the returned pair is its old and new path so that the
-// caller can follow binaries located inside it.
-func promoteBinary(fsys fs.FS, destDir, binName, foundPath string) (movedFrom, movedTo string, err error) {
-	targetPath := filepath.Join(destDir, binName)
+// binaryPromoter promotes the binaries PromoteBinaries located under destDir.
+// realDestDir is destDir with every symlink in it resolved, which is what a resolved
+// binary target is compared against.
+type binaryPromoter struct {
+	fsys        fs.FS
+	destDir     string
+	realDestDir string
+	policy      OutsideLinkPolicy
+}
+
+// promote exposes foundPath as destDir/binName. When a directory occupying that name
+// had to be moved aside, the returned pair is its old and new path so that the caller
+// can follow binaries located inside it.
+func (p binaryPromoter) promote(binName, foundPath string) (movedFrom, movedTo string, err error) {
+	targetPath := filepath.Join(p.destDir, binName)
 	if foundPath == targetPath {
-		return "", "", makeExecutable(fsys, targetPath)
+		return "", "", p.makeExecutable(binName, targetPath)
 	}
 
-	relPath, err := filepath.Rel(destDir, foundPath)
+	relPath, err := filepath.Rel(p.destDir, foundPath)
 	if err != nil {
-		return "", "", fmt.Errorf("resolving %q relative to %q: %w", foundPath, destDir, err)
+		return "", "", fmt.Errorf("resolving %q relative to %q: %w", foundPath, p.destDir, err)
 	}
-	relPath, movedFrom, movedTo, err = clearBinaryName(fsys, destDir, binName, relPath)
+	relPath, movedFrom, movedTo, err = clearBinaryName(p.fsys, p.destDir, binName, relPath)
 	if err != nil {
 		return "", "", err
 	}
-	foundPath = filepath.Join(destDir, relPath)
-	if err := makeExecutable(fsys, foundPath); err != nil {
+	foundPath = filepath.Join(p.destDir, relPath)
+	if err := p.place(relPath, foundPath, targetPath); err != nil {
 		return "", "", err
 	}
+	// Judged where it now is: a relative link renamed to the root reads its target from
+	// another directory than the one it was checked in.
+	if err := p.makeExecutable(binName, targetPath); err != nil {
+		return "", "", err
+	}
+	return movedFrom, movedTo, nil
+}
 
+// place exposes the binary at foundPath, relPath below destDir, as targetPath.
+func (p binaryPromoter) place(relPath, foundPath, targetPath string) error {
 	if strings.ContainsRune(relPath, filepath.Separator) {
 		// A relative symlink keeps the binary inside the layout it was shipped in. A file
 		// system that cannot create symlinks gets the binary moved to the root instead.
-		if err := fsys.Symlink(relPath, targetPath); err == nil {
-			return movedFrom, movedTo, nil
+		err := p.fsys.Symlink(relPath, targetPath)
+		if err == nil {
+			return nil
+		}
+		// A relative link moved to another directory would name another file.
+		if linkTarget, lerr := p.fsys.Readlink(foundPath); lerr == nil && !filepath.IsAbs(linkTarget) {
+			return fmt.Errorf("promoting binary from %q to %q: %q is a relative symlink, which names another file once moved, and linking to it failed: %w",
+				foundPath, targetPath, foundPath, err)
 		}
 	}
-	if err := fsys.Rename(foundPath, targetPath); err != nil {
-		return "", "", fmt.Errorf("promoting binary from %q to %q: %w", foundPath, targetPath, err)
+	if err := p.fsys.Rename(foundPath, targetPath); err != nil {
+		return fmt.Errorf("promoting binary from %q to %q: %w", foundPath, targetPath, err)
 	}
-	return movedFrom, movedTo, nil
+	return nil
 }
 
 // clearBinaryName frees destDir/binName for the promoted binary and returns where relPath
@@ -641,13 +681,6 @@ func clearBinaryName(fsys fs.FS, destDir, binName, relPath string) (newRelPath, 
 		relPath = filepath.Join(filepath.Base(rootDir), rest)
 	}
 	return relPath, targetPath, rootDir, nil
-}
-
-func makeExecutable(fsys fs.FS, path string) error {
-	if err := fsys.Chmod(path, 0755); err != nil {
-		return fmt.Errorf("making %q executable: %w", path, err)
-	}
-	return nil
 }
 
 func formatDisplayPath(fsys fs.FS, path string) string {
