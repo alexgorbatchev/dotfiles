@@ -2,12 +2,10 @@ package installer
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"sync"
+	"slices"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
@@ -34,19 +32,28 @@ type giteaRelease struct {
 	Assets     []giteaAsset `json:"assets"`
 }
 
+func (r giteaRelease) tag() string {
+	return r.TagName
+}
+
+// clone returns a copy of r that shares no assets with it.
+func (r giteaRelease) clone() giteaRelease {
+	r.Assets = slices.Clone(r.Assets)
+	return r
+}
+
 type GiteaInstaller struct {
-	log          *logger.Logger
-	runner       exec.CommandRunner
-	fsys         fs.FS
-	dl           *downloader.Downloader
-	extractor    *archive.Extractor
-	sysCtx       *SystemContext
-	httpClient   *http.Client
-	cacheMu      sync.Mutex
-	releaseCache map[string]*giteaRelease
-	CacheDir     string        // Cache directory for release metadata
-	CacheTTL     time.Duration // Time-to-live for cached release metadata
-	BinDir       string        // Destination folder
+	log        *logger.Logger
+	runner     exec.CommandRunner
+	fsys       fs.FS
+	dl         *downloader.Downloader
+	extractor  *archive.Extractor
+	sysCtx     *SystemContext
+	httpClient *http.Client
+	releases   releaseCache[giteaRelease]
+	CacheDir   string        // Cache directory for release metadata
+	CacheTTL   time.Duration // Time-to-live for cached release metadata
+	BinDir     string        // Destination folder
 }
 
 func NewGiteaInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *GiteaInstaller {
@@ -99,14 +106,10 @@ func giteaTarget(tool *config.ToolConfig) (giteaReleaseTarget, error) {
 	}, nil
 }
 
-// cacheKey names the cache entry for a release of this target. "latest" means a
-// different release once prereleases are allowed, so the two are kept apart.
+// cacheKey names the cache entry for a release of this target, so an entry is only
+// reused for the same instance, token and prerelease setting.
 func (t giteaReleaseTarget) cacheKey(version string) string {
-	key := t.instanceURL + "/" + t.repo + "@" + version
-	if version == "latest" && t.prerelease {
-		key += "?prerelease"
-	}
-	return key
+	return releaseCacheKey(t.instanceURL, t.repo, version, t.prerelease, t.token)
 }
 
 func (t giteaReleaseTarget) request(version string) giteaReleaseRequest {
@@ -117,67 +120,16 @@ func (g *GiteaInstaller) getCachedRelease(ctx context.Context, key string) (*git
 	if config.IsOverwriteEnabled(ctx) {
 		return nil, false
 	}
-
-	g.cacheMu.Lock()
-	if g.releaseCache != nil {
-		if rel, ok := g.releaseCache[key]; ok {
-			g.cacheMu.Unlock()
-			relCopy := *rel
-			return &relCopy, true
-		}
-	}
-	g.cacheMu.Unlock()
-
-	if g.fsys != nil && g.CacheDir != "" {
-		h := md5.Sum([]byte(key))
-		cacheFile := filepath.Join(g.CacheDir, fmt.Sprintf("%x.json", h))
-		if exists, err := g.fsys.Exists(cacheFile); err == nil && exists {
-			if info, err := g.fsys.Stat(cacheFile); err == nil {
-				ttl := g.CacheTTL
-				if ttl <= 0 {
-					ttl = time.Hour
-				}
-				if time.Since(info.ModTime()) < ttl {
-					if data, err := g.fsys.ReadFile(cacheFile); err == nil {
-						var rel giteaRelease
-						if err := json.Unmarshal(data, &rel); err == nil && rel.TagName != "" {
-							g.cacheMu.Lock()
-							if g.releaseCache == nil {
-								g.releaseCache = make(map[string]*giteaRelease)
-							}
-							g.releaseCache[key] = &rel
-							g.cacheMu.Unlock()
-							relCopy := rel
-							return &relCopy, true
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return nil, false
+	return g.releases.get(g.releaseStore(), key)
 }
 
 func (g *GiteaInstaller) setCachedRelease(key string, rel *giteaRelease) {
-	if rel == nil {
-		return
-	}
-	g.cacheMu.Lock()
-	if g.releaseCache == nil {
-		g.releaseCache = make(map[string]*giteaRelease)
-	}
-	g.releaseCache[key] = rel
-	g.cacheMu.Unlock()
+	g.releases.set(g.releaseStore(), key, rel)
+}
 
-	if g.fsys != nil && g.CacheDir != "" {
-		h := md5.Sum([]byte(key))
-		cacheFile := filepath.Join(g.CacheDir, fmt.Sprintf("%x.json", h))
-		_ = g.fsys.MkdirAll(g.CacheDir, 0755)
-		if data, err := json.Marshal(rel); err == nil {
-			_ = g.fsys.WriteFile(cacheFile, data, 0644)
-		}
-	}
+// releaseStore is where the release cache keeps entries for the current settings.
+func (g *GiteaInstaller) releaseStore() releaseCacheStore {
+	return releaseCacheStore{fsys: g.fsys, dir: g.CacheDir, ttl: g.CacheTTL}
 }
 
 func (g *GiteaInstaller) Name() string {

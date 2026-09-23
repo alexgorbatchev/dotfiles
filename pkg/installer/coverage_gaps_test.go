@@ -2,11 +2,8 @@ package installer
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -78,7 +75,7 @@ func TestIsMacPackageAsset(t *testing.T) {
 // whenever caching is off, the entry has aged out, or the run was asked to
 // overwrite what it finds.
 func TestGitHubGetCachedRelease(t *testing.T) {
-	const repo, version = "acme/tool", "v1.0.0"
+	key := releaseCacheKey(githubAPIBaseURL, "acme/tool", "v1.0.0", false, "")
 
 	newInstaller := func(t *testing.T) (*GitHubInstaller, fs.FS) {
 		t.Helper()
@@ -99,7 +96,7 @@ func TestGitHubGetCachedRelease(t *testing.T) {
 		if err := memFS.MkdirAll(g.CacheDir, 0755); err != nil {
 			t.Fatalf("creating cache dir: %v", err)
 		}
-		if err := memFS.WriteFile(diskCachePath(g.CacheDir, repo+"@"+version), data, 0644); err != nil {
+		if err := memFS.WriteFile(diskCachePath(g.CacheDir, key), data, 0644); err != nil {
 			t.Fatalf("writing cache file: %v", err)
 		}
 	}
@@ -107,7 +104,7 @@ func TestGitHubGetCachedRelease(t *testing.T) {
 	t.Run("caching disabled", func(t *testing.T) {
 		g, _ := newInstaller(t)
 		g.CacheEnabled = false
-		if _, ok := g.getCachedRelease(context.Background(), repo, version); ok {
+		if _, ok := g.getCachedRelease(context.Background(), key); ok {
 			t.Error("a disabled cache returned a hit")
 		}
 	})
@@ -116,15 +113,15 @@ func TestGitHubGetCachedRelease(t *testing.T) {
 		g, memFS := newInstaller(t)
 		writeDiskCache(t, g, memFS, "v1.0.0")
 		ctx := config.WithOverwrite(context.Background(), true)
-		if _, ok := g.getCachedRelease(ctx, repo, version); ok {
+		if _, ok := g.getCachedRelease(ctx, key); ok {
 			t.Error("a run asked to overwrite still reused a cached release")
 		}
 	})
 
 	t.Run("in-memory hit", func(t *testing.T) {
 		g, _ := newInstaller(t)
-		g.setCachedRelease(repo, version, &githubRelease{TagName: "v1.0.0"})
-		rel, ok := g.getCachedRelease(context.Background(), repo, version)
+		g.setCachedRelease(key, &githubRelease{TagName: "v1.0.0"})
+		rel, ok := g.getCachedRelease(context.Background(), key)
 		if !ok {
 			t.Fatal("expected a hit from the in-memory cache")
 		}
@@ -136,7 +133,7 @@ func TestGitHubGetCachedRelease(t *testing.T) {
 	t.Run("disk hit populates memory", func(t *testing.T) {
 		g, memFS := newInstaller(t)
 		writeDiskCache(t, g, memFS, "v1.0.0")
-		rel, ok := g.getCachedRelease(context.Background(), repo, version)
+		rel, ok := g.getCachedRelease(context.Background(), key)
 		if !ok {
 			t.Fatal("expected a hit from the on-disk cache")
 		}
@@ -144,33 +141,31 @@ func TestGitHubGetCachedRelease(t *testing.T) {
 			t.Errorf("TagName = %q, want v1.0.0", rel.TagName)
 		}
 		g.fsys = nil // the second answer can only come from memory now
-		if _, ok := g.getCachedRelease(context.Background(), repo, version); !ok {
+		if _, ok := g.getCachedRelease(context.Background(), key); !ok {
 			t.Error("the disk hit was not promoted into the in-memory cache")
 		}
 	})
 
 	t.Run("expired disk entry", func(t *testing.T) {
 		g, memFS := newInstaller(t)
-		g.CacheTTL = time.Nanosecond
 		writeDiskCache(t, g, memFS, "v1.0.0")
-		time.Sleep(time.Millisecond)
-		if _, ok := g.getCachedRelease(context.Background(), repo, version); ok {
+		g.releases.now = func() time.Time { return time.Now().Add(g.CacheTTL) }
+		if _, ok := g.getCachedRelease(context.Background(), key); ok {
 			t.Error("an entry older than the TTL was reused")
 		}
 	})
 
 	t.Run("miss when nothing is cached", func(t *testing.T) {
 		g, _ := newInstaller(t)
-		if _, ok := g.getCachedRelease(context.Background(), repo, version); ok {
+		if _, ok := g.getCachedRelease(context.Background(), key); ok {
 			t.Error("expected a miss")
 		}
 	})
 }
 
-// diskCachePath mirrors how getCachedRelease names an on-disk entry.
+// diskCachePath is where getCachedRelease looks for an on-disk entry.
 func diskCachePath(cacheDir, cacheKey string) string {
-	h := md5.Sum([]byte(cacheKey))
-	return filepath.Join(cacheDir, fmt.Sprintf("%x.json", h))
+	return releaseCacheStore{dir: cacheDir}.path(cacheKey)
 }
 
 // The Gitea installer keeps the same two-level release cache as the GitHub one:
@@ -235,9 +230,8 @@ func TestGiteaGetCachedRelease(t *testing.T) {
 
 	t.Run("expired disk entry", func(t *testing.T) {
 		g, memFS := newInstaller(t)
-		g.CacheTTL = time.Nanosecond
 		writeDiskCache(t, g, memFS, "v2.0.0")
-		time.Sleep(time.Millisecond)
+		g.releases.now = func() time.Time { return time.Now().Add(g.CacheTTL) }
 		if _, ok := g.getCachedRelease(context.Background(), key); ok {
 			t.Error("an entry older than the TTL was reused")
 		}
