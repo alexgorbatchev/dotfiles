@@ -43,7 +43,7 @@ var stateGenerateCmd = &cobra.Command{
 		// Tool completion failures are logged rather than fatal, and the CLI's own
 		// completion follows the same rule: a broken Tab must not fail generation.
 		if err := writeCLICompletion(ctx, services); err != nil {
-			log.Error("Failed to write CLI completion", err)
+			log.Error(logger.Message(fmt.Sprintf("Failed to write CLI completion: %v", err)))
 		}
 
 		// Source the generated scripts from the profiles named by features.shellInstall.
@@ -86,7 +86,7 @@ func injectProfile(log *logger.Logger, inj *shellinit.Injector, opts shellinit.I
 	case errors.Is(err, shellinit.ErrProfileNotFound):
 		plog.Warn(logger.Message(fmt.Sprintf("Profile not found, skipping; create it and rerun \"dotfiles generate\" to have it source %s", opts.ScriptPath)))
 	case err != nil:
-		plog.Error("Failed shell profile injection", err)
+		plog.Error(logger.Message(fmt.Sprintf("Failed shell profile injection: %v", err)))
 	}
 }
 

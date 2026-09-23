@@ -111,7 +111,7 @@ var toolUpdateCmd = &cobra.Command{
 	ValidArgsFunction: completeToolNames,
 	Long: `Evaluates tool versions and updates software packages if newer versions are available.
 
-When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version, with .version() or a version install parameter, is never updated, even with --force; set that version to "latest" to enable updates. When a tool is named, an update check whose upstream query fails makes its update fail, even with --force; "dotfiles tool install --force <tool>" reinstalls without checking.`,
+When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version, with .version() or a version install parameter, is never updated, even with --force; set that version to "latest" to enable updates. An update check whose upstream query fails is not bypassed by --force: a named tool's update fails, and updating everything reports the failure and moves on to the next tool without reinstalling it; "dotfiles tool install --force <tool>" reinstalls without checking.`,
 	Example: `  # Update all installed tools
   dotfiles tool update
 
@@ -144,28 +144,43 @@ When run without arguments, checks all installed tools for updates and installs 
 
 		if len(args) == 0 {
 			logs.progress.Info(logger.Message("Checking all configured tools for updates..."))
+			// Only a tool with no installation method, which has nothing to update, or
+			// no installation record is skipped without a word. Every other tool this
+			// cannot update is reported with the cause, and the run goes on with the next
+			// tool.
 			for _, targetTool := range services.ToolConfigs {
+				if targetTool.InstallationMethod == "" {
+					continue
+				}
+				toolLogs := logs.withTag(targetTool.Name)
 				installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
-				if err != nil || installed == nil {
-					continue // skip uninstalled
+				if err != nil {
+					toolLogs.report.Error(installationReadFailed(err))
+					continue
+				}
+				if installed == nil {
+					continue
 				}
 
-				toolLogs := logs.withTag(targetTool.Name)
 				if refusePinned(toolLogs.report, targetTool) {
 					continue
 				}
 
+				// The load rejects a method no installer handles, so a lookup that fails
+				// here is an internal error, as in tool check.
 				inst, err := services.Installers.Get(targetTool.InstallationMethod)
 				if err != nil {
-					continue
+					return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
 				}
 
 				toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
 				configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
+				// A failed check is not bypassed by --force, as for a named tool.
 				res, err := inst.CheckUpdate(ctx, targetTool)
 				plan, err := orchestrator.PlanUpdate(targetTool, installed.Version, res, err, force)
 				if err != nil {
+					toolLogs.report.Error(updateCheckFailed(err))
 					continue
 				}
 
@@ -183,7 +198,7 @@ When run without arguments, checks all installed tools for updates and installs 
 					announceUpdate(toolLogs.report, targetTool, plan)
 					recorded, err := services.Orchestrator.ApplyUpdate(ctx, targetTool, services.ProjectConfig, plan)
 					if err != nil {
-						toolLogs.report.Error(logger.Message("Updating"+plan.TargetDescription()+" failed"), err)
+						toolLogs.report.Error(logger.Message(fmt.Sprintf("Updating%s failed: %v", plan.TargetDescription(), err)))
 						continue
 					}
 					toolLogs.report.Info(logger.Message(plan.Completion(recorded)))
@@ -200,7 +215,7 @@ When run without arguments, checks all installed tools for updates and installs 
 
 			installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 			if err != nil {
-				return fmt.Errorf("tool %q is not installed (no database record found): %w", toolName, err)
+				return fmt.Errorf("reading the installation of %q: %w", toolName, err)
 			}
 			if installed == nil {
 				if len(args) == 1 {

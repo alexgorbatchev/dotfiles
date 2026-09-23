@@ -170,7 +170,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	// machine installs, so it is built from every tool: a disabled or hostname-scoped
 	// tool's binaries are still legitimate dependsOn() targets.
 	if err := o.SyncTypeScriptTypes(ctx, tools, projCfg); err != nil {
-		o.logger.Error("Syncing TypeScript types warning", err)
+		o.logger.Error(logger.Message(fmt.Sprintf("Syncing TypeScript types failed: %v", err)))
 	}
 
 	o.WarnConflicts(sorted, projCfg)
@@ -332,7 +332,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	// 6. Generate completions
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
-		o.logger.WithTag(tool.Name).Error("Failed to generate completions", err)
+		o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Failed to generate completions: %v", err)))
 	}
 
 	return nil

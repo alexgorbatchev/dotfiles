@@ -15,7 +15,7 @@ Type-safe structured logger and tab-delimited handler for dotfiles CLI output.
 ## Local gotchas
 
 - Unpadded level strings break column alignment -> always pad level strings to 7 characters left-aligned (`%-7s`).
-- Logger args are positional values, not slog key/value pairs: `"error", err` prints the literal `error`, and outside `--trace` `filterArgs` drops any `error` arg whose text names no `.tool.ts` location (`FormatErrorForUser`) -> fold a cause the user must see into the `logger.Message` with `%v`.
+- Logger args are positional values, not slog key/value pairs: `"error", err` prints the literal `error`, and outside `--trace` `filterArgs` drops any `error` arg whose text names no `.tool.ts` location (`FormatErrorForUser`) -> fold the cause into the `logger.Message` with `%v` (its text keeps any tool-file location) and never pass an `error` as an arg in production code. `callsites_test.go` type-checks `cmd/`, `pkg/` and `scripts/` for darwin, linux and windows and fails on any call passing a value that is or may hold an `error` (including `any` and spread arguments). It needs the embedded assets `just prepare` generates, like every Go build in this module. `filterArgs` keeps v1's filtering unchanged; production code gets tool-file locations from the `%v` text instead of an error argument.
 
 ## Boundaries
 

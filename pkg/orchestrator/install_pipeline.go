@@ -81,7 +81,7 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 	}
 
 	if err := o.SyncTypeScriptTypes(ctx, tools, projCfg); err != nil {
-		o.logger.Error("Syncing TypeScript types warning", err)
+		o.logger.Error(logger.Message(fmt.Sprintf("Syncing TypeScript types failed: %v", err)))
 	}
 
 	o.WarnConflicts(sorted, projCfg)
@@ -459,7 +459,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	// 6. Generate completions (matches TS reconcileToolArtifacts)
 	if err := o.GenerateCompletionsForTool(ctx, tool, projCfg); err != nil {
-		o.logger.WithTag(tool.Name).Error("Failed to generate completions", err)
+		o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Failed to generate completions: %v", err)))
 	}
 
 	return nil
@@ -599,7 +599,7 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 	for _, toolName := range orphanedTools {
 		o.logger.WithTag(toolName).Info(logger.Message("Cleaning up orphaned tool..."))
 		if err := o.cleanupToolArtifacts(ctx, toolName, projCfg); err != nil {
-			o.logger.WithTag(toolName).Error("Failed to cleanup orphaned tool", err)
+			o.logger.WithTag(toolName).Error(logger.Message(fmt.Sprintf("Failed to cleanup orphaned tool: %v", err)))
 		}
 	}
 
