@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -153,6 +154,43 @@ RECURSION_ENV_VAR="DOTFILES_INSTALLING_MYTOOL"`,
 				}
 			}
 		})
+	}
+}
+
+// TestGenerator_GenerateUpdateDelegatesReporting pins that a shim's @update hands the
+// whole answer to `tool update --shim-mode`. The shim cannot know whether the tool is
+// pinned, already current or about to move to a new release, so a line of its own,
+// such as the "Updating <tool> to latest version..." it used to print, would claim an
+// update the command may refuse.
+func TestGenerator_GenerateUpdateDelegatesReporting(t *testing.T) {
+	mem := fs.NewMemFS()
+	if err := mem.MkdirAll("/home/user/bin", 0755); err != nil {
+		t.Fatalf("creating shim directory: %v", err)
+	}
+	cfg := Config{
+		ToolName:       "mytool",
+		BinaryName:     "mytool",
+		BinaryPath:     "/opt/mytool/bin/mytool",
+		CliCommand:     "dotfiles",
+		ConfigFilePath: "dotfiles.config.ts",
+		UsageLogPath:   "usage.log",
+	}
+	if err := NewGenerator(mem).Generate("/home/user/bin/mytool", cfg); err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+	content, err := mem.ReadFile("/home/user/bin/mytool")
+	if err != nil {
+		t.Fatalf("reading generated shim: %v", err)
+	}
+
+	const updateBranch = `if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
+  # tool update --shim-mode reports what became of the tool, so the shim adds nothing.
+  # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
+  eval "$GENERATOR_CLI_EXECUTABLE" tool update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+  exit $?
+fi`
+	if !strings.Contains(string(content), updateBranch) {
+		t.Errorf("generated shim's @update branch is not\n%s\n\nshim:\n%s", updateBranch, content)
 	}
 }
 

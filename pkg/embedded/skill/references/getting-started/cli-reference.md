@@ -118,7 +118,12 @@ _(Alias: `u`, Root shortcuts: `dotfiles update`, `dotfiles u`)_
 
 Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed are skipped during batch updates.
 
-A tool whose configuration pins a version with `.version()` (any value other than `"latest"`) is not updated, whatever its installation method. This holds for named tools, for updating everything, for `<binary> @update` from a shim, and for the dashboard's update action, with or without `--force`. Nothing is checked upstream or installed for the tool, and `update` reports ``Tool "<tool>" is pinned to version `<version>`. Set version to "latest" in the tool config to enable updates``; the dashboard returns the same message as its error, and `--shim-mode` suppresses it like every other status message. [`tool check`](#dotfiles-tool-check-tool) still reports a newer upstream release for a pinned tool, since reporting installs nothing.
+A tool whose configuration pins a version is not updated, whatever its installation method. A version is pinned when the one its installation asks for is anything other than `"latest"`, and it is named in one of two places:
+
+- `.version()`, which counts as a pin whatever the installation method. `update` reports ``Tool "<tool>" is pinned to version `<version>`. Set version to "latest" in the tool config to enable updates``.
+- An install parameter, for the methods that take one: `version` for `github-release`, `gitea-release`, `apt`, `dnf`, `pacman` and `npm`, and `source.version` for `dmg` and `pkg` installed from a GitHub release. The parameter takes precedence over `.version()`, so when both are set it is the parameter that pins the tool, and `update` names it: ``Tool "<tool>" is pinned to version `<version>` by its "<parameter>" install parameter. Set "<parameter>" to "latest" in the tool config to enable updates``.
+
+This holds for named tools, for updating everything, for `<binary> @update` from a shim, and for the dashboard's update action, with or without `--force`. Nothing is checked upstream or installed for the tool, `update` exits successfully, and the dashboard returns the same message as its error. [`tool check`](#dotfiles-tool-check-tool) still reports a newer upstream release for a pinned tool, since reporting installs nothing.
 
 Some installation methods have no way to learn the latest version upstream: `manual`, `curl-binary`, `curl-tar`, `curl-script`, `zsh-plugin`, and `dmg`/`pkg` downloaded from a direct URL rather than a GitHub release. Nothing can tell whether such a tool is current, so `update` never reports it as up to date:
 
@@ -128,7 +133,7 @@ Some installation methods have no way to learn the latest version upstream: `man
 Reinstalling such a tool records the version the installer detects, such as through the `versionArgs` of [`curl-script`](../installation-methods/curl-script.md). If the installer detects none, the reinstall records a new `YYYY-MM-DD-HH-MM-SS` timestamp. It never records the version the previous installation left.
 
 - `-f, --force`: Re-download and reinstall even if already up to date.
-- `--shim-mode`: Quiet output, used by generated shims running `<binary> @update`.
+- `--shim-mode`: Used by generated shims running `<binary> @update`, which print nothing of their own. `update` then reports only what became of the tool: that it is pinned, already up to date, moving to a new release, updated, or reinstalled without an update check. The progress of checking and installing is left out, and errors are reported as always.
 
 #### `dotfiles tool check [tool...]`
 

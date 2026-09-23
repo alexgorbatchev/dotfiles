@@ -22,6 +22,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/version"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
@@ -288,6 +289,31 @@ func TestGetTargetVersion(t *testing.T) {
 	}
 	if got := orch.getTargetVersion(t4); got != "v2.3.4" {
 		t.Errorf("getTargetVersion(apt v2.3.4) = %q, want 'v2.3.4'", got)
+	}
+
+	// 5. The target is the version the installer installs (config.ToolConfig.
+	// RequestedVersion): an install parameter the method reads wins over .version(),
+	// and .version() is the fallback for every method, apt included.
+	ver0 := "v0.2.0"
+	for _, tt := range []struct {
+		name string
+		tool *config.ToolConfig
+		want string
+	}{
+		{"github-release version parameter", &config.ToolConfig{InstallationMethod: "github-release", Version: &verLatest, InstallParams: map[string]any{"version": "v0.1.0"}}, "v0.1.0"},
+		{"the parameter wins over .version()", &config.ToolConfig{InstallationMethod: "gitea-release", Version: &ver0, InstallParams: map[string]any{"version": "v0.1.0"}}, "v0.1.0"},
+		{"dmg github-release source version", &config.ToolConfig{InstallationMethod: "dmg", InstallParams: map[string]any{"source": map[string]any{"type": "github-release", "repo": "o/r", "version": "v3.0.0"}}}, "v3.0.0"},
+		{"an apt version with a tilde is exact", &config.ToolConfig{InstallationMethod: "apt", InstallParams: map[string]any{"version": "1.0~rc1-1"}}, version.CleanVersion("1.0~rc1-1")},
+		{"apt falls back to .version()", &config.ToolConfig{InstallationMethod: "apt", Version: &ver0}, "v0.2.0"},
+		{"a parameter of latest overrides a .version() pin", &config.ToolConfig{InstallationMethod: "npm", Version: &ver0, InstallParams: map[string]any{"version": "latest"}}, ""},
+		{"a parameter range is not an exact target", &config.ToolConfig{InstallationMethod: "npm", InstallParams: map[string]any{"version": "^3.0.0"}}, ""},
+		{"a parameter the method never reads is no target", &config.ToolConfig{InstallationMethod: "cargo", Version: &verLatest, InstallParams: map[string]any{"version": "2.0.0"}}, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := orch.getTargetVersion(tt.tool); got != tt.want {
+				t.Errorf("getTargetVersion() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

@@ -20,7 +20,6 @@ import (
 type macPackageSource struct {
 	url          string
 	repo         string
-	version      string
 	assetPattern string
 	ghCli        bool
 	prerelease   bool
@@ -38,7 +37,6 @@ func parseMacPackageSource(params map[string]interface{}) (macPackageSource, err
 	if sourceMap, ok := params["source"].(map[string]interface{}); ok {
 		if getStringParam(sourceMap, "type", "") == "github-release" {
 			src.repo = getStringParam(sourceMap, "repo", "")
-			src.version = getStringParam(sourceMap, "version", "")
 			src.assetPattern = getStringParam(sourceMap, "assetPattern", "")
 			src.ghCli = getBoolParam(sourceMap, "ghCli", false)
 			src.prerelease = getBoolParam(sourceMap, "prerelease", false)
@@ -116,10 +114,7 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 	viaGhCli := false
 
 	if src.repo != "" {
-		version := src.version
-		if version == "" && tool.Version != nil {
-			version = *tool.Version
-		}
+		version := tool.RequestedVersion()
 		if version == "" {
 			version = "latest"
 		}
@@ -229,8 +224,8 @@ func fileNameFromURL(rawURL string) string {
 
 // macPackageVersion decides the version an installed dmg/pkg reports: the
 // output of versionArgs run against binaryPath when configured, otherwise the
-// release tag, otherwise the version the configuration pinned.
-func macPackageVersion(ctx context.Context, runner exec.CommandRunner, tool *config.ToolConfig, binaryPath, releaseTag, sourceVersion string) string {
+// release tag, otherwise the version the configuration pinned (RequestedVersion).
+func macPackageVersion(ctx context.Context, runner exec.CommandRunner, tool *config.ToolConfig, binaryPath, releaseTag string) string {
 	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
 	if len(versionArgs) > 0 && binaryPath != "" {
 		versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
@@ -241,11 +236,8 @@ func macPackageVersion(ctx context.Context, runner exec.CommandRunner, tool *con
 	if releaseTag != "" {
 		return releaseTag
 	}
-	if sourceVersion != "" && sourceVersion != "latest" {
-		return sourceVersion
-	}
-	if tool.Version != nil && *tool.Version != "latest" {
-		return *tool.Version
+	if version := tool.RequestedVersion(); version != "latest" {
+		return version
 	}
 	return ""
 }

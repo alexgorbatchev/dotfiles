@@ -9,6 +9,7 @@ Wrapper script shim generator.
 ## Local conventions
 
 - Generate executable shell wrappers that record usage and invoke binaries or trigger auto-installs.
+- A shim's `@update` runs `tool update --shim-mode` and prints nothing of its own: only the CLI knows whether the tool is pinned, current or updated, and `--shim-mode` reports that outcome.
 
 ## Local gotchas
 

@@ -201,7 +201,7 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	return &InstallResult{
 		Binaries: []string{finalBinPath},
-		Version:  macPackageVersion(ctx, d.runner, tool, finalBinPath, payload.releaseTag, src.version),
+		Version:  macPackageVersion(ctx, d.runner, tool, finalBinPath, payload.releaseTag),
 	}, nil
 }
 

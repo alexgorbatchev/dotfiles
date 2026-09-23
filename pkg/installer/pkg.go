@@ -199,7 +199,7 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,
-		Version:  macPackageVersion(ctx, p.runner, tool, mainBinary, payload.releaseTag, src.version),
+		Version:  macPackageVersion(ctx, p.runner, tool, mainBinary, payload.releaseTag),
 	}, nil
 }
 

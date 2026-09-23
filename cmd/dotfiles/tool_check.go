@@ -126,16 +126,14 @@ var toolCheckCmd = &cobra.Command{
 }
 
 // checkedLocalVersion is the version a check compares upstream against: the installed
-// one when the registry has it, otherwise the version the configuration names.
+// one when the registry has it, otherwise the version the configuration asks for
+// (config.ToolConfig.RequestedVersion).
 func checkedLocalVersion(ctx context.Context, services *Services, tool *config.ToolConfig) string {
 	installed, _ := services.Registry.GetToolInstallation(ctx, tool.Name)
 	if installed != nil && installed.Version != "" {
 		return installed.Version
 	}
-	if tool.Version != nil {
-		return *tool.Version
-	}
-	return ""
+	return tool.RequestedVersion()
 }
 
 // logCheckResult reports one tool's check on the diagnostic stream.

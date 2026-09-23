@@ -27,6 +27,9 @@ export default defineTool((install) =>
   - `assetSelector` goes inside `source`, next to the repository it selects from, and
     behaves as it does for `github-release`: see
     [github-release › With an Asset Selector](github-release.md#with-an-asset-selector).
+  - A `github-release` source's `version` takes precedence over `.version()`, and
+    `dotfiles update` refuses a tool it pins
+    ([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
 - `target` (optional): target volume for `installer -target`. Defaults to `'/'`.
 - `binaryPath` (optional): absolute path to the primary installed binary. If omitted, each declared `.bin()` name is resolved from `PATH` after install.
 - `versionArgs` (optional): args used for version detection.

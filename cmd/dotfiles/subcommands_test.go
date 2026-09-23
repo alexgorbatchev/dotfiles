@@ -1712,13 +1712,31 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		)
 	})
 
-	t.Run("shim mode is silent", func(t *testing.T) {
+	// The shim prints nothing of its own for @update, so shim mode reports what became
+	// of the tool and nothing of the checking and installing that led there.
+	t.Run("shim mode reports the outcome without the progress", func(t *testing.T) {
 		out, err := p.run("tool", "update", "--shim-mode", "manual-versioned")
 		if err != nil {
 			t.Fatalf("tool update --shim-mode: %v\n%s", err, out.Combined)
 		}
-		if out.Combined != "" {
-			t.Fatalf("expected no output in shim mode, got:\n%s", out.Combined)
+		if out.Stdout != "" {
+			t.Errorf("stdout = %q, want nothing in shim mode", out.Stdout)
+		}
+		lines := strings.Split(strings.TrimSpace(out.Stderr), "\n")
+		if len(lines) != 2 ||
+			!strings.Contains(lines[0], `[update] [manual-versioned] Update check not supported for installer "manual", performing regular install instead`) ||
+			!strings.Contains(lines[1], "[update] [manual-versioned] Successfully updated to version") {
+			t.Fatalf("stderr in shim mode = %q, want only the unsupported-check warning and the result", out.Stderr)
+		}
+	})
+
+	t.Run("shim mode reports an up to date tool", func(t *testing.T) {
+		out, err := p.run("tool", "update", "--shim-mode", "same")
+		if err != nil {
+			t.Fatalf("tool update --shim-mode same: %v\n%s", err, out.Combined)
+		}
+		if got := strings.TrimSpace(out.Stderr); !strings.Contains(got, "[update] [same] Already up to date (v0.1.0") || strings.Contains(got, "\n") {
+			t.Fatalf("stderr in shim mode = %q, want only the up to date report", out.Stderr)
 		}
 	})
 
@@ -1828,36 +1846,6 @@ func TestResolveUpdate_TargetVersion(t *testing.T) {
 				t.Fatalf("resolveUpdate target = %q, want %q", got, tt.want)
 			}
 		})
-	}
-}
-
-// TestWithTargetVersion pins that the version an update installs is set on a copy of
-// the tool's configuration: the loaded configuration, which later mentions of the tool
-// read and refuse when pinned, keeps the version and install parameters the user wrote.
-func TestWithTargetVersion(t *testing.T) {
-	latest := "latest"
-	loaded := &config.ToolConfig{
-		Name:          "free",
-		Version:       &latest,
-		InstallParams: map[string]interface{}{"repo": "acme/free", "version": "latest"},
-	}
-
-	targeted := withTargetVersion(loaded, "v9.9.9")
-
-	if targeted.Version == nil || *targeted.Version != "v9.9.9" || targeted.InstallParams["version"] != "v9.9.9" {
-		t.Fatalf("targeted version = %v, installParams.version = %v, want v9.9.9 in both", targeted.Version, targeted.InstallParams["version"])
-	}
-	if targeted.InstallParams["repo"] != "acme/free" {
-		t.Errorf("targeted installParams.repo = %v, want the configured acme/free", targeted.InstallParams["repo"])
-	}
-	if *loaded.Version != "latest" {
-		t.Errorf("loaded version = %q, want the configured latest", *loaded.Version)
-	}
-	if loaded.InstallParams["version"] != "latest" {
-		t.Errorf("loaded installParams.version = %v, want the configured latest", loaded.InstallParams["version"])
-	}
-	if withTargetVersion(&config.ToolConfig{Name: "bare"}, "v1.0.0").InstallParams != nil {
-		t.Error("a tool without install parameters gained some")
 	}
 }
 
@@ -1991,6 +1979,13 @@ func pinnedUpdateMessage(toolName, version string) string {
 	return fmt.Sprintf("Tool %q is pinned to version `%s`. Set version to \"latest\" in the tool config to enable updates", toolName, version)
 }
 
+// pinnedByInstallParamMessage is what update reports for a tool whose `version` install
+// parameter pins it: the parameter, which the installer honours over .version(), is
+// the setting that enables updates.
+func pinnedByInstallParamMessage(toolName, version string) string {
+	return fmt.Sprintf("Tool %q is pinned to version `%s` by its \"version\" install parameter. Set \"version\" to \"latest\" in the tool config to enable updates", toolName, version)
+}
+
 // TestUpdateCommand_RefusesPinnedTools is the regression test for update replacing a
 // .version() pin with the latest upstream release. As in v1, a pinned tool is refused
 // before anything is checked or installed, whether it is named, updated with everything
@@ -2001,21 +1996,35 @@ func TestUpdateCommand_RefusesPinnedTools(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	const repo = "acme/update-pinned"
 	newReleaseServer(t, map[string]mockRelease{
-		repo: {Tag: "v9.9.9", Binaries: []string{"pinned", "free"}},
+		repo: {Tag: "v9.9.9", Binaries: []string{"pinned", "param-pinned", "both-pinned", "free"}},
 	})
 	manualBin := filepath.Join(t.TempDir(), "manual-bin")
 	if err := os.WriteFile(manualBin, []byte("#!/bin/sh\necho manual\n"), 0755); err != nil {
 		t.Fatalf("writing manual binary: %v", err)
 	}
 
+	// param-pinned and both-pinned pin through the `version` install parameter that
+	// github-release reads, which wins over .version(); both-pinned is therefore pinned
+	// to its parameter's v0.1.0 rather than its .version() of v0.2.0.
 	p := newE2EProject(t, fmt.Sprintf(`
 		"pinned": {"name": "pinned", "version": "v0.1.0", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q}},
+		"param-pinned": {"name": "param-pinned", "version": "latest", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q, "version": "v0.1.0"}},
+		"both-pinned": {"name": "both-pinned", "version": "v0.2.0", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q, "version": "v0.1.0"}},
 		"manual-pinned": {"name": "manual-pinned", "version": "v1.0.0", "installationMethod": "manual", "installParams": {"binaryPath": %[3]q}},
 		"free": {"name": "free", "version": "latest", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q}}
 	`, repo, releaseAssetName, manualBin))
-	seeded := map[string]string{"pinned": "v0.1.0", "manual-pinned": "v1.0.0", "free": "v0.1.0"}
+	pins := []struct{ name, version, message string }{
+		{"pinned", "v0.1.0", pinnedUpdateMessage("pinned", "v0.1.0")},
+		{"param-pinned", "v0.1.0", pinnedByInstallParamMessage("param-pinned", "v0.1.0")},
+		{"both-pinned", "v0.1.0", pinnedByInstallParamMessage("both-pinned", "v0.1.0")},
+		{"manual-pinned", "v1.0.0", pinnedUpdateMessage("manual-pinned", "v1.0.0")},
+	}
 	seed := func(t *testing.T) {
 		t.Helper()
+		seeded := map[string]string{"free": "v0.1.0"}
+		for _, pin := range pins {
+			seeded[pin.name] = pin.version
+		}
 		for name, version := range seeded {
 			dir := filepath.Join(p.Root, "installed", name)
 			if err := os.MkdirAll(dir, 0755); err != nil {
@@ -2024,27 +2033,28 @@ func TestUpdateCommand_RefusesPinnedTools(t *testing.T) {
 			p.seedInstallation(t, name, version, dir)
 		}
 	}
+	mustKeepPin := func(t *testing.T, out commandOutput, name, version, message string) {
+		t.Helper()
+		tag := "[" + name + "] "
+		mustContain(t, "stderr", out.Stderr, tag+message)
+		mustNotContain(t, "stderr", out.Stderr,
+			tag+"Checking for updates", tag+"New version available", tag+"Force updating", tag+"Update check not supported",
+			tag+"Fetching release info", tag+"Successfully updated",
+		)
+		if rec := p.installation(t, name); rec == nil || rec.Version != version {
+			t.Fatalf("%s installation record after update = %+v, want the pinned %s", name, rec, version)
+		}
+	}
 	mustKeepPins := func(t *testing.T, out commandOutput) {
 		t.Helper()
-		mustContain(t, "stderr", out.Stderr,
-			"[pinned] "+pinnedUpdateMessage("pinned", "v0.1.0"),
-			"[manual-pinned] "+pinnedUpdateMessage("manual-pinned", "v1.0.0"),
-		)
-		mustNotContain(t, "stderr", out.Stderr,
-			"[pinned] Checking for updates", "[pinned] New version available", "[pinned] Force updating",
-			"[pinned] Fetching release info", "[pinned] Successfully updated",
-			"[manual-pinned] Update check not supported", "[manual-pinned] Force updating", "[manual-pinned] Successfully updated",
-		)
-		for _, name := range []string{"pinned", "manual-pinned"} {
-			if rec := p.installation(t, name); rec == nil || rec.Version != seeded[name] {
-				t.Fatalf("%s installation record after update = %+v, want the pinned %s", name, rec, seeded[name])
-			}
+		for _, pin := range pins {
+			mustKeepPin(t, out, pin.name, pin.version, pin.message)
 		}
 	}
 
 	for _, args := range [][]string{
-		{"tool", "update", "pinned", "manual-pinned"},
-		{"tool", "update", "--force", "pinned", "manual-pinned"},
+		{"tool", "update", "pinned", "param-pinned", "both-pinned", "manual-pinned"},
+		{"tool", "update", "--force", "pinned", "param-pinned", "both-pinned", "manual-pinned"},
 		{"tool", "update"},
 		{"tool", "update", "--force"},
 	} {
@@ -2082,34 +2092,43 @@ func TestUpdateCommand_RefusesPinnedTools(t *testing.T) {
 		mustNotContain(t, "stderr", out.Stderr, "is pinned to version")
 	})
 
-	t.Run("a shim's @update does not install over the pin", func(t *testing.T) {
-		seed(t)
-		out, err := p.run("tool", "update", "--shim-mode", "pinned")
-		if err != nil {
-			t.Fatalf("tool update --shim-mode pinned: %v\n%s", err, out.Combined)
-		}
-		if rec := p.installation(t, "pinned"); rec == nil || rec.Version != "v0.1.0" {
-			t.Fatalf("pinned installation record after @update = %+v, want the pinned v0.1.0", rec)
-		}
-	})
+	// A shim's @update prints nothing of its own, so the refusal is the only answer the
+	// user gets: shim mode must show it, succeed as the refusal does everywhere else,
+	// and leave out the progress it hides for every other outcome.
+	for _, pin := range pins {
+		t.Run("a shim's @update reports that "+pin.name+" is pinned", func(t *testing.T) {
+			seed(t)
+			out, err := p.run("tool", "update", "--shim-mode", pin.name)
+			if err != nil {
+				t.Fatalf("tool update --shim-mode %s: %v\n%s", pin.name, err, out.Combined)
+			}
+			mustKeepPin(t, out, pin.name, pin.version, pin.message)
+			mustNotContain(t, "stderr", out.Stderr, "Evaluating versions")
+			if out.Stdout != "" {
+				t.Errorf("stdout = %q, want nothing: the refusal is a status message", out.Stdout)
+			}
+		})
+	}
 }
 
 func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	// Real installers, so the GitHub release lookup and its cache are what is tested.
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	const repoAvail, repoUpd, repoSame, repoFail = "acme/cu-avail", "acme/cu-upd", "acme/cu-same", "acme/cu-fail"
-	newReleaseServer(t, map[string]mockRelease{repoAvail: {Tag: "v9.9.9"}, repoUpd: {Tag: "v9.9.9"}, repoSame: {Tag: "v0.1.0"}})
+	const repoSameParam = "acme/cu-same-param"
+	newReleaseServer(t, map[string]mockRelease{repoAvail: {Tag: "v9.9.9"}, repoUpd: {Tag: "v9.9.9"}, repoSame: {Tag: "v0.1.0"}, repoSameParam: {Tag: "v0.1.0"}})
 
 	p := newE2EProject(t, fmt.Sprintf(`
 		"avail": {"name": "avail", "installationMethod": "github-release", "installParams": {"repo": %q}},
 		"upd": {"name": "upd", "installationMethod": "github-release", "installParams": {"repo": %q}},
 		"same": {"name": "same", "version": "v0.1.0", "installationMethod": "github-release", "installParams": {"repo": %q}},
-		"fail": {"name": "fail", "installationMethod": "github-release", "installParams": {"repo": %q}},
-		"off": {"name": "off", "disabled": true, "installationMethod": "github-release", "installParams": {"repo": %q}},
+		"same-param": {"name": "same-param", "version": "latest", "installationMethod": "github-release", "installParams": {"repo": %[6]q, "version": "v0.1.0"}},
+		"fail": {"name": "fail", "installationMethod": "github-release", "installParams": {"repo": %[4]q}},
+		"off": {"name": "off", "disabled": true, "installationMethod": "github-release", "installParams": {"repo": %[5]q}},
 		"noinst": {"name": "noinst", "installationMethod": "bogus-installer"},
 		"hand": {"name": "hand", "installationMethod": "manual"},
 		"shell-only": {"name": "shell-only"}
-	`, repoAvail, repoUpd, repoSame, repoFail, repoAvail))
+	`, repoAvail, repoUpd, repoSame, repoFail, repoAvail, repoSameParam))
 	p.seedInstallation(t, "upd", "v0.1.0", filepath.Join(p.Root, "installed", "upd"))
 	p.seedInstallation(t, "hand", "v1.0.0", filepath.Join(p.Root, "installed", "hand"))
 
@@ -2122,6 +2141,9 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 			"avail: available (v9.9.9)\n",
 			"upd: update available (v0.1.0 -> v9.9.9)\n",
 			"same: up to date (v0.1.0)\n",
+			// An uninstalled tool is compared at the version its installation asks for,
+			// which its version install parameter names.
+			"same-param: up to date (v0.1.0)\n",
 			"hand: update check not supported (manual)\n",
 		)
 		mustNotContain(t, "stdout", out.Stdout, "off:", "noinst:", "shell-only:", "fail:", "hand: up to date")

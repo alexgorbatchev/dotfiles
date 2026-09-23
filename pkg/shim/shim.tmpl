@@ -39,7 +39,7 @@ fi
 
 # Check if the first argument is @update
 if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
-  echo "Updating $TOOL_NAME to latest version..."
+  # tool update --shim-mode reports what became of the tool, so the shim adds nothing.
   # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
   eval "$GENERATOR_CLI_EXECUTABLE" tool update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
   exit $?

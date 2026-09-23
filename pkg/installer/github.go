@@ -260,10 +260,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		return nil, fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", repo)
 	}
 
-	version := getStringParam(tool.InstallParams, "version", "")
-	if version == "" && tool.Version != nil {
-		version = *tool.Version
-	}
+	version := tool.RequestedVersion()
 	if version == "" {
 		version = "latest"
 	}

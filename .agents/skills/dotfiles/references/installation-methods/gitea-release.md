@@ -30,8 +30,11 @@ export default defineTool((install) =>
 A release is chosen either by tag or by resolving the latest one. Naming a tag
 selects that release; otherwise the newest published release is used, and
 `prerelease: true` widens that to the newest published release of either kind.
-Update checks always resolve the latest release, whether or not a tag is pinned,
-using the same `prerelease` and `token` settings as an install.
+Update checks (`dotfiles tool check`, the dashboard) always resolve the latest release,
+whether or not a tag is pinned, using the same `prerelease` and `token` settings as an
+install. `dotfiles update` refuses a tool whose tag is pinned, by `version` or by
+`.version()`, and installs nothing for it
+([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
 
 ## Examples
 

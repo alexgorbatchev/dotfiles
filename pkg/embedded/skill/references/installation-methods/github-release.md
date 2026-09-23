@@ -108,6 +108,8 @@ install("github-release", {
 }).bin("tool");
 ```
 
+The `version` parameter takes precedence over `.version()`, and `dotfiles update` refuses a tool it pins ([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
+
 ### Using gh CLI
 
 Use the `gh` CLI for API requests instead of fetch. Useful when working behind proxies or leveraging existing `gh` authentication:

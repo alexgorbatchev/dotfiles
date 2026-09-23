@@ -365,7 +365,7 @@ func giteaToolConfig(instanceURL string, params map[string]interface{}, toolVers
 	for k, v := range params {
 		installParams[k] = v
 	}
-	tool := &config.ToolConfig{Name: "tool", InstallParams: installParams}
+	tool := &config.ToolConfig{Name: "tool", InstallationMethod: "gitea-release", InstallParams: installParams}
 	if toolVersion != "" {
 		tool.Version = &toolVersion
 	}
