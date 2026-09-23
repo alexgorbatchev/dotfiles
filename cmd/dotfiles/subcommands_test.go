@@ -2503,7 +2503,7 @@ func TestCargoUpdateRefusesPinnedCrate(t *testing.T) {
 
 // TestCargoProjectSettingsReachTheInstaller pins that the project's cargo section
 // reaches the cargo installer on every CLI path that configures it: tool check asks
-// crates.io with cargo.userAgent and cargo.cratesIo.token, and the install tool update
+// crates.io with cargo.userAgent and cargo.cratesIo.token, and the install `tool update`
 // performs downloads the quickinstall archive with cargo.githubRelease.token, each
 // from the host MOCK_SERVER_PORT names.
 func TestCargoProjectSettingsReachTheInstaller(t *testing.T) {

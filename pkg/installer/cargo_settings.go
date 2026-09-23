@@ -28,8 +28,8 @@ const (
 
 // CargoEndpoint is one host of the project configuration's `cargo` section.
 type CargoEndpoint struct {
-	// Host is the root every request to this service is built on, without a trailing
-	// slash. Empty selects the public host.
+	// Host is the root every request to this service is built on; a trailing slash is
+	// ignored. Empty selects the public host.
 	Host string
 	// Token authenticates requests to Host, and is never sent anywhere else.
 	Token string
@@ -75,9 +75,12 @@ func SetCargoSettings(inst Installer, settings CargoSettings) {
 	}
 }
 
-// NewCargoSettings resolves the project configuration's `cargo` section, filling in
-// what it leaves out: the public hosts, the built-in User-Agent, and both response
-// caches on for a day under <generatedDir>/cache/cargo.
+// NewCargoSettings carries the project configuration's `cargo` section over as it is
+// written, and turns its cache keys into both response caches, on for a day under
+// <generatedDir>/cache/cargo unless the configuration says otherwise. Hosts and the
+// User-Agent the configuration leaves out stay empty: CargoInstaller fills those in
+// when it builds a request, so an installer nobody configured addresses the public
+// hosts too.
 func NewCargoSettings(projCfg *config.ProjectConfig) CargoSettings {
 	cargo := projCfg.Cargo
 	cacheDir := func(name string) string {
@@ -86,17 +89,13 @@ func NewCargoSettings(projCfg *config.ProjectConfig) CargoSettings {
 		}
 		return filepath.Join(projCfg.Paths.GeneratedDir, "cache", "cargo", name)
 	}
-	userAgent := cargo.UserAgent
-	if userAgent == "" {
-		userAgent = defaultCargoUserAgent
-	}
 	return CargoSettings{
-		CratesIO:       CargoEndpoint{Host: hostOrDefault(cargo.CratesIo.Host, defaultCratesIOHost), Token: cargo.CratesIo.Token},
+		CratesIO:       CargoEndpoint{Host: cargo.CratesIo.Host, Token: cargo.CratesIo.Token},
 		CratesIOCache:  newCargoCacheSettings(cargo.CratesIo.Cache, cacheDir("crates-io")),
-		GitHubRaw:      CargoEndpoint{Host: hostOrDefault(cargo.GithubRaw.Host, defaultGitHubRawHost), Token: cargo.GithubRaw.Token},
+		GitHubRaw:      CargoEndpoint{Host: cargo.GithubRaw.Host, Token: cargo.GithubRaw.Token},
 		GitHubRawCache: newCargoCacheSettings(cargo.GithubRaw.Cache, cacheDir("github-raw")),
-		GitHubRelease:  CargoEndpoint{Host: hostOrDefault(cargo.GithubRelease.Host, defaultGitHubReleaseHost), Token: cargo.GithubRelease.Token},
-		UserAgent:      userAgent,
+		GitHubRelease:  CargoEndpoint{Host: cargo.GithubRelease.Host, Token: cargo.GithubRelease.Token},
+		UserAgent:      cargo.UserAgent,
 	}
 }
 

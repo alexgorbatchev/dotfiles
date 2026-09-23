@@ -257,9 +257,10 @@ func TestCargoSettingsTokensStayOnTheirHost(t *testing.T) {
 }
 
 // TestNewCargoSettings pins how the cargo section of a project configuration becomes
-// the installer's settings, including the defaults a configuration that says nothing
-// gets: the public hosts, the built-in User-Agent, and both caches on for a day under
-// the generated directory.
+// the installer's settings: hosts, tokens and the User-Agent as written, and both
+// caches on for a day under the generated directory unless the configuration says
+// otherwise. The public hosts an empty configuration gets are pinned by
+// TestCargoSettingsDefaultURLs.
 func TestNewCargoSettings(t *testing.T) {
 	disabled := false
 	tests := []struct {
@@ -268,19 +269,15 @@ func TestNewCargoSettings(t *testing.T) {
 		want CargoSettings
 	}{
 		{
-			name: "an empty configuration selects the defaults",
+			name: "an empty configuration turns both caches on",
 			cfg:  config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/gen"}},
 			want: CargoSettings{
-				CratesIO:       CargoEndpoint{Host: "https://crates.io"},
 				CratesIOCache:  CargoCacheSettings{Enabled: true, TTL: 24 * time.Hour, Dir: filepath.Join("/gen", "cache", "cargo", "crates-io")},
-				GitHubRaw:      CargoEndpoint{Host: "https://raw.githubusercontent.com"},
 				GitHubRawCache: CargoCacheSettings{Enabled: true, TTL: 24 * time.Hour, Dir: filepath.Join("/gen", "cache", "cargo", "github-raw")},
-				GitHubRelease:  CargoEndpoint{Host: "https://github.com"},
-				UserAgent:      "dotfiles-installer (github.com/alexgorbatchev/dotfiles)",
 			},
 		},
 		{
-			name: "every key is carried over, with trailing slashes trimmed from hosts",
+			name: "every key is carried over as written",
 			cfg: config.ProjectConfig{Cargo: config.CargoConfig{
 				CratesIo:      config.HostConfig{Host: "https://mirror.example/", Token: "a", Cache: config.CacheConfig{Enabled: &disabled, TTL: 1000}},
 				GithubRaw:     config.HostConfig{Host: "https://raw.example", Token: "b", Cache: config.CacheConfig{TTL: 2000}},
@@ -288,11 +285,11 @@ func TestNewCargoSettings(t *testing.T) {
 				UserAgent:     "bot",
 			}},
 			want: CargoSettings{
-				CratesIO:       CargoEndpoint{Host: "https://mirror.example", Token: "a"},
+				CratesIO:       CargoEndpoint{Host: "https://mirror.example/", Token: "a"},
 				CratesIOCache:  CargoCacheSettings{Enabled: false, TTL: time.Second},
 				GitHubRaw:      CargoEndpoint{Host: "https://raw.example", Token: "b"},
 				GitHubRawCache: CargoCacheSettings{Enabled: true, TTL: 2 * time.Second},
-				GitHubRelease:  CargoEndpoint{Host: "https://ghe.example", Token: "c"},
+				GitHubRelease:  CargoEndpoint{Host: "https://ghe.example/", Token: "c"},
 				UserAgent:      "bot",
 			},
 		},
@@ -322,6 +319,78 @@ func TestCargoSettingsDefaultURLs(t *testing.T) {
 	}
 	if agent := inst.userAgent(); agent != "dotfiles-installer (github.com/alexgorbatchev/dotfiles)" {
 		t.Errorf("userAgent() = %q, want the built-in User-Agent", agent)
+	}
+
+	// A configured host is used as written, less a trailing slash.
+	SetCargoSettings(inst, NewCargoSettings(&config.ProjectConfig{Cargo: config.CargoConfig{
+		CratesIo:      config.HostConfig{Host: "https://mirror.example/"},
+		GithubRaw:     config.HostConfig{Host: "https://raw.example/"},
+		GithubRelease: config.CargoReleaseHostConfig{Host: "https://ghe.example/"},
+	}}))
+	for _, tt := range []struct{ got, want string }{
+		{inst.cratesIOCrateURL("ripgrep"), "https://mirror.example/api/v1/crates/ripgrep"},
+		{inst.cargoTomlURL("owner/repo"), "https://raw.example/owner/repo/main/Cargo.toml"},
+		{inst.githubReleaseURL("owner/repo", "v1.0.0", "rg.tar.gz"), "https://ghe.example/owner/repo/releases/download/v1.0.0/rg.tar.gz"},
+	} {
+		if tt.got != tt.want {
+			t.Errorf("URL = %q, want %q", tt.got, tt.want)
+		}
+	}
+}
+
+// TestCargoTokensDoNotFollowRedirects pins that a token configured for a cargo host is
+// not forwarded when that host redirects elsewhere, as GitHub does with release
+// assets. Both test servers listen on 127.0.0.1, which net/http alone treats as the
+// same domain and would forward the header to.
+func TestCargoTokensDoNotFollowRedirects(t *testing.T) {
+	tarData, err := createTarGzBytes(map[string]string{"mycrate": "binary-content"})
+	if err != nil {
+		t.Fatalf("creating archive: %v", err)
+	}
+	storage := newCargoHost(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, ".tar.gz"):
+			_, _ = w.Write(tarData)
+		case strings.HasSuffix(r.URL.Path, "Cargo.toml"):
+			_, _ = w.Write([]byte("[package]\nversion = \"2.0.0\"\n"))
+		default:
+			_, _ = w.Write([]byte(`{"crate":{"max_version":"1.5.0","max_stable_version":"1.5.0"}}`))
+		}
+	})
+	redirecting := newCargoHost(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, storage.URL+r.URL.Path, http.StatusFound)
+	})
+	inst := newCargoSettingsInstaller(t, fs.NewMemFS(), NewCargoSettings(&config.ProjectConfig{Cargo: config.CargoConfig{
+		CratesIo:      config.HostConfig{Host: redirecting.URL, Token: "crates-secret"},
+		GithubRaw:     config.HostConfig{Host: redirecting.URL, Token: "raw-secret"},
+		GithubRelease: config.CargoReleaseHostConfig{Host: redirecting.URL, Token: "release-secret"},
+	}}))
+
+	for _, params := range []map[string]interface{}{
+		{"crateName": "mycrate"},
+		{"crateName": "mycrate", "binarySource": "github-releases", "versionSource": "cargo-toml", "githubRepo": "owner/repo"},
+	} {
+		res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params})
+		if err != nil || len(res.Binaries) != 1 {
+			t.Fatalf("Install(%v) = %+v, %v; want the prebuilt mycrate", params, res, err)
+		}
+	}
+	if n := len(redirecting.received()); n != 4 {
+		t.Errorf("configured host received %d requests, want 4 (crates.io, archive, Cargo.toml, archive)", n)
+	}
+	for _, req := range redirecting.received() {
+		if req.authorization == "" {
+			t.Errorf("configured host received %s without its token", req.path)
+		}
+	}
+	received := storage.received()
+	if len(received) != 4 {
+		t.Fatalf("redirect target received %d requests, want 4: %+v", len(received), received)
+	}
+	for _, req := range received {
+		if req.authorization != "" {
+			t.Errorf("redirect target received Authorization %q for %s, want none", req.authorization, req.path)
+		}
 	}
 }
 
@@ -494,6 +563,9 @@ func TestCargoResponseCache(t *testing.T) {
 		tool := &config.ToolConfig{Name: "mycrate"}
 		if _, err := inst.resolveVersion(context.Background(), tool, "mycrate", cargoBinarySourceQuickinstall); err != nil {
 			t.Fatalf("resolveVersion() error = %v", err)
+		}
+		if !strings.HasPrefix(inst.Cargo.CratesIOCache.Dir, generated) {
+			t.Fatalf("crates.io cache directory = %q, want one under %s", inst.Cargo.CratesIOCache.Dir, generated)
 		}
 		entry := inst.Cargo.CratesIOCache.path(inst.cratesIOCrateURL("mycrate"))
 		if err := os.WriteFile(entry, []byte("not json"), 0644); err != nil {
