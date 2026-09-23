@@ -94,7 +94,7 @@ func TestInstallersCheckUpdateAndMethods(t *testing.T) {
 
 	// 5. BrewInstaller getBrewPrefix & getBrewVersion
 	brew := NewBrewInstaller(runner, fsys, sysCtx)
-	runner.Register("brew", []byte(`[{"versions":{"stable":"1.2.3"}}]`), nil)
+	runner.Register("brew", []byte(`[{"versions":{"stable":"1.2.3"},"installed":[{"version":"1.2.0"}]}]`), nil)
 	brewTool := &config.ToolConfig{
 		Name: "test-brew",
 		InstallParams: map[string]interface{}{

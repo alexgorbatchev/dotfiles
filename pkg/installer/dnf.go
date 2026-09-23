@@ -141,10 +141,10 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	// Step 3: Fetch version via rpm -q
 	var detectedVersion string
-	queryCmd := d.runner.CommandContext(ctx, "rpm", "-q", "--qf", "%{VERSION}-%{RELEASE}", packageName)
+	queryCmd := d.runner.CommandContext(ctx, "rpm", "-q", "--qf", rpmVersionFormat, packageName)
 	out, err := queryCmd.Output()
 	if err == nil {
-		detectedVersion = strings.TrimSpace(string(out))
+		detectedVersion = rpmFirstVersion(string(out))
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
@@ -174,46 +174,82 @@ func (d *DnfInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) e
 
 func (d *DnfInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
-	cmd := d.runner.CommandContext(ctx, "dnf", "list", "--upgradable", packageName)
-	out, err := cmd.Output()
-	if err != nil {
-		return &UpdateCheckResult{}, nil
+
+	// `dnf check-update` exits 0 for a package that is not installed just as for one
+	// that is current, so the installation is confirmed first; rpm exits 1 when it is
+	// missing.
+	rpmArgs := []string{"-q", "--qf", rpmVersionFormat, packageName}
+	installed := runQuery(d.runner.CommandContext(ctx, "rpm", rpmArgs...), "rpm", rpmArgs...)
+	if installed.err != nil {
+		return nil, installed.fail(installed.err)
 	}
+	localVersion := rpmFirstVersion(installed.stdout)
 
-	lines := strings.Split(string(out), "\n")
-	isUpgradableSection := false
-	outdated := false
-	var latestVersion string
+	// dnf 4 and dnf 5 both give check-update a status of its own: 100 when upgrades
+	// are listed, 0 when there are none, anything else when the query failed. rpm
+	// version strings (1.2.3-4.fc39) are not semver, so dnf's verdict is the one that
+	// counts. A repository that cannot be reached is skipped with only a warning when
+	// it sets skip_if_unavailable, and the exit status then describes the rest, so
+	// every repository is made to fail the query instead: nothing about the package is
+	// known when its repository was not read.
+	args := []string{"check-update", dnfFailUnavailableRepos, packageName}
+	query := runQuery(d.runner.CommandContext(ctx, "dnf", args...), "dnf", args...)
+	code, exited := query.exitCode()
+	switch {
+	case exited && code == 0:
+		return &UpdateCheckResult{Outdated: new(false), LocalVersion: localVersion}, nil
+	case exited && code == dnfUpgradesAvailable:
+		latestVersion := dnfListedVersion(query.stdout, packageName)
+		if latestVersion == "" {
+			return nil, query.fail(fmt.Errorf("listed no upgrade for %s", packageName))
+		}
+		return &UpdateCheckResult{Outdated: new(true), LocalVersion: localVersion, LatestVersion: latestVersion}, nil
+	default:
+		return nil, query.fail(query.err)
+	}
+}
 
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.Contains(strings.ToLower(trimmed), "upgradable packages") {
-			isUpgradableSection = true
+// rpmVersionFormat is the rpm query format for an installed package's version. rpm
+// applies it once per installed instance (multilib packages, kernels), so each ends
+// with a newline to keep the versions apart.
+const rpmVersionFormat = "%{VERSION}-%{RELEASE}\n"
+
+// rpmFirstVersion returns the first version an rpmVersionFormat query printed.
+func rpmFirstVersion(out string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if v := strings.TrimSpace(line); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// dnfFailUnavailableRepos overrides every repository's skip_if_unavailable, on dnf 4
+// and dnf 5 alike; the unqualified option does not override a repository's own value.
+const dnfFailUnavailableRepos = "--setopt=*.skip_if_unavailable=False"
+
+// dnfUpgradesAvailable is the exit status `dnf check-update` gives when it lists
+// upgrades.
+const dnfUpgradesAvailable = 100
+
+// dnfListedVersion returns the version `dnf check-update` lists for packageName, or ""
+// when the listing does not name it. Each package is a `name.arch version repository`
+// line; the lines around them (metadata expiry, obsoleted packages) are not.
+func dnfListedVersion(listing, packageName string) string {
+	for _, line := range strings.Split(listing, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
 			continue
 		}
-		if isUpgradableSection && trimmed != "" {
-			fields := strings.Fields(trimmed)
-			if len(fields) >= 2 {
-				// Strip arch (e.g. .x86_64) if package name was queried without it
-				pkgPart := fields[0]
-				if idx := strings.Index(pkgPart, "."); idx != -1 {
-					pkgPart = pkgPart[:idx]
-				}
-				if strings.EqualFold(pkgPart, packageName) {
-					outdated = true
-					latestVersion = fields[1]
-					break
-				}
-			}
+		name := fields[0]
+		if idx := strings.LastIndex(name, "."); idx != -1 {
+			name = name[:idx]
+		}
+		if strings.EqualFold(name, packageName) {
+			return fields[1]
 		}
 	}
-
-	// `dnf list --upgradable` answers the question directly: the package is listed or
-	// it is not, and rpm version strings (1.2.3-4.fc39) are not semver.
-	return &UpdateCheckResult{
-		Outdated:      new(outdated),
-		LatestVersion: latestVersion,
-	}, nil
+	return ""
 }
 
 func init() {

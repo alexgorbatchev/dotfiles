@@ -3,6 +3,7 @@ package installer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -16,6 +17,20 @@ const (
 	githubAPIBaseURL = "https://api.github.com"
 	githubUserAgent  = "dotfiles-installer/1.0"
 )
+
+// validateReleaseRepo rejects a release repository that is missing or not in
+// owner/repo form. github-release and gitea-release call it from both Install and
+// CheckUpdate, so an update check can never pass a tool that cannot be installed,
+// and dmg and pkg call it for a GitHub release source.
+func validateReleaseRepo(repo string) error {
+	if repo == "" {
+		return errors.New("repository 'repo' is required in installParams")
+	}
+	if len(strings.Split(repo, "/")) != 2 {
+		return fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", repo)
+	}
+	return nil
+}
 
 // githubReleaseClient resolves releases through the GitHub REST API and falls
 // back to the gh CLI when the caller asks for it or when the API answers 403,

@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -165,21 +166,20 @@ func (n *NpmInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
 	pkgManager := getStringParam(tool.InstallParams, "packageManager", "npm")
 
-	var cmd exec.Cmd
+	name, args := "npm", []string{"view", pkgName, "version"}
 	if pkgManager == "bun" {
-		cmd = n.runner.CommandContext(ctx, "bun", "pm", "view", pkgName, "version")
-	} else {
-		cmd = n.runner.CommandContext(ctx, "npm", "view", pkgName, "version")
+		name, args = "bun", []string{"pm", "view", pkgName, "version"}
 	}
 
-	out, err := cmd.Output()
-	if err != nil {
-		return &UpdateCheckResult{}, nil
+	// A registry that cannot be reached, a package that does not exist and an
+	// authentication failure all fail the query; none of them says the tool is current.
+	query := runQuery(n.runner.CommandContext(ctx, name, args...), name, args...)
+	if query.err != nil {
+		return nil, query.fail(query.err)
 	}
-
-	latestVersion := strings.TrimSpace(string(out))
+	latestVersion := strings.TrimSpace(query.stdout)
 	if latestVersion == "" {
-		return &UpdateCheckResult{}, nil
+		return nil, query.fail(errors.New("printed no version"))
 	}
 
 	return &UpdateCheckResult{

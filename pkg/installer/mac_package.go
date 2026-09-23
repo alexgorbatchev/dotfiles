@@ -50,8 +50,10 @@ func parseMacPackageSource(params map[string]interface{}) (macPackageSource, err
 	if src.url == "" && src.repo == "" {
 		return src, fmt.Errorf("URL or GitHub release source not specified in installParams")
 	}
-	if src.repo != "" && len(strings.Split(src.repo, "/")) != 2 {
-		return src, fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", src.repo)
+	if src.repo != "" {
+		if err := validateReleaseRepo(src.repo); err != nil {
+			return src, err
+		}
 	}
 	return src, nil
 }

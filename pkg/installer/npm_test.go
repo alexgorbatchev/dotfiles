@@ -136,12 +136,66 @@ func TestNpmInstaller(t *testing.T) {
 			t.Error("expected error but got nil")
 		}
 	})
+}
 
-	t.Run("CheckUpdate success", func(t *testing.T) {
-		tool := &config.ToolConfig{Name: "prettier"}
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("unexpected checkUpdate result: %v, %v", res, err)
-		}
-	})
+// TestNpmInstaller_CheckUpdate pins that the latest version is what the registry query
+// printed, and that a query which failed or printed nothing is an error naming the
+// command, never an empty result that every caller reads as "up to date" (issue #120).
+func TestNpmInstaller_CheckUpdate(t *testing.T) {
+	bun := map[string]interface{}{"packageManager": "bun"}
+	tests := []struct {
+		name        string
+		params      map[string]interface{}
+		command     string
+		stdout      string
+		stderr      string
+		err         error
+		wantLatest  string
+		wantErrText []string
+	}{
+		{name: "npm prints the latest version", command: "npm", stdout: "3.9.8\n", wantLatest: "3.9.8"},
+		{name: "bun prints the latest version", params: bun, command: "bun", stdout: "3.9.8\n", wantLatest: "3.9.8"},
+		{
+			name:    "npm fails",
+			command: "npm",
+			stderr:  "npm error code E404\nnpm error 404 Not Found - GET https://registry.npmjs.org/prettier - Not found\n",
+			err:     exitStatusError(1),
+			wantErrText: []string{
+				"running npm view prettier version", "exit status 1", "npm error code E404",
+			},
+		},
+		{
+			name:        "bun fails",
+			params:      bun,
+			command:     "bun",
+			stderr:      "404 Not Found: https://registry.npmjs.org/prettier\n",
+			err:         exitStatusError(1),
+			wantErrText: []string{"running bun pm view prettier version", "404 Not Found"},
+		},
+		{
+			name:        "npm prints nothing",
+			command:     "npm",
+			stdout:      "\n",
+			wantErrText: []string{"running npm view prettier version", "printed no version"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := exec.NewMockRunner()
+			registerQuery(runner, tt.command, tt.stdout, tt.stderr, tt.err)
+			inst := NewNpmInstaller(runner, fs.NewMemFS(), nil)
+
+			res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "prettier", InstallParams: tt.params})
+			if len(tt.wantErrText) > 0 {
+				assertCheckFailed(t, res, err, tt.wantErrText...)
+				return
+			}
+			if err != nil {
+				t.Fatalf("CheckUpdate() error = %v", err)
+			}
+			if res.LatestVersion != tt.wantLatest || res.Outdated != nil {
+				t.Errorf("CheckUpdate() = %+v, want LatestVersion %q and no verdict", res, tt.wantLatest)
+			}
+		})
+	}
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -231,11 +230,8 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	if err != nil {
 		return nil, err
 	}
-	if target.repo == "" {
-		return nil, fmt.Errorf("repository 'repo' is required in installParams")
-	}
-	if parts := strings.Split(target.repo, "/"); len(parts) != 2 {
-		return nil, fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", target.repo)
+	if err := validateReleaseRepo(target.repo); err != nil {
+		return nil, err
 	}
 
 	toolLog := toolLogger(g.log, tool.Name)
@@ -311,8 +307,8 @@ func (g *GiteaInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfi
 	if err != nil {
 		return nil, err
 	}
-	if target.repo == "" {
-		return &UpdateCheckResult{}, nil
+	if err := validateReleaseRepo(target.repo); err != nil {
+		return nil, err
 	}
 
 	latestKey := target.cacheKey("latest")
