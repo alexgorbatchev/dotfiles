@@ -16,6 +16,7 @@ File downloader with retry, caching, and progress reporting.
 
 - Unlogged downloads cause user-perceived freezes -> log download URLs and progress events.
 - A resumed download takes its offset from `fs.FS.Stat` and streams onto the partial file through `OpenFile(O_APPEND)`; when that open fails, the wrapped error is returned. Every production `fs.FS` implements both, so a test simulates a failure with the `errorFS` wrapper in `downloader_test.go` rather than a production branch that buffers the file for a fake.
+- Every write path (the `200` download, the `206` resume and the clean retry after a `416`) streams through `writeDownload`, which uses `fs.WriteAndClose`: a failed close fails the attempt, so the file is neither cached nor reported by `after-download`. A stream cut off part way keeps its bytes for the next attempt to resume after, but a file whose close failed (`fs.ErrClose`) is removed so the retry starts over instead of appending to contents nobody can vouch for; when the file is still there after that removal (what `Remove` returned does not decide it, since a `TrackedFileSystem` deletes and then may fail to record), the attempt is an `unresumableError`, names the file to delete, and is not retried. Tests simulate the failure with the `closeFailFS` wrapper in `downloader_test.go`.
 
 ## Boundaries
 

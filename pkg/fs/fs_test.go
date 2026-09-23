@@ -902,20 +902,22 @@ var errRead = errors.New("read failed")
 func (failingReader) Read([]byte) (int, error) { return 0, errRead }
 
 // TestWriteAndClose covers the result WriteAndClose reports: a failed close is a failed
-// write, a failed copy is reported over the close that follows it, and the writer is
-// closed either way.
+// write, a failed copy and a failed close are both reported, and the writer is closed
+// either way. Every failed close is reported as ErrClose, which is how a caller tells a
+// file whose contents are unknown from one whose copy merely stopped part way.
 func TestWriteAndClose(t *testing.T) {
 	cases := []struct {
-		name     string
-		r        io.Reader
-		closeErr error
-		want     error
-		content  string
+		name      string
+		r         io.Reader
+		closeErr  error
+		want      error
+		wantClose bool
+		content   string
 	}{
-		{"copy and close succeed", strings.NewReader("payload"), nil, nil, "payload"},
-		{"close fails", strings.NewReader("payload"), errClose, errClose, "payload"},
-		{"copy fails", failingReader{}, nil, errRead, ""},
-		{"copy and close fail", failingReader{}, errClose, errRead, ""},
+		{"copy and close succeed", strings.NewReader("payload"), nil, nil, false, "payload"},
+		{"close fails", strings.NewReader("payload"), errClose, errClose, true, "payload"},
+		{"copy fails", failingReader{}, nil, errRead, false, ""},
+		{"copy and close fail", failingReader{}, errClose, errRead, true, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -923,6 +925,9 @@ func TestWriteAndClose(t *testing.T) {
 			err := WriteAndClose(w, tc.r)
 			if !errors.Is(err, tc.want) || (tc.want == nil && err != nil) {
 				t.Errorf("WriteAndClose = %v, want %v", err, tc.want)
+			}
+			if got := errors.Is(err, ErrClose); got != tc.wantClose {
+				t.Errorf("errors.Is(WriteAndClose = %v, ErrClose) = %v, want %v", err, got, tc.wantClose)
 			}
 			if !w.closed {
 				t.Error("WriteAndClose left the writer open")
@@ -961,6 +966,18 @@ func TestCopyErrorNamesTheDestination(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("source and close error", func(t *testing.T) {
+		closeErr := &os.PathError{Op: "close", Path: tmpPath, Err: os.ErrPermission}
+		err := copyError(dest, tmpPath, &writeError{copyErr: srcErr, closeErr: closeErr})
+		want := (&os.PathError{Op: "copyfile", Path: dest, Err: &writeError{copyErr: srcErr, closeErr: os.ErrPermission}}).Error()
+		if err.Error() != want {
+			t.Errorf("copyError = %q, want %q", err, want)
+		}
+		if !errors.Is(err, srcErr) || !errors.Is(err, os.ErrPermission) || !errors.Is(err, ErrClose) {
+			t.Errorf("copyError = %v, want it to wrap the source error, the close cause and ErrClose", err)
+		}
+	})
 }
 
 // TestOSFSCopyFileToADestinationAtTheNameLengthLimit covers a destination whose name is

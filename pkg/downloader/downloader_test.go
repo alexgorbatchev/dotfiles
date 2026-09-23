@@ -11,13 +11,17 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/lifecycle"
 )
 
 func TestDownloader(t *testing.T) {
@@ -1657,5 +1661,304 @@ func TestDownload_ReportsHTTPStatus(t *testing.T) {
 				t.Errorf("Download() error = %v, want it to contain %q", err, want)
 			}
 		})
+	}
+}
+
+// closeFailFS wraps a real file system so that every writer it hands out writes and
+// closes normally but then reports closeErr from Close, the way close(2) reports a
+// write the operating system could not commit.
+type closeFailFS struct {
+	fs.FS
+	closeErr      error
+	removeErr     error
+	removeDeletes bool
+}
+
+// Remove fails with removeErr. With removeDeletes it deletes the file first, as a
+// TrackedFileSystem does before failing to record the removal.
+func (c *closeFailFS) Remove(path string) error {
+	if c.removeErr == nil {
+		return c.FS.Remove(path)
+	}
+	if c.removeDeletes {
+		if err := c.FS.Remove(path); err != nil {
+			return err
+		}
+	}
+	return c.removeErr
+}
+
+type closeFailWriter struct {
+	io.WriteCloser
+	closeErr error
+}
+
+func (w *closeFailWriter) Close() error {
+	if err := w.WriteCloser.Close(); err != nil {
+		return err
+	}
+	return w.closeErr
+}
+
+func (c *closeFailFS) Create(path string) (io.WriteCloser, error) {
+	w, err := c.FS.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	return &closeFailWriter{WriteCloser: w, closeErr: c.closeErr}, nil
+}
+
+func (c *closeFailFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+	w, err := c.FS.OpenFile(path, flag, perm)
+	if err != nil {
+		return nil, err
+	}
+	return &closeFailWriter{WriteCloser: w, closeErr: c.closeErr}, nil
+}
+
+// TestDownloadFailsWhenClosingTheFileFails covers every path that writes a download
+// (a full 200, a resumed 206, and the clean retry after a 416): a destination whose
+// close fails is a failed attempt. It is retried from scratch rather than resumed
+// onto, it is neither cached nor reported as downloaded, and no file is left behind.
+func TestDownloadFailsWhenClosingTheFileFails(t *testing.T) {
+	const content = "complete release asset"
+	tests := []struct {
+		name       string
+		partial    string
+		status     int
+		wantRanges []string
+	}{
+		{"200 full download", "", http.StatusOK, []string{"", ""}},
+		{"206 resumed download", "0123456789", http.StatusPartialContent, []string{"bytes=10-", ""}},
+		{"416 clean retry", strings.Repeat("x", len(content)+5), http.StatusRequestedRangeNotSatisfiable, []string{"bytes=27-", "", ""}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var ranges []string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				ranges = append(ranges, r.Header.Get("Range"))
+				mu.Unlock()
+				if r.Header.Get("Range") == "" {
+					_, _ = w.Write([]byte(content))
+					return
+				}
+				w.WriteHeader(tt.status)
+				if tt.status == http.StatusPartialContent {
+					_, _ = w.Write([]byte(content[len(tt.partial):]))
+				}
+			}))
+			defer server.Close()
+
+			mem := fs.NewMemFS()
+			const dest = "/asset.tar.gz"
+			if tt.partial != "" {
+				if err := mem.WriteFile(dest, []byte(tt.partial), 0644); err != nil {
+					t.Fatalf("writing partial download: %v", err)
+				}
+			}
+			d := NewDownloader(&closeFailFS{FS: mem, closeErr: syscall.EIO}, server.Client())
+			d.CacheDir = "/cache"
+			var emitted []lifecycle.Event
+			ctx := lifecycle.WithEmitter(context.Background(), func(_ context.Context, event lifecycle.Event, _ lifecycle.Details) error {
+				emitted = append(emitted, event)
+				return nil
+			})
+
+			err := d.Download(ctx, server.URL, dest, "", DownloadOptions{RetryCount: 1, RetryDelay: time.Millisecond, Quiet: true})
+			if !errors.Is(err, syscall.EIO) {
+				t.Fatalf("Download() error = %v, want one wrapping EIO", err)
+			}
+			if !strings.Contains(err.Error(), dest) {
+				t.Errorf("Download() error = %v, want it to name %q", err, dest)
+			}
+			if exists, _ := mem.Exists(dest); exists {
+				t.Errorf("Download() left %q behind after its close failed", dest)
+			}
+			if exists, _ := mem.Exists(getCachePath(d.CacheDir, server.URL, nil)); exists {
+				t.Error("Download() cached a download whose close failed")
+			}
+			if len(emitted) != 0 {
+				t.Errorf("Download() emitted %v for a download whose close failed", emitted)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if !slices.Equal(ranges, tt.wantRanges) {
+				t.Errorf("request Range headers = %q, want %q (the retry must start over, not resume onto the failed file)", ranges, tt.wantRanges)
+			}
+		})
+	}
+}
+
+// TestDownloadStartsOverWhenAStreamIsCutOffAndItsCloseFails covers a response cut off
+// part way whose file then also fails to close: the bytes written before the cut are
+// no more trustworthy than the rest, so the retry downloads the file anew instead of
+// resuming onto them.
+func TestDownloadStartsOverWhenAStreamIsCutOffAndItsCloseFails(t *testing.T) {
+	var mu sync.Mutex
+	var ranges []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		ranges = append(ranges, r.Header.Get("Range"))
+		mu.Unlock()
+		// Promise more than is sent, so the client's read of the body fails part way.
+		w.Header().Set("Content-Length", "100")
+		_, _ = w.Write([]byte("first ten."))
+	}))
+	defer server.Close()
+	mem := fs.NewMemFS()
+	const dest = "/asset"
+	d := NewDownloader(&closeFailFS{FS: mem, closeErr: syscall.EIO}, server.Client())
+	d.CacheEnabled = false
+
+	err := d.Download(context.Background(), server.URL, dest, "", DownloadOptions{RetryCount: 1, RetryDelay: time.Millisecond, Quiet: true})
+	if !errors.Is(err, syscall.EIO) || !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("Download() error = %v, want one wrapping both the cut-off stream and EIO", err)
+	}
+	if exists, _ := mem.Exists(dest); exists {
+		t.Errorf("Download() left %q behind after its close failed", dest)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if want := []string{"", ""}; !slices.Equal(ranges, want) {
+		t.Errorf("request Range headers = %q, want %q (the retry must start over, not resume onto the failed file)", ranges, want)
+	}
+}
+
+// TestDownloadReportsAFailedRemovalOfAFileWhoseCloseFailed covers a download whose
+// close failed and whose removal then failed too: both are reported, and the download
+// is not retried, since the file left behind is one the next attempt would resume onto.
+func TestDownloadReportsAFailedRemovalOfAFileWhoseCloseFailed(t *testing.T) {
+	var mu sync.Mutex
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requests++
+		mu.Unlock()
+		_, _ = w.Write([]byte("payload"))
+	}))
+	defer server.Close()
+	removeErr := errors.New("remove failed")
+	d := NewDownloader(&closeFailFS{FS: fs.NewMemFS(), closeErr: syscall.EIO, removeErr: removeErr}, server.Client())
+	d.CacheEnabled = false
+
+	err := d.Download(context.Background(), server.URL, "/asset", "", DownloadOptions{RetryCount: 2, RetryDelay: time.Millisecond, Quiet: true})
+	if !errors.Is(err, syscall.EIO) || !errors.Is(err, removeErr) {
+		t.Fatalf("Download() error = %v, want one wrapping both EIO and the removal error", err)
+	}
+	if !strings.Contains(err.Error(), `delete "/asset"`) {
+		t.Errorf("Download() error = %v, want it to say which file to delete", err)
+	}
+	if !strings.Contains(err.Error(), "after 1 attempts") {
+		t.Errorf("Download() error = %v, want it to report the single attempt made", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if requests != 1 {
+		t.Errorf("Download() made %d requests, want 1: a retry would resume onto the file it could not remove", requests)
+	}
+}
+
+// TestDownloadRetriesWhenTheFileWhoseCloseFailedIsGone covers a removal that reports
+// an error but leaves no file behind, as a TrackedFileSystem that deletes the file and
+// then fails to record it does: nothing is left for a retry to resume onto, so the
+// download is retried from scratch and the retry succeeds.
+func TestDownloadRetriesWhenTheFileWhoseCloseFailedIsGone(t *testing.T) {
+	var mu sync.Mutex
+	var ranges []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		ranges = append(ranges, r.Header.Get("Range"))
+		mu.Unlock()
+		_, _ = w.Write([]byte("payload"))
+	}))
+	defer server.Close()
+	mem := fs.NewMemFS()
+	failing := &closeFailFS{FS: mem, closeErr: syscall.EIO, removeErr: errors.New("recording removal failed"), removeDeletes: true}
+	d := NewDownloader(&onceFS{closeFailFS: failing, healthy: mem}, server.Client())
+	d.CacheEnabled = false
+
+	if err := d.Download(context.Background(), server.URL, "/asset", "", DownloadOptions{RetryCount: 1, RetryDelay: time.Millisecond, Quiet: true}); err != nil {
+		t.Fatalf("Download() error = %v, want the retry to succeed", err)
+	}
+	if got, _ := mem.ReadFile("/asset"); string(got) != "payload" {
+		t.Errorf("downloaded file = %q, want %q", got, "payload")
+	}
+	mu.Lock()
+	if want := []string{"", ""}; !slices.Equal(ranges, want) {
+		t.Errorf("request Range headers = %q, want %q (the retry must start over)", ranges, want)
+	}
+	mu.Unlock()
+
+	// A removal that finds nothing to remove is no failure at all.
+	notExist := &os.PathError{Op: "remove", Path: "/asset", Err: os.ErrNotExist}
+	d = NewDownloader(&closeFailFS{FS: fs.NewMemFS(), closeErr: syscall.EIO, removeErr: notExist, removeDeletes: true}, server.Client())
+	d.CacheEnabled = false
+	if err := d.Download(context.Background(), server.URL, "/asset", "", DownloadOptions{Quiet: true}); !errors.Is(err, syscall.EIO) || errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Download() error = %v, want EIO without a removal failure", err)
+	}
+
+	// Without a retry, the removal failure is still reported beside the close error.
+	failing = &closeFailFS{FS: fs.NewMemFS(), closeErr: syscall.EIO, removeErr: failing.removeErr, removeDeletes: true}
+	d = NewDownloader(failing, server.Client())
+	d.CacheEnabled = false
+	err := d.Download(context.Background(), server.URL, "/asset", "", DownloadOptions{Quiet: true})
+	if !errors.Is(err, syscall.EIO) || !errors.Is(err, failing.removeErr) {
+		t.Errorf("Download() error = %v, want one wrapping both EIO and the removal error", err)
+	}
+}
+
+// onceFS fails its first Create the way closeFailFS does and serves every later one
+// from healthy.
+type onceFS struct {
+	*closeFailFS
+	healthy fs.FS
+	created bool
+}
+
+func (o *onceFS) Create(path string) (io.WriteCloser, error) {
+	if o.created {
+		return o.healthy.Create(path)
+	}
+	o.created = true
+	return o.closeFailFS.Create(path)
+}
+
+// TestDownloadResumesAStreamCutOffPartWay covers the other side of removing a file
+// whose close failed: a response cut off part way into a file that closes cleanly
+// keeps its bytes, and the retry resumes after them.
+func TestDownloadResumesAStreamCutOffPartWay(t *testing.T) {
+	const content = "first ten.and the rest"
+	var mu sync.Mutex
+	var ranges []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		ranges = append(ranges, r.Header.Get("Range"))
+		mu.Unlock()
+		if r.Header.Get("Range") == "bytes=10-" {
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write([]byte(content[10:]))
+			return
+		}
+		// Promise the whole file but send only its first ten bytes.
+		w.Header().Set("Content-Length", strconv.Itoa(len(content)))
+		_, _ = w.Write([]byte(content[:10]))
+	}))
+	defer server.Close()
+	mem := fs.NewMemFS()
+	d := NewDownloader(mem, server.Client())
+	d.CacheEnabled = false
+
+	if err := d.Download(context.Background(), server.URL, "/asset", "", DownloadOptions{RetryCount: 1, RetryDelay: time.Millisecond, Quiet: true}); err != nil {
+		t.Fatalf("Download() error = %v", err)
+	}
+	if got, _ := mem.ReadFile("/asset"); string(got) != content {
+		t.Errorf("downloaded file = %q, want %q", got, content)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if want := []string{"", "bytes=10-"}; !slices.Equal(ranges, want) {
+		t.Errorf("request Range headers = %q, want %q", ranges, want)
 	}
 }
