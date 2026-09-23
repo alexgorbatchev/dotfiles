@@ -62,10 +62,7 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	refresh := getBoolParam(tool.InstallParams, "refresh", false)
-	version := getStringParam(tool.InstallParams, "version", "")
-	if version == "" && tool.Version != nil {
-		version = *tool.Version
-	}
+	version := tool.RequestedVersion()
 
 	packageSpec := packageName
 	if version != "" && version != "latest" {

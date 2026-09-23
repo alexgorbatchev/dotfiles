@@ -669,9 +669,9 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		}, nil
 	}
 	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
-	pinned := ""
-	if tool.Version != nil && *tool.Version != "latest" {
-		pinned = *tool.Version
+	pinned := tool.RequestedVersion()
+	if pinned == "latest" {
+		pinned = ""
 	}
 
 	// version is what cargo install compiles; empty lets cargo pick its newest stable.

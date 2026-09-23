@@ -425,8 +425,10 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			binariesJSON, _ := json.Marshal(recordedBinaryPaths)
 
 			var versionStr string
-			if tool.Version != nil && *tool.Version != "" && *tool.Version != "latest" && *tool.Version != "unknown" {
-				versionStr = *tool.Version
+			// The exact version the installer was asked for, else what it reports, else a
+			// timestamp.
+			if requested := exactRequestedVersion(tool); requested != "" {
+				versionStr = requested
 			} else if res != nil && res.Version != "" && res.Version != "latest" && res.Version != "unknown" {
 				versionStr = res.Version
 			} else {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
+	"io"
 	"path/filepath"
 	"time"
 
@@ -112,7 +112,7 @@ func (p updatePlan) targetDescription() string {
 // or a fresh timestamp.
 func reinstallTool(ctx context.Context, services *Services, tool *config.ToolConfig, plan updatePlan) (string, error) {
 	if plan.targetVersion != "" {
-		tool = withTargetVersion(tool, plan.targetVersion)
+		tool = tool.WithRequestedVersion(plan.targetVersion)
 	}
 	if err := services.Orchestrator.InstallTool(config.WithForce(ctx, true), tool, services.ProjectConfig); err != nil {
 		return "", err
@@ -125,17 +125,29 @@ func reinstallTool(ctx context.Context, services *Services, tool *config.ToolCon
 	return recorded, nil
 }
 
-// withTargetVersion returns a copy of tool that installs targetVersion. The loaded
-// configuration still says what the user wrote, so a later mention of the same tool is
-// not refused as pinned to the version this update installs.
-func withTargetVersion(tool *config.ToolConfig, targetVersion string) *config.ToolConfig {
-	targeted := *tool
-	targeted.Version = &targetVersion
-	if tool.InstallParams != nil {
-		targeted.InstallParams = maps.Clone(tool.InstallParams)
-		targeted.InstallParams["version"] = targetVersion
+// updateLogs are the loggers update writes through: progress for the checking and
+// installing a run does, and report for what became of each tool (pinned, already up
+// to date, about to move to a release, updated, or not checkable upstream).
+type updateLogs struct {
+	progress *logger.Logger
+	report   *logger.Logger
+}
+
+// newUpdateLogs returns the loggers for an update that logs through log. Outside shim
+// mode both are log. A shim's @update prints nothing of its own, so in shim mode what
+// became of the tool is the only answer its user gets: report is kept at the default
+// level while progress, like the rest of the run, stays as quiet as --shim-mode made it.
+// Errors reach the user in either mode, since even a quiet logger writes them.
+func newUpdateLogs(log *logger.Logger, w io.Writer, shimMode bool) updateLogs {
+	if !shimMode {
+		return updateLogs{progress: log, report: log}
 	}
-	return &targeted
+	return updateLogs{progress: log, report: newLogger("update", w, logger.LogLevelDefault)}
+}
+
+// withTag returns the loggers for messages about one tool.
+func (l updateLogs) withTag(tag string) updateLogs {
+	return updateLogs{progress: l.progress.WithTag(tag), report: l.report.WithTag(tag)}
 }
 
 // refusePinned reports whether update leaves tool alone because its configuration pins
@@ -218,7 +230,7 @@ var toolUpdateCmd = &cobra.Command{
 	ValidArgsFunction: completeToolNames,
 	Long: `Evaluates tool versions and updates software packages if newer versions are available.
 
-When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version with .version() is never updated, even with --force; set its version to "latest" to enable updates.`,
+When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version, with .version() or a version install parameter, is never updated, even with --force; set that version to "latest" to enable updates.`,
 	Example: `  # Update all installed tools
   dotfiles tool update
 
@@ -246,18 +258,19 @@ When run without arguments, checks all installed tools for updates and installs 
 
 		log := GetLogger("update", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)
-		log.Info("Evaluating versions and checking for updates...")
+		logs := newUpdateLogs(log, cmd.ErrOrStderr(), shimMode)
+		logs.progress.Info("Evaluating versions and checking for updates...")
 
 		if len(args) == 0 {
-			log.Info(logger.Message("Checking all configured tools for updates..."))
+			logs.progress.Info(logger.Message("Checking all configured tools for updates..."))
 			for _, targetTool := range services.ToolConfigs {
 				installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 				if err != nil || installed == nil {
 					continue // skip uninstalled
 				}
 
-				toolLog := log.WithTag(targetTool.Name)
-				if refusePinned(toolLog, targetTool) {
+				toolLogs := logs.withTag(targetTool.Name)
+				if refusePinned(toolLogs.report, targetTool) {
 					continue
 				}
 
@@ -278,18 +291,18 @@ When run without arguments, checks all installed tools for updates and installs 
 				// Unlike updating one named tool, updating everything does not reinstall a
 				// tool nothing could check unless --force asks for it.
 				if unsupported && !force {
-					toolLog.Warn(logger.Message(updateCheckUnsupportedMessage(targetTool)))
+					toolLogs.report.Warn(logger.Message(updateCheckUnsupportedMessage(targetTool)))
 					continue
 				}
 				plan := planUpdate(targetTool, installed.Version, res, unsupported, force)
 				if plan.reinstall() {
-					plan.announce(toolLog, targetTool)
+					plan.announce(toolLogs.report, targetTool)
 					recorded, err := reinstallTool(ctx, services, targetTool, plan)
 					if err != nil {
-						toolLog.Error(logger.Message("Updating"+plan.targetDescription()+" failed"), err)
+						toolLogs.report.Error(logger.Message("Updating"+plan.targetDescription()+" failed"), err)
 						continue
 					}
-					toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
+					toolLogs.report.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
 				}
 			}
 			return nil
@@ -312,8 +325,8 @@ When run without arguments, checks all installed tools for updates and installs 
 				continue
 			}
 
-			toolLog := log.WithTag(targetTool.Name)
-			if refusePinned(toolLog, targetTool) {
+			toolLogs := logs.withTag(targetTool.Name)
+			if refusePinned(toolLogs.report, targetTool) {
 				continue
 			}
 
@@ -325,7 +338,7 @@ When run without arguments, checks all installed tools for updates and installs 
 			toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
 			configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
-			toolLog.Info(logger.Message("Checking for updates..."))
+			toolLogs.progress.Info(logger.Message("Checking for updates..."))
 			res, err := inst.CheckUpdate(ctx, targetTool)
 			unsupported := errors.Is(err, installer.ErrUpdateCheckUnsupported)
 			if err != nil && !unsupported {
@@ -333,14 +346,14 @@ When run without arguments, checks all installed tools for updates and installs 
 			}
 			plan := planUpdate(targetTool, installed.Version, res, unsupported, force)
 			if plan.reinstall() {
-				plan.announce(toolLog, targetTool)
+				plan.announce(toolLogs.report, targetTool)
 				recorded, err := reinstallTool(ctx, services, targetTool, plan)
 				if err != nil {
 					return fmt.Errorf("updating tool %q%s failed: %w", targetTool.Name, plan.targetDescription(), err)
 				}
-				toolLog.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
+				toolLogs.report.Info(logger.Message(fmt.Sprintf("Successfully updated to version %s", recorded)))
 			} else {
-				toolLog.Info(logger.Message("Already up to date" + versionSuffix(installed.Version, res != nil && res.Cached)))
+				toolLogs.report.Info(logger.Message("Already up to date" + versionSuffix(installed.Version, res != nil && res.Cached)))
 			}
 		}
 
@@ -349,6 +362,6 @@ When run without arguments, checks all installed tools for updates and installs 
 }
 
 func init() {
-	toolUpdateCmd.Flags().Bool("shim-mode", false, "Quiet update mode for shims")
+	toolUpdateCmd.Flags().Bool("shim-mode", false, "Used by shims running @update: report the outcome without progress output")
 	toolUpdateCmd.Flags().BoolP("force", "f", false, "Force re-download and re-installation even if already up to date")
 }

@@ -57,6 +57,32 @@ func TestPkgInstallerReleaseParameters(t *testing.T) {
 		}
 	})
 
+	// source.version is the pin config.ToolConfig.RequestedVersion names for pkg, and
+	// the one update refuses to move, so it must be what the installation fetches.
+	t.Run("source.version selects the release by tag over .version()", func(t *testing.T) {
+		server := newMacReleaseServer(t, ".pkg")
+		inst, _, _ := newInstaller(t, server)
+		dotVersion := "v9.9.9"
+
+		res, err := inst.Install(context.Background(), &config.ToolConfig{
+			Name:               "app",
+			InstallationMethod: "pkg",
+			Version:            &dotVersion,
+			InstallParams: map[string]interface{}{
+				"source": map[string]interface{}{"type": "github-release", "repo": "owner/app", "version": "v1.1.0"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !server.requested("/repos/owner/app/releases/tags/v1.1.0") {
+			t.Fatalf("expected the v1.1.0 release to be fetched by tag, got %v", server.paths)
+		}
+		if res.Version != "v1.1.0" {
+			t.Fatalf("expected version v1.1.0, got %q", res.Version)
+		}
+	})
+
 	t.Run("ghCli resolves and downloads through gh", func(t *testing.T) {
 		server := newMacReleaseServer(t, ".pkg")
 		inst, runner, fsys := newInstaller(t, server)

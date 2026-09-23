@@ -68,10 +68,7 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 
 	sysupgrade := getBoolParam(tool.InstallParams, "sysupgrade", false)
-	version := getStringParam(tool.InstallParams, "version", "")
-	if version == "" && tool.Version != nil {
-		version = *tool.Version
-	}
+	version := tool.RequestedVersion()
 
 	packageSpec := packageName
 	if version != "" && version != "latest" {

@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -134,7 +135,8 @@ func TestPacmanInstaller(t *testing.T) {
 		runner.Register("pacman", []byte("ripgrep 14.1.0-1"), nil)
 
 		tool := &config.ToolConfig{
-			Name: "ripgrep",
+			Name:               "ripgrep",
+			InstallationMethod: "pacman",
 			InstallParams: map[string]interface{}{
 				"package": "extra/ripgrep",
 				"version": "14.1.0-1",
@@ -158,6 +160,11 @@ func TestPacmanInstaller(t *testing.T) {
 		}
 		if !hasPacmanQ {
 			t.Error("expected pacman -Q ripgrep to run")
+		}
+		if !slices.ContainsFunc(runner.History, func(cmd *exec.MockCmd) bool {
+			return cmd.Name == "pacman" && slices.Equal(cmd.Args, []string{"-S", "--needed", "--noconfirm", "extra/ripgrep=14.1.0-1"})
+		}) {
+			t.Errorf("expected pacman -S --needed --noconfirm extra/ripgrep=14.1.0-1, the installParams version, got %v", runner.History)
 		}
 		if res.ShellEnv["PACMAN_INSTALLED_VERSION"] != "14.1.0-1" {
 			t.Errorf("unexpected version in env: %s", res.ShellEnv["PACMAN_INSTALLED_VERSION"])

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -141,38 +142,186 @@ func TestToolConfigUpdateCheckAccessors(t *testing.T) {
 	}
 }
 
-// TestToolConfigUpdateRefusal pins which configurations update must leave alone: any
-// .version() other than "latest" is a pin, and the refusal says so in v1's words.
-func TestToolConfigUpdateRefusal(t *testing.T) {
+// TestToolConfigRequestedVersion pins which setting names the version an installation
+// asks for. The methods whose installers read a `version` install parameter
+// (github-release, gitea-release, apt, dnf, pacman, npm), and dmg/pkg through the
+// `version` of a github-release source, let it win over .version(); every other method
+// requests .version(), so a stray `version` parameter there names nothing.
+func TestToolConfigRequestedVersion(t *testing.T) {
+	githubSource := func(version any) map[string]any {
+		return map[string]any{"source": map[string]any{"type": "github-release", "repo": "acme/app", "version": version}}
+	}
 	tests := []struct {
-		name        string
-		version     *string
-		wantRefused bool
-		wantReason  string
+		name      string
+		method    string
+		version   *string
+		params    map[string]any
+		want      string
+		wantParam string
 	}{
-		{name: "no version", version: nil},
-		{name: "empty version", version: new("")},
-		{name: "latest", version: new("latest")},
+		{name: "nothing set", method: "github-release"},
+		{name: ".version() alone", method: "github-release", version: new("v1.0.0"), want: "v1.0.0"},
+		{name: "github-release install parameter", method: "github-release", params: map[string]any{"version": "v2.1.0"}, want: "v2.1.0", wantParam: "version"},
+		{name: "the install parameter wins over .version()", method: "github-release", version: new("v1.0.0"), params: map[string]any{"version": "v2.1.0"}, want: "v2.1.0", wantParam: "version"},
+		{name: "an install parameter of latest wins over .version()", method: "github-release", version: new("v1.0.0"), params: map[string]any{"version": "latest"}, want: "latest", wantParam: "version"},
+		{name: "an empty install parameter falls back to .version()", method: "github-release", version: new("v1.0.0"), params: map[string]any{"version": ""}, want: "v1.0.0"},
+		{name: "a non-string install parameter names nothing", method: "github-release", version: new("v1.0.0"), params: map[string]any{"version": 2}, want: "v1.0.0"},
+		{name: "gitea-release install parameter", method: "gitea-release", params: map[string]any{"version": "v3.0.0"}, want: "v3.0.0", wantParam: "version"},
+		{name: "apt install parameter", method: "apt", params: map[string]any{"version": "13.0.0-1"}, want: "13.0.0-1", wantParam: "version"},
+		{name: "dnf install parameter", method: "dnf", params: map[string]any{"version": "13.0.0-1.fc40"}, want: "13.0.0-1.fc40", wantParam: "version"},
+		{name: "pacman install parameter", method: "pacman", params: map[string]any{"version": "13.0.0-1"}, want: "13.0.0-1", wantParam: "version"},
+		{name: "npm install parameter", method: "npm", params: map[string]any{"version": "3.0.0"}, want: "3.0.0", wantParam: "version"},
+		{name: "dmg github-release source", method: "dmg", version: new("v1.0.0"), params: githubSource("v2.0.0"), want: "v2.0.0", wantParam: "source.version"},
+		{name: "pkg github-release source", method: "pkg", params: githubSource("v2.0.0"), want: "v2.0.0", wantParam: "source.version"},
+		{name: "dmg url source has no version to name", method: "dmg", version: new("v1.0.0"), params: map[string]any{"source": map[string]any{"type": "url", "url": "https://example.test/app.dmg", "version": "v2.0.0"}}, want: "v1.0.0"},
+		{name: "dmg ignores a top-level version parameter", method: "dmg", params: map[string]any{"version": "v2.0.0", "url": "https://example.test/app.dmg"}},
+		{name: "cargo requests .version() alone", method: "cargo", version: new("1.0.0"), params: map[string]any{"version": "2.0.0"}, want: "1.0.0"},
+		{name: "manual ignores a version parameter", method: "manual", params: map[string]any{"version": "2.0.0"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := &ToolConfig{Name: "tool", InstallationMethod: tt.method, Version: tt.version, InstallParams: tt.params}
+			if got := tc.RequestedVersion(); got != tt.want {
+				t.Errorf("RequestedVersion() = %q, want %q", got, tt.want)
+			}
+			if got, param := tc.requestedVersion(); got != tt.want || param != tt.wantParam {
+				t.Errorf("requestedVersion() = (%q, %q), want (%q, %q)", got, param, tt.want, tt.wantParam)
+			}
+		})
+	}
+}
+
+// TestToolConfigWithRequestedVersion pins that the version an update installs is
+// written where RequestedVersion reads it, so the installer installs exactly that
+// version even when an install parameter says "latest", and that it is written on a
+// copy: the loaded configuration keeps what the user wrote, so a later update of the
+// same tool is not refused as pinned to the version this one installed.
+func TestToolConfigWithRequestedVersion(t *testing.T) {
+	githubSource := func(version string) map[string]any {
+		return map[string]any{"type": "github-release", "repo": "acme/app", "version": version}
+	}
+	tests := []struct {
+		name       string
+		method     string
+		params     map[string]any
+		wantParams map[string]any
+	}{
+		{name: "no install parameters", method: "github-release"},
 		{
-			name:        "exact version",
-			version:     new("v1.2.3"),
-			wantRefused: true,
-			wantReason:  "Tool \"tool\" is pinned to version `v1.2.3`. Set version to \"latest\" in the tool config to enable updates",
+			name:       "a version install parameter of latest is replaced",
+			method:     "github-release",
+			params:     map[string]any{"repo": "acme/tool", "version": "latest"},
+			wantParams: map[string]any{"repo": "acme/tool", "version": "v9.9.9"},
 		},
 		{
-			name:        "range",
-			version:     new("^1.2.0"),
-			wantRefused: true,
-			wantReason:  "Tool \"tool\" is pinned to version `^1.2.0`. Set version to \"latest\" in the tool config to enable updates",
+			name:       "without a version parameter .version() carries it",
+			method:     "npm",
+			params:     map[string]any{"package": "prettier"},
+			wantParams: map[string]any{"package": "prettier"},
+		},
+		{
+			name:       "a dmg github-release source version is replaced",
+			method:     "dmg",
+			params:     map[string]any{"appName": "App.app", "source": githubSource("latest")},
+			wantParams: map[string]any{"appName": "App.app", "source": githubSource("v9.9.9")},
+		},
+		{
+			name:       "a dmg url source is left alone",
+			method:     "dmg",
+			params:     map[string]any{"source": map[string]any{"type": "url", "url": "https://example.test/app.dmg"}},
+			wantParams: map[string]any{"source": map[string]any{"type": "url", "url": "https://example.test/app.dmg"}},
+		},
+		{
+			name:       "cargo gains no version parameter it never reads",
+			method:     "cargo",
+			params:     map[string]any{"crateName": "tool"},
+			wantParams: map[string]any{"crateName": "tool"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tc := &ToolConfig{Name: "tool", Version: tt.version}
+			before, err := json.Marshal(tt.params)
+			if err != nil {
+				t.Fatalf("encoding params: %v", err)
+			}
+			loaded := &ToolConfig{Name: "tool", InstallationMethod: tt.method, Version: new("latest"), InstallParams: tt.params}
+
+			targeted := loaded.WithRequestedVersion("v9.9.9")
+
+			if got := targeted.RequestedVersion(); got != "v9.9.9" {
+				t.Errorf("targeted RequestedVersion() = %q, want v9.9.9", got)
+			}
+			if targeted.Version == nil || *targeted.Version != "v9.9.9" {
+				t.Errorf("targeted Version = %v, want v9.9.9", targeted.Version)
+			}
+			got, _ := json.Marshal(targeted.InstallParams)
+			want, _ := json.Marshal(tt.wantParams)
+			if string(got) != string(want) {
+				t.Errorf("targeted InstallParams = %s, want %s", got, want)
+			}
+			if *loaded.Version != "latest" {
+				t.Errorf("loaded Version = %q, want the configured latest", *loaded.Version)
+			}
+			if after, _ := json.Marshal(loaded.InstallParams); string(after) != string(before) {
+				t.Errorf("loaded InstallParams = %s, want the configured %s", after, before)
+			}
+		})
+	}
+}
+
+// TestToolConfigUpdateRefusal pins which configurations update must leave alone: a
+// tool whose installation asks for anything other than "latest" is pinned, whether
+// .version() or an install parameter names it. The refusal names the pinned version
+// and the setting that enables updates: v1's words for .version(), and the install
+// parameter itself when that is what the installer honours.
+func TestToolConfigUpdateRefusal(t *testing.T) {
+	const byVersion = "Tool \"tool\" is pinned to version `%s`. Set version to \"latest\" in the tool config to enable updates"
+	const byParam = "Tool \"tool\" is pinned to version `%s` by its %q install parameter. Set %[2]q to \"latest\" in the tool config to enable updates"
+	tests := []struct {
+		name       string
+		method     string
+		version    *string
+		params     map[string]any
+		wantReason string
+	}{
+		{name: "no version", version: nil},
+		{name: "empty version", version: new("")},
+		{name: "latest", version: new("latest")},
+		{name: "exact version", version: new("v1.2.3"), wantReason: fmt.Sprintf(byVersion, "v1.2.3")},
+		{name: "range", version: new("^1.2.0"), wantReason: fmt.Sprintf(byVersion, "^1.2.0")},
+		{name: "a .version() pin on a method without a version parameter", method: "manual", version: new("v1.0.0"), wantReason: fmt.Sprintf(byVersion, "v1.0.0")},
+		{
+			name:       "github-release version install parameter",
+			method:     "github-release",
+			version:    new("latest"),
+			params:     map[string]any{"repo": "acme/tool", "version": "v2.1.0"},
+			wantReason: fmt.Sprintf(byParam, "v2.1.0", "version"),
+		},
+		{
+			name:       "the install parameter the installer honours is the one named",
+			method:     "gitea-release",
+			version:    new("v1.0.0"),
+			params:     map[string]any{"version": "v2.1.0"},
+			wantReason: fmt.Sprintf(byParam, "v2.1.0", "version"),
+		},
+		{name: "an install parameter of latest overrides a .version() pin", method: "npm", version: new("1.0.0"), params: map[string]any{"version": "latest"}},
+		{
+			name:       "dmg github-release source version",
+			method:     "dmg",
+			params:     map[string]any{"source": map[string]any{"type": "github-release", "repo": "acme/app", "version": "v2.0.0"}},
+			wantReason: fmt.Sprintf(byParam, "v2.0.0", "source.version"),
+		},
+		{name: "a version parameter the method never reads is no pin", method: "cargo", version: new("latest"), params: map[string]any{"version": "2.0.0"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := &ToolConfig{Name: "tool", InstallationMethod: tt.method, Version: tt.version, InstallParams: tt.params}
 			reason, refused := tc.UpdateRefusal()
-			if refused != tt.wantRefused || reason != tt.wantReason {
-				t.Errorf("UpdateRefusal() = (%q, %v), want (%q, %v)", reason, refused, tt.wantReason, tt.wantRefused)
+			if wantRefused := tt.wantReason != ""; refused != wantRefused || reason != tt.wantReason {
+				t.Errorf("UpdateRefusal() = (%q, %v), want (%q, %v)", reason, refused, tt.wantReason, wantRefused)
 			}
 		})
 	}

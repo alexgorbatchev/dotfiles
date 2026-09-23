@@ -46,6 +46,10 @@ export default defineTool((install) =>
 as it does for `github-release`: see
 [github-release › With an Asset Selector](github-release.md#with-an-asset-selector).
 
+A `github-release` source's `version` takes precedence over `.version()`, and
+`dotfiles update` refuses a tool it pins
+([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
+
 ## Examples
 
 ### Explicit App Name

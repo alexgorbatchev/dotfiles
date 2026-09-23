@@ -16,7 +16,8 @@ import (
 // newMacReleaseServer serves owner/app releases: the listing carries a
 // prerelease as its newest entry, releases/latest answers 404 the way GitHub does
 // for a repository whose only release is a prerelease, and the tagged release
-// v1.2.3 is served for the non-prerelease cases. ext is ".dmg" or ".pkg".
+// v1.2.3 is served for the non-prerelease cases, and v1.1.0 by its tag. ext is ".dmg"
+// or ".pkg".
 func newMacReleaseServer(t *testing.T, ext string) *recordingServer {
 	t.Helper()
 	var server *recordingServer
@@ -27,6 +28,8 @@ func newMacReleaseServer(t *testing.T, ext string) *recordingServer {
 			_, _ = w.Write([]byte(`[{"tag_name":"v2.0.0-beta.1","prerelease":true,"assets":[{"name":"app-darwin-arm64` + ext + `","browser_download_url":"` + download + `"}]}]`))
 		case "/repos/owner/app/releases/latest":
 			w.WriteHeader(http.StatusNotFound)
+		case "/repos/owner/app/releases/tags/v1.1.0":
+			_, _ = w.Write([]byte(`{"tag_name":"v1.1.0","assets":[{"name":"app-darwin-arm64` + ext + `","browser_download_url":"` + download + `"}]}`))
 		case "/repos/owner/stable/releases/latest":
 			_, _ = w.Write([]byte(`{"tag_name":"v1.2.3","assets":[{"name":"app-darwin-arm64` + ext + `","browser_download_url":"` + download + `"}]}`))
 		case "/download/app-darwin-arm64" + ext:
@@ -113,6 +116,33 @@ func TestDmgInstallerReleaseParameters(t *testing.T) {
 		}
 		if res.Version != "v2.0.0-beta.1" {
 			t.Fatalf("expected the prerelease tag as version, got %q", res.Version)
+		}
+	})
+
+	// source.version is the pin config.ToolConfig.RequestedVersion names for dmg, and
+	// the one update refuses to move, so it must be what the installation fetches.
+	t.Run("source.version selects the release by tag over .version()", func(t *testing.T) {
+		server := newMacReleaseServer(t, ".dmg")
+		inst, _, _ := newInstaller(t, server)
+		dotVersion := "v9.9.9"
+
+		res, err := inst.Install(context.Background(), &config.ToolConfig{
+			Name:               "app",
+			InstallationMethod: "dmg",
+			Version:            &dotVersion,
+			InstallParams: map[string]interface{}{
+				"source":  map[string]interface{}{"type": "github-release", "repo": "owner/app", "version": "v1.1.0"},
+				"appName": "App.app",
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !server.requested("/repos/owner/app/releases/tags/v1.1.0") {
+			t.Fatalf("expected the v1.1.0 release to be fetched by tag, got %v", server.paths)
+		}
+		if res.Version != "v1.1.0" {
+			t.Fatalf("expected version v1.1.0, got %q", res.Version)
 		}
 	})
 

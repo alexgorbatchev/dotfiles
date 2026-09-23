@@ -127,6 +127,87 @@ func TestGetBinaryNames(t *testing.T) {
 	}
 }
 
+// TestOrchestrator_InstallFollowsInstallParamVersionPin pins that the installation
+// record and the already-installed check read the version the installer installs
+// (config.ToolConfig.RequestedVersion). A `version` install parameter wins over
+// .version() for github-release, so the record holds the parameter's version, and
+// changing the parameter reinstalls an installed tool instead of leaving it at the
+// old pin.
+func TestOrchestrator_InstallFollowsInstallParamVersionPin(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	mockInst := &mockInstaller{name: "github-release", binaries: []string{"pinned-bin"}}
+	_ = instReg.Register(mockInst)
+	orch := NewOrchestrator(nil, fsys, exec.NewMockRunner(), reg, instReg)
+	orch.SetSymlinkFS(fsys)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/binaries", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
+
+	dotVersion := "v0.2.0"
+	tool := &config.ToolConfig{
+		Name:               "pinned",
+		Version:            &dotVersion,
+		InstallationMethod: "github-release",
+		InstallParams:      map[string]any{"repo": "acme/pinned", "version": "v0.1.0"},
+		Binaries:           testutil.DeclaredBinaries("pinned-bin"),
+	}
+	recorded := func(t *testing.T) string {
+		t.Helper()
+		rec, err := reg.GetToolInstallation(ctx, "pinned")
+		if err != nil || rec == nil {
+			t.Fatalf("installation record = %+v, %v", rec, err)
+		}
+		return rec.Version
+	}
+
+	if err := orch.InstallTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("installing: %v", err)
+	}
+	if got := recorded(t); got != "v0.1.0" {
+		t.Errorf("recorded version = %q, want the v0.1.0 the install parameter pins", got)
+	}
+
+	tool.InstallParams["version"] = "v0.3.0"
+	if err := orch.InstallTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("installing with the changed pin: %v", err)
+	}
+	if mockInst.installCount != 2 {
+		t.Errorf("installer ran %d time(s), want 2: a changed pin must reinstall the tool", mockInst.installCount)
+	}
+	if got := recorded(t); got != "v0.3.0" {
+		t.Errorf("recorded version after the pin changed = %q, want v0.3.0", got)
+	}
+
+	// A range names no installed version, so the record falls back to what the
+	// installer reports, here nothing, and so to a timestamp.
+	tool.InstallParams["version"] = "^0.3.0"
+	if err := orch.InstallTools(config.WithForce(ctx, true), []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("installing with a range: %v", err)
+	}
+	if got := recorded(t); got == "^0.3.0" || !timestampPattern.MatchString(got) {
+		t.Errorf("recorded version for a range = %q, want a generated timestamp", got)
+	}
+}
+
+var timestampPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$`)
+
 func TestOrchestrator_Install(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

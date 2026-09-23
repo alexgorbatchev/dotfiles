@@ -23,6 +23,29 @@ func TestNpmInstaller(t *testing.T) {
 		t.Error("expected SupportsSudo() to be false")
 	}
 
+	// The version install parameter is the pin config.ToolConfig.RequestedVersion names
+	// for npm, and the one update refuses to move, so it must be what npm installs.
+	t.Run("the version install parameter wins over .version()", func(t *testing.T) {
+		runner.Clear()
+		ver := "2.1.0"
+		tool := &config.ToolConfig{
+			Name:               "prettier",
+			InstallationMethod: "npm",
+			Version:            &ver,
+			InstallParams:      map[string]interface{}{"package": "prettier", "version": "3.0.0"},
+		}
+
+		if _, err := inst.Install(context.Background(), tool); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(runner.History) == 0 {
+			t.Fatal("expected command to run")
+		}
+		if cmd := runner.History[0]; cmd.Name != "npm" || len(cmd.Args) != 3 || cmd.Args[2] != "prettier@3.0.0" {
+			t.Errorf("command = %s %v, want npm install -g prettier@3.0.0", cmd.Name, cmd.Args)
+		}
+	})
+
 	t.Run("Install success with npm", func(t *testing.T) {
 		runner.Clear()
 		ver := "2.1.0"
