@@ -230,7 +230,7 @@ var toolUpdateCmd = &cobra.Command{
 	ValidArgsFunction: completeToolNames,
 	Long: `Evaluates tool versions and updates software packages if newer versions are available.
 
-When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version, with .version() or a version install parameter, is never updated, even with --force; set that version to "latest" to enable updates.`,
+When run without arguments, checks all installed tools for updates and installs newer versions if available. When one or more tool names are provided, checks and updates only those tools if they are currently installed. Uninstalled tools are skipped when batch updating. A tool whose configuration pins a version, with .version() or a version install parameter, is never updated, even with --force; set that version to "latest" to enable updates. When a tool is named, an update check whose upstream query fails makes its update fail, even with --force; "dotfiles tool install --force <tool>" reinstalls without checking.`,
 	Example: `  # Update all installed tools
   dotfiles tool update
 

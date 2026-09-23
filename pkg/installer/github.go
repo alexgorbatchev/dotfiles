@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -251,13 +250,8 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		g.sysCtx = NewDefaultSystemContext()
 	}
 	repo := getStringParam(tool.InstallParams, "repo", "")
-	if repo == "" {
-		return nil, fmt.Errorf("repository 'repo' is required in installParams")
-	}
-
-	parts := strings.Split(repo, "/")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", repo)
+	if err := validateReleaseRepo(repo); err != nil {
+		return nil, err
 	}
 
 	version := tool.RequestedVersion()
@@ -368,8 +362,8 @@ func (g *GitHubInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 
 func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	repo := getStringParam(tool.InstallParams, "repo", "")
-	if repo == "" {
-		return &UpdateCheckResult{}, nil
+	if err := validateReleaseRepo(repo); err != nil {
+		return nil, err
 	}
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
 	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)

@@ -72,4 +72,4 @@ export default defineTool((install) =>
 
 1. **Install**: Runs `npm install -g <package>[@version]` (or `bun install -g <package>[@version]` when `packageManager: 'bun'`), adding `--force` when `force: true`
 2. **Binaries**: Each declared `.bin()` name is resolved from the package manager's global bin directory (`npm config get prefix` + `/bin`, or `bun pm bin -g`)
-3. **Update check**: Compares against `npm view <package> version` (npm) or `bun pm view <package> version` (bun)
+3. **Update check**: Compares against `npm view <package> version` (npm) or `bun pm view <package> version` (bun). If that command fails or prints no version, the check fails ([`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool))

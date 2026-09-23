@@ -1778,7 +1778,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 	// Unpinned, so the update route installs it rather than refusing a pin.
 	ver := "latest"
 	toolConfigs := []*config.ToolConfig{
-		{Name: "bat", Version: &ver, InstallationMethod: "github-release", ConfigFilePath: toolPath},
+		{Name: "bat", Version: &ver, InstallationMethod: "github-release", InstallParams: map[string]interface{}{"repo": "acme/contract-bat"}, ConfigFilePath: toolPath},
 		{Name: "no-method-tool"},
 	}
 	projCfg := &config.ProjectConfig{
@@ -1789,6 +1789,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 			TargetDir:      filepath.Join(tempDir, "bin"),
 			ToolConfigsDir: tempDir,
 		},
+		Github: config.HostConfig{Host: newGitHubReleaseAPI(t, "acme/contract-bat", "v1.1.0")},
 	}
 	instReg := installer.NewRegistry()
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})

@@ -59,7 +59,9 @@ func TestE2EDnf(t *testing.T) {
 		t.Fatalf("failed to read fake dnf log: %v", err)
 	}
 	logStr := string(logBytes)
-	expectedLog := "dnf makecache\ndnf install -y ripgrep-13.0.0-1.fc40\nrpm -q --qf %{VERSION}-%{RELEASE} ripgrep\n"
+	// The rpm query format ends in a newline so that each installed instance of a
+	// package prints on a line of its own; the stub logs that argument verbatim.
+	expectedLog := "dnf makecache\ndnf install -y ripgrep-13.0.0-1.fc40\nrpm -q --qf %{VERSION}-%{RELEASE}\n ripgrep\n"
 	if logStr != expectedLog {
 		t.Errorf("expected log file content %q, but got %q", expectedLog, logStr)
 	}

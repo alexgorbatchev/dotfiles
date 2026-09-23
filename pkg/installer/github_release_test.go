@@ -9,7 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 // newReleaseAPIServer serves the release endpoints for owner/tool the way the
@@ -199,5 +202,67 @@ func TestGithubToken(t *testing.T) {
 				t.Fatalf("githubToken = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestReleaseInstallers_RequireRepo pins that a github-release or gitea-release tool
+// whose repo is missing or malformed fails its update check with the configuration
+// error Install gives, before any request is made. The update check used to answer
+// such a tool with an empty result, which every caller reads as "up to date", for a
+// tool that cannot even be installed (issue #120).
+func TestReleaseInstallers_RequireRepo(t *testing.T) {
+	type releaseInstaller interface {
+		Install(ctx context.Context, tool *config.ToolConfig) (*InstallResult, error)
+		CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error)
+	}
+	newGitHub := func(t *testing.T) releaseInstaller {
+		fsys := fs.NewMemFS()
+		inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = &http.Client{Transport: failingTransport{t}}
+		return inst
+	}
+	newGitea := func(t *testing.T) releaseInstaller {
+		inst, _ := newGiteaTestInstaller(t, nil)
+		inst.httpClient = &http.Client{Transport: failingTransport{t}}
+		return inst
+	}
+	installers := []struct {
+		name   string
+		inst   func(t *testing.T) releaseInstaller
+		params map[string]interface{}
+	}{
+		{name: "github-release", inst: newGitHub, params: map[string]interface{}{}},
+		{name: "gitea-release", inst: newGitea, params: map[string]interface{}{"instanceUrl": "https://codeberg.org"}},
+	}
+	repos := []struct {
+		name    string
+		repo    interface{}
+		wantErr string
+	}{
+		{name: "no repo", wantErr: "repository 'repo' is required in installParams"},
+		{name: "an empty repo", repo: "", wantErr: "repository 'repo' is required in installParams"},
+		{name: "a repo without an owner", repo: "tool", wantErr: `invalid repository format "tool". Expected 'owner/repo'`},
+	}
+	for _, ri := range installers {
+		for _, rp := range repos {
+			t.Run(ri.name+" with "+rp.name, func(t *testing.T) {
+				params := map[string]interface{}{}
+				for k, v := range ri.params {
+					params[k] = v
+				}
+				if rp.repo != nil {
+					params["repo"] = rp.repo
+				}
+				tool := &config.ToolConfig{Name: "tool", InstallParams: params}
+				inst := ri.inst(t)
+
+				_, installErr := inst.Install(context.Background(), tool)
+				res, checkErr := inst.CheckUpdate(context.Background(), tool)
+				assertCheckFailed(t, res, checkErr, rp.wantErr)
+				if installErr == nil || installErr.Error() != checkErr.Error() {
+					t.Errorf("Install() error = %v, CheckUpdate() error = %v; want the same configuration error", installErr, checkErr)
+				}
+			})
+		}
 	}
 }

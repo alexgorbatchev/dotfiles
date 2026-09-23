@@ -169,14 +169,6 @@ func TestGitHubInstaller(t *testing.T) {
 		}
 	})
 
-	t.Run("CheckUpdate and basic details", func(t *testing.T) {
-		tool := &config.ToolConfig{Name: "mytool"}
-		res, err := inst.CheckUpdate(context.Background(), tool)
-		if err != nil || res.Outdated != nil || res.LatestVersion != "" {
-			t.Errorf("unexpected: %v, %v", res, err)
-		}
-	})
-
 	t.Run("CheckUpdate disk caching and force bypass", func(t *testing.T) {
 		callCount := 0
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

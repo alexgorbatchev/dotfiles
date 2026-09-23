@@ -2210,6 +2210,50 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	})
 }
 
+// TestCheckUpdatesCommand_FailedQuery pins that an update check whose upstream query
+// fails is reported as failed, never as up to date: with the real npm installer and an
+// npm that exits 1, `tool check` logs the failure and leaves the tool out of its
+// results, and `tool update` fails instead of answering "Already up to date" (issue
+// #120).
+func TestCheckUpdatesCommand_FailedQuery(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	stubDir := t.TempDir()
+	stub := "#!/bin/sh\necho 'npm error code E401' >&2\necho 'npm error Unable to authenticate' >&2\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(stubDir, "npm"), []byte(stub), 0755); err != nil {
+		t.Fatalf("writing npm stub: %v", err)
+	}
+	t.Setenv("PATH", stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	p := newE2EProject(t, `"private-cli": {"name": "private-cli", "installationMethod": "npm", "installParams": {"package": "@acme/private-cli"}}`)
+	p.seedInstallation(t, "private-cli", "1.0.0", filepath.Join(p.Root, "installed", "private-cli"))
+
+	t.Run("tool check reports the failure", func(t *testing.T) {
+		out, err := p.run("tool", "check", "--json")
+		if err != nil {
+			t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
+		}
+		var results []ToolUpdateResult
+		if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+			t.Fatalf("stdout is not a JSON array of results: %v\n%s", err, out.Stdout)
+		}
+		for _, r := range results {
+			if r.ToolName == "private-cli" {
+				t.Errorf("private-cli reported as %+v; a failed query must not produce a result", r)
+			}
+		}
+		mustContain(t, "stderr", out.Stderr, "[private-cli] Update check failed")
+	})
+
+	t.Run("tool update fails", func(t *testing.T) {
+		out, err := p.run("tool", "update", "private-cli")
+		if err == nil {
+			t.Fatalf("tool update private-cli succeeded; want the failed check to fail it\n%s", out.Combined)
+		}
+		mustContain(t, "error", err.Error(), "running npm view @acme/private-cli version", "npm error code E401")
+		mustNotContain(t, "stderr", out.Stderr, "Already up to date")
+	})
+}
+
 // TestCheckUpdatesCommand_UpdateCheckSettings pins what a tool's .updateCheck() block
 // does to check-updates: enabled:false takes the tool out of the run, and a constraint
 // decides whether the newest release upstream counts as an update at all.

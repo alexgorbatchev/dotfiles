@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +22,23 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
+
+// newGitHubReleaseAPI serves the latest release of repo, tagged tag, the way the GitHub
+// API does. The check-update route asks the real github-release installer, so a test
+// points the project's github.host at this server and gives its tool this repo; a tool
+// without a repo is a configuration error, not an up-to-date tool.
+func newGitHubReleaseAPI(t *testing.T, repo, tag string) string {
+	t.Helper()
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repos/"+repo+"/releases/latest" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"tag_name": tag, "name": tag})
+	}))
+	t.Cleanup(api.Close)
+	return api.URL
+}
 
 func TestDashboardMutationRoutes(t *testing.T) {
 	log := logger.New(logger.Config{
@@ -46,6 +64,7 @@ func TestDashboardMutationRoutes(t *testing.T) {
 			TargetDir:      filepath.Join(tempDir, "bin"),
 			ToolConfigsDir: tempDir,
 		},
+		Github: config.HostConfig{Host: newGitHubReleaseAPI(t, "acme/mutation-bat", "v1.0.0")},
 	}
 
 	// Unpinned, so the update route installs it rather than refusing a pin.
@@ -55,6 +74,7 @@ func TestDashboardMutationRoutes(t *testing.T) {
 			Name:               "bat",
 			Version:            &ver,
 			InstallationMethod: "github-release",
+			InstallParams:      map[string]interface{}{"repo": "acme/mutation-bat"},
 		},
 	}
 
