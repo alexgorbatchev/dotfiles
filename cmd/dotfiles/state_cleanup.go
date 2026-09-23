@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/spf13/cobra"
@@ -26,7 +28,7 @@ var stateCleanupCmd = &cobra.Command{
 		// Query database for all recorded tool installations
 		installedTools, err := services.Registry.GetAllToolInstallations(ctx)
 		if err != nil {
-			log.Error("Failed querying installed tools", err)
+			log.Error(logger.Message(fmt.Sprintf("Failed querying installed tools: %v", err)))
 		} else {
 			// Build map of configured tool names
 			activeMap := make(map[string]bool)
@@ -44,7 +46,7 @@ var stateCleanupCmd = &cobra.Command{
 						Name: instTool.ToolName,
 					}, services.ProjectConfig)
 					if err != nil {
-						log.WithTag(instTool.ToolName).Error("Failed uninstalling orphaned tool", err)
+						log.WithTag(instTool.ToolName).Error(logger.Message(fmt.Sprintf("Failed uninstalling orphaned tool: %v", err)))
 					}
 				}
 			}

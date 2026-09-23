@@ -1626,6 +1626,9 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	// version comparison, the release cache and the download are what is tested.
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	const repoNewer, repoSame = "acme/update-newer", "acme/update-same"
+	// The release server answers 500 for a repository it does not publish, so the
+	// update check of a tool pointed there fails.
+	const repoMissing = "acme/update-missing"
 	newReleaseServer(t, map[string]mockRelease{
 		repoNewer: {Tag: "v9.9.9", Binaries: []string{"newer-bin", "unknown-current", "sudo-tool"}},
 		repoSame:  {Tag: "v0.1.0", Binaries: []string{"same"}},
@@ -1642,8 +1645,9 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		"same": {"name": "same", "installationMethod": "github-release", "installParams": {"repo": %[2]q, "assetPattern": %[3]q}},
 		"manual-versioned": {"name": "manual-versioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
 		"manual-unversioned": {"name": "manual-unversioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
+		"check-fails": {"name": "check-fails", "installationMethod": "github-release", "installParams": {"repo": %[5]q, "assetPattern": %[3]q}},
 		"never-installed": {"name": "never-installed", "installationMethod": "manual"}
-	`, repoNewer, repoSame, releaseAssetName, manualBin))
+	`, repoNewer, repoSame, releaseAssetName, manualBin, repoMissing))
 
 	installRoot := filepath.Join(p.Root, "installed")
 	for name, version := range map[string]string{
@@ -1653,6 +1657,7 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		"same":               "v0.1.0",
 		"manual-versioned":   "v1.0.0",
 		"manual-unversioned": "",
+		"check-fails":        "v0.1.0",
 	} {
 		dir := filepath.Join(installRoot, name)
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -1768,16 +1773,19 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		}
 	})
 
-	t.Run("updating everything skips what it cannot handle and continues past failures", func(t *testing.T) {
+	// Every failure names its cause without --trace (#131): the logger keeps an error
+	// argument's text for --trace, so the cause has to be part of the message.
+	t.Run("updating everything reports what it cannot update and continues past failures", func(t *testing.T) {
 		out, err := p.run("tool", "update")
 		if err != nil {
 			t.Fatalf("tool update: %v\n%s", err, out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr,
 			"Checking all configured tools for updates...",
-			"[sudo-tool] Updating to version v9.9.9 failed",
+			`[sudo-tool] Updating to version v9.9.9 failed: installer "github-release" does not support sudo elevation`,
 			// Updating everything leaves a tool nothing could check alone unless forced.
 			`[manual-versioned] Update check not supported for installer "manual"`,
+			`[check-fails] Update check failed: checking update for "check-fails": GitHub API returned status 500`,
 		)
 		mustNotContain(t, "stderr", out.Stderr,
 			"[never-installed]",
@@ -1785,7 +1793,7 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		)
 	})
 
-	t.Run("force updating everything reinstalls each installed tool", func(t *testing.T) {
+	t.Run("force updating everything reinstalls each installed tool whose check did not fail", func(t *testing.T) {
 		out, err := p.run("tool", "update", "--force")
 		if err != nil {
 			t.Fatalf("tool update --force: %v\n%s", err, out.Combined)
@@ -1794,7 +1802,10 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 			"[same] Force updating: reinstalling version v0.1.0",
 			`[manual-versioned] Update check not supported for installer "manual", performing regular install instead`,
 			"[manual-versioned] Successfully updated to version",
+			// --force does not bypass a failed check, as for a named tool.
+			`[check-fails] Update check failed: checking update for "check-fails": GitHub API returned status 500`,
 		)
+		mustNotContain(t, "stderr", out.Stderr, "[check-fails] Force updating", "[check-fails] Successfully")
 	})
 }
 
@@ -2104,7 +2115,8 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 		mustNotContain(t, "stdout", out.Stdout, "off:", "shell-only:", "fail:", "hand: up to date", "avail: update available", "avail: available")
 		mustContain(t, "stderr", out.Stderr,
 			// A failed upstream query is still a failed check, installed or not.
-			"[fail] Update check failed",
+			// The cause is part of the message, so it is printed without --trace (#131).
+			`[fail] Update check failed: checking update for "fail": GitHub API returned status 500`,
 			"[avail] Not installed; the latest available version is v9.9.9",
 			"[never-brew] Not installed\n",
 			"[upd] Update available: v0.1.0 -> v9.9.9",
@@ -2186,29 +2198,100 @@ func TestCheckUpdatesCommand_UnreadableInstallation(t *testing.T) {
 	const repo = "acme/unreadable"
 	newReleaseServer(t, map[string]mockRelease{repo: {Tag: "v1.0.0"}})
 	p := newE2EProject(t, fmt.Sprintf(`"unreadable": {"name": "unreadable", "installationMethod": "github-release", "installParams": {"repo": %q}}`, repo))
-	// A record whose version is NULL cannot be scanned; the schema is recreated without
-	// the NOT NULL constraint so that such a record can exist.
-	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
-		for _, stmt := range []string{
-			"DROP TABLE tool_installations",
-			"CREATE TABLE tool_installations (id INTEGER PRIMARY KEY AUTOINCREMENT, tool_name TEXT NOT NULL UNIQUE, version TEXT, install_path TEXT NOT NULL, timestamp TEXT NOT NULL, installed_at INTEGER NOT NULL, binary_paths TEXT NOT NULL, download_url TEXT, asset_name TEXT, configured_version TEXT, original_tag TEXT, install_method TEXT)",
-			"INSERT INTO tool_installations (tool_name, version, install_path, timestamp, installed_at, binary_paths) VALUES ('unreadable', NULL, '/x', 't', 0, '[]')",
-		} {
-			if _, err := tx.ExecContext(ctx, stmt); err != nil {
-				return fmt.Errorf("%s: %w", stmt, err)
-			}
-		}
-		return nil
-	})
+	p.seedUnreadableInstallation(t, "unreadable")
 
 	out, err := p.run("tool", "check", "--json")
 	if err != nil {
 		t.Fatalf("tool check --json: %v\n%s", err, out.Combined)
 	}
-	mustContain(t, "stderr", out.Stderr, "[unreadable] Reading the installation record failed")
+	// The cause is part of the message, so it is printed without --trace (#131).
+	mustContain(t, "stderr", out.Stderr, "[unreadable] Reading the installation record failed: scanning tool installation record: ", unreadableInstallationCause)
 	if strings.TrimSpace(out.Stdout) != "[]" {
 		t.Errorf("stdout = %s, want no result for a tool whose installation could not be read", out.Stdout)
 	}
+}
+
+// TestUpdateCommand_UnreadableInstallation pins that tool update tells an installation
+// record it cannot read from a tool that is not installed (#131): updating everything
+// reports the tool with the cause instead of skipping it, even with --force, and a named
+// tool fails with the read error instead of calling the tool not installed.
+func TestUpdateCommand_UnreadableInstallation(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repo = "acme/unreadable-update"
+	newReleaseServer(t, map[string]mockRelease{repo: {Tag: "v1.0.0"}})
+	p := newE2EProject(t, fmt.Sprintf(`"unreadable": {"name": "unreadable", "installationMethod": "github-release", "installParams": {"repo": %q}}`, repo))
+	p.seedUnreadableInstallation(t, "unreadable")
+
+	for _, args := range [][]string{{"tool", "update"}, {"tool", "update", "--force"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			out, err := p.run(args...)
+			if err != nil {
+				t.Fatalf("%s: %v\n%s", strings.Join(args, " "), err, out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, "[unreadable] Reading the installation record failed: scanning tool installation record: ", unreadableInstallationCause)
+			mustNotContain(t, "stderr", out.Stderr, "[unreadable] Force updating", "[unreadable] Successfully")
+		})
+	}
+
+	t.Run("named", func(t *testing.T) {
+		_, err := p.run("tool", "update", "unreadable")
+		if err == nil {
+			t.Fatal("expected tool update unreadable to fail")
+		}
+		mustContain(t, "error", err.Error(), `reading the installation of "unreadable": `, unreadableInstallationCause)
+		mustNotContain(t, "error", err.Error(), "not installed")
+	})
+}
+
+// TestUpdateCommand_SkipsConfigurationOnlyTools pins that updating everything leaves a
+// tool with no installation method alone, even when it has an installation record left
+// from when it had one, and goes on to update the other tools.
+func TestUpdateCommand_SkipsConfigurationOnlyTools(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	manualBin := filepath.Join(t.TempDir(), "manual-bin")
+	if err := os.WriteFile(manualBin, []byte("#!/bin/sh\necho manual\n"), 0755); err != nil {
+		t.Fatalf("writing manual binary: %v", err)
+	}
+	p := newE2EProject(t, fmt.Sprintf(`
+		"cfg": {"name": "cfg"},
+		"hand": {"name": "hand", "installationMethod": "manual", "installParams": {"binaryPath": %q}}
+	`, manualBin))
+	for _, name := range []string{"cfg", "hand"} {
+		p.seedInstallation(t, name, "v1.0.0", filepath.Join(p.Root, "installed", name))
+	}
+
+	out, err := p.run("tool", "update", "--force")
+	if err != nil {
+		t.Fatalf("tool update --force: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "[hand] Successfully updated to version")
+	mustNotContain(t, "stderr", out.Stderr, "[cfg]")
+}
+
+// unreadableInstallationCause is part of the error reading the record
+// seedUnreadableInstallation leaves.
+const unreadableInstallationCause = `name "version": converting NULL to string is unsupported`
+
+// seedUnreadableInstallation leaves an installation record for toolName that the
+// registry cannot read. A record whose version is NULL cannot be scanned, so the schema
+// is recreated without the NOT NULL constraint that keeps such a record out.
+func (p e2eProject) seedUnreadableInstallation(t *testing.T, toolName string) {
+	t.Helper()
+	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+		for _, stmt := range []string{
+			"DROP TABLE tool_installations",
+			"CREATE TABLE tool_installations (id INTEGER PRIMARY KEY AUTOINCREMENT, tool_name TEXT NOT NULL UNIQUE, version TEXT, install_path TEXT NOT NULL, timestamp TEXT NOT NULL, installed_at INTEGER NOT NULL, binary_paths TEXT NOT NULL, download_url TEXT, asset_name TEXT, configured_version TEXT, original_tag TEXT, install_method TEXT)",
+		} {
+			if _, err := tx.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("%s: %w", stmt, err)
+			}
+		}
+		const insert = "INSERT INTO tool_installations (tool_name, version, install_path, timestamp, installed_at, binary_paths) VALUES (?, NULL, '/x', 't', 0, '[]')"
+		if _, err := tx.ExecContext(ctx, insert, toolName); err != nil {
+			return fmt.Errorf("%s: %w", insert, err)
+		}
+		return nil
+	})
 }
 
 // TestAheadOfLatest pins what tool check and tool update do with a tool installed at a
@@ -2565,7 +2648,7 @@ func TestCargoUpdateChecks(t *testing.T) {
 		if r, ok := byName["failing"]; ok {
 			t.Errorf("failing result = %+v; a failed query must not be reported as a result", r)
 		}
-		mustContain(t, "stderr", out.Stderr, "[failing] Update check failed")
+		mustContain(t, "stderr", out.Stderr, `[failing] Update check failed: checking update for "failing": checking failing for updates: resolving crate-missing version from crates.io: crates.io returned status: 500`)
 		mustNotContain(t, "stderr", out.Stderr, "Update check not supported")
 	})
 
@@ -3630,6 +3713,36 @@ func TestCleanupCommand_RemovesOrphans(t *testing.T) {
 	}
 }
 
+// TestCleanupCommand_FailureLogsNameTheCause pins that cleanup reports each failure
+// with its cause outside --trace (#131).
+func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
+	t.Run("installation records that cannot be read", func(t *testing.T) {
+		p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+		p.seedUnreadableInstallation(t, "ghost")
+
+		out, err := p.run("state", "cleanup")
+		if err != nil {
+			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Failed querying installed tools: ", unreadableInstallationCause)
+	})
+
+	t.Run("an orphaned tool that cannot be removed", func(t *testing.T) {
+		p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+		p.seedInstallation(t, "ghost", "v1.0.0", filepath.Join(p.Root, "installed", "ghost"))
+		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, "CREATE TRIGGER keep_installations BEFORE DELETE ON tool_installations BEGIN SELECT RAISE(ABORT, 'installations are kept'); END")
+			return err
+		})
+
+		out, err := p.run("state", "cleanup")
+		if err != nil {
+			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[ghost] Failed uninstalling orphaned tool: ", "installations are kept")
+	})
+}
+
 // shellInstallFeature configures every shell's profile under the project HOME.
 const shellInstallFeature = `"features": {"shellInstall": {"zsh": "~/.zshrc", "bash": "~/.bashrc", "powershell": "~/.config/powershell/profile.ps1"}}`
 
@@ -3697,6 +3810,32 @@ func TestGenerateCommand_SkipsMissingProfiles(t *testing.T) {
 		}
 		mustContain(t, "stderr", out.Stderr, profile, "Profile not found, skipping", script)
 	}
+}
+
+// TestGenerateCommand_FailureLogsNameTheCause pins that the failures generate logs
+// without failing, a profile it cannot update and a CLI completion it cannot write, are
+// reported with their cause outside --trace (#131).
+func TestGenerateCommand_FailureLogsNameTheCause(t *testing.T) {
+	p := newE2EProject(t, `"bat": {"name": "bat"}`)
+	p.writeConfig(t, `"bat": {"name": "bat"}`, "", `"features": {"shellInstall": {"zsh": "~/.zshrc"}}`)
+	// A directory where each file belongs cannot be read or written as one.
+	profile := filepath.Join(p.HomeDir, ".zshrc")
+	completion := filepath.Join(p.GeneratedDir, "shell-scripts", "zsh", "completions", "_dotfiles")
+	for _, dir := range []string{profile, completion} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("creating %s: %v", dir, err)
+		}
+	}
+
+	out, err := p.run("state", "generate")
+	if err != nil {
+		t.Fatalf("state generate: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr,
+		// The prefixes are the wrapped errors the failures return, so a cause follows.
+		"["+profile+"] Failed shell profile injection: reading profile path: ",
+		"Failed to write CLI completion: writing CLI completion: ",
+	)
 }
 
 func TestWhyCommand_MissingConfigFile(t *testing.T) {

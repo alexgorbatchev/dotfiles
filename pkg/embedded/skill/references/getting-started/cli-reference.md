@@ -116,7 +116,7 @@ Removes installed tools and their associated binaries, shims, and symlinks. With
 
 _(Alias: `u`, Root shortcuts: `dotfiles update`, `dotfiles u`)_
 
-Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed are skipped during batch updates.
+Updates installed tools to their latest available release. With no argument, updates all installed tools. Tools that are not installed, and tools with no installation method, are skipped during batch updates. Every other tool a batch update cannot update, such as one whose installation record cannot be read, is logged with its cause, and the update goes on to the next tool.
 
 A tool whose configuration pins a version is not updated, whatever its installation method. A version is pinned when the one its installation asks for is anything other than `"latest"`, and it is named in one of two places:
 
@@ -136,7 +136,7 @@ A tool installed at a version newer than the latest release upstream, such as a 
 
 A forced reinstall of a tool that had no update finishes with `Successfully reinstalled version <version>`; `Successfully updated to version <version>` is reported only for an update, or for a reinstall of a tool nothing could check.
 
-A tool counts as up to date only when its installation method's query says so. The update check fails when that query fails, prints no version, or cannot tell a current package from a failed lookup. Examples are a registry that cannot be reached, an `apt`, `brew`, `dnf` or `pacman` package that is not installed, or a `github-release` or `gitea-release` tool without a valid `repo`. `dotfiles tool update <tool>` then fails with the query's error, which names the command and either what it printed or the line of its answer that decided. `--force` does not bypass a failed check; `dotfiles tool install --force <tool>` reinstalls a tool without checking upstream.
+A tool counts as up to date only when its installation method's query says so. The update check fails when that query fails, prints no version, or cannot tell a current package from a failed lookup. Examples are a registry that cannot be reached, an `apt`, `brew`, `dnf` or `pacman` package that is not installed, or a `github-release` or `gitea-release` tool without a valid `repo`. `dotfiles tool update <tool>` then fails with the query's error, which names the command and either what it printed or the line of its answer that decided. Updating everything logs `Update check failed: <error>` for the tool and moves on to the next one. `--force` does not bypass a failed check, named or not; `dotfiles tool install --force <tool>` reinstalls a tool without checking upstream.
 
 The dashboard's update action makes the same decisions as `dotfiles tool update <tool>`. A failed check answers with the query's error and installs nothing, and a tool that is not installed is refused. A tool whose check finds no newer release is not reinstalled; it is reported as up to date, or as `<installed> is ahead of the latest known version (<latest>)` when the installed version is newer.
 
@@ -159,7 +159,7 @@ Each tool is reported with one status:
 
 In agent mode (`AGENT=1`) each tool is one line, `tool:<tool> status:<status> current:<installed> latest:<latest> cached:<true|false>`, or `tool:<tool> status:unsupported current:<installed> installer:<method>`. `current` is empty for a tool that is not installed.
 
-A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails, whether the tool is installed or not (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed` for that tool and leaves it out of its output. A tool whose installation record cannot be read is logged as `Reading the installation record failed` and left out the same way.
+A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails, whether the tool is installed or not (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed: <error>` for that tool and leaves it out of its output. A tool whose installation record cannot be read is logged as `Reading the installation record failed: <error>` and left out the same way.
 
 - `--json`: Output update status in JSON format. Each entry carries `tool`, `status` (one of the statuses above), `currentVersion`, `latestVersion`, and `cached`. `currentVersion` is absent for a tool that is not installed, and `latestVersion` when nothing upstream named one.
 
