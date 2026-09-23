@@ -132,22 +132,36 @@ Some installation methods have no way to learn the latest version upstream: `man
 
 Reinstalling such a tool records the version the installer detects, such as through the `versionArgs` of [`curl-script`](../installation-methods/curl-script.md). If the installer detects none, the reinstall records a new `YYYY-MM-DD-HH-MM-SS` timestamp. It never records the version the previous installation left.
 
+A tool installed at a version newer than the latest release upstream, such as a prerelease or a release upstream has since withdrawn, is never moved back to that older release. `update` reports `<installed> is ahead of the latest known version (<latest>)` and leaves the tool alone. With `--force` it reinstalls the installed version, announced as `Force updating: reinstalling installed version <installed>, which is ahead of the latest known version (<latest>)`. To move to the older release, run `dotfiles tool install --force <tool>`, which installs the release the configuration resolves.
+
+A forced reinstall of a tool that had no update finishes with `Successfully reinstalled version <version>`; `Successfully updated to version <version>` is reported only for an update, or for a reinstall of a tool nothing could check.
+
 A tool counts as up to date only when its installation method's query says so. The update check fails when that query fails, prints no version, or cannot tell a current package from a failed lookup. Examples are a registry that cannot be reached, an `apt`, `brew`, `dnf` or `pacman` package that is not installed, or a `github-release` or `gitea-release` tool without a valid `repo`. `dotfiles tool update <tool>` then fails with the query's error, which names the command and either what it printed or the line of its answer that decided. `--force` does not bypass a failed check; `dotfiles tool install --force <tool>` reinstalls a tool without checking upstream.
 
-The dashboard's update action makes the same decisions as `dotfiles tool update <tool>`. A failed check answers with the query's error and installs nothing, and a tool that is not installed is refused. A tool whose check finds no newer release is reported as up to date and is not reinstalled.
+The dashboard's update action makes the same decisions as `dotfiles tool update <tool>`. A failed check answers with the query's error and installs nothing, and a tool that is not installed is refused. A tool whose check finds no newer release is not reinstalled; it is reported as up to date, or as `<installed> is ahead of the latest known version (<latest>)` when the installed version is newer.
 
 - `-f, --force`: Re-download and reinstall even if already up to date. A failed update check still fails the update.
-- `--shim-mode`: Used by generated shims running `<binary> @update`, which print nothing of their own. `update` then reports only what became of the tool: that it is pinned, already up to date, moving to a new release, updated, or reinstalled without an update check. The progress of checking and installing is left out, and errors are reported as always.
+- `--shim-mode`: Used by generated shims running `<binary> @update`, which print nothing of their own. `update` then reports only what became of the tool: that it is pinned, already up to date, ahead of the latest release, moving to a new release, updated, or reinstalled without an update check. The progress of checking and installing is left out, and errors are reported as always.
 
 #### `dotfiles tool check [tool...]`
 
 Checks available updates from upstream releases without installing.
 
-Each tool is reported as having an update available, as up to date, or, when its installation method cannot check for updates (see [`tool update`](#dotfiles-tool-update-tool)), as `<tool>: update check not supported (<method>)`.
+Each tool is reported with one status:
 
-A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed` for that tool and leaves it out of its output.
+| Status             | Output                                                                 | Meaning                                                                                                                                                                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `update-available` | `<tool>: update available (<installed> -> <latest>)`                   | A newer release counts as an update.                                                                                                                                                                                                                                |
+| `up-to-date`       | `<tool>: up to date (<installed>)`                                     | The installed version is the latest, or no newer one counts as an update (the package manager says so, or [`updateCheck.constraint`](../api-reference/core-api.md#updatecheckconfig) excludes it).                                                                  |
+| `ahead-of-latest`  | `<tool> (<installed>) is ahead of the latest known version (<latest>)` | The installed version is newer than the latest release upstream. [`tool update`](#dotfiles-tool-update-tool) never replaces it with the older release.                                                                                                              |
+| `unsupported`      | `<tool>: update check not supported (<method>)`                        | The installation method cannot check for updates (see [`tool update`](#dotfiles-tool-update-tool)), so nothing was compared.                                                                                                                                        |
+| `not-installed`    | `<tool>: not installed (latest: <latest>)`, or `<tool>: not installed` | dotfiles has not installed the tool, so there is nothing to compare. The latest release is named when the installation method can find it without an installation. `brew`, `apt`, `dnf` and `pacman` can only describe an installed package, so they are not asked. |
 
-- `--json`: Output update status in JSON format. Each entry carries `tool`, `currentVersion`, `latestVersion`, `hasUpdate`, `cached`, and `updateCheckSupported`; when `updateCheckSupported` is `false`, nothing upstream was asked and `hasUpdate` says nothing about whether the tool is current.
+In agent mode (`AGENT=1`) each tool is one line, `tool:<tool> status:<status> current:<installed> latest:<latest> cached:<true|false>`, or `tool:<tool> status:unsupported current:<installed> installer:<method>`. `current` is empty for a tool that is not installed.
+
+A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails, whether the tool is installed or not (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed` for that tool and leaves it out of its output. A tool whose installation record cannot be read is logged as `Reading the installation record failed` and left out the same way.
+
+- `--json`: Output update status in JSON format. Each entry carries `tool`, `status` (one of the statuses above), `currentVersion`, `latestVersion`, and `cached`. `currentVersion` is absent for a tool that is not installed, and `latestVersion` when nothing upstream named one.
 
 #### `dotfiles tool validate [tool]`
 
@@ -340,7 +354,7 @@ The CLI automatically adapts its output stream based on the `AGENT` environment 
   - JSON (`--json`) is minified onto a single line with zero extra whitespace.
   - Directory trees (`dotfiles tool files`) render using compact indented bullets (`* file`).
   - Terminal dividers and decorative whitespace are omitted.
-  - Query outputs emit flat key-value pairs (`tool:bat current:0.24.0 latest:0.25.0 update:true`).
+  - Query outputs emit flat key-value pairs, such as the lines of [`tool check`](#dotfiles-tool-check-tool).
   - ANSI colors in diagnostic logs are suppressed.
 - **Human Mode (`AGENT=0` or unset)**: Visually polished interactive output:
   - JSON (`--json`) is pretty-printed with 2-space indentation.

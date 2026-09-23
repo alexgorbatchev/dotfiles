@@ -380,6 +380,22 @@ func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config
 	}, nil
 }
 
+// recordInstallation records toolName as installed at version, as an installation would.
+func recordInstallation(t *testing.T, reg *registry.Registry, toolName, version string) {
+	t.Helper()
+	ctx := context.Background()
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    toolName,
+			Version:     version,
+			InstallPath: filepath.Join("/test/binaries", toolName),
+			InstalledAt: time.Now().UnixMilli(),
+		})
+	}); err != nil {
+		t.Fatalf("recording the installation of %s: %v", toolName, err)
+	}
+}
+
 // TestDashboard_CheckUpdateRoute_UpdateCheckSettings pins the two things a tool's
 // .updateCheck() block does to the dashboard's answer: enabled:false keeps the
 // installer out of the request entirely, and a constraint bounds which upstream
@@ -423,7 +439,11 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, registry.NewRegistry(sqlDB), testFS(), "", projCfg, toolConfigs, nil)
+	reg := registry.NewRegistry(sqlDB)
+	for _, tool := range toolConfigs {
+		recordInstallation(t, reg, tool.Name, "1.2.3")
+	}
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
@@ -451,8 +471,8 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 	t.Run("enabled false answers without asking the installer", func(t *testing.T) {
 		before := mockInst.calls.Load()
 		data := checkUpdate(t, "checks-off")
-		if data["hasUpdate"] != false {
-			t.Errorf("hasUpdate = %v, want false for a tool with update checks disabled", data["hasUpdate"])
+		if data["status"] != "unsupported" {
+			t.Errorf("status = %v, want unsupported for a tool with update checks disabled", data["status"])
 		}
 		if got := mockInst.calls.Load(); got != before {
 			t.Errorf("the installer was asked %d time(s); a disabled update check must not reach it", got-before)
@@ -461,8 +481,8 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 
 	t.Run("a constraint excludes an out-of-range release", func(t *testing.T) {
 		data := checkUpdate(t, "constrained-out")
-		if data["hasUpdate"] != false {
-			t.Errorf("hasUpdate = %v, want false: 2.0.0 is outside ^1.2.3", data["hasUpdate"])
+		if data["status"] != "up-to-date" {
+			t.Errorf("status = %v, want up-to-date: 2.0.0 is outside ^1.2.3", data["status"])
 		}
 		if data["latestVersion"] != "2.0.0" {
 			t.Errorf("latestVersion = %v, want the release to still be reported", data["latestVersion"])
@@ -471,8 +491,8 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 
 	t.Run("a constraint that admits the release leaves the update alone", func(t *testing.T) {
 		data := checkUpdate(t, "constrained-in")
-		if data["hasUpdate"] != true {
-			t.Errorf("hasUpdate = %v, want true: 2.0.0 satisfies >=1.0.0", data["hasUpdate"])
+		if data["status"] != "update-available" {
+			t.Errorf("status = %v, want update-available: 2.0.0 satisfies >=1.0.0", data["status"])
 		}
 	})
 }
@@ -744,7 +764,9 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 	newer := &mockCheckUpdateInstaller{name: "update-outcome-newer", latestVersion: "2.0.0"}
 	// A package manager that says the tool is outdated without naming a release.
 	outdated := &mockCheckUpdateInstaller{name: "update-outcome-outdated", outdated: new(true)}
-	mocks := []*mockCheckUpdateInstaller{failing, unsupported, current, newer, outdated}
+	// A release upstream older than the installed version (#130).
+	ahead := &mockCheckUpdateInstaller{name: "update-outcome-ahead", latestVersion: "0.9.0"}
+	mocks := []*mockCheckUpdateInstaller{failing, unsupported, current, newer, outdated, ahead}
 	instReg := installer.NewRegistry()
 	for _, m := range mocks {
 		if err := installer.Register(m); err != nil {
@@ -772,10 +794,11 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 		{Name: "current", Version: new("latest"), InstallationMethod: current.name},
 		{Name: "newer", Version: new("latest"), InstallationMethod: newer.name},
 		{Name: "outdated", Version: new("latest"), InstallationMethod: outdated.name},
+		{Name: "ahead", Version: new("latest"), InstallationMethod: ahead.name},
 		{Name: "unknown-installer", Version: new("latest"), InstallationMethod: "update-outcome-missing"},
 		{Name: "not-installed", Version: new("latest"), InstallationMethod: newer.name},
 	}
-	for _, tool := range toolConfigs[:5] {
+	for _, tool := range toolConfigs[:6] {
 		if err := orch.InstallTool(ctx, tool.WithRequestedVersion(installedVersion), projCfg); err != nil {
 			t.Fatalf("installing %s at %s: %v", tool.Name, installedVersion, err)
 		}
@@ -884,7 +907,7 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 		if got := unsupported.installs.Load(); got != 1 {
 			t.Errorf("the installer installed %d time(s), want the forced reinstall", got)
 		}
-		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "supported": false, "reinstalled": true}
+		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "status": "unsupported", "latestVersion": "unknown", "reinstalled": true}
 		if !reflect.DeepEqual(body.Data, want) {
 			t.Errorf("data = %v, want %v: the reinstall recorded the version it detected, the one installed before", body.Data, want)
 		}
@@ -892,7 +915,7 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 
 	t.Run("a tool already at the latest release is not reinstalled", func(t *testing.T) {
 		body, _ := update(t, "current")
-		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "supported": true, "reinstalled": false}
+		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "status": "up-to-date", "latestVersion": installedVersion, "reinstalled": false}
 		if !body.Success || !reflect.DeepEqual(body.Data, want) {
 			t.Errorf("response = %+v, want success with data %v", body, want)
 		}
@@ -901,9 +924,23 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 		}
 	})
 
+	t.Run("an installation ahead of the latest release is neither downgraded nor called up to date", func(t *testing.T) {
+		body, broadcast := update(t, "ahead")
+		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "status": "ahead-of-latest", "latestVersion": "0.9.0", "reinstalled": false}
+		if !body.Success || !reflect.DeepEqual(body.Data, want) {
+			t.Errorf("response = %+v, want success with data %v", body, want)
+		}
+		if got := ahead.installs.Load(); got != 0 {
+			t.Errorf("the installer installed %d time(s), want 0: 0.9.0 is older than the installed 1.0.0", got)
+		}
+		if !strings.Contains(broadcast, "INFO	[ahead] 1.0.0 is ahead of the latest known version (0.9.0)") || strings.Contains(broadcast, "Already up to date") {
+			t.Errorf("broadcast = %q, want the ahead-of-latest status, not up to date", broadcast)
+		}
+	})
+
 	t.Run("a newer release is installed and reported from the installation records", func(t *testing.T) {
 		body, broadcast := update(t, "newer")
-		want := map[string]any{"updated": true, "oldVersion": installedVersion, "newVersion": "2.0.0", "supported": true, "reinstalled": true}
+		want := map[string]any{"updated": true, "oldVersion": installedVersion, "newVersion": "2.0.0", "status": "update-available", "latestVersion": "2.0.0", "reinstalled": true}
 		if !body.Success || !reflect.DeepEqual(body.Data, want) {
 			t.Errorf("response = %+v, want success with data %v", body, want)
 		}
@@ -922,7 +959,7 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 	// answer apart from a tool that had no update.
 	t.Run("a reinstall that keeps the recorded version is reported as a reinstall", func(t *testing.T) {
 		body, _ := update(t, "outdated")
-		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "supported": true, "reinstalled": true}
+		want := map[string]any{"updated": false, "oldVersion": installedVersion, "newVersion": installedVersion, "status": "update-available", "latestVersion": "unknown", "reinstalled": true}
 		if !body.Success || !reflect.DeepEqual(body.Data, want) {
 			t.Errorf("response = %+v, want success with data %v", body, want)
 		}
@@ -1014,6 +1051,11 @@ func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
 		// A package manager whose own verdict disagrees with the version strings, which
 		// it can order and semver cannot.
 		"package-manager": {name: "mock-facts-pkgmgr", localVersion: "1.2.3_1", latestVersion: "1.2.3_1", outdated: &outdated},
+		// An installation newer than the latest release upstream, as #124 left cargo tools
+		// the old max_version resolution had moved onto a prerelease (#130).
+		"ahead": {name: "mock-facts-ahead", localVersion: "3.0.0-alpha.2", latestVersion: "2.11.6"},
+		// A tool dotfiles never installed, whose installer still names the latest release (#151).
+		"never-installed": {name: "mock-facts-never-installed", latestVersion: "1.6.0"},
 	}
 	toolConfigs := make([]*config.ToolConfig, 0, len(installers))
 	for tool, inst := range installers {
@@ -1023,14 +1065,20 @@ func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
 		toolConfigs = append(toolConfigs, &config.ToolConfig{Name: tool, InstallationMethod: inst.name})
 	}
 
+	reg := registry.NewRegistry(sqlDB)
+	for tool, inst := range installers {
+		if inst.localVersion != "" {
+			recordInstallation(t, reg, tool, inst.localVersion)
+		}
+	}
 	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{ToolConfigsDir: t.TempDir()}}
-	server := NewServer(log, "127.0.0.1", 0, registry.NewRegistry(sqlDB), testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
 	defer server.Stop()
 
-	for tool, want := range map[string]bool{"upstream-only": false, "package-manager": true} {
+	for tool, want := range map[string]string{"upstream-only": "up-to-date", "package-manager": "update-available", "ahead": "ahead-of-latest", "never-installed": "not-installed"} {
 		t.Run(tool, func(t *testing.T) {
 			url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/%s/check-update", server.Port(), tool)
 			resp, err := http.Post(url, "application/json", nil)
@@ -1046,8 +1094,11 @@ func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
 			if !ok {
 				t.Fatalf("no data object in %v", body)
 			}
-			if data["hasUpdate"] != want {
-				t.Errorf("hasUpdate = %v, want %v (installed and latest are both %v)", data["hasUpdate"], want, data["currentVersion"])
+			if data["status"] != want {
+				t.Errorf("status = %v, want %v (installed %v, latest %v)", data["status"], want, data["currentVersion"], data["latestVersion"])
+			}
+			if wantLatest := installers[tool].latestVersion; data["latestVersion"] != wantLatest {
+				t.Errorf("latestVersion = %v, want %v", data["latestVersion"], wantLatest)
 			}
 		})
 	}
@@ -1077,6 +1128,8 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 	_ = installer.Register(mockInst)
 	unsupportedInst := &mockCheckUpdateInstaller{name: "mock-unsupported-inst", err: installer.ErrUpdateCheckUnsupported}
 	_ = installer.Register(unsupportedInst)
+	failingInst := &mockCheckUpdateInstaller{name: "mock-failing-check-inst", err: errors.New("API rate limit exceeded")}
+	_ = installer.Register(failingInst)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -1100,12 +1153,25 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 			InstallationMethod: "",
 		},
 		{
+			Name:               "never-installed-no-method",
+			InstallationMethod: "",
+		},
+		{
+			Name:               "failing-tool",
+			InstallationMethod: failingInst.name,
+		},
+		{
 			Name:               "unsupported-tool",
 			Version:            &ver,
 			InstallationMethod: unsupportedInst.name,
 		},
 	}
 
+	recordInstallation(t, reg, "updatable-tool", "1.0.0")
+	recordInstallation(t, reg, "no-method-tool", "1.0.0")
+	recordInstallation(t, reg, "failing-tool", "1.0.0")
+	// Installed at a version other than the configured one, which is never the fallback.
+	recordInstallation(t, reg, "unsupported-tool", "0.9.0")
 	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
@@ -1138,17 +1204,14 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 			t.Fatalf("expected data to be a map, got %T", body["data"])
 		}
 
-		if data["hasUpdate"] != true {
-			t.Errorf("expected hasUpdate to be true, got %v", data["hasUpdate"])
+		if data["status"] != "update-available" {
+			t.Errorf("expected status update-available, got %v", data["status"])
 		}
 		if data["currentVersion"] != "1.0.0" {
 			t.Errorf("expected currentVersion '1.0.0', got %v", data["currentVersion"])
 		}
 		if data["latestVersion"] != "1.1.0" {
 			t.Errorf("expected latestVersion '1.1.0', got %v", data["latestVersion"])
-		}
-		if data["supported"] != true {
-			t.Errorf("expected supported true for an installer that checked upstream, got %v", data["supported"])
 		}
 	})
 
@@ -1178,16 +1241,76 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 			t.Fatalf("expected data to be a map, got %T", body["data"])
 		}
 
-		if data["currentVersion"] != "unknown" || data["latestVersion"] != "unknown" {
-			t.Errorf("expected unknown versions for a tool without an installation method, got %v", data)
+		if data["currentVersion"] != "1.0.0" || data["latestVersion"] != "unknown" {
+			t.Errorf("expected the installed version and no latest version for a tool without an installation method, got %v", data)
 		}
-		if data["supported"] != false || data["error"] == nil {
+		if data["status"] != "unsupported" || data["error"] == nil {
 			t.Errorf("expected an unsupported check with a reason for a tool without an installation method, got %v", data)
 		}
 	})
 
+	// A registry that cannot be read says nothing about whether the tool is installed, so
+	// it is a failed check, never "not installed" (#151).
+	t.Run("POST /api/tools/updatable-tool/check-update with a registry that cannot be read", func(t *testing.T) {
+		brokenDB, err := db.NewConnection(ctx, ":memory:")
+		if err != nil {
+			t.Fatalf("connecting to db: %v", err)
+		}
+		brokenReg := registry.NewRegistry(brokenDB)
+		if err := brokenDB.Close(); err != nil {
+			t.Fatalf("closing db: %v", err)
+		}
+		brokenServer := NewServer(log, "127.0.0.1", 0, brokenReg, testFS(), "", projCfg, toolConfigs, nil)
+		if err := brokenServer.Start(); err != nil {
+			t.Fatalf("starting server: %v", err)
+		}
+		defer brokenServer.Stop()
+
+		resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/updatable-tool/check-update", brokenServer.Port()), "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST check-update: %v", err)
+		}
+		defer resp.Body.Close()
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding response: %v", err)
+		}
+		errMsg, _ := body["error"].(string)
+		if body["success"] != false || !strings.HasPrefix(errMsg, "Failed to read the installation of updatable-tool: ") {
+			t.Errorf("response = %v, want success false with the registry's failure", body)
+		}
+	})
+
+	t.Run("POST /api/tools/failing-tool/check-update reports the failed check once", func(t *testing.T) {
+		resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/failing-tool/check-update", server.Port()), "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST check-update: %v", err)
+		}
+		defer resp.Body.Close()
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding response: %v", err)
+		}
+		want := `checking update for "failing-tool": API rate limit exceeded`
+		if body["success"] != false || body["error"] != want {
+			t.Errorf("response = %v, want success false with error %q", body, want)
+		}
+	})
+
+	// A tool dotfiles never installed is not installed, whatever it could check (#151).
+	t.Run("POST /api/tools/never-installed-no-method/check-update not installed", func(t *testing.T) {
+		data, ok := getJSONData(t, http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/api/tools/never-installed-no-method/check-update", server.Port())).(map[string]any)
+		if !ok {
+			t.Fatal("expected check-update object")
+		}
+		want := map[string]any{"status": "not-installed", "currentVersion": "unknown", "latestVersion": "unknown"}
+		if !reflect.DeepEqual(data, want) {
+			t.Errorf("data = %v, want %v", data, want)
+		}
+	})
+
 	// An installer that cannot learn the latest version must not be reported as up to
-	// date, which is what the client shows for any answer with hasUpdate false.
+	// date.
 	t.Run("POST /api/tools/unsupported-tool/check-update reports the check as unsupported", func(t *testing.T) {
 		url := fmt.Sprintf("http://127.0.0.1:%d/api/tools/unsupported-tool/check-update", server.Port())
 		resp, err := http.Post(url, "application/json", nil)
@@ -1209,11 +1332,10 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 			t.Fatalf("expected data to be a map, got %T", body["data"])
 		}
 		want := map[string]any{
-			"hasUpdate": false,
+			"status": "unsupported",
 			// Only the registry says what is installed; the configured version is not a fallback.
-			"currentVersion": "unknown",
+			"currentVersion": "0.9.0",
 			"latestVersion":  "unknown",
-			"supported":      false,
 			"error":          `Update checking is not supported for installation method "mock-unsupported-inst"`,
 		}
 		for key, value := range want {
@@ -2073,6 +2195,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seeding registry: %v", err)
 	}
+	recordInstallation(t, reg, "no-method-tool", "1.0.0")
 
 	// Unpinned, so the update route installs it rather than refusing a pin.
 	ver := "latest"
@@ -2131,8 +2254,8 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 	t.Run("check-update matches ICheckUpdateResponse", func(t *testing.T) {
 		// A tool nothing upstream was asked about also says why, in the optional error.
 		wantKeys := map[string][]string{
-			"bat":            {"hasUpdate", "currentVersion", "latestVersion", "supported"},
-			"no-method-tool": {"hasUpdate", "currentVersion", "latestVersion", "supported", "error"},
+			"bat":            {"status", "currentVersion", "latestVersion"},
+			"no-method-tool": {"status", "currentVersion", "latestVersion", "error"},
 		}
 		for tool, keys := range wantKeys {
 			data, ok := getJSONData(t, http.MethodPost, base+"/api/tools/"+tool+"/check-update").(map[string]any)
@@ -2148,7 +2271,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 		if !ok {
 			t.Fatal("expected update object")
 		}
-		assertExactKeys(t, "update", data, "updated", "oldVersion", "newVersion", "supported", "reinstalled")
+		assertExactKeys(t, "update", data, "updated", "oldVersion", "newVersion", "status", "latestVersion", "reinstalled")
 	})
 }
 

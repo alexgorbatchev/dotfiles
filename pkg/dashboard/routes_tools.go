@@ -3,7 +3,6 @@ package dashboard
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,7 +19,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
-	"github.com/alexgorbatchev/dotfiles/pkg/version"
 )
 
 // handleToolsRouter dispatches GET /api/tools or GET /api/tools/:name/...
@@ -683,15 +681,26 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
-	// A tool with no installation method has nothing upstream to compare against, and one
-	// that turned update checks off with .updateCheck({ enabled: false }) asked not to be
-	// asked. Neither reaches the installer.
-	if targetTool.InstallationMethod == "" {
-		writeJSON(w, true, unsupportedCheckUpdate("unknown", "Update checking is not supported for a tool without an installation method"), "")
+	installed, err := s.registry.GetToolInstallation(ctx, toolName)
+	if err != nil {
+		writeJSON(w, false, nil, fmt.Sprintf("Failed to read the installation of %s: %v", toolName, err))
 		return
 	}
-	if !targetTool.UpdateCheckEnabled() {
-		writeJSON(w, true, unsupportedCheckUpdate("unknown", "Update checking is disabled by updateCheck.enabled"), "")
+
+	// A tool with no installation method has nothing upstream to compare against, and one
+	// that turned update checks off with .updateCheck({ enabled: false }) asked not to be
+	// asked. Neither reaches the installer, and one dotfiles never installed is simply not
+	// installed.
+	if targetTool.InstallationMethod == "" || !targetTool.UpdateCheckEnabled() {
+		if installed == nil {
+			writeJSON(w, true, checkUpdateResponse(orchestrator.CheckResult{Status: orchestrator.CheckStatusNotInstalled}), "")
+			return
+		}
+		reason := "Update checking is not supported for a tool without an installation method"
+		if targetTool.InstallationMethod != "" {
+			reason = "Update checking is disabled by updateCheck.enabled"
+		}
+		writeJSON(w, true, unsupportedCheckUpdate(installed.Version, reason), "")
 		return
 	}
 
@@ -701,39 +710,31 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
-	res, err := inst.CheckUpdate(ctx, targetTool)
-	if errors.Is(err, installer.ErrUpdateCheckUnsupported) {
-		reason := fmt.Sprintf("Update checking is not supported for installation method %q", targetTool.InstallationMethod)
-		writeJSON(w, true, unsupportedCheckUpdate(orUnknown(s.installedVersion(ctx, toolName)), reason), "")
-		return
-	}
+	// The same check tool check makes, so the two cannot disagree about a tool.
+	check, err := orchestrator.CheckTool(ctx, inst, targetTool, installed)
 	if err != nil {
-		writeJSON(w, false, nil, fmt.Sprintf("Failed to check update for %s: %v", toolName, err))
+		// The error already names the tool and the check (orchestrator.ClassifyCheck).
+		writeJSON(w, false, nil, err.Error())
 		return
 	}
-
-	// Only installers that query the system populate LocalVersion; for the rest the registry is
-	// the only record of what is actually on disk. The configured version is deliberately not a
-	// fallback, because "latest" is a resolution strategy rather than an installed version.
-	currentVer := res.LocalVersion
-	if currentVer == "" {
-		currentVer = s.installedVersion(ctx, toolName)
+	if check.Status == orchestrator.CheckStatusUnsupported {
+		reason := fmt.Sprintf("Update checking is not supported for installation method %q", targetTool.InstallationMethod)
+		writeJSON(w, true, unsupportedCheckUpdate(check.InstalledVersion, reason), "")
+		return
 	}
+	writeJSON(w, true, checkUpdateResponse(check), "")
+}
 
-	// The same comparison check-updates makes, so the two cannot disagree about a tool.
-	hasUpdate := version.UpdateAvailable(version.UpdateQuery{
-		Installed:  currentVer,
-		Latest:     res.LatestVersion,
-		Constraint: targetTool.UpdateCheckConstraint(),
-		Outdated:   res.Outdated,
-	})
-
-	writeJSON(w, true, map[string]any{
-		"hasUpdate":      hasUpdate,
-		"currentVersion": orUnknown(currentVer),
-		"latestVersion":  orUnknown(res.LatestVersion),
-		"supported":      true,
-	}, "")
+// checkUpdateResponse is the check-update answer, ICheckUpdateResponse in the client. The
+// current version is the installation record's, the one the status is measured
+// against, as tool check reports it; the configured version is deliberately never a
+// fallback, because "latest" is a resolution strategy rather than an installed version.
+func checkUpdateResponse(check orchestrator.CheckResult) map[string]any {
+	return map[string]any{
+		"status":         check.Status,
+		"currentVersion": orUnknown(check.InstalledVersion),
+		"latestVersion":  orUnknown(check.LatestVersion),
+	}
 }
 
 // configureInstallers applies the project's github and cargo sections to every
@@ -763,26 +764,14 @@ func (s *Server) configureInstallers() {
 }
 
 // unsupportedCheckUpdate is the check-update answer for a tool nothing upstream was asked
-// about, in the shape v1's route used: hasUpdate false says nothing, so supported is
-// false and error says why.
+// about: its status is unsupported, and error says why, as v1's route did.
 func unsupportedCheckUpdate(currentVersion, reason string) map[string]any {
 	return map[string]any{
-		"hasUpdate":      false,
-		"currentVersion": currentVersion,
+		"status":         orchestrator.CheckStatusUnsupported,
+		"currentVersion": orUnknown(currentVersion),
 		"latestVersion":  "unknown",
-		"supported":      false,
 		"error":          reason,
 	}
-}
-
-// installedVersion is the version the registry recorded for toolName, or "" when it
-// has none.
-func (s *Server) installedVersion(ctx context.Context, toolName string) string {
-	installRecord, err := s.registry.GetToolInstallation(ctx, toolName)
-	if err != nil || installRecord == nil {
-		return ""
-	}
-	return installRecord.Version
 }
 
 // orUnknown renders a version the dashboard could not determine as the client's
@@ -851,13 +840,17 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	}
 
 	if !plan.Reinstall() {
-		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Already up to date (%s)\n", toolName, oldVersion))
-		writeJSON(w, true, updateResponse(oldVersion, oldVersion, true, false), "")
+		message := fmt.Sprintf("Already up to date (%s)", oldVersion)
+		if plan.Status == orchestrator.CheckStatusAheadOfLatest {
+			message = orchestrator.AheadOfLatestMessage(plan.InstalledVersion, plan.LatestVersion)
+		}
+		s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] %s\n", toolName, message))
+		writeJSON(w, true, updateResponse(oldVersion, oldVersion, plan, false), "")
 		return
 	}
 
 	level := "INFO"
-	if plan.Unsupported {
+	if plan.Status == orchestrator.CheckStatusUnsupported {
 		level = "WARN"
 	}
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("%s\t[%s] %s\n", level, toolName, plan.Announcement(targetTool)))
@@ -871,21 +864,23 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 	}
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Update completed successfully\n", toolName))
 
-	writeJSON(w, true, updateResponse(oldVersion, newVersion, !plan.Unsupported, true), "")
+	writeJSON(w, true, updateResponse(oldVersion, newVersion, plan, true), "")
 }
 
 // updateResponse is the update route's answer, IUpdateToolResponse in the client:
 // updated says whether the installation now records a different version than before,
-// as v1 answered, supported whether the installer could check upstream at all, and
-// reinstalled whether the tool was installed again, the only thing that tells a
-// reinstall recording the version it had before apart from a tool with no update.
-func updateResponse(oldVersion, newVersion string, supported, reinstalled bool) map[string]any {
+// as v1 answered; status and latestVersion are what the update check found, the same
+// status check-update reports; and reinstalled says whether the tool was installed
+// again, the only thing that tells a reinstall recording the version it had before
+// apart from a tool with no update.
+func updateResponse(oldVersion, newVersion string, plan orchestrator.UpdatePlan, reinstalled bool) map[string]any {
 	return map[string]any{
-		"updated":     oldVersion != newVersion,
-		"oldVersion":  oldVersion,
-		"newVersion":  newVersion,
-		"supported":   supported,
-		"reinstalled": reinstalled,
+		"updated":       oldVersion != newVersion,
+		"oldVersion":    oldVersion,
+		"newVersion":    newVersion,
+		"status":        plan.Status,
+		"latestVersion": orUnknown(plan.LatestVersion),
+		"reinstalled":   reinstalled,
 	}
 }
 

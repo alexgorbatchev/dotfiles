@@ -74,34 +74,49 @@ type UpdateQuery struct {
 	Outdated *bool
 }
 
-// UpdateAvailable reports whether Latest counts as an available update over Installed.
+// UpdateStatus answers how Installed stands against Latest: StatusNewerAvailable when
+// Latest counts as an available update, StatusAheadOfLatest when Installed is newer than
+// Latest, and StatusUpToDate otherwise. It never answers StatusInvalidCurrent or
+// StatusInvalidLatest; a pair semver cannot order is resolved as described below.
 //
 // A constraint is a boundary the user asked for, so it is applied first: a version
 // outside it is not an update however new it is. A package manager that answered the
 // question itself is believed next, because its version strings (Debian epochs, rpm
-// releases, brew revisions) are not semver and only it can order them. Otherwise the
+// releases, brew revisions) are not semver and only it can order them; such a verdict
+// says only whether the package is outdated, never that it is ahead. Otherwise the
 // versions decide, and a pair semver cannot parse is compared for inequality, which is
 // the most two unordered labels support.
-func UpdateAvailable(q UpdateQuery) bool {
+//
+// StatusAheadOfLatest is its own answer rather than a kind of up to date, because an
+// installed version newer than every release upstream (a prerelease, a yanked or retagged
+// release) is one an update must neither report as current nor replace with the older
+// release.
+func UpdateStatus(q UpdateQuery) VersionComparisonStatus {
 	if q.Constraint != "" && !MatchesConstraint(q.Latest, q.Constraint) {
-		return false
+		return StatusUpToDate
 	}
 	if q.Outdated != nil {
-		return *q.Outdated
+		if *q.Outdated {
+			return StatusNewerAvailable
+		}
+		return StatusUpToDate
 	}
 	if q.Latest == "" {
-		return false
+		return StatusUpToDate
 	}
 	if q.Installed == "" {
-		return true
+		return StatusNewerAvailable
 	}
-	switch CheckVersionStatus(q.Installed, q.Latest) {
-	case StatusNewerAvailable:
-		return true
+	switch status := CheckVersionStatus(q.Installed, q.Latest); status {
+	case StatusNewerAvailable, StatusAheadOfLatest:
+		return status
 	case StatusInvalidCurrent, StatusInvalidLatest:
-		return CleanVersion(q.Latest) != CleanVersion(q.Installed)
+		if CleanVersion(q.Latest) != CleanVersion(q.Installed) {
+			return StatusNewerAvailable
+		}
+		return StatusUpToDate
 	default:
-		return false
+		return StatusUpToDate
 	}
 }
 

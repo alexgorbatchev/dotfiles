@@ -71,7 +71,7 @@ install("brew", {
 
 ## Update Checks
 
-An update check runs `brew info --json=v2 <formula>` (with `--cask` for a cask, and without it when the cask query fails). Homebrew's own `outdated` verdict decides, since formula versions carry revision suffixes such as `1.2.3_1` that are not semantic versions. `brew info` describes a formula or cask that is not installed as not outdated, so one with no installed version fails the check, as does a query that fails or names no version ([`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool)).
+An update check runs `brew info --json=v2 <formula>` (with `--cask` for a cask, and without it when the cask query fails). Homebrew's own `outdated` verdict decides, since formula versions carry revision suffixes such as `1.2.3_1` that are not semantic versions. `brew info` describes a formula or cask that is not installed as not outdated, so a tool dotfiles installed whose package has no installed version fails the check, as does a query that fails or names no version. A tool dotfiles never installed is not checked; [`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool) reports it as not installed.
 
 ## Platform Support
 

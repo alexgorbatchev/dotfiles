@@ -46,6 +46,33 @@ function scheduleReload(): void {
   setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
 }
 
+type CheckDescription = Pick<IToolActionOutcome, "message" | "tone">;
+
+/** Words and tone for one check-update answer, in the terms `dotfiles tool check` uses. */
+function describeCheck(response: ICheckUpdateResponse): CheckDescription {
+  switch (response.status) {
+    case "unsupported":
+      return { message: response.error ?? UNSUPPORTED_CHECK_MESSAGE, tone: "error" };
+    case "update-available":
+      return { message: `Update available: ${response.currentVersion} → ${response.latestVersion}`, tone: "info" };
+    case "ahead-of-latest":
+      return {
+        message: `${response.currentVersion} is ahead of the latest known version (${response.latestVersion})`,
+        tone: "info",
+      };
+    case "up-to-date":
+      return { message: `Up to date (${response.currentVersion})`, tone: "success" };
+    case "not-installed":
+      return {
+        message:
+          response.latestVersion === "unknown"
+            ? "Not installed"
+            : `Not installed; the latest available version is ${response.latestVersion}`,
+        tone: "info",
+      };
+  }
+}
+
 export function useToolActions(): IUseToolActions {
   const [pending, setPending] = useState<IToolActionPending | null>(null);
   const [outcome, setOutcome] = useState<IToolActionOutcome | null>(null);
@@ -93,7 +120,7 @@ export function useToolActions(): IUseToolActions {
     try {
       const response = await postApi<IUpdateToolResponse>(`/tools/${encodeURIComponent(toolName)}/update`, {});
 
-      if (!response.supported) {
+      if (response.status === "unsupported") {
         // Nothing upstream was asked, so whatever version the reinstall recorded says nothing about newer releases.
         setOutcome({
           toolName,
@@ -113,6 +140,14 @@ export function useToolActions(): IUseToolActions {
       } else if (response.reinstalled) {
         setOutcome({ toolName, kind: "update", message: `Reinstalled ${response.newVersion}`, tone: "success" });
         scheduleReload();
+      } else if (response.status === "ahead-of-latest") {
+        // An installation newer than the latest release is left alone, never moved back to it.
+        setOutcome({
+          toolName,
+          kind: "update",
+          message: `${response.oldVersion} is ahead of the latest known version (${response.latestVersion})`,
+          tone: "info",
+        });
       } else {
         setOutcome({
           toolName,
@@ -140,25 +175,7 @@ export function useToolActions(): IUseToolActions {
     try {
       const response = await postApi<ICheckUpdateResponse>(`/tools/${encodeURIComponent(toolName)}/check-update`, {});
 
-      if (!response.supported) {
-        setOutcome({ toolName, kind: "check", message: response.error ?? UNSUPPORTED_CHECK_MESSAGE, tone: "error" });
-      } else if (response.error) {
-        setOutcome({ toolName, kind: "check", message: response.error, tone: "error" });
-      } else if (response.hasUpdate) {
-        setOutcome({
-          toolName,
-          kind: "check",
-          message: `Update available: ${response.currentVersion} → ${response.latestVersion}`,
-          tone: "info",
-        });
-      } else {
-        setOutcome({
-          toolName,
-          kind: "check",
-          message: `Up to date (${response.currentVersion})`,
-          tone: "success",
-        });
-      }
+      setOutcome({ toolName, kind: "check", ...describeCheck(response) });
     } catch (error) {
       setOutcome({
         toolName,

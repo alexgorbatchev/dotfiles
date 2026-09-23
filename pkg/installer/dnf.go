@@ -172,6 +172,10 @@ func (d *DnfInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig) e
 	return cmd.Run()
 }
 
+// checksInstalledPackage marks the update check as one about the installed package
+// (installedPackageChecker).
+func (*DnfInstaller) checksInstalledPackage() {}
+
 func (d *DnfInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 

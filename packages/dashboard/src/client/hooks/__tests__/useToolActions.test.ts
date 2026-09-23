@@ -84,7 +84,14 @@ describe("useToolActions", () => {
   });
 
   test("reports an update with the versions installed before and after", async () => {
-    mockApiData({ updated: true, oldVersion: "0.1.0", newVersion: "0.2.0", supported: true, reinstalled: true });
+    mockApiData({
+      updated: true,
+      oldVersion: "0.1.0",
+      newVersion: "0.2.0",
+      status: "update-available",
+      latestVersion: "0.2.0",
+      reinstalled: true,
+    });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.updateTool("eza"));
@@ -99,7 +106,14 @@ describe("useToolActions", () => {
 
   // An update that found nothing newer installed nothing, which is not a failure.
   test("reports a tool with no newer release as up to date", async () => {
-    mockApiData({ updated: false, oldVersion: "0.2.0", newVersion: "0.2.0", supported: true, reinstalled: false });
+    mockApiData({
+      updated: false,
+      oldVersion: "0.2.0",
+      newVersion: "0.2.0",
+      status: "up-to-date",
+      latestVersion: "0.2.0",
+      reinstalled: false,
+    });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.updateTool("eza"));
@@ -114,7 +128,14 @@ describe("useToolActions", () => {
 
   // An installer that cannot check upstream is reinstalled unchecked, which must not read as "up to date".
   test("reports an unchecked reinstall that kept the version as a reinstall", async () => {
-    mockApiData({ updated: false, oldVersion: "0.2.0", newVersion: "0.2.0", supported: false, reinstalled: true });
+    mockApiData({
+      updated: false,
+      oldVersion: "0.2.0",
+      newVersion: "0.2.0",
+      status: "unsupported",
+      latestVersion: "unknown",
+      reinstalled: true,
+    });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.updateTool("eza"));
@@ -133,7 +154,8 @@ describe("useToolActions", () => {
       updated: true,
       oldVersion: "2026-01-01-00-00-00",
       newVersion: "2026-09-23-00-00-00",
-      supported: false,
+      status: "unsupported",
+      latestVersion: "unknown",
       reinstalled: true,
     });
 
@@ -150,7 +172,14 @@ describe("useToolActions", () => {
 
   // A package manager can report the tool outdated and still leave the recorded version unchanged.
   test("reports a checked reinstall that kept the version as a reinstall", async () => {
-    mockApiData({ updated: false, oldVersion: "0.2.0", newVersion: "0.2.0", supported: true, reinstalled: true });
+    mockApiData({
+      updated: false,
+      oldVersion: "0.2.0",
+      newVersion: "0.2.0",
+      status: "update-available",
+      latestVersion: "unknown",
+      reinstalled: true,
+    });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.updateTool("eza"));
@@ -160,6 +189,28 @@ describe("useToolActions", () => {
       kind: "update",
       message: "Reinstalled 0.2.0",
       tone: "success",
+    });
+  });
+
+  // An update never moves an installation back to an older latest release, nor calls it current (#130).
+  test("reports an installation ahead of the latest release as its own status", async () => {
+    mockApiData({
+      updated: false,
+      oldVersion: "3.0.0-alpha.2",
+      newVersion: "3.0.0-alpha.2",
+      status: "ahead-of-latest",
+      latestVersion: "2.11.6",
+      reinstalled: false,
+    });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.updateTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "update",
+      message: "3.0.0-alpha.2 is ahead of the latest known version (2.11.6)",
+      tone: "info",
     });
   });
 
@@ -178,7 +229,7 @@ describe("useToolActions", () => {
   });
 
   test("reports an available update as an informational outcome", async () => {
-    mockApiData({ hasUpdate: true, currentVersion: "0.1.0", latestVersion: "0.2.0", supported: true });
+    mockApiData({ status: "update-available", currentVersion: "0.1.0", latestVersion: "0.2.0" });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.checkTool("eza"));
@@ -192,7 +243,7 @@ describe("useToolActions", () => {
   });
 
   test("reports an up-to-date tool as a success outcome", async () => {
-    mockApiData({ hasUpdate: false, currentVersion: "0.2.0", latestVersion: "0.2.0", supported: true });
+    mockApiData({ status: "up-to-date", currentVersion: "0.2.0", latestVersion: "0.2.0" });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.checkTool("eza"));
@@ -206,13 +257,7 @@ describe("useToolActions", () => {
   });
 
   test("reports an unsupported update check as an error", async () => {
-    mockApiData({
-      hasUpdate: false,
-      currentVersion: "?",
-      latestVersion: "?",
-      supported: false,
-      error: "Not supported",
-    });
+    mockApiData({ status: "unsupported", currentVersion: "?", latestVersion: "?", error: "Not supported" });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.checkTool("eza"));
@@ -225,9 +270,9 @@ describe("useToolActions", () => {
     });
   });
 
-  // An unsupported check answers hasUpdate:false, which must never read as "Up to date".
+  // An unsupported check compared nothing, which must never read as "Up to date".
   test("reports an unsupported update check that gives no reason as unsupported", async () => {
-    mockApiData({ hasUpdate: false, currentVersion: "0.2.0", latestVersion: "unknown", supported: false });
+    mockApiData({ status: "unsupported", currentVersion: "0.2.0", latestVersion: "unknown" });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.checkTool("eza"));
@@ -240,8 +285,47 @@ describe("useToolActions", () => {
     });
   });
 
+  // An installation newer than the latest release is neither current nor outdated (#130).
+  test("reports an installation ahead of the latest release as its own status", async () => {
+    mockApiData({ status: "ahead-of-latest", currentVersion: "3.0.0-alpha.2", latestVersion: "2.11.6" });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.checkTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "check",
+      message: "3.0.0-alpha.2 is ahead of the latest known version (2.11.6)",
+      tone: "info",
+    });
+  });
+
+  // A tool dotfiles never installed is neither outdated nor a failed check (#151).
+  test("reports a tool that is not installed with the latest release", async () => {
+    mockApiData({ status: "not-installed", currentVersion: "unknown", latestVersion: "1.6.0" });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.checkTool("eza"));
+
+    expect(result.current.outcome).toEqual({
+      toolName: "eza",
+      kind: "check",
+      message: "Not installed; the latest available version is 1.6.0",
+      tone: "info",
+    });
+  });
+
+  test("reports a tool that is not installed when no latest release could be named", async () => {
+    mockApiData({ status: "not-installed", currentVersion: "unknown", latestVersion: "unknown" });
+
+    const { result } = renderHook(() => useToolActions());
+    await act(() => result.current.checkTool("eza"));
+
+    expect(result.current.outcome).toEqual({ toolName: "eza", kind: "check", message: "Not installed", tone: "info" });
+  });
+
   test("dismisses outcome when dismissOutcome is called", async () => {
-    mockApiData({ hasUpdate: false, currentVersion: "0.2.0", latestVersion: "0.2.0", supported: true });
+    mockApiData({ status: "up-to-date", currentVersion: "0.2.0", latestVersion: "0.2.0" });
 
     const { result } = renderHook(() => useToolActions());
     await act(() => result.current.checkTool("eza"));
