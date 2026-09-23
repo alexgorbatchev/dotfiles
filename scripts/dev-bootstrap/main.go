@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
@@ -231,6 +232,10 @@ func Run(opts Options) error {
 func parseArgs(args []string, stdout, stderr io.Writer) (Options, error) {
 	flags := flag.NewFlagSet("dev-bootstrap", flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	flags.Usage = func() {
+		fmt.Fprintf(stderr, "Usage: dev-bootstrap [-v] [target]\n\nDeploys a local development build into target (default %s).\n\n", defaultTargetDir)
+		flags.PrintDefaults()
+	}
 
 	var verbose bool
 	flags.BoolVar(&verbose, "v", false, "verbose output")
@@ -240,6 +245,26 @@ func parseArgs(args []string, stdout, stderr io.Writer) (Options, error) {
 		return Options{}, err
 	}
 
+	// A second positional argument would otherwise be dropped silently while
+	// the first one is bootstrapped.
+	if flags.NArg() > 1 {
+		flags.Usage()
+		// Parse consumes a "--" that ends the flags; everything after it is
+		// positional on purpose.
+		consumed := len(args) - flags.NArg()
+		terminated := consumed > 0 && args[consumed-1] == "--"
+		quoted := make([]string, flags.NArg())
+		for i, arg := range flags.Args() {
+			// Parsing stops at the first positional argument, so a flag
+			// written after the target arrives here as another argument.
+			if i > 0 && !terminated && isDefinedFlag(flags, arg) {
+				return Options{}, fmt.Errorf("flag %s must come before the target directory", arg)
+			}
+			quoted[i] = strconv.Quote(arg)
+		}
+		return Options{}, fmt.Errorf("expected at most one target directory, got %d: %s", flags.NArg(), strings.Join(quoted, " "))
+	}
+
 	// An absent target stays empty; Run applies defaultTargetDir.
 	return Options{
 		TargetDir: flags.Arg(0),
@@ -247,6 +272,18 @@ func parseArgs(args []string, stdout, stderr io.Writer) (Options, error) {
 		Stdout:    stdout,
 		Stderr:    stderr,
 	}, nil
+}
+
+// isDefinedFlag reports whether arg names a flag defined on flags, written as
+// -name, --name or -name=value.
+func isDefinedFlag(flags *flag.FlagSet, arg string) bool {
+	name, ok := strings.CutPrefix(arg, "-")
+	if !ok {
+		return false
+	}
+	name = strings.TrimPrefix(name, "-")
+	name, _, _ = strings.Cut(name, "=")
+	return name != "" && flags.Lookup(name) != nil
 }
 
 func runMain(args []string, stdout, stderr io.Writer) error {
