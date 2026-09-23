@@ -80,6 +80,7 @@ func (d *DmgInstaller) SetLogger(log *logger.Logger) {
 	d.log = log
 	if d.dl != nil && log != nil {
 		d.dl.SetQuiet(log.Level() == logger.LogLevelQuiet)
+		d.dl.SetLogger(log)
 	}
 }
 
