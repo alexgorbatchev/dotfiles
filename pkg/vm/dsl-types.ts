@@ -56,6 +56,20 @@ export interface IFileStats {
 }
 
 /**
+ * Options for fileSystem.rm.
+ */
+export interface IRmOptions {
+  /**
+   * If true, perform a recursive directory removal.
+   */
+  recursive?: boolean;
+  /**
+   * When true, exceptions will be ignored if path does not exist.
+   */
+  force?: boolean;
+}
+
+/**
  * File operations available to a tool factory as `ctx.fs` and to lifecycle hooks as
  * `fileSystem`. Every call is carried out by the Go runtime synchronously; the Promise
  * return types keep `await` valid at the call site. Files are read and written as UTF-8.
@@ -95,7 +109,7 @@ export interface IFileSystem {
   /**
    * Removes a file, or a directory together with everything under it.
    */
-  rm(path: string): Promise<void>;
+  rm(path: string, options?: IRmOptions): Promise<void>;
   /**
    * Moves a file or directory.
    */

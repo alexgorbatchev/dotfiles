@@ -20,6 +20,8 @@ defineTool((install) =>
     expectType<string>(target);
     await fileSystem.rmdir(dir);
     await fileSystem.rm(dir);
+    await fileSystem.rm(dir, { recursive: true, force: true });
+    await fileSystem.rm(dir, { force: true });
   }),
 );
 

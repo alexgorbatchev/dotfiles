@@ -449,7 +449,7 @@ function createToolContext(toolName: string, eventContext: Record<string, unknow
       fsMkdir(p);
       return Promise.resolve();
     },
-    rm(p: string) {
+    rm(p: string, _options?: unknown) {
       fsRm(p);
       return Promise.resolve();
     },
