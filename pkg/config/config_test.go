@@ -171,6 +171,8 @@ func TestToolConfigRequestedVersion(t *testing.T) {
 		{name: "dnf install parameter", method: "dnf", params: map[string]any{"version": "13.0.0-1.fc40"}, want: "13.0.0-1.fc40", wantParam: "version"},
 		{name: "pacman install parameter", method: "pacman", params: map[string]any{"version": "13.0.0-1"}, want: "13.0.0-1", wantParam: "version"},
 		{name: "npm install parameter", method: "npm", params: map[string]any{"version": "3.0.0"}, want: "3.0.0", wantParam: "version"},
+		{name: "uv install parameter", method: "uv", params: map[string]any{"version": "0.26.0"}, want: "0.26.0", wantParam: "version"},
+		{name: "uv version operator install parameter", method: "uv", params: map[string]any{"version": ">=0.26.0"}, want: ">=0.26.0", wantParam: "version"},
 		{name: "dmg github-release source", method: "dmg", version: new("v1.0.0"), params: githubSource("v2.0.0"), want: "v2.0.0", wantParam: "source.version"},
 		{name: "pkg github-release source", method: "pkg", params: githubSource("v2.0.0"), want: "v2.0.0", wantParam: "source.version"},
 		{name: "dmg url source has no version to name", method: "dmg", version: new("v1.0.0"), params: map[string]any{"source": map[string]any{"type": "url", "url": "https://example.test/app.dmg", "version": "v2.0.0"}}, want: "v1.0.0"},
@@ -219,6 +221,12 @@ func TestToolConfigWithRequestedVersion(t *testing.T) {
 			method:     "npm",
 			params:     map[string]any{"package": "prettier"},
 			wantParams: map[string]any{"package": "prettier"},
+		},
+		{
+			name:       "a uv version parameter of latest is replaced",
+			method:     "uv",
+			params:     map[string]any{"package": "claude-swap", "version": "latest"},
+			wantParams: map[string]any{"package": "claude-swap", "version": "v9.9.9"},
 		},
 		{
 			name:       "a dmg github-release source version is replaced",

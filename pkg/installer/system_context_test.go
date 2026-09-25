@@ -181,6 +181,7 @@ func TestEveryInstallerTakesTheRunsTarget(t *testing.T) {
 		NewNpmInstaller(runner, memFS, nil),
 		NewPacmanInstaller(runner, memFS, nil),
 		NewPkgInstaller(runner, memFS, dl, nil),
+		NewUvInstaller(runner, memFS, nil),
 		NewZshPluginInstaller(runner, memFS, nil),
 	}
 
