@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Log command and environment
+if [[ -n "${FAKE_UV_LOG:-}" ]]; then
+  echo "uv $*" >> "${FAKE_UV_LOG}"
+  if [[ -n "${UV_TOOL_BIN_DIR:-}" ]]; then
+    echo "UV_TOOL_BIN_DIR=${UV_TOOL_BIN_DIR}" >> "${FAKE_UV_LOG}"
+  fi
+fi
+
+cmd="${1:-}"
+
+if [[ "${cmd}" == "tool" ]]; then
+  subcmd="${2:-}"
+  if [[ "${subcmd}" == "install" ]]; then
+    version="${FAKE_UV_VERSION:-0.26.0}"
+
+    pkg="${@: -1}"
+    pkg_name="claude-swap"
+    if [[ "${pkg}" =~ ^([a-zA-Z0-9_-]+) ]]; then
+      pkg_name="${BASH_REMATCH[1]}"
+    fi
+
+    tool_dir="${HOME}/.local/share/uv/tools/${pkg_name}"
+    has_force=0
+    for arg in "$@"; do
+      if [[ "${arg}" == "--force" ]]; then
+        has_force=1
+        break
+      fi
+    done
+
+    if [[ -d "${tool_dir}" && "${has_force}" -eq 0 ]]; then
+      echo "error: Tool '${pkg_name}' is already installed. To reinstall, pass '--force'." >&2
+      exit 1
+    fi
+
+    venv_dir="${tool_dir}/bin"
+    mkdir -p "${venv_dir}"
+
+    if [[ "${pkg_name}" == "claude-swap" ]]; then
+      printf '#!/usr/bin/env bash\necho "claude-swap %s (mock)"\n' "${version}" > "${venv_dir}/claude-swap"
+      chmod +x "${venv_dir}/claude-swap"
+
+      printf '#!/usr/bin/env bash\necho "cswap %s (mock)"\n' "${version}" > "${venv_dir}/cswap"
+      chmod +x "${venv_dir}/cswap"
+
+      if [[ -n "${UV_TOOL_BIN_DIR:-}" ]]; then
+        mkdir -p "${UV_TOOL_BIN_DIR}"
+        ln -sf "${venv_dir}/claude-swap" "${UV_TOOL_BIN_DIR}/claude-swap"
+        ln -sf "${venv_dir}/cswap" "${UV_TOOL_BIN_DIR}/cswap"
+      fi
+    else
+      printf '#!/usr/bin/env bash\necho "%s %s (mock)"\n' "${pkg_name}" "${version}" > "${venv_dir}/${pkg_name}"
+      chmod +x "${venv_dir}/${pkg_name}"
+
+      if [[ -n "${UV_TOOL_BIN_DIR:-}" ]]; then
+        mkdir -p "${UV_TOOL_BIN_DIR}"
+        ln -sf "${venv_dir}/${pkg_name}" "${UV_TOOL_BIN_DIR}/${pkg_name}"
+      fi
+    fi
+
+    echo "Resolved 1 package in 1ms"
+    echo "Installed 1 package in 1ms"
+    echo " + ${pkg_name}==${version}"
+    exit 0
+  elif [[ "${subcmd}" == "list" ]]; then
+    version="${FAKE_UV_VERSION:-0.26.0}"
+    echo "claude-swap v${version}"
+    echo "- claude-swap"
+    echo "- cswap"
+    echo "claude-swap-pinned v0.26.0 (>=0.26.0)"
+    echo "- claude-swap-pinned"
+    exit 0
+  elif [[ "${subcmd}" == "uninstall" ]]; then
+    pkg="${@: -1}"
+    rm -rf "${HOME}/.local/share/uv/tools/${pkg}"
+    exit 0
+  fi
+fi
+
+exit 0

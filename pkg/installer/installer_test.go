@@ -413,11 +413,12 @@ func TestAllInstallers_SupportsSudo(t *testing.T) {
 		{"gitea", NewGiteaInstaller(nil, nil, nil, nil), false},
 		{"github", NewGitHubInstaller(nil, nil, nil, nil), false},
 		{"npm", NewNpmInstaller(nil, nil, nil), false},
+		{"uv", NewUvInstaller(nil, nil, nil), false},
 		{"zsh-plugin", NewZshPluginInstaller(nil, nil, nil), false},
 	}
 
-	if len(tests) != 15 {
-		t.Fatalf("expected 15 installers, got %d", len(tests))
+	if len(tests) != 16 {
+		t.Fatalf("expected 16 installers, got %d", len(tests))
 	}
 
 	for _, tt := range tests {
@@ -472,6 +473,7 @@ func TestUpdateCheckNeedsInstallation(t *testing.T) {
 		{"manual", NewManualInstaller(nil, nil), false},
 		{"npm", NewNpmInstaller(nil, nil, nil), false},
 		{"pkg", NewPkgInstaller(nil, nil, nil, nil), false},
+		{"uv", NewUvInstaller(nil, nil, nil), false},
 		{"zsh-plugin", NewZshPluginInstaller(nil, nil, nil), false},
 	}
 	// Every registered installer must be listed, so one added without deciding this

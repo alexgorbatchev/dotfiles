@@ -27,6 +27,7 @@ var installMethods = []string{
 	"npm",
 	"pacman",
 	"pkg",
+	"uv",
 	"zsh-plugin",
 }
 
@@ -163,13 +164,13 @@ func (tc *ToolConfig) RequestedVersion() string {
 // requestedVersion returns the version an installation of tc asks for and the install
 // parameter that names it, which is "" when the version comes from .version(). The
 // methods whose installers take a version install parameter let it win over
-// .version(): github-release, gitea-release, apt, dnf, pacman and npm read `version`,
+// .version(): github-release, gitea-release, apt, dnf, pacman, npm and uv read `version`,
 // and dmg and pkg read the `version` of a github-release `source` (a direct-URL source
 // has no version to name). For every other method the requested version is
 // .version(), so a `version` parameter written for one of them names nothing.
 func (tc *ToolConfig) requestedVersion() (version, param string) {
 	switch tc.InstallationMethod {
-	case "github-release", "gitea-release", "apt", "dnf", "pacman", "npm":
+	case "github-release", "gitea-release", "apt", "dnf", "pacman", "npm", "uv":
 		if v, _ := tc.InstallParams["version"].(string); v != "" {
 			return v, "version"
 		}

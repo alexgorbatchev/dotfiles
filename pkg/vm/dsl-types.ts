@@ -953,6 +953,32 @@ export interface INpmInstallParams extends ICommonInstallParams {
 }
 
 /**
+ * Parameters for uv (Python) CLI tool installer.
+ */
+export interface IUvInstallParams extends ICommonInstallParams {
+  /**
+   * PyPI package name. Defaults to the tool name.
+   */
+  package?: string;
+  /**
+   * Target package version (e.g. "0.26.0", ">=0.26.0"). Defaults to latest published version.
+   */
+  version?: string;
+  /**
+   * Python version constraint for the tool environment (e.g. ">=3.12", "3.11").
+   */
+  python?: string;
+  /**
+   * Additional dependencies to install into the tool environment.
+   */
+  with?: string[];
+  /**
+   * Reinstall even when the package is already present.
+   */
+  force?: boolean;
+}
+
+/**
  * Parameters for Zsh plugin installer.
  */
 export interface IZshPluginInstallParams extends ICommonInstallParams {
@@ -1169,7 +1195,8 @@ export type InstallMethod =
   | "pacman"
   | "dnf"
   | "pkg"
-  | "github-release";
+  | "github-release"
+  | "uv";
 
 export interface IInstallParamsRegistry {
   manual: IManualInstallParams;
@@ -1187,6 +1214,7 @@ export interface IInstallParamsRegistry {
   dnf: IDnfInstallParams;
   pkg: IPkgInstallParams;
   "github-release": IGithubReleaseInstallParams;
+  uv: IUvInstallParams;
 }
 
 export interface IKnownBinNameRegistry {

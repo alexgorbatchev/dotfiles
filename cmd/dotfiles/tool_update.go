@@ -52,6 +52,8 @@ func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, p
 		instInstance.BinDir = toolDestDir
 	case *installer.PkgInstaller:
 		instInstance.BinDir = toolDestDir
+	case *installer.UvInstaller:
+		instInstance.BinDir = toolDestDir
 	}
 }
 

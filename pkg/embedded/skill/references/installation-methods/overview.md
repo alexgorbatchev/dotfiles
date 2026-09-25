@@ -30,6 +30,7 @@ Using external package managers like `brew` or `npm` is fully supported and some
 | [npm](npm.md)                       | Node.js tools                       | Simple, version management             | Requires Node.js/npm                  |
 | [pacman](pacman.md)                 | Arch-family Linux packages          | Uses distro packages                   | Linux distro-specific, external state |
 | [pkg](pkg.md)                       | macOS installer packages            | Uses native installer flow             | macOS only                            |
+| [uv](uv.md)                         | Python CLI tools                    | Isolated venvs, managed launcher shims | Requires uv                           |
 | [zsh-plugin](zsh-plugin.md)         | Zsh plugins from Git repos          | Simple, automatic updates              | Zsh plugins only                      |
 
 Parameters shared by every method (`auto`) are documented under [Base Install Parameters](../api-reference/core-api.md#base-install-parameters). The `env` install parameter is read only by [curl-script](curl-script.md#parameters).

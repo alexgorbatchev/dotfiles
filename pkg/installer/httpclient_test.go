@@ -27,6 +27,7 @@ func (r *recordingTransport) RoundTrip(req *http.Request) (*http.Response, error
 // TestSetHTTPClient covers every installer that talks HTTP: after SetHTTPClient
 // both its API client and its downloader use the injected client, which is what
 // lets the development proxy capture all of an installer's traffic.
+// (Note: uv talks HTTP directly for PyPI metadata queries and is verified in uv_test.go.)
 func TestSetHTTPClient(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "content")

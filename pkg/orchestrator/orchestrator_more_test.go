@@ -1221,12 +1221,13 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 	_ = allInstReg.Register(installer.NewZshPluginInstaller(runner, memFS, nil))
 	_ = allInstReg.Register(installer.NewPkgInstaller(runner, memFS, dl, nil))
 	_ = allInstReg.Register(installer.NewBrewInstaller(runner, memFS, nil))
+	_ = allInstReg.Register(installer.NewUvInstaller(runner, memFS, nil))
 
 	orchAll := NewOrchestrator(log, memFS, runner, reg, allInstReg)
 
 	for _, method := range []string{
 		"github-release", "gitea-release", "cargo", "curl-binary",
-		"curl-script", "curl-tar", "dmg", "manual", "zsh-plugin", "pkg", "brew",
+		"curl-script", "curl-tar", "dmg", "manual", "zsh-plugin", "pkg", "brew", "uv",
 	} {
 		tc := &config.ToolConfig{
 			Name:               "tool-" + method,

@@ -2,7 +2,7 @@
 name: dotfiles
 description: >-
   .tool.ts configuration files, defineTool, install(), dotfiles.config.ts, defineConfig,
-  installation methods (github-release, gitea-release, brew, cargo, npm, curl-script, curl-tar, curl-binary, dmg, pkg, manual, zsh-plugin),
+  installation methods (github-release, gitea-release, brew, cargo, npm, uv, curl-script, curl-tar, curl-binary, dmg, pkg, manual, zsh-plugin),
   declarative file management (blocks, templates, ensureDir, symlinks, copies), shell integration (aliases, functions, completions, env, sourceFile),
   hooks (before-install, after-download, after-extract, after-install),
   platform overrides, virtual environments, shim generation, dotfiles management.
@@ -85,6 +85,7 @@ Read these based on the task at hand:
   - [curl-binary.md](references/installation-methods/curl-binary.md) — Direct binary file download
   - [dmg.md](references/installation-methods/dmg.md) — macOS DMG disk image installation
   - [pkg.md](references/installation-methods/pkg.md) — macOS PKG installer package installation
+  - [uv.md](references/installation-methods/uv.md) — Python CLI tool installation via uv
   - [manual.md](references/installation-methods/manual.md) — Custom scripts, pre-built binaries, config-only tools
   - [zsh-plugin.md](references/installation-methods/zsh-plugin.md) — Zsh plugin Git repository cloning
 
