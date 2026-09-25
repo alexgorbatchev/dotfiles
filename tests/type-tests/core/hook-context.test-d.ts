@@ -1,18 +1,103 @@
-import { defineTool, type IHookContext, type IToolConfigContext } from "@alexgorbatchev/dotfiles";
+import {
+  defineTool,
+  Platform,
+  type HookEvent,
+  type IAfterDownloadContext,
+  type IAfterExtractContext,
+  type IAfterInstallContext,
+  type IBeforeInstallContext,
+  type IDownloadContext,
+  type IExtractContext,
+  type IExtractResult,
+  type IHookContext,
+  type IToolConfigContext,
+} from "@alexgorbatchev/dotfiles";
 import { expectError, expectType } from "tsd";
 
-// IHookContext is the single public hook context type: every event receives it, and the
-// members an event does not provide are optional.
+// Stage-specific context interfaces provide required properties for each lifecycle phase.
 defineTool((install) =>
-  install("github-release", { repo: "owner/tool" }).hook("after-install", async (context) => {
-    expectType<IHookContext>(context);
-    expectType<string>(context.stagingDir);
-    expectType<string | undefined>(context.downloadPath);
-    expectType<string | undefined>(context.extractDir);
-    expectType<string | undefined>(context.installedDir);
-    expectType<string[] | undefined>(context.binaryPaths);
-    expectType<string | undefined>(context.version);
+  install("github-release", { repo: "owner/tool" })
+    .hook("after-install", async (ctx) => {
+      expectType<IAfterInstallContext>(ctx);
+      expectType<string>(ctx.stagingDir);
+      expectType<string>(ctx.installedDir);
+      expectType<string[]>(ctx.binaryPaths);
+      expectType<string | undefined>(ctx.version);
+    })
+    .hook("after-extract", async (ctx) => {
+      expectType<IAfterExtractContext>(ctx);
+      expectType<string>(ctx.stagingDir);
+      expectType<string>(ctx.downloadPath);
+      expectType<string>(ctx.extractDir);
+      expectType<IExtractResult>(ctx.extractResult);
+    })
+    .hook("after-download", async (ctx) => {
+      expectType<IAfterDownloadContext>(ctx);
+      expectType<string>(ctx.stagingDir);
+      expectType<string>(ctx.downloadPath);
+    })
+    .hook("before-install", async (ctx) => {
+      expectType<IBeforeInstallContext>(ctx);
+      expectType<string>(ctx.stagingDir);
+    }),
+);
+
+// IAfterInstallContext, IExtractContext, and IDownloadContext can be imported and assigned to IHookContext.
+declare const afterInstallCtx: IAfterInstallContext;
+declare const extractCtx: IExtractContext;
+declare const downloadCtx: IDownloadContext;
+
+const hookCtx1: IHookContext = afterInstallCtx;
+const hookCtx2: IHookContext = extractCtx;
+const hookCtx3: IHookContext = downloadCtx;
+expectType<IHookContext>(hookCtx1);
+expectType<IHookContext>(hookCtx2);
+expectType<IHookContext>(hookCtx3);
+
+// Platform builder supports the same narrowed hook signatures.
+defineTool((install) =>
+  install("github-release", { repo: "owner/tool" }).platform(Platform.MacOS, (platInstall) =>
+    platInstall()
+      .hook("after-install", async (ctx) => {
+        expectType<IAfterInstallContext>(ctx);
+        expectType<string>(ctx.installedDir);
+        expectType<string[]>(ctx.binaryPaths);
+      })
+      .hook("after-extract", async (ctx) => {
+        expectType<IAfterExtractContext>(ctx);
+        expectType<string>(ctx.extractDir);
+        expectType<IExtractResult>(ctx.extractResult);
+      })
+      .hook("after-download", async (ctx) => {
+        expectType<IAfterDownloadContext>(ctx);
+        expectType<string>(ctx.downloadPath);
+      })
+      .hook("before-install", async (ctx) => {
+        expectType<IBeforeInstallContext>(ctx);
+      }),
+  ),
+);
+
+// Fallback overload accepts HookEvent and IHookContext.
+declare const dynamicEvent: HookEvent;
+defineTool((install) =>
+  install("manual").hook(dynamicEvent, async (ctx) => {
+    expectType<IHookContext>(ctx);
   }),
+);
+
+// Shared helper functions across stages continue to accept ctx: IHookContext without union boilerplate.
+const sharedHelper = async (ctx: IHookContext): Promise<void> => {
+  ctx.log.info(`staging in ${ctx.stagingDir}`);
+  await ctx.$`echo running`;
+};
+
+defineTool((install) =>
+  install("manual")
+    .hook("before-install", sharedHelper)
+    .hook("after-download", sharedHelper)
+    .hook("after-extract", sharedHelper)
+    .hook("after-install", sharedHelper),
 );
 
 // A handler may annotate its parameter with the exported type.

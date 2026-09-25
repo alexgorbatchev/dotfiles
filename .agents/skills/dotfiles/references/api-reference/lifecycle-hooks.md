@@ -25,12 +25,12 @@ registered under exactly the name in the first column: the names are kebab-case,
 registering any other name fails when the configuration is read, rather than leaving a
 handler that nothing would ever call.
 
-| Order | Event            | When                              | Adds to the context                      |
-| ----- | ---------------- | --------------------------------- | ---------------------------------------- |
-| 1     | `before-install` | Before the installer runs         | `stagingDir`                             |
-| 2     | `after-download` | After an asset is fetched to disk | `downloadPath`                           |
-| 3     | `after-extract`  | After an archive is unpacked      | `extractDir`, `extractResult`            |
-| 4     | `after-install`  | After the tool is in place        | `installedDir`, `binaryPaths`, `version` |
+| Order | Event            | When                              | Adds to the context                           |
+| ----- | ---------------- | --------------------------------- | --------------------------------------------- |
+| 1     | `before-install` | Before the installer runs         | `stagingDir`                                  |
+| 2     | `after-download` | After an asset is fetched to disk | `downloadPath`                                |
+| 3     | `after-extract`  | After an archive is unpacked      | `downloadPath`, `extractDir`, `extractResult` |
+| 4     | `after-install`  | After the tool is in place        | `installedDir`, `binaryPaths`, `version`      |
 
 An installation reaches only the events its method produces: a method that downloads
 nothing never emits `after-download`, and one that extracts no archive never emits
@@ -44,8 +44,7 @@ nothing never emits `after-download`, and one that extracts no archive never emi
 | `executables`    | `string[]` | The unpacked files the extractor marked executable. |
 
 It is provided only alongside `extractDir`, and never on its own: an empty pair of lists
-handed to an event that extracted nothing would read as "the archive was empty". Either
-guard on `extractDir`, as the examples below do, or guard on `extractResult` itself.
+handed to an event that extracted nothing would read as "the archive was empty".
 
 A hook that throws fails the installation. Nothing is swallowed: if the handler rejects,
 the tool is reported as failed with the error the hook raised.
@@ -73,14 +72,19 @@ Every hook receives:
 | `log`           | Structured logging (`debug`, `info`, `warn`, `error`)                                                                            |
 | `$`             | Shell executor                                                                                                                   |
 
-Plus whatever the event itself provides, per the table above. A property an event does
-not provide is `undefined` rather than a misleading empty value, so destructuring
-`installedDir` in a `before-install` hook gives you `undefined` -- there is nothing
-installed yet to point at.
+Plus whatever the event itself provides, per the table above. Each lifecycle hook receives
+a stage-specific context type narrowed by the event name:
 
-Every event hands the handler the same type, `IHookContext`, exported from
-`@alexgorbatchev/dotfiles`; the event-specific members are optional on it. Annotate a
-handler's parameter with it when the handler is declared separately from `.hook()`.
+- `before-install` receives `IBeforeInstallContext`
+- `after-download` receives `IAfterDownloadContext` (alias `IDownloadContext`), where `downloadPath` is required (`string`)
+- `after-extract` receives `IAfterExtractContext` (alias `IExtractContext`), extending `IAfterDownloadContext` with required `extractDir` (`string`) and `extractResult` (`IExtractResult`)
+- `after-install` receives `IAfterInstallContext`, with required `installedDir` (`string`), `binaryPaths` (`string[]`), and optional `version` (`string | undefined`)
+
+All stage-specific context interfaces extend `IHookContext`, which holds the base shared
+properties. Shared helper functions across stages continue to accept `ctx: IHookContext`
+without union boilerplate. When annotating a handler declared separately from `.hook()`,
+use the stage-specific interface (`IAfterInstallContext`, `IAfterExtractContext`,
+`IAfterDownloadContext`, `IBeforeInstallContext`) or `IHookContext`.
 
 `$` is available only to hooks. A tool factory does not get one: configuration is read
 on every CLI invocation, so running commands from there would execute them constantly.
@@ -195,10 +199,8 @@ Full parameters, options and the callback argument are in [utilities.md](utiliti
 
 ```typescript builder
 .hook('after-extract', async ({ extractDir, stagingDir, $ }) => {
-  if (extractDir) {
-    await $`cd ${extractDir} && make build`;
-    await $`mv ${extractDir}/target/release/tool ${stagingDir}/tool`;
-  }
+  await $`cd ${extractDir} && make build`;
+  await $`mv ${extractDir}/target/release/tool ${stagingDir}/tool`;
 })
 ```
 
@@ -239,15 +241,13 @@ export default defineTool((install, ctx) =>
   install("github-release", { repo: "owner/custom-tool" })
     .bin("custom-tool")
     .hook("after-extract", async ({ extractDir, stagingDir, fileSystem, log }) => {
-      if (extractDir) {
-        // Custom binary selection and processing
-        const binaries = await fileSystem.readdir(`${extractDir}/bin`);
-        const mainBinary = binaries.find((name) => name.startsWith("main-"));
+      // Custom binary selection and processing
+      const binaries = await fileSystem.readdir(`${extractDir}/bin`);
+      const mainBinary = binaries.find((name) => name.startsWith("main-"));
 
-        if (mainBinary) {
-          await fileSystem.rename(`${extractDir}/bin/${mainBinary}`, `${stagingDir}/tool`);
-          log.info(`Selected binary: ${mainBinary}`);
-        }
+      if (mainBinary) {
+        await fileSystem.rename(`${extractDir}/bin/${mainBinary}`, `${stagingDir}/tool`);
+        log.info(`Selected binary: ${mainBinary}`);
       }
     }),
 );
@@ -327,11 +327,9 @@ export default defineTool((install, ctx) =>
       log.info("Starting custom-tool installation...");
     })
     .hook("after-extract", async ({ extractDir, log, $ }) => {
-      if (extractDir) {
-        // Build additional components
-        log.info("Building plugins...");
-        await $`cd ${extractDir} && make plugins`;
-      }
+      // Build additional components
+      log.info("Building plugins...");
+      await $`cd ${extractDir} && make plugins`;
     })
     .hook("after-install", async ({ toolName, installedDir, projectConfig, fileSystem, log, $ }) => {
       // Create data directory

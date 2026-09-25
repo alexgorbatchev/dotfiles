@@ -90,9 +90,7 @@ func (h HookContext) toMap() map[string]any {
 	}
 	if h.InstalledDir != "" {
 		out["installedDir"] = h.InstalledDir
-	}
-	if len(h.BinaryPaths) > 0 {
-		out["binaryPaths"] = h.BinaryPaths
+		out["binaryPaths"] = nonNil(h.BinaryPaths)
 	}
 	if h.Version != "" {
 		out["version"] = h.Version

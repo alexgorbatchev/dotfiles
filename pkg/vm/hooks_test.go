@@ -492,6 +492,50 @@ func TestRunHook_AfterExtractCarriesExtractResult(t *testing.T) {
 	}
 }
 
+// after-extract provides downloadPath to the hook context so handlers can inspect or
+// clean up the downloaded archive.
+func TestRunHook_AfterExtractCarriesDownloadPath(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-extract", async ({ fileSystem, downloadPath }) => {
+				await fileSystem.writeFile("/captured", downloadPath);
+			}),
+		);
+	`, HookAfterExtract)
+
+	captured := runHookCapturingFile(t, tool, hookTestProjectConfig(t), HookAfterExtract, HookContext{
+		DownloadPath:   "/tmp/downloads/tool.tar.gz",
+		ExtractDir:     "/tmp/extracted",
+		ExtractedFiles: []string{"/tmp/extracted/bin/tool"},
+		Executables:    []string{"/tmp/extracted/bin/tool"},
+	})
+
+	if captured != "/tmp/downloads/tool.tar.gz" {
+		t.Errorf("downloadPath = %q, want \"/tmp/downloads/tool.tar.gz\"", captured)
+	}
+}
+
+// after-install guarantees binaryPaths is an array even when zero binaries were produced.
+func TestRunHook_AfterInstallEmptyBinaryPathsWhenNoBinaries(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-install", async ({ fileSystem, binaryPaths }) => {
+				await fileSystem.writeFile("/captured", JSON.stringify(binaryPaths));
+			}),
+		);
+	`, HookAfterInstall)
+
+	captured := runHookCapturingFile(t, tool, hookTestProjectConfig(t), HookAfterInstall, HookContext{
+		InstalledDir: "/tmp/installed",
+	})
+
+	if captured != "[]" {
+		t.Errorf("binaryPaths = %q, want \"[]\"", captured)
+	}
+}
+
 // An event that produced no extraction must not hand the hook an empty-looking result
 // that reads as "the archive contained nothing".
 func TestRunHook_ExtractResultAbsentWithoutExtraction(t *testing.T) {

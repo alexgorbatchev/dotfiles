@@ -1,6 +1,6 @@
-import { defineTool, type IHookContext } from "@alexgorbatchev/dotfiles";
+import { defineTool, type IAfterInstallContext } from "@alexgorbatchev/dotfiles";
 
-async function announce({ log, version }: IHookContext): Promise<void> {
+async function announce({ log, version }: IAfterInstallContext): Promise<void> {
   log.info(`installed ${version ?? "unknown"}`);
 }
 

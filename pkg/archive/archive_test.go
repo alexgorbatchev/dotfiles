@@ -67,6 +67,9 @@ func TestExtract_ReportsExtractedFilesAndExecutables(t *testing.T) {
 		t.Fatalf("Extract failed: %v", err)
 	}
 
+	if got.DownloadPath != "/src.zip" {
+		t.Errorf("DownloadPath = %q, want %q", got.DownloadPath, "/src.zip")
+	}
 	if len(got.ExtractedFiles) != 2 {
 		t.Errorf("ExtractedFiles = %v, want both archive members", got.ExtractedFiles)
 	}
