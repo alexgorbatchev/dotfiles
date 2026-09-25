@@ -1650,66 +1650,6 @@ export interface IInstallFunction {
    * Configures a tool without a specific installer plugin.
    */
   (): IToolConfigBuilder;
-  /**
-   * Manual binary installer for local system executables. Supported for sudo.
-   */
-  manual(params?: IManualInstallParams): IToolConfigBuilder;
-  /**
-   * Cargo (Rust) crate installer.
-   */
-  cargo(params?: ICargoInstallParams): IToolConfigBuilder;
-  /**
-   * cURL script installer executing remote shell setup scripts.
-   */
-  "curl-script"(params?: ICurlScriptInstallParams): IToolConfigBuilder;
-  /**
-   * Homebrew package manager installer (macOS & Linux).
-   */
-  brew(params?: IBrewInstallParams): IToolConfigBuilder;
-  /**
-   * Zsh plugin git repository installer.
-   */
-  "zsh-plugin"(params?: IZshPluginInstallParams): IToolConfigBuilder;
-  /**
-   * Gitea release asset downloader.
-   */
-  "gitea-release"(params?: IGiteaReleaseInstallParams): IToolConfigBuilder;
-  /**
-   * cURL tarball archive extractor (.tar.gz, .tar.xz, .zip).
-   */
-  "curl-tar"(params?: ICurlTarInstallParams): IToolConfigBuilder;
-  /**
-   * cURL direct standalone binary downloader.
-   */
-  "curl-binary"(params?: ICurlBinaryInstallParams): IToolConfigBuilder;
-  /**
-   * macOS DMG disk image installer.
-   */
-  dmg(params?: IDmgInstallParams): IToolConfigBuilder;
-  /**
-   * NPM global package installer.
-   */
-  npm(params?: INpmInstallParams): IToolConfigBuilder;
-  /**
-   * APT package manager installer (Debian / Ubuntu). Supported for sudo.
-   */
-  apt(params?: IAptInstallParams): IToolConfigBuilder;
-  /**
-   * Pacman package manager installer (Arch Linux). Supported for sudo.
-   */
-  pacman(params?: IPacmanInstallParams): IToolConfigBuilder;
-  /**
-   * DNF package manager installer (Fedora / RHEL / CentOS). Supported for sudo.
-   */
-  dnf(params?: IDnfInstallParams): IToolConfigBuilder;
-  /**
-   * macOS PKG package installer. Supported for sudo.
-   */
-  pkg(params?: IPkgInstallParams): IToolConfigBuilder;
-  /**
-   * GitHub release asset downloader with automatic architecture/platform matching.
-   */
-  "github-release"(params?: IGithubReleaseInstallParams): IToolConfigBuilder;
 }
 
 /**
@@ -1724,66 +1664,6 @@ export interface IPlatformInstallFunction {
    * Configures a tool on this platform without a specific installer plugin.
    */
   (): IPlatformConfigBuilder;
-  /**
-   * Manual binary installer on this platform. Supported for sudo.
-   */
-  manual(params?: IManualInstallParams): IPlatformConfigBuilder;
-  /**
-   * Cargo (Rust) crate installer on this platform.
-   */
-  cargo(params?: ICargoInstallParams): IPlatformConfigBuilder;
-  /**
-   * cURL script installer on this platform.
-   */
-  "curl-script"(params?: ICurlScriptInstallParams): IPlatformConfigBuilder;
-  /**
-   * Homebrew package manager installer on this platform.
-   */
-  brew(params?: IBrewInstallParams): IPlatformConfigBuilder;
-  /**
-   * Zsh plugin git repository installer on this platform.
-   */
-  "zsh-plugin"(params?: IZshPluginInstallParams): IPlatformConfigBuilder;
-  /**
-   * Gitea release asset downloader on this platform.
-   */
-  "gitea-release"(params?: IGiteaReleaseInstallParams): IPlatformConfigBuilder;
-  /**
-   * cURL tarball archive extractor on this platform.
-   */
-  "curl-tar"(params?: ICurlTarInstallParams): IPlatformConfigBuilder;
-  /**
-   * cURL direct standalone binary downloader on this platform.
-   */
-  "curl-binary"(params?: ICurlBinaryInstallParams): IPlatformConfigBuilder;
-  /**
-   * macOS DMG disk image installer on this platform.
-   */
-  dmg(params?: IDmgInstallParams): IPlatformConfigBuilder;
-  /**
-   * NPM global package installer on this platform.
-   */
-  npm(params?: INpmInstallParams): IPlatformConfigBuilder;
-  /**
-   * APT package manager installer on this platform. Supported for sudo.
-   */
-  apt(params?: IAptInstallParams): IPlatformConfigBuilder;
-  /**
-   * Pacman package manager installer on this platform. Supported for sudo.
-   */
-  pacman(params?: IPacmanInstallParams): IPlatformConfigBuilder;
-  /**
-   * DNF package manager installer on this platform. Supported for sudo.
-   */
-  dnf(params?: IDnfInstallParams): IPlatformConfigBuilder;
-  /**
-   * macOS PKG package installer on this platform. Supported for sudo.
-   */
-  pkg(params?: IPkgInstallParams): IPlatformConfigBuilder;
-  /**
-   * GitHub release asset downloader on this platform.
-   */
-  "github-release"(params?: IGithubReleaseInstallParams): IPlatformConfigBuilder;
 }
 
 export type ConfigFactory = (ctx: IConfigContext) => IProjectConfig | Promise<IProjectConfig>;
