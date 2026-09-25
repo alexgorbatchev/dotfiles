@@ -44,10 +44,11 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	npm := NewNpmInstaller(runner, memFS, sysCtx)
 	pacman := NewPacmanInstaller(runner, memFS, sysCtx)
 	pkgInst := NewPkgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
+	uvInst := NewUvInstaller(runner, memFS, sysCtx)
 	zshPlug := NewZshPluginInstaller(runner, memFS, sysCtx)
 
 	// 1. SetFS and SetLogger helpers on all installers
-	installers := []Installer{apt, brew, cargo, curlBin, curlScript, curlTar, dmg, dnf, gitea, gh, manual, npm, pacman, pkgInst, zshPlug}
+	installers := []Installer{apt, brew, cargo, curlBin, curlScript, curlTar, dmg, dnf, gitea, gh, manual, npm, pacman, pkgInst, uvInst, zshPlug}
 	for _, inst := range installers {
 		SetFS(inst, memFS)
 		SetLogger(inst, log)

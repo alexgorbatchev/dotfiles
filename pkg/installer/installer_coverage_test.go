@@ -339,6 +339,7 @@ func TestInstallersDryRunCoverage(t *testing.T) {
 		NewNpmInstaller(runner, memFS, sysCtx),
 		NewPacmanInstaller(runner, memFS, sysCtx),
 		NewPkgInstaller(runner, memFS, dl, &SystemContext{OS: "darwin", Arch: "arm64"}),
+		NewUvInstaller(runner, memFS, sysCtx),
 		NewZshPluginInstaller(runner, memFS, sysCtx),
 	}
 

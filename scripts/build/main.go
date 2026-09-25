@@ -189,6 +189,7 @@ func generateSchemaTypes(rootDir string) error {
 		"\tICurlScriptInstallParams as z_internal_CurlScriptInstallParams,",
 		"\tICurlBinaryInstallParams as z_internal_CurlBinaryInstallParams,",
 		"\tIGithubReleaseInstallParams as z_internal_GithubReleaseInstallParams,",
+		"\tIUvInstallParams as z_internal_UvInstallParams,",
 		"\tIInstallParamsRegistry as z_internal_IInstallParamsRegistry,",
 		"\tInstallMethod as z_internal_InstallMethod,",
 		"\tISystemInfo as z_internal_ISystemInfo,",

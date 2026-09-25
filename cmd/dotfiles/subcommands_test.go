@@ -1607,6 +1607,7 @@ func TestConfigureInstallerForUpdate(t *testing.T) {
 	manual := &installer.ManualInstaller{}
 	zshPlugin := &installer.ZshPluginInstaller{}
 	pkg := &installer.PkgInstaller{}
+	uv := installer.NewUvInstaller(nil, nil, nil)
 
 	binDirOnly := []struct {
 		name   string
@@ -1621,6 +1622,7 @@ func TestConfigureInstallerForUpdate(t *testing.T) {
 		{"manual", manual, func() string { return manual.BinDir }},
 		{"zsh-plugin", zshPlugin, func() string { return zshPlugin.BinDir }},
 		{"pkg", pkg, func() string { return pkg.BinDir }},
+		{"uv", uv, func() string { return uv.BinDir }},
 	}
 	for _, tt := range binDirOnly {
 		t.Run(tt.name+" installer receives the destination dir", func(t *testing.T) {

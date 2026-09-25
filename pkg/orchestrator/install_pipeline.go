@@ -218,6 +218,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		installerInstance.BinDir = installDir
 	case *installer.PkgInstaller:
 		installerInstance.BinDir = installDir
+	case *installer.UvInstaller:
+		installerInstance.BinDir = installDir
 	}
 
 	// 1. Download, unpack, and install via the native installer plugin
