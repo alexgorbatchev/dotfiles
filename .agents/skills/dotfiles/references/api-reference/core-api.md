@@ -16,7 +16,13 @@ import {
 
 import type {
   ConfigFactory,
+  IAfterDownloadContext,
+  IAfterExtractContext,
+  IAfterInstallContext,
+  IBeforeInstallContext,
   IConfigContext,
+  IDownloadContext,
+  IExtractContext,
   IHookContext,
   IInstallFunction,
   IPlatformConfigBuilder,
@@ -35,7 +41,11 @@ Authoring helper types used by `defineTool` callbacks are also exported from the
 - `IToolConfigBuilder`
 - `IPlatformConfigBuilder`
 - `IToolConfigContext`
-- `IHookContext` (the context every lifecycle hook receives)
+- `IHookContext` (base context shared by all lifecycle hooks)
+- `IBeforeInstallContext` (`before-install` hook context)
+- `IAfterDownloadContext` / `IDownloadContext` (`after-download` hook context)
+- `IAfterExtractContext` / `IExtractContext` (`after-extract` hook context)
+- `IAfterInstallContext` (`after-install` hook context)
 
 ## defineTool
 

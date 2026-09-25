@@ -173,6 +173,7 @@ func (e *Extractor) Extract(ctx context.Context, src string, dest string) error 
 	// see. Reporting before the executable bits are set would hand the hook a tree it
 	// could not run anything from.
 	return lifecycle.Emit(ctx, lifecycle.AfterExtract, lifecycle.Details{
+		DownloadPath:   src,
 		ExtractDir:     dest,
 		ExtractedFiles: extracted,
 		Executables:    executables,

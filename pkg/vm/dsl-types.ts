@@ -1368,8 +1368,8 @@ export interface IExtractResult {
 }
 
 /**
- * Context provided to lifecycle hook handlers. Every event receives the same type;
- * the members an event does not provide are `undefined`.
+ * Context provided to lifecycle hook handlers. Every event receives the base type
+ * containing shared properties.
  */
 export interface IHookContext extends IToolConfigContext {
   /**
@@ -1381,35 +1381,66 @@ export interface IHookContext extends IToolConfigContext {
    */
   toolConfig: ToolConfig;
   /**
-   * Path of the fetched asset. Only `after-download` provides it.
-   */
-  downloadPath?: string;
-  /**
-   * Directory the archive was unpacked into. Only `after-extract` provides it.
-   */
-  extractDir?: string;
-  /**
-   * What came out of the archive. Only `after-extract` provides it.
-   */
-  extractResult?: IExtractResult;
-  /**
-   * Stable directory the installed tool now occupies. Only `after-install` provides
-   * it; before the install completes there is nothing installed to point at.
-   */
-  installedDir?: string;
-  /**
-   * Paths of the binaries the installer produced. Only `after-install` provides them.
-   */
-  binaryPaths?: string[];
-  /**
-   * Version that was installed. Only `after-install` provides it, and only when the
-   * installer resolved one.
-   */
-  version?: string;
-  /**
    * Runs a shell command from the directory holding the tool's `.tool.ts`.
    */
   $: HookShell;
+}
+
+/**
+ * Context provided to `before-install` lifecycle hook handlers.
+ */
+export interface IBeforeInstallContext extends IHookContext {}
+
+/**
+ * Context provided to `after-download` lifecycle hook handlers.
+ */
+export interface IAfterDownloadContext extends IHookContext {
+  /**
+   * Path of the fetched asset.
+   */
+  downloadPath: string;
+}
+
+/**
+ * Alias for `IAfterDownloadContext`.
+ */
+export interface IDownloadContext extends IAfterDownloadContext {}
+
+/**
+ * Context provided to `after-extract` lifecycle hook handlers.
+ */
+export interface IAfterExtractContext extends IAfterDownloadContext {
+  /**
+   * Directory the archive was unpacked into.
+   */
+  extractDir: string;
+  /**
+   * What came out of the archive.
+   */
+  extractResult: IExtractResult;
+}
+
+/**
+ * Alias for `IAfterExtractContext`.
+ */
+export interface IExtractContext extends IAfterExtractContext {}
+
+/**
+ * Context provided to `after-install` lifecycle hook handlers.
+ */
+export interface IAfterInstallContext extends IHookContext {
+  /**
+   * Stable directory the installed tool now occupies.
+   */
+  installedDir: string;
+  /**
+   * Paths of the binaries the installer produced.
+   */
+  binaryPaths: string[];
+  /**
+   * Version that was installed, when the installer resolved one.
+   */
+  version?: string;
 }
 
 /**
@@ -1543,6 +1574,22 @@ export interface IToolConfigBuilder {
    */
   arch(arc: Architecture, cb: ArchCallback): this;
   /**
+   * Registers a `before-install` lifecycle hook.
+   */
+  hook(event: "before-install", handler: (context: IBeforeInstallContext) => Promise<unknown> | unknown): this;
+  /**
+   * Registers an `after-download` lifecycle hook.
+   */
+  hook(event: "after-download", handler: (context: IAfterDownloadContext) => Promise<unknown> | unknown): this;
+  /**
+   * Registers an `after-extract` lifecycle hook.
+   */
+  hook(event: "after-extract", handler: (context: IAfterExtractContext) => Promise<unknown> | unknown): this;
+  /**
+   * Registers an `after-install` lifecycle hook.
+   */
+  hook(event: "after-install", handler: (context: IAfterInstallContext) => Promise<unknown> | unknown): this;
+  /**
    * Registers a lifecycle hook.
    */
   hook(event: HookEvent, handler: HookHandler): this;
@@ -1632,6 +1679,22 @@ export interface IPlatformConfigBuilder {
    * Configures PowerShell initialization on this platform.
    */
   powershell(cb: ShellCallback): this;
+  /**
+   * Registers a `before-install` lifecycle hook on this platform.
+   */
+  hook(event: "before-install", handler: (context: IBeforeInstallContext) => Promise<unknown> | unknown): this;
+  /**
+   * Registers an `after-download` lifecycle hook on this platform.
+   */
+  hook(event: "after-download", handler: (context: IAfterDownloadContext) => Promise<unknown> | unknown): this;
+  /**
+   * Registers an `after-extract` lifecycle hook on this platform.
+   */
+  hook(event: "after-extract", handler: (context: IAfterExtractContext) => Promise<unknown> | unknown): this;
+  /**
+   * Registers an `after-install` lifecycle hook on this platform.
+   */
+  hook(event: "after-install", handler: (context: IAfterInstallContext) => Promise<unknown> | unknown): this;
   /**
    * Registers a lifecycle hook on this platform.
    */
