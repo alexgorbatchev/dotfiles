@@ -58,11 +58,11 @@ func TestFilesCmd(t *testing.T) {
 }
 
 func TestFilesCommand_InstalledTool(t *testing.T) {
-	p := newE2EProject(t, `
-		"bat": {"name": "bat", "installationMethod": "manual"},
-		"empty": {"name": "empty", "installationMethod": "manual"},
-		"gone": {"name": "gone", "installationMethod": "manual"}
-	`)
+	p := newE2EProject(t, tsTools{
+		"bat":   `install("manual")`,
+		"empty": `install("manual")`,
+		"gone":  `install("manual")`,
+	})
 	installRoot := filepath.Join(p.Root, "installed")
 	batPath := filepath.Join(installRoot, "bat")
 	if err := os.MkdirAll(filepath.Join(batPath, "sub"), 0755); err != nil {
@@ -156,7 +156,7 @@ func TestFilesCommand_InstalledTool(t *testing.T) {
 }
 
 func TestFilesCommand_ManagedFiles(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+	p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 
 	t.Run("nothing managed in agent mode", func(t *testing.T) {
 		t.Setenv("AGENT", "1")
@@ -220,10 +220,11 @@ func TestFilesCommand_ManagedFiles(t *testing.T) {
 // and a shim that generate removed as stale must disappear from the listing.
 func TestFilesCommand_ListsCurrentFiles(t *testing.T) {
 	const (
-		twoBinaries = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": [{"name": "alpha"}, {"name": "alpha-extra"}]}`
-		oneBinary   = `"alpha": {"name": "alpha", "installationMethod": "manual", "installParams": {"binaryPath": "alpha"}, "binaries": [{"name": "alpha"}]}`
+		alphaTool   = `install("manual", { binaryPath: "alpha" }).bin("alpha")`
+		twoBinaries = alphaTool + `.bin("alpha-extra")`
+		oneBinary   = alphaTool
 	)
-	p := newE2EProject(t, twoBinaries)
+	p := newE2EProject(t, tsTools{"alpha": twoBinaries})
 	alpha := filepath.Join(p.TargetDir, "alpha")
 	extra := filepath.Join(p.TargetDir, "alpha-extra")
 
@@ -285,7 +286,7 @@ func TestFilesCommand_ListsCurrentFiles(t *testing.T) {
 	})
 
 	t.Run("removed shim leaves the listing", func(t *testing.T) {
-		p.writeConfig(t, oneBinary, "", "")
+		p.writeConfig(t, tsTools{"alpha": oneBinary}, "", "")
 		out := generate(t)
 		mustContain(t, "stderr", out.Stderr, "Removing stale shim: ", "alpha-extra")
 

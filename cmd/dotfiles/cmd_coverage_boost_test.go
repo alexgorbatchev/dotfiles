@@ -27,29 +27,9 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 	_ = os.WriteFile(batBinPath, []byte("bat binary"), 0755)
 
 	// Populate config with shellInstall features
-	cfgContent := `{
-	"projectConfig": {
-		"paths": {
-			"homeDir": "` + homeDir + `",
-			"targetDir": "` + filepath.Join(tmpDir, "target") + `",
-			"generatedDir": "` + filepath.Join(tmpDir, "generated") + `"
-		},
-		"features": {
-			"shellInstall": {
-				"zsh": "~/.zshrc",
-				"bash": "~/.bashrc"
-			}
-		}
-	},
-	"toolConfigs": {
-		"bat": {
-			"name": "bat",
-			"installationMethod": "github-release",
-			"binaries": [{"name": "bat"}]
-		}
-	}
-}`
-	_ = os.WriteFile(filepath.Join(tmpDir, "dotfiles.config.json"), []byte(cfgContent), 0644)
+	writeTSProject(t, tmpDir,
+		`"paths": {`+projectPathsTS(tmpDir)+`}, "features": {"shellInstall": {"zsh": "~/.zshrc", "bash": "~/.bashrc"}}`,
+		tsTools{"bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`})
 
 	// 1. tool which and path coverage
 	t.Run("tool which and path queries", func(t *testing.T) {

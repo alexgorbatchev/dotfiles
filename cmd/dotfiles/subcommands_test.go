@@ -118,33 +118,15 @@ func enterTempDir(t *testing.T) string {
 	return tmpDir
 }
 
-// projectPathsJSON renders the three required "paths" members rooted under root,
-// so fixtures never point at directories outside the test's temp dir.
-func projectPathsJSON(root string) string {
-	return fmt.Sprintf(`"homeDir": %q, "targetDir": %q, "generatedDir": %q`,
-		filepath.Join(root, "home"), filepath.Join(root, "target"), filepath.Join(root, "generated"))
-}
-
+// createTempConfigDir makes a fresh temp dir the working directory and writes a
+// one-tool project there, so commands run without --config discover it. It returns
+// the directory; the configuration is its dotfiles.config.ts.
 func createTempConfigDir(t *testing.T) string {
 	t.Helper()
 	tmpDir := enterTempDir(t)
-
-	configContent := `{
-	"projectConfig": {
-		"paths": {` + projectPathsJSON(tmpDir) + `}
-	},
-	"toolConfigs": {
-		"bat": {
-			"name": "bat",
-			"installationMethod": "github-release",
-			"installParams": {"repo": "sharkdp/bat"}
-		}
-	}
-}`
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("failed writing test config: %v", err)
-	}
+	writeTSProject(t, tmpDir, `"paths": {`+projectPathsTS(tmpDir)+`}`, tsTools{
+		"bat": `install("github-release", { repo: "sharkdp/bat" })`,
+	})
 	return tmpDir
 }
 
@@ -414,8 +396,6 @@ func TestCandidateFallbackSearch(t *testing.T) {
 		".dotfiles.config.ts",
 		"dotfiles.config.js",
 		".dotfiles.config.js",
-		"dotfiles.config.json",
-		".dotfiles.config.json",
 	}
 
 	for _, candName := range candidates {
@@ -426,13 +406,7 @@ func TestCandidateFallbackSearch(t *testing.T) {
 			defer os.Chdir(origDir)
 
 			filePath := filepath.Join(tmpDir, candName)
-			content := `{
-	"projectConfig": {"paths": {` + projectPathsJSON(tmpDir) + `}},
-	"toolConfigs": {}
-}`
-			if strings.HasSuffix(candName, ".ts") || strings.HasSuffix(candName, ".js") {
-				content = `export default { paths: { ` + projectPathsJSON(tmpDir) + ` } };`
-			}
+			content := `export default { paths: { ` + projectPathsTS(tmpDir) + ` } };`
 			_ = os.WriteFile(filePath, []byte(content), 0644)
 
 			ctx := context.Background()
@@ -472,16 +446,13 @@ func TestRelativeConfigPathResolution(t *testing.T) {
 	subDir := filepath.Join(tmpDir, "sub")
 	_ = os.MkdirAll(subDir, 0755)
 
-	cfgPath := filepath.Join(subDir, "custom.config.json")
-	content := `{
-	"projectConfig": {"paths": {` + projectPathsJSON(tmpDir) + `}},
-	"toolConfigs": {}
-}`
+	cfgPath := filepath.Join(subDir, "custom.config.ts")
+	content := `export default { paths: { ` + projectPathsTS(tmpDir) + ` } };`
 	_ = os.WriteFile(cfgPath, []byte(content), 0644)
 
 	ctx := context.Background()
-	// Pass relative path "sub/custom.config.json"
-	services, err := BootstrapServices(ctx, "sub/custom.config.json")
+	// Pass relative path "sub/custom.config.ts"
+	services, err := BootstrapServices(ctx, "sub/custom.config.ts")
 	if err != nil {
 		t.Fatalf("failed resolving relative path from cwd: %v", err)
 	}
@@ -516,7 +487,7 @@ func TestInstallCommand_ShimModeQuietOutput(t *testing.T) {
 
 func TestUpdateCommand_HelpAndUninstalled(t *testing.T) {
 	tmpDir := createTempConfigDir(t)
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 	_, err := executeCommand("-c", configPath, "tool", "update", "non-existent-tool")
 	if err == nil {
 		t.Errorf("expected tool update non-existent-tool to return an error")
@@ -667,11 +638,7 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 	repoRoot := findRepoRoot()
 	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
 	tmpDir := createTempConfigDir(t)
-	jsonConfig := filepath.Join(tmpDir, "dotfiles.config.json")
-	tsPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	if err := os.WriteFile(tsPath, []byte("export default {};"), 0644); err != nil {
-		t.Fatalf("writing minimal TypeScript config: %v", err)
-	}
+	tempConfig := filepath.Join(tmpDir, "dotfiles.config.ts")
 
 	// The cases run in order: generate has to precede the commands that read what
 	// it produced.
@@ -683,7 +650,7 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 	}{
 		{name: "files", args: []string{"-c", absConfig, "tool", "files"}, contains: []string{"files currently managed"}},
 		{name: "files json", args: []string{"-c", absConfig, "tool", "files", "--json"}, contains: []string{"["}},
-		{name: "files from json config", args: []string{"-c", jsonConfig, "tool", "files"}, contains: []string{"files currently managed"}},
+		{name: "files from a second project", args: []string{"-c", tempConfig, "tool", "files"}, contains: []string{"files currently managed"}},
 		{name: "generate overwrite", args: []string{"-c", absConfig, "state", "generate", "--overwrite"}},
 		{name: "generate", args: []string{"-c", absConfig, "state", "generate"}},
 		{name: "install one", args: []string{"-c", absConfig, "--dry-run", "tool", "install", "bat"}},
@@ -743,27 +710,9 @@ func TestDetectConflictsCommand_ErrorReturn(t *testing.T) {
 		t.Fatalf("failed creating conflict file: %v", err)
 	}
 
-	configContent := fmt.Sprintf(`{
-	"projectConfig": {
-		"paths": {
-			"homeDir": "%s",
-			"targetDir": "%s",
-			"generatedDir": "%s"
-		}
-	},
-	"toolConfigs": {
-		"github-release--bat": {
-			"name": "github-release--bat",
-			"installationMethod": "github-release",
-			"binaries": [{"name": "bat"}]
-		}
-	}
-}`, tmpDir, targetDir, tmpDir)
-
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("failed writing test config: %v", err)
-	}
+	configPath := writeTSProject(t, tmpDir,
+		fmt.Sprintf(`"paths": {"homeDir": %q, "targetDir": %q, "generatedDir": %q}`, tmpDir, targetDir, tmpDir),
+		tsTools{"github-release--bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`})
 
 	_, err := executeCommand("-c", configPath, "shell", "audit")
 	if err == nil {
@@ -788,22 +737,11 @@ func TestUpdateAndValidateCommand_FindTool(t *testing.T) {
 	}
 }
 
-func TestBootstrapServices_JSONToolNameDefaulting(t *testing.T) {
+// A tool is named after its file.
+func TestBootstrapServices_ToolNameFromFileName(t *testing.T) {
 	tmpDir := t.TempDir()
-	configContent := `{
-	"projectConfig": {
-		"paths": {` + projectPathsJSON(tmpDir) + `}
-	},
-	"toolConfigs": {
-		"implicit-name-tool": {
-			"installationMethod": "github-release"
-		}
-	}
-}`
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("failed writing test config: %v", err)
-	}
+	configPath := writeTSProject(t, tmpDir, `"paths": {`+projectPathsTS(tmpDir)+`}`,
+		tsTools{"implicit-name-tool": `install("github-release", { repo: "acme/implicit" })`})
 
 	ctx := context.Background()
 	services, err := BootstrapServices(ctx, configPath)
@@ -1095,35 +1033,11 @@ func createCompletionConfigDir(t *testing.T) {
 	t.Helper()
 	tmpDir := enterTempDir(t)
 
-	configContent := `{
-	"projectConfig": {
-		"paths": {
-			"homeDir": "` + filepath.Join(tmpDir, "home") + `",
-			"targetDir": "` + filepath.Join(tmpDir, "target") + `",
-			"generatedDir": "` + filepath.Join(tmpDir, "generated") + `"
-		}
-	},
-	"toolConfigs": {
-		"brew": {
-			"name": "brew",
-			"installationMethod": "manual"
-		},
-		"github-release--bat": {
-			"name": "github-release--bat",
-			"installationMethod": "github-release",
-			"binaries": [{"name": "bat"}]
-		},
-		"github-release--fd": {
-			"name": "github-release--fd",
-			"installationMethod": "github-release",
-			"binaries": [{"name": "fd"}]
-		}
-	}
-}`
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("writing test config: %v", err)
-	}
+	writeTSProject(t, tmpDir, `"paths": {`+projectPathsTS(tmpDir)+`}`, tsTools{
+		"brew":                `install("manual")`,
+		"github-release--bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`,
+		"github-release--fd":  `install("github-release", { repo: "sharkdp/fd" }).bin("fd")`,
+	})
 }
 
 // parseCompletionOutput splits cobra's __complete stdout into candidate names
@@ -1231,7 +1145,7 @@ func TestCompletion_BinAcceptsBinaryOrToolName(t *testing.T) {
 
 func TestCompletion_ConfigLoadFailureReportsError(t *testing.T) {
 	createCompletionConfigDir(t)
-	missingConfig := filepath.Join(t.TempDir(), "missing.config.json")
+	missingConfig := filepath.Join(t.TempDir(), "missing.config.ts")
 
 	for _, sub := range [][]string{{"tool", "install"}, {"tool", "which"}} {
 		t.Run(strings.Join(sub, " "), func(t *testing.T) {
@@ -1270,7 +1184,7 @@ func TestCompletion_DescribesInstallationMethod(t *testing.T) {
 // TestGenerateCommand_WritesCLICompletion covers the wiring in generate.go: after
 // tool generation the CLI's own zsh completion lands where main.zsh puts fpath.
 func TestGenerateCommand_WritesCLICompletion(t *testing.T) {
-	p := newE2EProject(t, `"manual-tool": {"name": "manual-tool", "installationMethod": "manual"}`)
+	p := newE2EProject(t, tsTools{"manual-tool": `install("manual")`})
 
 	out, err := p.run("state", "generate")
 	if err != nil {
@@ -1308,7 +1222,7 @@ type e2eProject struct {
 	ConfigPath   string
 }
 
-func newE2EProject(t *testing.T, toolConfigs string) e2eProject {
+func newE2EProject(t *testing.T, tools tsTools) e2eProject {
 	t.Helper()
 	t.Setenv("DOTFILES_E2E_TEST", "true")
 	root := t.TempDir()
@@ -1317,23 +1231,22 @@ func newE2EProject(t *testing.T, toolConfigs string) e2eProject {
 		HomeDir:      filepath.Join(root, "home"),
 		TargetDir:    filepath.Join(root, "target"),
 		GeneratedDir: filepath.Join(root, "generated"),
-		ConfigPath:   filepath.Join(root, "dotfiles.config.json"),
 	}
 	for _, dir := range []string{p.HomeDir, p.TargetDir, p.GeneratedDir} {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			t.Fatalf("creating %s: %v", dir, err)
 		}
 	}
-	p.writeConfig(t, toolConfigs, "", "")
+	p.ConfigPath = p.writeConfig(t, tools, "", "")
 	return p
 }
 
-// writeConfig (re)writes the project's configuration. toolConfigs is the body of the
-// "toolConfigs" object; extraPaths is appended inside "paths" and extraProject inside
-// "projectConfig", both as raw JSON members (or empty).
-func (p e2eProject) writeConfig(t *testing.T, toolConfigs, extraPaths, extraProject string) {
+// writeConfig (re)writes the project's dotfiles.config.ts and tool files and returns
+// the configuration's path. extraPaths is appended inside "paths" and extraProject
+// after it, both as members of a TypeScript object literal (or empty).
+func (p e2eProject) writeConfig(t *testing.T, tools tsTools, extraPaths, extraProject string) string {
 	t.Helper()
-	paths := projectPathsJSON(p.Root)
+	paths := projectPathsTS(p.Root)
 	if extraPaths != "" {
 		paths += ", " + extraPaths
 	}
@@ -1341,10 +1254,7 @@ func (p e2eProject) writeConfig(t *testing.T, toolConfigs, extraPaths, extraProj
 	if extraProject != "" {
 		project += ", " + extraProject
 	}
-	content := fmt.Sprintf(`{"projectConfig": {%s}, "toolConfigs": {%s}}`, project, toolConfigs)
-	if err := os.WriteFile(p.ConfigPath, []byte(content), 0644); err != nil {
-		t.Fatalf("writing config: %v", err)
-	}
+	return writeTSProject(t, p.Root, project, tools)
 }
 
 // run executes a command line against the project's configuration.
@@ -1497,7 +1407,7 @@ func TestUpdateCommands_UseBootstrappedInstallers(t *testing.T) {
 	}
 	t.Setenv("MOCK_SERVER_PORT", u.Port())
 
-	p := newE2EProject(t, `"gh": {"name": "gh", "installationMethod": "github-release", "installParams": {"repo": "acme/never-fetched"}}`)
+	p := newE2EProject(t, tsTools{"gh": `install("github-release", { repo: "acme/never-fetched" })`})
 	p.seedInstallation(t, "gh", "v1.0.0", filepath.Join(p.Root, "installed", "gh"))
 
 	for _, args := range [][]string{{"tool", "check"}, {"tool", "update", "gh"}, {"tool", "update"}} {
@@ -1651,16 +1561,20 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		t.Fatalf("writing manual binary: %v", err)
 	}
 
-	p := newE2EProject(t, fmt.Sprintf(`
-		"newer": {"name": "newer", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[3]q}, "binaries": [{"name": "newer-bin"}]},
-		"unknown-current": {"name": "unknown-current", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[3]q}},
-		"sudo-tool": {"name": "sudo-tool", "installationMethod": "github-release", "sudo": true, "installParams": {"repo": %[1]q, "assetPattern": %[3]q}},
-		"same": {"name": "same", "installationMethod": "github-release", "installParams": {"repo": %[2]q, "assetPattern": %[3]q}},
-		"manual-versioned": {"name": "manual-versioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
-		"manual-unversioned": {"name": "manual-unversioned", "installationMethod": "manual", "installParams": {"binaryPath": %[4]q}},
-		"check-fails": {"name": "check-fails", "installationMethod": "github-release", "installParams": {"repo": %[5]q, "assetPattern": %[3]q}},
-		"never-installed": {"name": "never-installed", "installationMethod": "manual"}
-	`, repoNewer, repoSame, releaseAssetName, manualBin, repoMissing))
+	release := func(repo string) string {
+		return fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q })`, repo, releaseAssetName)
+	}
+	manual := fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin)
+	p := newE2EProject(t, tsTools{
+		"newer":              release(repoNewer) + `.bin("newer-bin")`,
+		"unknown-current":    release(repoNewer),
+		"sudo-tool":          release(repoNewer) + `.sudo()`,
+		"same":               release(repoSame),
+		"manual-versioned":   manual,
+		"manual-unversioned": manual,
+		"check-fails":        release(repoMissing),
+		"never-installed":    `install("manual")`,
+	})
 
 	installRoot := filepath.Join(p.Root, "installed")
 	for name, version := range map[string]string{
@@ -1852,14 +1766,14 @@ func TestUpdateCommand_BulkExitStatus(t *testing.T) {
 	if err := os.WriteFile(manualBin, []byte("#!/bin/sh\necho manual\n"), 0755); err != nil {
 		t.Fatalf("writing manual binary: %v", err)
 	}
-	tool := func(name, repo string, extra string) string {
-		return fmt.Sprintf(`%q: {"name": %[1]q, "installationMethod": "github-release"%s, "installParams": {"repo": %q, "assetPattern": %q}}`, name, extra, repo, releaseAssetName)
+	tool := func(repo string) string {
+		return fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q })`, repo, releaseAssetName)
 	}
-	newer := tool("newer", repoNewer, "")
+	newer := tool(repoNewer)
 
 	tests := []struct {
 		name      string
-		tools     []string
+		tools     tsTools
 		installed map[string]string
 		// wantFailure is the logged failure the run must end in ErrSilent for; empty
 		// means the run must succeed.
@@ -1867,35 +1781,35 @@ func TestUpdateCommand_BulkExitStatus(t *testing.T) {
 	}{
 		{
 			name:        "a failed update check",
-			tools:       []string{newer, tool("check-fails", repoMissing, "")},
+			tools:       tsTools{"newer": newer, "check-fails": tool(repoMissing)},
 			installed:   map[string]string{"newer": "v0.1.0", "check-fails": "v0.1.0"},
 			wantFailure: `[check-fails] Update check failed: checking update for "check-fails": GitHub API returned status 500`,
 		},
 		{
 			name:        "a failed reinstall",
-			tools:       []string{newer, tool("sudo-tool", repoNewer, `, "sudo": true`)},
+			tools:       tsTools{"newer": newer, "sudo-tool": tool(repoNewer) + `.sudo()`},
 			installed:   map[string]string{"newer": "v0.1.0", "sudo-tool": "v0.1.0"},
 			wantFailure: `[sudo-tool] Updating to version v9.9.9 failed: installer "github-release" does not support sudo elevation`,
 		},
 		{
 			name: "only tools left alone by design",
-			tools: []string{
-				newer,
-				tool("same", repoSame, ""),
-				tool("ahead", repoSame, ""),
-				tool("pinned", repoSame, `, "version": "v0.1.0"`),
-				fmt.Sprintf(`"hand": {"name": "hand", "installationMethod": "manual", "installParams": {"binaryPath": %q}}`, manualBin),
-				tool("never-installed", repoMissing, ""),
+			tools: tsTools{
+				"newer":           newer,
+				"same":            tool(repoSame),
+				"ahead":           tool(repoSame),
+				"pinned":          tool(repoSame) + `.version("v0.1.0")`,
+				"hand":            fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin),
+				"never-installed": tool(repoMissing),
 				// Disabled after it was installed: skipped as install and check skip it,
 				// so its check, which would fail, never runs.
-				tool("off", repoMissing, `, "disabled": true`),
+				"off": tool(repoMissing) + `.disable()`,
 			},
 			installed: map[string]string{"newer": "v0.1.0", "same": "v0.1.0", "ahead": "v1.0.0", "pinned": "v0.1.0", "hand": "v1.0.0", "off": "v0.1.0"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newE2EProject(t, strings.Join(tt.tools, ",\n"))
+			p := newE2EProject(t, tt.tools)
 			for name, version := range tt.installed {
 				dir := filepath.Join(p.Root, "installed", name)
 				if err := os.MkdirAll(dir, 0755); err != nil {
@@ -1945,16 +1859,17 @@ func TestUpdateCommand_RecordedVersion(t *testing.T) {
 	}))
 	t.Cleanup(scriptServer.Close)
 
-	p := newE2EProject(t, fmt.Sprintf(`
-		"stamped-forced": {"name": "stamped-forced", "installationMethod": "manual", "installParams": {"binaryPath": %[1]q}},
-		"stamped-named": {"name": "stamped-named", "installationMethod": "manual", "installParams": {"binaryPath": %[1]q}},
-		"stamped-batch": {"name": "stamped-batch", "installationMethod": "manual", "installParams": {"binaryPath": %[1]q}},
-		"detected": {"name": "detected", "installationMethod": "curl-script", "installParams": {
-			"url": %[2]q, "shell": "sh", "env": {"INSTALL_DIR": "{stagingDir}"},
-			"versionArgs": ["--version"], "versionRegex": "detected (\\d+\\.\\d+\\.\\d+)"
-		}},
-		"broken": {"name": "broken", "installationMethod": "curl-script", "installParams": {"url": %[3]q}}
-	`, manualBin, scriptServer.URL+scriptPath, scriptServer.URL+"/missing.sh"))
+	manual := fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin)
+	p := newE2EProject(t, tsTools{
+		"stamped-forced": manual,
+		"stamped-named":  manual,
+		"stamped-batch":  manual,
+		"detected": fmt.Sprintf(`install("curl-script", {
+			url: %q, shell: "sh", env: { INSTALL_DIR: "{stagingDir}" },
+			versionArgs: ["--version"], versionRegex: "detected (\\d+\\.\\d+\\.\\d+)",
+		})`, scriptServer.URL+scriptPath),
+		"broken": fmt.Sprintf(`install("curl-script", { url: %q })`, scriptServer.URL+"/missing.sh"),
+	})
 
 	// seed installs the tool for real, so the installation update finds is healthy and
 	// only a reinstall that is actually carried out can change the record, then
@@ -2077,13 +1992,17 @@ func TestUpdateCommand_RefusesPinnedTools(t *testing.T) {
 	// param-pinned and both-pinned pin through the `version` install parameter that
 	// github-release reads, which wins over .version(); both-pinned is therefore pinned
 	// to its parameter's v0.1.0 rather than its .version() of v0.2.0.
-	p := newE2EProject(t, fmt.Sprintf(`
-		"pinned": {"name": "pinned", "version": "v0.1.0", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q}},
-		"param-pinned": {"name": "param-pinned", "version": "latest", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q, "version": "v0.1.0"}},
-		"both-pinned": {"name": "both-pinned", "version": "v0.2.0", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q, "version": "v0.1.0"}},
-		"manual-pinned": {"name": "manual-pinned", "version": "v1.0.0", "installationMethod": "manual", "installParams": {"binaryPath": %[3]q}},
-		"free": {"name": "free", "version": "latest", "installationMethod": "github-release", "installParams": {"repo": %[1]q, "assetPattern": %[2]q}}
-	`, repo, releaseAssetName, manualBin))
+	release := fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q })`, repo, releaseAssetName)
+	releaseAt := func(version string) string {
+		return fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q, version: %q })`, repo, releaseAssetName, version)
+	}
+	p := newE2EProject(t, tsTools{
+		"pinned":        release + `.version("v0.1.0")`,
+		"param-pinned":  releaseAt("v0.1.0") + `.version("latest")`,
+		"both-pinned":   releaseAt("v0.1.0") + `.version("v0.2.0")`,
+		"manual-pinned": fmt.Sprintf(`install("manual", { binaryPath: %q }).version("v1.0.0")`, manualBin),
+		"free":          release + `.version("latest")`,
+	})
 	pins := []struct{ name, version, message string }{
 		{"pinned", "v0.1.0", pinnedUpdateMessage("pinned", "v0.1.0")},
 		{"param-pinned", "v0.1.0", pinnedByInstallParamMessage("param-pinned", "v0.1.0")},
@@ -2189,18 +2108,21 @@ func TestCheckUpdatesCommand_Statuses(t *testing.T) {
 	const repoSameParam = "acme/cu-same-param"
 	newReleaseServer(t, map[string]mockRelease{repoAvail: {Tag: "v9.9.9"}, repoUpd: {Tag: "v9.9.9"}, repoSame: {Tag: "v0.1.0"}, repoSameParam: {Tag: "v0.1.0"}})
 
-	p := newE2EProject(t, fmt.Sprintf(`
-		"avail": {"name": "avail", "installationMethod": "github-release", "installParams": {"repo": %q}},
-		"upd": {"name": "upd", "installationMethod": "github-release", "installParams": {"repo": %q}},
-		"same": {"name": "same", "version": "v0.1.0", "installationMethod": "github-release", "installParams": {"repo": %q}},
-		"same-param": {"name": "same-param", "version": "latest", "installationMethod": "github-release", "installParams": {"repo": %[6]q, "version": "v0.1.0"}},
-		"fail": {"name": "fail", "installationMethod": "github-release", "installParams": {"repo": %[4]q}},
-		"off": {"name": "off", "disabled": true, "installationMethod": "github-release", "installParams": {"repo": %[5]q}},
-		"hand": {"name": "hand", "installationMethod": "manual"},
-		"never-hand": {"name": "never-hand", "installationMethod": "manual"},
-		"never-brew": {"name": "never-brew", "installationMethod": "brew", "installParams": {"formula": "dotfiles-test-never-installed"}},
-		"shell-only": {"name": "shell-only"}
-	`, repoAvail, repoUpd, repoSame, repoFail, repoAvail, repoSameParam))
+	release := func(repo string) string {
+		return fmt.Sprintf(`install("github-release", { repo: %q })`, repo)
+	}
+	p := newE2EProject(t, tsTools{
+		"avail":      release(repoAvail),
+		"upd":        release(repoUpd),
+		"same":       release(repoSame) + `.version("v0.1.0")`,
+		"same-param": fmt.Sprintf(`install("github-release", { repo: %q, version: "v0.1.0" }).version("latest")`, repoSameParam),
+		"fail":       release(repoFail),
+		"off":        release(repoAvail) + `.disable()`,
+		"hand":       `install("manual")`,
+		"never-hand": `install("manual")`,
+		"never-brew": `install("brew", { formula: "dotfiles-test-never-installed" })`,
+		"shell-only": `install()`,
+	})
 	// avail, same-param, fail, never-hand and never-brew have no installation record.
 	p.seedInstallation(t, "upd", "v0.1.0", filepath.Join(p.Root, "installed", "upd"))
 	p.seedInstallation(t, "same", "v0.1.0", filepath.Join(p.Root, "installed", "same"))
@@ -2318,7 +2240,7 @@ func TestCheckUpdatesCommand_UnreadableInstallation(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	const repo = "acme/unreadable"
 	newReleaseServer(t, map[string]mockRelease{repo: {Tag: "v1.0.0"}})
-	p := newE2EProject(t, fmt.Sprintf(`"unreadable": {"name": "unreadable", "installationMethod": "github-release", "installParams": {"repo": %q}}`, repo))
+	p := newE2EProject(t, tsTools{"unreadable": fmt.Sprintf(`install("github-release", { repo: %q })`, repo)})
 	p.seedUnreadableInstallation(t, "unreadable")
 
 	out, err := p.run("tool", "check", "--json")
@@ -2343,7 +2265,7 @@ func TestUpdateCommand_UnreadableInstallation(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	const repo = "acme/unreadable-update"
 	newReleaseServer(t, map[string]mockRelease{repo: {Tag: "v1.0.0"}})
-	p := newE2EProject(t, fmt.Sprintf(`"unreadable": {"name": "unreadable", "installationMethod": "github-release", "installParams": {"repo": %q}}`, repo))
+	p := newE2EProject(t, tsTools{"unreadable": fmt.Sprintf(`install("github-release", { repo: %q })`, repo)})
 	p.seedUnreadableInstallation(t, "unreadable")
 
 	for _, args := range [][]string{{"tool", "update"}, {"tool", "update", "--force"}} {
@@ -2374,10 +2296,10 @@ func TestUpdateCommand_SkipsConfigurationOnlyTools(t *testing.T) {
 	if err := os.WriteFile(manualBin, []byte("#!/bin/sh\necho manual\n"), 0755); err != nil {
 		t.Fatalf("writing manual binary: %v", err)
 	}
-	p := newE2EProject(t, fmt.Sprintf(`
-		"cfg": {"name": "cfg"},
-		"hand": {"name": "hand", "installationMethod": "manual", "installParams": {"binaryPath": %q}}
-	`, manualBin))
+	p := newE2EProject(t, tsTools{
+		"cfg":  `install()`,
+		"hand": fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin),
+	})
 	for _, name := range []string{"cfg", "hand"} {
 		p.seedInstallation(t, name, "v1.0.0", filepath.Join(p.Root, "installed", name))
 	}
@@ -2426,9 +2348,9 @@ func TestAheadOfLatest(t *testing.T) {
 	const repo, installed, latest = "acme/ahead", "v3.0.0-alpha.2", "v2.11.6"
 	newReleaseServer(t, map[string]mockRelease{repo: {Tag: latest, OtherTags: []string{installed}, Binaries: []string{"ahead"}}})
 
-	p := newE2EProject(t, fmt.Sprintf(`
-		"ahead": {"name": "ahead", "installationMethod": "github-release", "installParams": {"repo": %q, "assetPattern": %q}}
-	`, repo, releaseAssetName))
+	p := newE2EProject(t, tsTools{
+		"ahead": fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q })`, repo, releaseAssetName),
+	})
 	dir := filepath.Join(p.Root, "installed", "ahead")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatalf("creating install dir: %v", err)
@@ -2516,7 +2438,7 @@ func TestCheckUpdatesCommand_FailedQuery(t *testing.T) {
 	}
 	t.Setenv("PATH", stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	p := newE2EProject(t, `"private-cli": {"name": "private-cli", "installationMethod": "npm", "installParams": {"package": "@acme/private-cli"}}`)
+	p := newE2EProject(t, tsTools{"private-cli": `install("npm", { package: "@acme/private-cli" })`})
 	p.seedInstallation(t, "private-cli", "1.0.0", filepath.Join(p.Root, "installed", "private-cli"))
 
 	t.Run("tool check reports the failure", func(t *testing.T) {
@@ -2554,11 +2476,11 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 		repoAdmitted: {Tag: "v1.2.9"},
 	})
 
-	p := newE2EProject(t, fmt.Sprintf(`
-		"off": {"name": "off", "installationMethod": "github-release", "installParams": {"repo": %q}, "updateCheck": {"enabled": false}},
-		"pinned": {"name": "pinned", "installationMethod": "github-release", "installParams": {"repo": %q}, "updateCheck": {"constraint": "~1.2.0"}},
-		"admitted": {"name": "admitted", "installationMethod": "github-release", "installParams": {"repo": %q}, "updateCheck": {"constraint": "~1.2.0"}}
-	`, repoOff, repoPinned, repoAdmitted))
+	p := newE2EProject(t, tsTools{
+		"off":      fmt.Sprintf(`install("github-release", { repo: %q }).updateCheck({ enabled: false })`, repoOff),
+		"pinned":   fmt.Sprintf(`install("github-release", { repo: %q }).updateCheck({ constraint: "~1.2.0" })`, repoPinned),
+		"admitted": fmt.Sprintf(`install("github-release", { repo: %q }).updateCheck({ constraint: "~1.2.0" })`, repoAdmitted),
+	})
 	p.seedInstallation(t, "off", "v0.1.0", filepath.Join(p.Root, "installed", "off"))
 	p.seedInstallation(t, "pinned", "v1.2.3", filepath.Join(p.Root, "installed", "pinned"))
 	p.seedInstallation(t, "admitted", "v1.2.3", filepath.Join(p.Root, "installed", "admitted"))
@@ -2672,9 +2594,9 @@ func TestCargoUpdateInstallsReleaseTaggedWithoutV(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	requested := newCratesServer(t, cargoUpstream{releases: map[string]string{"acme/baretag": "14.1.1"}})
 
-	p := newE2EProject(t, `
-		"baretag": {"name": "baretag", "installationMethod": "cargo", "installParams": {"binarySource": "github-releases", "githubRepo": "acme/baretag"}}
-	`)
+	p := newE2EProject(t, tsTools{
+		"baretag": `install("cargo", { binarySource: "github-releases", githubRepo: "acme/baretag" })`,
+	})
 	dir := filepath.Join(p.Root, "installed", "baretag")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatalf("creating install dir: %v", err)
@@ -2716,13 +2638,13 @@ func TestCargoUpdateChecks(t *testing.T) {
 		"crate-admitted": "1.2.9",
 	}})
 
-	p := newE2EProject(t, `
-		"outdated": {"name": "outdated", "installationMethod": "cargo", "installParams": {"crateName": "crate-outdated"}, "binaries": [{"name": "crate-outdated"}]},
-		"current": {"name": "current", "installationMethod": "cargo", "installParams": {"crateName": "crate-current"}, "binaries": [{"name": "crate-current"}]},
-		"bounded": {"name": "bounded", "installationMethod": "cargo", "installParams": {"crateName": "crate-bounded"}, "binaries": [{"name": "crate-bounded"}], "updateCheck": {"constraint": "~1.2.0"}},
-		"admitted": {"name": "admitted", "installationMethod": "cargo", "installParams": {"crateName": "crate-admitted"}, "binaries": [{"name": "crate-admitted"}], "updateCheck": {"constraint": "~1.2.0"}},
-		"failing": {"name": "failing", "installationMethod": "cargo", "installParams": {"crateName": "crate-missing"}}
-	`)
+	p := newE2EProject(t, tsTools{
+		"outdated": `install("cargo", { crateName: "crate-outdated" }).bin("crate-outdated")`,
+		"current":  `install("cargo", { crateName: "crate-current" }).bin("crate-current")`,
+		"bounded":  `install("cargo", { crateName: "crate-bounded" }).bin("crate-bounded").updateCheck({ constraint: "~1.2.0" })`,
+		"admitted": `install("cargo", { crateName: "crate-admitted" }).bin("crate-admitted").updateCheck({ constraint: "~1.2.0" })`,
+		"failing":  `install("cargo", { crateName: "crate-missing" })`,
+	})
 	for name, version := range map[string]string{
 		"outdated": "1.0.0",
 		"current":  "1.0.0",
@@ -2812,9 +2734,9 @@ func TestCargoUpdateRefusesPinnedCrate(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	requested := newCratesServer(t, cargoUpstream{crates: map[string]string{"crate-pinned": "2.0.0"}})
 
-	p := newE2EProject(t, `
-		"pinned": {"name": "pinned", "version": "1.0.0", "installationMethod": "cargo", "installParams": {"crateName": "crate-pinned"}, "binaries": [{"name": "crate-pinned"}]}
-	`)
+	p := newE2EProject(t, tsTools{
+		"pinned": `install("cargo", { crateName: "crate-pinned" }).bin("crate-pinned").version("1.0.0")`,
+	})
 	seed := func(t *testing.T) {
 		t.Helper()
 		dir := filepath.Join(p.Root, "installed", "pinned")
@@ -2876,7 +2798,7 @@ func TestCargoProjectSettingsReachTheInstaller(t *testing.T) {
 		},
 	})
 
-	tools := `"mycrate": {"name": "mycrate", "installationMethod": "cargo", "installParams": {"crateName": "mycrate"}, "binaries": [{"name": "mycrate"}]}`
+	tools := tsTools{"mycrate": `install("cargo", { crateName: "mycrate" }).bin("mycrate")`}
 	p := newE2EProject(t, tools)
 	p.writeConfig(t, tools, "", `"cargo": {"userAgent": "my-bot (me@example.com)", "cratesIo": {"token": "crates-secret"}, "githubRelease": {"token": "release-secret"}}`)
 	dir := filepath.Join(p.Root, "installed", "mycrate")
@@ -2922,7 +2844,7 @@ func TestCargoProjectSettingsReachTheInstaller(t *testing.T) {
 }
 
 func TestLogCommand_OperationsAndStatus(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+	p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 
 	existing := filepath.Join(p.TargetDir, "bat")
 	if err := os.WriteFile(existing, []byte("bin!"), 0755); err != nil {
@@ -3083,7 +3005,7 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 }
 
 func TestLogCommand_DiskLogFallback(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+	p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 
 	t.Run("nothing recorded", func(t *testing.T) {
 		out, err := p.run("state", "log")
@@ -3160,9 +3082,9 @@ func TestLogCommand_DiskLogFallback(t *testing.T) {
 }
 
 func TestScaffoldCommand(t *testing.T) {
-	p := newE2EProject(t, "")
+	p := newE2EProject(t, nil)
 	toolsDir := filepath.Join(p.Root, "tools")
-	p.writeConfig(t, "", fmt.Sprintf(`"toolConfigsDir": %q`, toolsDir), "")
+	p.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, toolsDir), "")
 	dotfilesTool := filepath.Join(toolsDir, "dotfiles.tool.ts")
 
 	t.Run("creates the starter files", func(t *testing.T) {
@@ -3206,9 +3128,9 @@ func TestScaffoldCommand(t *testing.T) {
 	})
 
 	t.Run("dry run only reports", func(t *testing.T) {
-		fresh := newE2EProject(t, "")
+		fresh := newE2EProject(t, nil)
 		freshTools := filepath.Join(fresh.Root, "tools")
-		fresh.writeConfig(t, "", fmt.Sprintf(`"toolConfigsDir": %q`, freshTools), "")
+		fresh.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, freshTools), "")
 		out, err := fresh.run("tool", "scaffold", "--dry-run")
 		if err != nil {
 			t.Fatalf("tool scaffold --dry-run: %v\n%s", err, out.Combined)
@@ -3221,24 +3143,18 @@ func TestScaffoldCommand(t *testing.T) {
 }
 
 func TestBootstrapServices_DependencyResolution(t *testing.T) {
-	writeConfig := func(t *testing.T, toolConfigs string) string {
+	writeConfig := func(t *testing.T, tools tsTools) string {
 		t.Helper()
 		dir := t.TempDir()
-		content := fmt.Sprintf(`{"projectConfig": {"paths": {"homeDir": %q, "targetDir": %q, "generatedDir": %q}}, "toolConfigs": {%s}}`,
-			filepath.Join(dir, "home"), filepath.Join(dir, "target"), filepath.Join(dir, "generated"), toolConfigs)
-		path := filepath.Join(dir, "dotfiles.config.json")
-		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-			t.Fatalf("writing config: %v", err)
-		}
-		return path
+		return writeTSProject(t, dir, `"paths": {`+projectPathsTS(dir)+`}`, tools)
 	}
 
 	t.Run("a binary provided by two tools is ambiguous", func(t *testing.T) {
-		path := writeConfig(t, `
-			"alpha": {"name": "alpha", "binaries": [{"name": "shared"}]},
-			"beta": {"name": "beta", "binaries": [{"name": "shared"}]},
-			"user": {"name": "user", "dependencies": ["shared"]}
-		`)
+		path := writeConfig(t, tsTools{
+			"alpha": `install().bin("shared")`,
+			"beta":  `install().bin("shared")`,
+			"user":  `install().dependsOn("shared")`,
+		})
 		_, err := BootstrapServices(context.Background(), path)
 		if err == nil || !strings.Contains(err.Error(), `ambiguous dependency: binary "shared" is provided by multiple tools: alpha, beta`) {
 			t.Fatalf("error = %v, want the ambiguity report naming both providers", err)
@@ -3246,11 +3162,11 @@ func TestBootstrapServices_DependencyResolution(t *testing.T) {
 	})
 
 	t.Run("dependencies resolve to the providing tool", func(t *testing.T) {
-		path := writeConfig(t, `
-			"object-provider": {"name": "object-provider", "binaries": [{"name": "objbin"}]},
-			"curl-script--fnm": {"name": "curl-script--fnm"},
-			"user": {"name": "user", "dependencies": ["objbin", "fnm", "unknown-dep"]}
-		`)
+		path := writeConfig(t, tsTools{
+			"object-provider":  `install().bin("objbin")`,
+			"curl-script--fnm": `install()`,
+			"user":             `install().dependsOn("objbin", "fnm", "unknown-dep")`,
+		})
 		services, err := BootstrapServices(context.Background(), path)
 		if err != nil {
 			t.Fatalf("BootstrapServices: %v", err)
@@ -3270,12 +3186,8 @@ func TestBootstrapServices_DependencyResolution(t *testing.T) {
 func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
 	t.Run("falls back to the repository root for the default config", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		configPath := filepath.Join(repoRoot, "dotfiles.config.json")
-		content := fmt.Sprintf(`{"projectConfig": {"paths": {"homeDir": %q, "generatedDir": %q}}, "toolConfigs": {}}`,
-			filepath.Join(repoRoot, "home"), filepath.Join(repoRoot, "generated"))
-		if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
-			t.Fatalf("writing config: %v", err)
-		}
+		configPath := writeTSProject(t, repoRoot, fmt.Sprintf(`"paths": {"homeDir": %q, "generatedDir": %q}`,
+			filepath.Join(repoRoot, "home"), filepath.Join(repoRoot, "generated")), nil)
 		enterTempDir(t)
 		t.Setenv("DOTFILES_REPO_ROOT", repoRoot)
 
@@ -3289,14 +3201,14 @@ func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
 		}
 	})
 
-	t.Run("malformed json is reported", func(t *testing.T) {
-		path := filepath.Join(t.TempDir(), "dotfiles.config.json")
-		if err := os.WriteFile(path, []byte("{not json"), 0644); err != nil {
+	t.Run("a configuration that does not compile is reported", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "dotfiles.config.ts")
+		if err := os.WriteFile(path, []byte("export default {"), 0644); err != nil {
 			t.Fatalf("writing config: %v", err)
 		}
 		_, err := BootstrapServices(context.Background(), path)
-		if err == nil || !strings.Contains(err.Error(), "failed to unmarshal native JSON project config") {
-			t.Fatalf("error = %v, want unmarshal failure", err)
+		if err == nil || !strings.Contains(err.Error(), "loading dotfiles.config.ts: compiling project config") {
+			t.Fatalf("error = %v, want compile failure", err)
 		}
 	})
 
@@ -3312,11 +3224,7 @@ func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
 		if err := os.WriteFile(blocker, []byte("not a directory"), 0644); err != nil {
 			t.Fatalf("writing blocker: %v", err)
 		}
-		path := filepath.Join(dir, "dotfiles.config.json")
-		content := fmt.Sprintf(`{"projectConfig": {"paths": {"homeDir": %q, "generatedDir": %q}}, "toolConfigs": {}}`, dir, blocker)
-		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-			t.Fatalf("writing config: %v", err)
-		}
+		path := writeTSProject(t, dir, fmt.Sprintf(`"paths": {"homeDir": %q, "generatedDir": %q}`, dir, blocker), nil)
 		_, err := BootstrapServices(context.Background(), path)
 		if err == nil || !strings.Contains(err.Error(), "failed connecting to SQLite database") {
 			t.Fatalf("error = %v, want database connection failure", err)
@@ -3389,10 +3297,10 @@ func TestMockInstaller_ObjectBinaries(t *testing.T) {
 }
 
 func TestBinCommand_Resolution(t *testing.T) {
-	p := newE2EProject(t, `
-		"gh-tool": {"name": "gh-tool", "installationMethod": "manual", "binaries": [{"name": "ghb"}]},
-		"plain": {"name": "plain", "installationMethod": "manual"}
-	`)
+	p := newE2EProject(t, tsTools{
+		"gh-tool": `install("manual").bin("ghb")`,
+		"plain":   `install("manual")`,
+	})
 	binariesDir := filepath.Join(p.GeneratedDir, "binaries")
 	ghb := filepath.Join(binariesDir, "gh-tool", "current", "ghb")
 	if err := os.MkdirAll(filepath.Dir(ghb), 0755); err != nil {
@@ -3513,10 +3421,10 @@ func TestBinCommand_PrintsTargetDir(t *testing.T) {
 }
 
 func TestToolListAndInfoCommand_Output(t *testing.T) {
-	p := newE2EProject(t, `
-		"gh": {"name": "gh", "installationMethod": "manual", "binaries": [{"name": "ghb"}, {"name": "ghc"}]},
-		"sh": {"name": "sh"}
-	`)
+	p := newE2EProject(t, tsTools{
+		"gh": `install("manual").bin("ghb").bin("ghc")`,
+		"sh": `install()`,
+	})
 
 	t.Run("tool list text", func(t *testing.T) {
 		out, err := p.run("tool", "list")
@@ -3573,7 +3481,7 @@ func TestToolListAndInfoCommand_Output(t *testing.T) {
 }
 
 func TestEnvCommand_Lifecycle(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat"}`)
+	p := newE2EProject(t, tsTools{"bat": `install()`})
 	enterTempDir(t)
 	// The command reports the working directory as the OS resolves it, which may
 	// differ from the temp dir path when it sits behind a symlink.
@@ -3616,7 +3524,7 @@ func TestEnvCommand_Lifecycle(t *testing.T) {
 // removal: a [y/N] prompt on an interactive terminal, a refusal anywhere the
 // prompt cannot be answered, and --force skipping both.
 func TestEnvDeleteCommand_Confirmation(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat"}`)
+	p := newE2EProject(t, tsTools{"bat": `install()`})
 	enterTempDir(t)
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -3757,10 +3665,10 @@ func TestEnvDeleteCommand_Confirmation(t *testing.T) {
 }
 
 func TestInstallCommand_ArgumentHandling(t *testing.T) {
-	p := newE2EProject(t, `
-		"bat": {"name": "bat", "installationMethod": "manual"},
-		"broken": {"name": "broken", "binaries": [{"name": "brk"}]}
-	`)
+	p := newE2EProject(t, tsTools{
+		"bat":    `install("manual")`,
+		"broken": `install().bin("brk")`,
+	})
 
 	t.Run("KEY=VALUE words are not tool names", func(t *testing.T) {
 		out, err := p.run("tool", "install", "FOO=1", "bat")
@@ -3796,7 +3704,7 @@ func TestInstallCommand_ArgumentHandling(t *testing.T) {
 
 func TestUninstallCommand_Errors(t *testing.T) {
 	t.Run("unknown tool", func(t *testing.T) {
-		p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+		p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 		_, err := p.run("tool", "uninstall", "nope")
 		if err == nil || !strings.Contains(err.Error(), `tool "nope" not found in configuration`) {
 			t.Fatalf("error = %v, want not-found failure", err)
@@ -3804,10 +3712,10 @@ func TestUninstallCommand_Errors(t *testing.T) {
 	})
 
 	t.Run("a dependency cycle stops uninstalling everything", func(t *testing.T) {
-		p := newE2EProject(t, `
-			"a": {"name": "a", "dependencies": ["b"]},
-			"b": {"name": "b", "dependencies": ["a"]}
-		`)
+		p := newE2EProject(t, tsTools{
+			"a": `install().dependsOn("b")`,
+			"b": `install().dependsOn("a")`,
+		})
 		_, err := p.run("tool", "uninstall")
 		if err == nil || !strings.Contains(err.Error(), "dependency cycle detected among tools: a, b") {
 			t.Fatalf("error = %v, want cycle detection", err)
@@ -3816,7 +3724,7 @@ func TestUninstallCommand_Errors(t *testing.T) {
 }
 
 func TestCleanupCommand_RemovesOrphans(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+	p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 	p.seedInstallation(t, "ghost", "v1.0.0", filepath.Join(p.Root, "installed", "ghost"))
 	p.seedInstallation(t, "bat", "v1.0.0", filepath.Join(p.Root, "installed", "bat"))
 
@@ -3837,7 +3745,7 @@ func TestCleanupCommand_RemovesOrphans(t *testing.T) {
 // with its cause outside --trace (#131).
 func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
 	t.Run("installation records that cannot be read", func(t *testing.T) {
-		p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+		p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 		p.seedUnreadableInstallation(t, "ghost")
 
 		out, err := p.run("state", "cleanup")
@@ -3848,7 +3756,7 @@ func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
 	})
 
 	t.Run("an orphaned tool that cannot be removed", func(t *testing.T) {
-		p := newE2EProject(t, `"bat": {"name": "bat", "installationMethod": "manual"}`)
+		p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 		p.seedInstallation(t, "ghost", "v1.0.0", filepath.Join(p.Root, "installed", "ghost"))
 		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
 			_, err := tx.ExecContext(ctx, "CREATE TRIGGER keep_installations BEFORE DELETE ON tool_installations BEGIN SELECT RAISE(ABORT, 'installations are kept'); END")
@@ -3875,8 +3783,8 @@ var shellInstallProfiles = map[string]string{
 }
 
 func TestGenerateCommand_UpdatesExistingProfiles(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat"}`)
-	p.writeConfig(t, `"bat": {"name": "bat"}`, "", shellInstallFeature)
+	p := newE2EProject(t, tsTools{"bat": `install()`})
+	p.writeConfig(t, tsTools{"bat": `install()`}, "", shellInstallFeature)
 	const userSettings = "# user settings\nexport EDITOR=vim\n"
 	for rel := range shellInstallProfiles {
 		profile := filepath.Join(p.HomeDir, rel)
@@ -3915,8 +3823,8 @@ func TestGenerateCommand_UpdatesExistingProfiles(t *testing.T) {
 }
 
 func TestGenerateCommand_SkipsMissingProfiles(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat"}`)
-	p.writeConfig(t, `"bat": {"name": "bat"}`, "", shellInstallFeature)
+	p := newE2EProject(t, tsTools{"bat": `install()`})
+	p.writeConfig(t, tsTools{"bat": `install()`}, "", shellInstallFeature)
 
 	out, err := p.run("state", "generate")
 	if err != nil {
@@ -3936,8 +3844,8 @@ func TestGenerateCommand_SkipsMissingProfiles(t *testing.T) {
 // without failing, a profile it cannot update and a CLI completion it cannot write, are
 // reported with their cause outside --trace (#131).
 func TestGenerateCommand_FailureLogsNameTheCause(t *testing.T) {
-	p := newE2EProject(t, `"bat": {"name": "bat"}`)
-	p.writeConfig(t, `"bat": {"name": "bat"}`, "", `"features": {"shellInstall": {"zsh": "~/.zshrc"}}`)
+	p := newE2EProject(t, tsTools{"bat": `install()`})
+	p.writeConfig(t, tsTools{"bat": `install()`}, "", `"features": {"shellInstall": {"zsh": "~/.zshrc"}}`)
 	// A directory where each file belongs cannot be read or written as one.
 	profile := filepath.Join(p.HomeDir, ".zshrc")
 	completion := filepath.Join(p.GeneratedDir, "shell-scripts", "zsh", "completions", "_dotfiles")
@@ -3958,14 +3866,31 @@ func TestGenerateCommand_FailureLogsNameTheCause(t *testing.T) {
 	)
 }
 
-func TestWhyCommand_MissingConfigFile(t *testing.T) {
-	p := newE2EProject(t, "")
-	missing := filepath.Join(p.Root, "tools", "bat.tool.ts")
-	p.writeConfig(t, fmt.Sprintf(`"bat": {"name": "bat", "configFilePath": %q}`, missing), "", "")
+// Without --bin, `tool which` names the .tool.ts file the tool was loaded from.
+func TestWhichCommand_PrintsToolFile(t *testing.T) {
+	p := newE2EProject(t, tsTools{"bat": `install("manual").bin("batcat")`})
+	toolFile := filepath.Join(p.Root, "tools", "bat.tool.ts")
 
-	_, err := p.run("tool", "which", "bat")
-	if err == nil || !strings.Contains(err.Error(), `config file for "bat" does not exist: `+missing) {
-		t.Fatalf("error = %v, want missing config file failure", err)
+	for _, query := range []string{"bat", "batcat"} {
+		out, err := p.run("tool", "which", query)
+		if err != nil {
+			t.Fatalf("tool which %s: %v\n%s", query, err, out.Combined)
+		}
+		if out.Stdout != toolFile+"\n" {
+			t.Fatalf("tool which %s printed %q, want %q", query, out.Stdout, toolFile+"\n")
+		}
+	}
+
+	out, err := p.run("tool", "which", "bat", "--json")
+	if err != nil {
+		t.Fatalf("tool which bat --json: %v\n%s", err, out.Combined)
+	}
+	var got map[string]string
+	if err := json.Unmarshal([]byte(out.Stdout), &got); err != nil {
+		t.Fatalf("stdout is not a JSON object: %v\n%s", err, out.Stdout)
+	}
+	if got["tool"] != "bat" || got["configPath"] != toolFile {
+		t.Fatalf("json = %v, want tool bat configured in %s", got, toolFile)
 	}
 }
 
@@ -3986,33 +3911,17 @@ func TestSubcommandArgConsistency(t *testing.T) {
 func TestNewHierarchySubcommandsCoverage(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_TEST", "true")
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
 	toolsDir := filepath.Join(tmpDir, "tools")
-	_ = os.MkdirAll(toolsDir, 0755)
-
-	configContent := fmt.Sprintf(`{
-	"projectConfig": {
-		"paths": {
-			"homeDir": %q,
-			"targetDir": %q,
-			"generatedDir": %q,
-			"binariesDir": %q,
-			"dotfilesDir": %q,
-			"shellScriptsDir": %q,
-			"toolConfigsDir": %q
-		}
-	},
-	"toolConfigs": {
-		"bat": {
-			"name": "bat",
-			"installationMethod": "github-release",
-			"binaries": [{"name": "bat"}]
-		}
-	}
-}`, tmpDir, filepath.Join(tmpDir, "bin"), filepath.Join(tmpDir, ".generated"), filepath.Join(tmpDir, ".generated", "binaries"), tmpDir, filepath.Join(tmpDir, ".generated", "shell-scripts"), toolsDir)
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("writing config: %v", err)
-	}
+	configPath := writeTSProject(t, tmpDir, fmt.Sprintf(`"paths": {
+		"homeDir": %q,
+		"targetDir": %q,
+		"generatedDir": %q,
+		"binariesDir": %q,
+		"dotfilesDir": %q,
+		"shellScriptsDir": %q,
+		"toolConfigsDir": %q,
+	}`, tmpDir, filepath.Join(tmpDir, "bin"), filepath.Join(tmpDir, ".generated"), filepath.Join(tmpDir, ".generated", "binaries"), tmpDir, filepath.Join(tmpDir, ".generated", "shell-scripts"), toolsDir),
+		tsTools{"bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`})
 
 	t.Run("venv list coverage", func(t *testing.T) {
 		oldWd, _ := os.Getwd()
@@ -4234,22 +4143,9 @@ func TestNewHierarchySubcommandsCoverage(t *testing.T) {
 
 func TestRootShortcutsAndDomainAliases(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "dotfiles.config.json")
-	_ = os.WriteFile(configPath, []byte(`{
-	"projectConfig": {
-		"paths": {
-			"targetDir": "`+filepath.Join(tmpDir, "target")+`",
-			"generatedDir": "`+filepath.Join(tmpDir, ".generated")+`"
-		}
-	},
-	"toolConfigs": {
-		"bat": {
-			"name": "bat",
-			"installationMethod": "github-release",
-			"binaries": [{"name": "bat"}]
-		}
-	}
-}`), 0644)
+	configPath := writeTSProject(t, tmpDir,
+		fmt.Sprintf(`"paths": {"targetDir": %q, "generatedDir": %q}`, filepath.Join(tmpDir, "target"), filepath.Join(tmpDir, ".generated")),
+		tsTools{"bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`})
 
 	t.Run("generate and g root shortcuts", func(t *testing.T) {
 		out1, err := executeCommand("-c", configPath, "generate")

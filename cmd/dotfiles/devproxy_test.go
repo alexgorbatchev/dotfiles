@@ -280,7 +280,7 @@ func TestCheckUpdatesThroughDevProxy(t *testing.T) {
 
 	const repo = "acme/proxied"
 	releases := newReleaseServer(t, map[string]mockRelease{repo: {Tag: "v1.2.3"}})
-	p := newE2EProject(t, fmt.Sprintf(`"proxied": {"name": "proxied", "installationMethod": "github-release", "installParams": {"repo": %q}}`, repo))
+	p := newE2EProject(t, tsTools{"proxied": fmt.Sprintf(`install("github-release", { repo: %q })`, repo)})
 
 	port := freePort(t)
 	t.Setenv(devProxyEnv, strconv.Itoa(port))

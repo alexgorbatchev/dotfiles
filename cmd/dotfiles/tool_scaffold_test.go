@@ -53,9 +53,9 @@ func TestScaffoldCommand_RespectsPlatformFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newE2EProject(t, "")
+			p := newE2EProject(t, nil)
 			toolsDir := filepath.Join(p.Root, "tools")
-			p.writeConfig(t, "", fmt.Sprintf(`"toolConfigsDir": %q`, toolsDir), "")
+			p.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, toolsDir), "")
 
 			out, err := p.run("--platform", tt.platform, "tool", "scaffold")
 			if err != nil {

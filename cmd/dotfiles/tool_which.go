@@ -72,17 +72,8 @@ var toolWhichCmd = &cobra.Command{
 			return nil
 		}
 
+		// The loader records the .tool.ts file every tool was read from.
 		cfgPath := targetTool.ConfigFilePath
-		if cfgPath == "" {
-			cfgPath = services.ConfigPath
-		}
-		if cfgPath == "" {
-			return fmt.Errorf("tool %q has no config file path", query)
-		}
-
-		if exists, _ := fileExists(cfgPath); !exists {
-			return fmt.Errorf("config file for %q does not exist: %s", query, cfgPath)
-		}
 
 		if toolWhichJSON {
 			return cliout.RenderJSON(cmd.OutOrStdout(), map[string]string{

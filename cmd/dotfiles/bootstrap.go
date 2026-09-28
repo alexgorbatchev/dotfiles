@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -101,8 +100,6 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 			".dotfiles.config.ts",
 			"dotfiles.config.js",
 			".dotfiles.config.js",
-			"dotfiles.config.json",
-			".dotfiles.config.json",
 		}
 
 		var candidates []string
@@ -144,6 +141,9 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	if err != nil {
 		return nil, fmt.Errorf("failed resolving absolute config path: %w", err)
 	}
+	if err := requireScriptConfig(absConfigPath); err != nil {
+		return nil, err
+	}
 
 	// Dry runs and unit tests operate on an in-memory file system and registry, so
 	// nothing they generate reaches disk.
@@ -165,48 +165,15 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	// rediscovering the host on their own.
 	target := resolveTarget(GetLogger("config", os.Stderr))
 
-	var projCfg *config.ProjectConfig
-	var toolConfigs []*config.ToolConfig
-
-	scriptConfig := strings.HasSuffix(absConfigPath, ".ts") || strings.HasSuffix(absConfigPath, ".js")
-	if scriptConfig {
-		var err error
-		var toolMap map[string]*config.ToolConfig
-		// --platform/--arch/--libc must reach the loader, because .platform() blocks and
-		// everything a tool file derives from ctx.systemInfo are evaluated while the
-		// configuration is being loaded.
-		projCfg, toolMap, err = vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(target))
-		if err != nil {
-			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
-		}
-		for _, tc := range toolMap {
-			toolConfigs = append(toolConfigs, tc)
-		}
-	} else {
-		data, err := os.ReadFile(absConfigPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read native JSON config: %w", err)
-		}
-
-		var bResult struct {
-			ProjectConfig config.ProjectConfig         `json:"projectConfig"`
-			ToolConfigs   map[string]config.ToolConfig `json:"toolConfigs"`
-		}
-		if err := json.Unmarshal(data, &bResult); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal native JSON project config: %w", err)
-		}
-
-		projCfg = &bResult.ProjectConfig
-		// Sorted map-key order, so ValidateToolConfigs reports the same tool on every run even
-		// when two entries declare the same name.
-		for _, name := range slices.Sorted(maps.Keys(bResult.ToolConfigs)) {
-			localTC := bResult.ToolConfigs[name]
-			if localTC.Name == "" {
-				localTC.Name = name
-			}
-			toolConfigs = append(toolConfigs, &localTC)
-		}
+	// --platform/--arch/--libc must reach the loader, because .platform() blocks and
+	// everything a tool file derives from ctx.systemInfo are evaluated while the
+	// configuration is being loaded. The loader also validates the project and every
+	// tool, so nothing below sees a configuration that fails either check.
+	projCfg, toolMap, err := vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(target))
+	if err != nil {
+		return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
 	}
+	toolConfigs := slices.Collect(maps.Values(toolMap))
 
 	// If MOCK_SERVER_PORT is set, override public hosts to target mock server
 	mockPort := os.Getenv("MOCK_SERVER_PORT")
@@ -220,16 +187,6 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 
 	if err := projCfg.ResolvePlaceholders(filepath.Dir(absConfigPath)); err != nil {
 		return nil, fmt.Errorf("resolving paths in %s: %w", filepath.Base(absConfigPath), err)
-	}
-
-	// vm.LoadTypeScriptConfig validates the tools of a TypeScript configuration itself. A
-	// JSON configuration is validated here, once its paths are resolved: the check that
-	// no two declarations write the same file compares targets as the engine resolves
-	// them, against these paths.
-	if !scriptConfig {
-		if err := config.ValidateToolConfigs(toolConfigs, projCfg); err != nil {
-			return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
-		}
 	}
 
 	if rfs, ok := fsys.(*fs.ResolvedFS); ok {
@@ -358,6 +315,18 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		InMemory:      inMemory,
 		devProxy:      devProxy,
 	}, nil
+}
+
+// requireScriptConfig refuses a configuration file the TypeScript loader does not
+// evaluate. A configuration is written in TypeScript (a .js file is compiled by the same
+// loader); there is no second loader, so a file in any other format is refused by name
+// rather than read.
+func requireScriptConfig(configPath string) error {
+	switch filepath.Ext(configPath) {
+	case ".ts", ".js":
+		return nil
+	}
+	return fmt.Errorf("unsupported configuration file %q: only TypeScript/JavaScript configurations (.ts/.js) are supported", configPath)
 }
 
 func fileExists(path string) (bool, error) {

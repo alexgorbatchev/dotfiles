@@ -154,6 +154,24 @@ func TestValidateTypeCheck_CompilerNotInstalled(t *testing.T) {
 	}
 }
 
+// A configuration written in JavaScript has no types to check, so validate announces
+// the skip instead of reporting a missing compiler.
+func TestValidateTypeCheck_JavaScriptConfigIsNotTypeChecked(t *testing.T) {
+	p := newTypeScriptProject(t)
+	p.writeTool(t, "good", validToolContent)
+	jsConfig := filepath.Join(p.Root, "dotfiles.config.js")
+	if err := os.Rename(p.ConfigPath, jsConfig); err != nil {
+		t.Fatalf("renaming the configuration: %v", err)
+	}
+
+	out, err := runCommand("-c", jsConfig, "tool", "validate")
+	if err != nil {
+		t.Fatalf("validate failed: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "Configuration is not TypeScript; nothing to type-check")
+	mustNotContain(t, "stdout", out.Stdout, "No configured tool provides the TypeScript compiler")
+}
+
 func TestValidateTypeCheck_ReportsDiagnosticsPerTool(t *testing.T) {
 	p := newTypeScriptProject(t)
 	p.writeTool(t, "typescript", compilerToolContent)

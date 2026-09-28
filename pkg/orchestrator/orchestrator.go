@@ -607,8 +607,8 @@ func (o *Orchestrator) writeTypeCheckProgram(projCfg *config.ProjectConfig, decl
 		DeclarationsDir: declarationsDir,
 		RegistryFile:    registryFile,
 	}
-	// A JSON configuration has nothing to type-check; only a TypeScript one joins the
-	// program.
+	// A non-TypeScript configuration (such as .js) has nothing to type-check; only a
+	// TypeScript one joins the program.
 	if strings.HasSuffix(configFile, ".ts") {
 		program.ConfigFile = configFile
 	}

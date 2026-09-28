@@ -107,18 +107,18 @@ func TestSyncTypeScriptTypesWritesTheCLIOwnedTSConfig(t *testing.T) {
 	}
 }
 
-func TestSyncTypeScriptTypesLeavesJSONConfigOutOfTheProgram(t *testing.T) {
+func TestSyncTypeScriptTypesLeavesNonTSConfigOutOfTheProgram(t *testing.T) {
 	t.Parallel()
 	memFS := fs.NewMemFS()
-	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.json")
+	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.js")
 	projCfg := typesProjectConfig()
 
 	if err := orch.SyncTypeScriptTypes(context.Background(), nil, projCfg); err != nil {
 		t.Fatalf("SyncTypeScriptTypes: %v", err)
 	}
 	tsconfig := readGenerated(t, memFS, "/home/user/dotfiles/.generated/tsconfig.json")
-	if strings.Contains(tsconfig, "dotfiles.config.json") {
-		t.Errorf("a JSON configuration must not be listed for type-checking:\n%s", tsconfig)
+	if strings.Contains(tsconfig, "dotfiles.config.js") {
+		t.Errorf("a JavaScript configuration must not be listed for type-checking:\n%s", tsconfig)
 	}
 	if !strings.Contains(tsconfig, "../tools/**/*.ts") {
 		t.Errorf("tool directories must still be type-checked:\n%s", tsconfig)
