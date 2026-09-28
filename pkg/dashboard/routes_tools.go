@@ -695,11 +695,22 @@ func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
-	inst, err := installer.Get(targetTool.InstallationMethod)
+	if s.installers == nil {
+		writeJSON(w, false, nil, "Installers not initialized")
+		return
+	}
+
+	inst, err := s.installers.Get(targetTool.InstallationMethod)
 	if err != nil {
 		writeJSON(w, false, nil, fmt.Sprintf("Installer %q not found: %v", targetTool.InstallationMethod, err))
 		return
 	}
+
+	toolDestDir := ""
+	if s.projectConfig != nil && s.projectConfig.Paths.BinariesDir != "" {
+		toolDestDir = filepath.Join(s.projectConfig.Paths.BinariesDir, toolName, "current")
+	}
+	configureInstallerForUpdate(inst, toolDestDir, s.projectConfig)
 
 	// The same check tool check makes, so the two cannot disagree about a tool.
 	check, err := orchestrator.CheckTool(ctx, inst, targetTool, installed)
@@ -734,7 +745,7 @@ func checkUpdateResponse(check orchestrator.CheckResult) map[string]any {
 // when the server starts, so the update-check handlers never write installer settings
 // themselves; the installers are shared by every request.
 func (s *Server) configureInstallers() {
-	if s.projectConfig == nil {
+	if s.projectConfig == nil || s.installers == nil {
 		return
 	}
 	github := installer.GitHubSettings{
@@ -744,13 +755,60 @@ func (s *Server) configureInstallers() {
 		CacheEnabled: s.projectConfig.Github.Cache.IsEnabled(),
 	}
 	cargo := installer.NewCargoSettings(s.projectConfig)
-	for _, name := range installer.DefaultRegistry().List() {
-		inst, err := installer.Get(name)
+	for _, name := range s.installers.List() {
+		inst, err := s.installers.Get(name)
 		if err != nil {
 			continue
 		}
 		installer.SetGitHubSettings(inst, github)
 		installer.SetCargoSettings(inst, cargo)
+	}
+}
+
+func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, projCfg *config.ProjectConfig) {
+	if projCfg == nil {
+		return
+	}
+	installer.SetGitHubSettings(inst, installer.GitHubSettings{
+		Host:         projCfg.Github.Host,
+		Token:        projCfg.Github.Token,
+		UserAgent:    projCfg.Github.UserAgent,
+		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
+	})
+	installer.SetCargoSettings(inst, installer.NewCargoSettings(projCfg))
+
+	switch instInstance := inst.(type) {
+	case *installer.GitHubInstaller:
+		instInstance.BinDir = toolDestDir
+		if projCfg.Paths.GeneratedDir != "" {
+			instInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
+		}
+		if projCfg.Github.Cache.TTL > 0 {
+			instInstance.CacheTTL = time.Duration(projCfg.Github.Cache.TTL) * time.Millisecond
+		}
+	case *installer.GiteaInstaller:
+		instInstance.BinDir = toolDestDir
+		if projCfg.Paths.GeneratedDir != "" {
+			instInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "gitea-api")
+		}
+	case *installer.CargoInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.CurlBinaryInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.CurlScriptInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.CurlTarInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.DmgInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.ManualInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.ZshPluginInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.PkgInstaller:
+		instInstance.BinDir = toolDestDir
+	case *installer.UvInstaller:
+		instInstance.BinDir = toolDestDir
 	}
 }
 
@@ -823,11 +881,20 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 
 	// Only the update check runs on this installer, with the settings configureInstallers
 	// applied at start; the orchestrator configures its own installer when it installs.
-	inst, err := installer.Get(targetTool.InstallationMethod)
+	if s.installers == nil {
+		s.failUpdate(w, toolName, fmt.Errorf("installers not initialized"))
+		return
+	}
+	inst, err := s.installers.Get(targetTool.InstallationMethod)
 	if err != nil {
 		s.failUpdate(w, toolName, fmt.Errorf("getting installer for %q: %w", toolName, err))
 		return
 	}
+	toolDestDir := ""
+	if s.projectConfig != nil && s.projectConfig.Paths.BinariesDir != "" {
+		toolDestDir = filepath.Join(s.projectConfig.Paths.BinariesDir, toolName, "current")
+	}
+	configureInstallerForUpdate(inst, toolDestDir, s.projectConfig)
 	res, err := inst.CheckUpdate(ctx, targetTool)
 	plan, err := orchestrator.PlanUpdate(targetTool, oldVersion, res, err, false)
 	if err != nil {

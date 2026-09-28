@@ -2,23 +2,23 @@ package dashboard
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
-
-// settingsRecordingRuns numbers the installers TestDashboard_CheckUpdateAppliesProjectSettings
-// registers.
-var settingsRecordingRuns atomic.Int32
 
 // settingsRecordingInstaller records the project settings it holds when it is asked
 // for an update check.
@@ -64,11 +64,9 @@ func TestDashboard_CheckUpdateAppliesProjectSettings(t *testing.T) {
 	}
 	defer sqlDB.Close()
 
-	// The global registry has no way to remove an installer, so every run registers one
-	// under a name of its own (-count=N reruns the test in the same process).
-	name := fmt.Sprintf("mock-settings-recording-inst-%d", settingsRecordingRuns.Add(1))
-	inst := &settingsRecordingInstaller{mockCheckUpdateInstaller: mockCheckUpdateInstaller{name: name, latestVersion: "2.0.0"}}
-	if err := installer.Register(inst); err != nil {
+	inst := &settingsRecordingInstaller{mockCheckUpdateInstaller: mockCheckUpdateInstaller{name: "mock-settings-recording-inst", latestVersion: "2.0.0"}}
+	instReg := installer.NewRegistry()
+	if err := instReg.Register(inst); err != nil {
 		t.Fatalf("registering mock installer: %v", err)
 	}
 
@@ -81,7 +79,7 @@ func TestDashboard_CheckUpdateAppliesProjectSettings(t *testing.T) {
 		},
 	}
 	toolConfigs := []*config.ToolConfig{{Name: "mycrate", InstallationMethod: inst.name}}
-	server := NewServer(log, "127.0.0.1", 0, registry.NewRegistry(sqlDB), testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, registry.NewRegistry(sqlDB), testFS(), "", projCfg, toolConfigs, nil, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
@@ -105,4 +103,172 @@ func TestDashboard_CheckUpdateAppliesProjectSettings(t *testing.T) {
 	if len(inst.checkedGitHub) != 1 || inst.checkedGitHub[0].Host != projCfg.Github.Host || inst.checkedGitHub[0].Token != projCfg.Github.Token {
 		t.Errorf("github settings at check time = %+v, want the project's github section", inst.checkedGitHub)
 	}
+}
+
+func TestConfigureInstallerForUpdate(t *testing.T) {
+	destDir := "/opt/bin/tool/current"
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			GeneratedDir: "/gen",
+		},
+		Github: config.HostConfig{
+			Host:  "https://github.example.com",
+			Token: "gh-token",
+			Cache: config.CacheConfig{
+				TTL: 5000,
+			},
+		},
+	}
+
+	t.Run("nil projectConfig is a no-op", func(t *testing.T) {
+		gh := &installer.GitHubInstaller{}
+		configureInstallerForUpdate(gh, destDir, nil)
+		if gh.BinDir != "" {
+			t.Errorf("expected empty BinDir, got %q", gh.BinDir)
+		}
+	})
+
+	t.Run("github installer receives settings, dir, cache dir, and ttl", func(t *testing.T) {
+		gh := &installer.GitHubInstaller{}
+		configureInstallerForUpdate(gh, destDir, projCfg)
+		if gh.BinDir != destDir {
+			t.Errorf("BinDir = %q, want %q", gh.BinDir, destDir)
+		}
+		wantCache := filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
+		if gh.CacheDir != wantCache {
+			t.Errorf("CacheDir = %q, want %q", gh.CacheDir, wantCache)
+		}
+		wantTTL := 5000 * time.Millisecond
+		if gh.CacheTTL != wantTTL {
+			t.Errorf("CacheTTL = %v, want %v", gh.CacheTTL, wantTTL)
+		}
+	})
+
+	t.Run("gitea installer receives dir and cache dir", func(t *testing.T) {
+		gitea := &installer.GiteaInstaller{}
+		configureInstallerForUpdate(gitea, destDir, projCfg)
+		if gitea.BinDir != destDir {
+			t.Errorf("BinDir = %q, want %q", gitea.BinDir, destDir)
+		}
+		wantCache := filepath.Join(projCfg.Paths.GeneratedDir, "cache", "gitea-api")
+		if gitea.CacheDir != wantCache {
+			t.Errorf("CacheDir = %q, want %q", gitea.CacheDir, wantCache)
+		}
+	})
+
+	binDirOnly := []struct {
+		name   string
+		inst   installer.Installer
+		binDir func() string
+	}{
+		{"cargo", &installer.CargoInstaller{}, func() string { return (&installer.CargoInstaller{}).BinDir }},
+		{"curl-binary", &installer.CurlBinaryInstaller{}, func() string { return (&installer.CurlBinaryInstaller{}).BinDir }},
+		{"curl-script", &installer.CurlScriptInstaller{}, func() string { return (&installer.CurlScriptInstaller{}).BinDir }},
+		{"curl-tar", &installer.CurlTarInstaller{}, func() string { return (&installer.CurlTarInstaller{}).BinDir }},
+		{"dmg", &installer.DmgInstaller{}, func() string { return (&installer.DmgInstaller{}).BinDir }},
+		{"manual", &installer.ManualInstaller{}, func() string { return (&installer.ManualInstaller{}).BinDir }},
+		{"zsh-plugin", &installer.ZshPluginInstaller{}, func() string { return (&installer.ZshPluginInstaller{}).BinDir }},
+		{"pkg", &installer.PkgInstaller{}, func() string { return (&installer.PkgInstaller{}).BinDir }},
+		{"uv", installer.NewUvInstaller(nil, nil, nil), func() string { return "" }},
+	}
+	cargo := &installer.CargoInstaller{}
+	curlBinary := &installer.CurlBinaryInstaller{}
+	curlScript := &installer.CurlScriptInstaller{}
+	curlTar := &installer.CurlTarInstaller{}
+	dmg := &installer.DmgInstaller{}
+	manual := &installer.ManualInstaller{}
+	zshPlugin := &installer.ZshPluginInstaller{}
+	pkg := &installer.PkgInstaller{}
+	uv := installer.NewUvInstaller(nil, nil, nil)
+
+	binDirOnly = []struct {
+		name   string
+		inst   installer.Installer
+		binDir func() string
+	}{
+		{"cargo", cargo, func() string { return cargo.BinDir }},
+		{"curl-binary", curlBinary, func() string { return curlBinary.BinDir }},
+		{"curl-script", curlScript, func() string { return curlScript.BinDir }},
+		{"curl-tar", curlTar, func() string { return curlTar.BinDir }},
+		{"dmg", dmg, func() string { return dmg.BinDir }},
+		{"manual", manual, func() string { return manual.BinDir }},
+		{"zsh-plugin", zshPlugin, func() string { return zshPlugin.BinDir }},
+		{"pkg", pkg, func() string { return pkg.BinDir }},
+		{"uv", uv, func() string { return uv.BinDir }},
+	}
+
+	for _, tt := range binDirOnly {
+		t.Run(tt.name+" installer receives the destination dir", func(t *testing.T) {
+			configureInstallerForUpdate(tt.inst, destDir, projCfg)
+			if got := tt.binDir(); got != destDir {
+				t.Errorf("BinDir = %q, want %q", got, destDir)
+			}
+		})
+	}
+}
+
+func TestDashboard_NilInstallersRegistry(t *testing.T) {
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+	sqlDB, err := db.NewConnection(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatalf("connecting to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	tool := &config.ToolConfig{Name: "mytool", InstallationMethod: "github-release"}
+	recordInstallation(t, reg, "mytool", "1.0.0")
+
+	// Server with nil installers registry
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{}, []*config.ToolConfig{tool}, nil, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("starting server: %v", err)
+	}
+	defer server.Stop()
+
+	t.Run("check-update reports error when installers is nil", func(t *testing.T) {
+		resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/mytool/check-update", server.Port()), "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST check-update: %v", err)
+		}
+		defer resp.Body.Close()
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding response: %v", err)
+		}
+		if body["success"] != false {
+			t.Errorf("success = %v, want false", body["success"])
+		}
+		if body["error"] != "Installers not initialized" {
+			t.Errorf("error = %v, want 'Installers not initialized'", body["error"])
+		}
+	})
+
+	t.Run("update reports error when installers is nil", func(t *testing.T) {
+		// Server needs an orchestrator to get past the orchestrator nil check
+		orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), nil, reg, nil)
+		serverWithOrch := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{}, []*config.ToolConfig{tool}, orch, nil)
+		if err := serverWithOrch.Start(); err != nil {
+			t.Fatalf("starting server: %v", err)
+		}
+		defer serverWithOrch.Stop()
+
+		resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/api/tools/mytool/update", serverWithOrch.Port()), "application/json", nil)
+		if err != nil {
+			t.Fatalf("POST update: %v", err)
+		}
+		defer resp.Body.Close()
+
+		var body map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decoding response: %v", err)
+		}
+		if body["success"] != false {
+			t.Errorf("success = %v, want false", body["success"])
+		}
+		if body["error"] != "Update failed: installers not initialized" {
+			t.Errorf("error = %v, want 'Update failed: installers not initialized'", body["error"])
+		}
+	})
 }

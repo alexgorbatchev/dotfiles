@@ -25,7 +25,7 @@ func runDashboard(cmd *cobra.Command) error {
 
 	log := GetLogger("dashboard", cmd.ErrOrStderr())
 	log.Info("Starting dashboard server...")
-	server := dashboard.NewServer(log, dashboardHost, dashboardPort, services.Registry, services.FS, services.ConfigPath, services.ProjectConfig, services.ToolConfigs, services.Orchestrator)
+	server := dashboard.NewServer(log, dashboardHost, dashboardPort, services.Registry, services.FS, services.ConfigPath, services.ProjectConfig, services.ToolConfigs, services.Orchestrator, services.Installers)
 	server.SetVersion(Version)
 	if services.HTTPClient != nil {
 		server.SetHTTPClient(services.HTTPClient)

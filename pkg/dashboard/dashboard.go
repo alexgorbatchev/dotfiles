@@ -14,6 +14,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
@@ -112,6 +113,7 @@ type Server struct {
 	projectConfig *config.ProjectConfig
 	toolConfigs   []*config.ToolConfig
 	orchestrator  *orchestrator.Orchestrator
+	installers    *installer.Registry
 	broadcaster   *LogBroadcaster
 	// githubBaseURL is the GitHub API root the README lookup addresses; it carries
 	// the project configuration's github.host. Empty selects api.github.com.
@@ -142,7 +144,7 @@ func (s *Server) outboundClient() *http.Client {
 }
 
 // NewServer constructs a new dashboard server.
-func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry, fsys fs.FS, configPath string, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig, orch *orchestrator.Orchestrator) *Server {
+func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry, fsys fs.FS, configPath string, projCfg *config.ProjectConfig, toolConfigs []*config.ToolConfig, orch *orchestrator.Orchestrator, installers *installer.Registry) *Server {
 	if host == "" {
 		host = "127.0.0.1"
 	}
@@ -160,6 +162,7 @@ func NewServer(log *logger.Logger, host string, port int, reg *registry.Registry
 		projectConfig: projCfg,
 		toolConfigs:   toolConfigs,
 		orchestrator:  orch,
+		installers:    installers,
 		broadcaster:   NewLogBroadcaster(),
 	}
 	if projCfg != nil {

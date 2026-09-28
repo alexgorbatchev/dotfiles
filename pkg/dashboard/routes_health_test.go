@@ -44,7 +44,7 @@ func TestDashboardFullHealthAndTools(t *testing.T) {
 		{Name: "bat", InstallationMethod: "github-release"},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}

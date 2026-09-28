@@ -58,7 +58,7 @@ func TestDashboardAPIs(t *testing.T) {
 	}
 	*toolConfigs[0].Version = "1.0.0"
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestHandleConfig_Version(t *testing.T) {
 			ToolConfigsDir: t.TempDir(),
 		},
 	}
-	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", projCfg, nil, nil)
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", projCfg, nil, nil, nil)
 	server.SetVersion("2.6.0")
 
 	recorder := httptest.NewRecorder()
@@ -206,7 +206,7 @@ func TestDashboardMoreRoutes(t *testing.T) {
 			TargetDir:      filepath.Join(tempDir, "bin"),
 			ToolConfigsDir: tempDir,
 		},
-	}, toolConfigs, orch)
+	}, toolConfigs, orch, instReg)
 
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
@@ -262,7 +262,7 @@ func TestHandleToolConfigsTree_MultipleRoots(t *testing.T) {
 		if err := projCfg.ResolvePlaceholders(filepath.Dir(configPath)); err != nil {
 			t.Fatalf("resolving paths: %v", err)
 		}
-		server := NewServer(log, "127.0.0.1", 0, nil, testFS(), configPath, projCfg, nil, nil)
+		server := NewServer(log, "127.0.0.1", 0, nil, testFS(), configPath, projCfg, nil, nil, nil)
 
 		recorder := httptest.NewRecorder()
 		server.handleToolConfigsTree(recorder, httptest.NewRequest("GET", "/api/tool-configs-tree", nil))

@@ -84,7 +84,7 @@ func TestDashboardMutationRoutes(t *testing.T) {
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -207,7 +207,7 @@ func TestDashboardNotFoundAndEdgeRoutes(t *testing.T) {
 			TargetDir:      filepath.Join(tempDir, "bin"),
 			ToolConfigsDir: tempDir,
 		},
-	}, toolConfigs, nil)
+	}, toolConfigs, nil, nil)
 
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
@@ -276,7 +276,7 @@ func TestHandleDriftEndpoints(t *testing.T) {
 	reg := registry.NewRegistry(database)
 
 	toolA := &config.ToolConfig{Name: "tool-a"}
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{}, []*config.ToolConfig{toolA}, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{}, []*config.ToolConfig{toolA}, nil, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("start server: %v", err)
 	}

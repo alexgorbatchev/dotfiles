@@ -31,7 +31,7 @@ func TestSetHTTPClientRoutesReadmeFetch(t *testing.T) {
 	t.Cleanup(api.Close)
 
 	log := logger.New(logger.Config{Writer: io.Discard})
-	s := NewServer(log, "", 0, nil, nil, "", nil, nil, nil)
+	s := NewServer(log, "", 0, nil, nil, "", nil, nil, nil, nil)
 	s.githubBaseURL = api.URL
 	s.githubRawBaseURL = api.URL
 

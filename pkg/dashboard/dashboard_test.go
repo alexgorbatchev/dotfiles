@@ -38,7 +38,7 @@ func TestDashboardServer(t *testing.T) {
 		Writer: io.Discard,
 	})
 
-	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil) // 0 lets system select an ephemeral port
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil, nil) // 0 lets system select an ephemeral port
 
 	if err := server.Start(); err != nil {
 		t.Fatalf("expected no error starting server, got %v", err)
@@ -191,7 +191,7 @@ func TestDashboard_ToolsSchemaAndConcurrency(t *testing.T) {
 
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -380,6 +380,19 @@ func (m *mockCheckUpdateInstaller) CheckUpdate(ctx context.Context, tool *config
 	}, nil
 }
 
+type mockGitHubInstallerForUpdateRoute struct {
+	*mockCheckUpdateInstaller
+	realInst installer.Installer
+}
+
+func (m *mockGitHubInstallerForUpdateRoute) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*installer.UpdateCheckResult, error) {
+	return m.realInst.CheckUpdate(ctx, tool)
+}
+
+func (m *mockGitHubInstallerForUpdateRoute) SetGitHubSettings(settings installer.GitHubSettings) {
+	installer.SetGitHubSettings(m.realInst, settings)
+}
+
 // recordInstallation records toolName as installed at version, as an installation would.
 func recordInstallation(t *testing.T, reg *registry.Registry, toolName, version string) {
 	t.Helper()
@@ -415,7 +428,8 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 		localVersion:  "1.2.3",
 		latestVersion: "2.0.0",
 	}
-	if err := installer.Register(mockInst); err != nil {
+	instReg := installer.NewRegistry()
+	if err := instReg.Register(mockInst); err != nil {
 		t.Fatalf("registering mock installer: %v", err)
 	}
 
@@ -443,7 +457,7 @@ func TestDashboard_CheckUpdateRoute_UpdateCheckSettings(t *testing.T) {
 	for _, tool := range toolConfigs {
 		recordInstallation(t, reg, tool.Name, "1.2.3")
 	}
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
@@ -514,9 +528,6 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 	reg := registry.NewRegistry(sqlDB)
 
 	mockInst := &mockCheckUpdateInstaller{name: "mock-update-pinned-inst", latestVersion: "v9.9.9"}
-	if err := installer.Register(mockInst); err != nil {
-		t.Fatalf("registering mock installer: %v", err)
-	}
 	instReg := installer.NewRegistry()
 	if err := instReg.Register(mockInst); err != nil {
 		t.Fatalf("registering mock installer with the orchestrator: %v", err)
@@ -525,8 +536,13 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 	// it, so that pin is exercised on github-release: the route asks the real
 	// github-release installer, pointed at githubAPI, and the orchestrator installs
 	// through githubInst.
+	realGH := installer.NewGitHubInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, nil)
 	githubInst := &mockCheckUpdateInstaller{name: "github-release", latestVersion: "v9.9.9"}
-	if err := instReg.Register(githubInst); err != nil {
+	wrappedGH := &mockGitHubInstallerForUpdateRoute{
+		mockCheckUpdateInstaller: githubInst,
+		realInst:                 realGH,
+	}
+	if err := instReg.Register(wrappedGH); err != nil {
 		t.Fatalf("registering mock github-release installer with the orchestrator: %v", err)
 	}
 	var githubRequests atomic.Int32
@@ -589,7 +605,7 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		}
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
@@ -799,9 +815,6 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 	mocks := []*mockCheckUpdateInstaller{failing, unsupported, current, newer, outdated, ahead}
 	instReg := installer.NewRegistry()
 	for _, m := range mocks {
-		if err := installer.Register(m); err != nil {
-			t.Fatalf("registering %s: %v", m.name, err)
-		}
 		if err := instReg.Register(m); err != nil {
 			t.Fatalf("registering %s with the orchestrator: %v", m.name, err)
 		}
@@ -852,7 +865,7 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 		configured[i] = *tool
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
@@ -1023,7 +1036,7 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 		if err := brokenDB.Close(); err != nil {
 			t.Fatalf("closing db: %v", err)
 		}
-		brokenServer := NewServer(log, "127.0.0.1", 0, brokenReg, testFS(), "", projCfg, toolConfigs, orch)
+		brokenServer := NewServer(log, "127.0.0.1", 0, brokenReg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 		if err := brokenServer.Start(); err != nil {
 			t.Fatalf("starting server: %v", err)
 		}
@@ -1090,9 +1103,10 @@ func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
 		// A tool dotfiles never installed, whose installer still names the latest release (#151).
 		"never-installed": {name: "mock-facts-never-installed", latestVersion: "1.6.0"},
 	}
+	instReg := installer.NewRegistry()
 	toolConfigs := make([]*config.ToolConfig, 0, len(installers))
 	for tool, inst := range installers {
-		if err := installer.Register(inst); err != nil {
+		if err := instReg.Register(inst); err != nil {
 			t.Fatalf("registering %s: %v", inst.name, err)
 		}
 		toolConfigs = append(toolConfigs, &config.ToolConfig{Name: tool, InstallationMethod: inst.name})
@@ -1105,7 +1119,7 @@ func TestDashboard_CheckUpdateRoute_InstallerFacts(t *testing.T) {
 		}
 	}
 	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{ToolConfigsDir: t.TempDir()}}
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
@@ -1153,16 +1167,23 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 	reg := registry.NewRegistry(sqlDB)
 	tempDir := t.TempDir()
 
+	instReg := installer.NewRegistry()
 	mockInst := &mockCheckUpdateInstaller{
 		name:          "mock-checkupdate-inst",
 		localVersion:  "1.0.0",
 		latestVersion: "1.1.0",
 	}
-	_ = installer.Register(mockInst)
+	if err := instReg.Register(mockInst); err != nil {
+		t.Fatalf("registering mock installer: %v", err)
+	}
 	unsupportedInst := &mockCheckUpdateInstaller{name: "mock-unsupported-inst", err: installer.ErrUpdateCheckUnsupported}
-	_ = installer.Register(unsupportedInst)
+	if err := instReg.Register(unsupportedInst); err != nil {
+		t.Fatalf("registering mock unsupported installer: %v", err)
+	}
 	failingInst := &mockCheckUpdateInstaller{name: "mock-failing-check-inst", err: errors.New("API rate limit exceeded")}
-	_ = installer.Register(failingInst)
+	if err := instReg.Register(failingInst); err != nil {
+		t.Fatalf("registering mock failing installer: %v", err)
+	}
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -1205,7 +1226,7 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 	recordInstallation(t, reg, "failing-tool", "1.0.0")
 	// Installed at a version other than the configured one, which is never the fallback.
 	recordInstallation(t, reg, "unsupported-tool", "0.9.0")
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1293,7 +1314,7 @@ func TestDashboard_CheckUpdateRoute(t *testing.T) {
 		if err := brokenDB.Close(); err != nil {
 			t.Fatalf("closing db: %v", err)
 		}
-		brokenServer := NewServer(log, "127.0.0.1", 0, brokenReg, testFS(), "", projCfg, toolConfigs, nil)
+		brokenServer := NewServer(log, "127.0.0.1", 0, brokenReg, testFS(), "", projCfg, toolConfigs, nil, instReg)
 		if err := brokenServer.Start(); err != nil {
 			t.Fatalf("starting server: %v", err)
 		}
@@ -1514,7 +1535,7 @@ func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1549,7 +1570,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Server with nil registry, nil projectConfig, nil orchestrator
-	serverNil := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil)
+	serverNil := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil, nil)
 	if err := serverNil.Start(); err != nil {
 		t.Fatalf("failed to start nil server: %v", err)
 	}
@@ -1620,7 +1641,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 			TargetDir:      filepath.Join(tempDir, "bin"),
 			ToolConfigsDir: tempDir,
 		},
-	}, toolNoFiles, nil)
+	}, toolNoFiles, nil, nil)
 
 	if err := serverNoFiles.Start(); err != nil {
 		t.Fatalf("failed to start serverNoFiles: %v", err)
@@ -1645,7 +1666,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 			ConfigFilePath: filepath.Join(mdDir, "tool.ts"),
 		},
 	}
-	serverFallback := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", nil, toolFallbackMd, nil)
+	serverFallback := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", nil, toolFallbackMd, nil, nil)
 	_ = serverFallback.Start()
 	respFallback, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/fallback-md/readme", serverFallback.Port()))
 	if err == nil && respFallback != nil {
@@ -1660,7 +1681,7 @@ func TestDashboardEdgeCasesAndErrors(t *testing.T) {
 			ConfigFilePath: "/nonexistent/path/tool.ts",
 		},
 	}
-	serverBadSource := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", nil, toolBadSource, nil)
+	serverBadSource := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", nil, toolBadSource, nil, nil)
 	_ = serverBadSource.Start()
 	respBadSrc, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bad-source/source", serverBadSource.Port()))
 	if err == nil && respBadSrc != nil {
@@ -1742,7 +1763,7 @@ func TestDashboardToolDetailAndConfigsTree(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, []*config.ToolConfig{richTool}, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, []*config.ToolConfig{richTool}, nil, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1810,7 +1831,7 @@ func TestDashboard_InstallErrorResponse(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -1860,12 +1881,12 @@ func TestDashboardServer_CustomHost(t *testing.T) {
 		Writer: io.Discard,
 	})
 
-	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil)
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil, nil)
 	if server.Host() != "127.0.0.1" {
 		t.Errorf("expected host 127.0.0.1, got %s", server.Host())
 	}
 
-	serverDefault := NewServer(log, "", 0, nil, testFS(), "", nil, nil, nil)
+	serverDefault := NewServer(log, "", 0, nil, testFS(), "", nil, nil, nil, nil)
 	if serverDefault.Host() != "127.0.0.1" {
 		t.Errorf("expected default host 127.0.0.1 when empty, got %s", serverDefault.Host())
 	}
@@ -1929,7 +1950,7 @@ func TestHandleToolReadme_RemoteAndLocal(t *testing.T) {
 		},
 	}
 
-	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", projCfg, toolConfigs, nil, nil)
 	server.githubBaseURL = githubServer.URL
 	server.githubRawBaseURL = githubServer.URL
 	if err := server.Start(); err != nil {
@@ -2145,7 +2166,7 @@ func TestFetchRemoteReadme(t *testing.T) {
 // Start adds a catch-all that answers every unknown path with the SPA's index.html.
 func TestRemovedEndpointsAreNotRegistered(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
-	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil)
+	server := NewServer(log, "127.0.0.1", 0, nil, testFS(), "", nil, nil, nil, nil)
 	mux := http.NewServeMux()
 	server.RegisterRoutes(mux)
 
@@ -2273,7 +2294,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
 	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {
 		t.Fatalf("starting server: %v", err)
 	}
@@ -2387,7 +2408,7 @@ func TestServerStart_ImportsShimUsageLog(t *testing.T) {
 		ToolConfigsDir: root,
 	}}
 
-	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil)
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, nil, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("failed to start server: %v", err)
 	}
@@ -2468,7 +2489,7 @@ func TestServerStart_ReportsFailedUsageImport(t *testing.T) {
 		DotfilesDir:    root,
 		GeneratedDir:   generatedDir,
 		ToolConfigsDir: root,
-	}}, nil, nil)
+	}}, nil, nil, nil)
 	if err := server.Start(); err != nil {
 		t.Fatalf("Start must succeed despite the failed import: %v", err)
 	}

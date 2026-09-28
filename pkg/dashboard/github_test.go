@@ -28,7 +28,7 @@ func TestReadmeFetchAddressesTheConfiguredGitHubHost(t *testing.T) {
 
 	log := logger.New(logger.Config{Writer: io.Discard})
 	projCfg := &config.ProjectConfig{Github: config.HostConfig{Host: api.URL}}
-	s := NewServer(log, "", 0, nil, testFS(), "", projCfg, nil, nil)
+	s := NewServer(log, "", 0, nil, testFS(), "", projCfg, nil, nil, nil)
 
 	readme, err := s.fetchRemoteReadme(context.Background(), "owner/tool")
 	if err != nil {
@@ -137,7 +137,7 @@ func TestReadmeFetchAuthenticatesFromEverySource(t *testing.T) {
 				host = api.URL
 			}
 			projCfg := &config.ProjectConfig{Github: config.HostConfig{Host: host, Token: tt.projectToken}}
-			s := NewServer(log, "", 0, nil, testFS(), "", projCfg, nil, nil)
+			s := NewServer(log, "", 0, nil, testFS(), "", projCfg, nil, nil, nil)
 			s.SetHTTPClient(&http.Client{Transport: &redirectingTransport{targetURL: api.URL}})
 
 			if _, err := s.fetchRemoteReadme(context.Background(), "owner/tool"); err != nil {
