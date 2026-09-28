@@ -698,6 +698,7 @@ func generateEntryLoader(configPath string, toolFiles []string) (string, error) 
 
 	sb.WriteString(`
 const toolConfigs = {};
+const toolOrigins = {};
 for (const [path, entry] of Object.entries(toolModules)) {
   const parts = path.split("/");
   const filename = parts[parts.length - 1];
@@ -715,6 +716,10 @@ for (const [path, entry] of Object.entries(toolModules)) {
       t.name = fallbackName;
     }
     t.configFilePath = entry.absPath;
+    if (toolOrigins[t.name]) {
+      throw new Error("duplicate tool name " + t.name + " declared in \"" + toolOrigins[t.name] + "\" and \"" + entry.absPath + "\"");
+    }
+    toolOrigins[t.name] = entry.absPath;
     toolConfigs[t.name] = t;
   }
 }

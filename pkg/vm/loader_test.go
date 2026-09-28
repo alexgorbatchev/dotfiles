@@ -2389,3 +2389,101 @@ func TestLoaderRejectsInvalidBinaryPatternAndShim(t *testing.T) {
 		})
 	}
 }
+
+// Two tool files that resolve to the same tool name must fail the load naming both tool
+// files and the conflicting tool name, instead of silently discarding one of them.
+func TestLoaderRejectsDuplicateToolNamesAcrossDirectories(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	memFS := fs.NewMemFS()
+
+	t.Run("sibling subdirectories with same basename", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		toolsDir := filepath.Join(tmpDir, "tools")
+		dirA := filepath.Join(toolsDir, "a")
+		dirB := filepath.Join(toolsDir, "b")
+		if err := os.MkdirAll(dirA, 0755); err != nil {
+			t.Fatalf("creating dirA: %v", err)
+		}
+		if err := os.MkdirAll(dirB, 0755); err != nil {
+			t.Fatalf("creating dirB: %v", err)
+		}
+
+		fileA := filepath.Join(dirA, "dup.tool.ts")
+		fileB := filepath.Join(dirB, "dup.tool.ts")
+		toolA := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual", { binaryPath: "/bin/echo" }));`
+		toolB := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual", { binaryPath: "/bin/ls" }));`
+
+		if err := os.WriteFile(fileA, []byte(toolA), 0644); err != nil {
+			t.Fatalf("writing fileA: %v", err)
+		}
+		if err := os.WriteFile(fileB, []byte(toolB), 0644); err != nil {
+			t.Fatalf("writing fileB: %v", err)
+		}
+
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+			t.Fatalf("writing config: %v", err)
+		}
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil {
+			t.Fatal("expected loading to fail for duplicate tool names, got nil")
+		}
+		absFileA, _ := filepath.Abs(fileA)
+		absFileB, _ := filepath.Abs(fileB)
+		wantFileA := filepath.ToSlash(absFileA)
+		wantFileB := filepath.ToSlash(absFileB)
+		wantErr := fmt.Sprintf("duplicate tool name dup declared in %q and %q", wantFileA, wantFileB)
+		if !strings.Contains(err.Error(), wantErr) {
+			t.Errorf("expected error to contain %q, got: %v", wantErr, err)
+		}
+	})
+
+	t.Run("different toolConfigsDir entries with same basename", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		toolsDir1 := filepath.Join(tmpDir, "tools1")
+		toolsDir2 := filepath.Join(tmpDir, "tools2")
+		if err := os.MkdirAll(toolsDir1, 0755); err != nil {
+			t.Fatalf("creating toolsDir1: %v", err)
+		}
+		if err := os.MkdirAll(toolsDir2, 0755); err != nil {
+			t.Fatalf("creating toolsDir2: %v", err)
+		}
+
+		file1 := filepath.Join(toolsDir1, "dup.tool.ts")
+		file2 := filepath.Join(toolsDir2, "dup.tool.ts")
+		tool1 := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual", { binaryPath: "/bin/echo" }));`
+		tool2 := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) => install("manual", { binaryPath: "/bin/ls" }));`
+
+		if err := os.WriteFile(file1, []byte(tool1), 0644); err != nil {
+			t.Fatalf("writing file1: %v", err)
+		}
+		if err := os.WriteFile(file2, []byte(tool2), 0644); err != nil {
+			t.Fatalf("writing file2: %v", err)
+		}
+
+		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+		configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: [%q, %q] } };`, tmpDir, toolsDir1, toolsDir2)
+		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+			t.Fatalf("writing config: %v", err)
+		}
+
+		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		if err == nil {
+			t.Fatal("expected loading to fail for duplicate tool names across toolConfigsDir, got nil")
+		}
+		absFile1, _ := filepath.Abs(file1)
+		absFile2, _ := filepath.Abs(file2)
+		wantFile1 := filepath.ToSlash(absFile1)
+		wantFile2 := filepath.ToSlash(absFile2)
+		wantErr := fmt.Sprintf("duplicate tool name dup declared in %q and %q", wantFile1, wantFile2)
+		if !strings.Contains(err.Error(), wantErr) {
+			t.Errorf("expected error to contain %q, got: %v", wantErr, err)
+		}
+	})
+}

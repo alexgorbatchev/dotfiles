@@ -583,9 +583,10 @@ func (tc *ToolConfig) applyInstallParamDefaults() {
 // failure for the same configuration every time.
 //
 // Once every tool passes on its own, it checks what no single tool can: that no two
-// declarations, of one tool or of two, write the same file (validateFileClaims). That
-// check reads targets the way the engine resolves them, which needs projCfg with its
-// paths already resolved; nil leaves every target as written.
+// tools declare the same name, and that no two declarations, of one tool or of two,
+// write the same file (validateFileClaims). That file check reads targets the way the
+// engine resolves them, which needs projCfg with its paths already resolved; nil
+// leaves every target as written.
 //
 // Every configuration loader calls it before returning its tools, so nothing
 // downstream sees a tool that fails.
@@ -607,6 +608,26 @@ func ValidateToolConfigs(tools []*ToolConfig, projCfg *ProjectConfig) error {
 			return fmt.Errorf("invalid tool configuration: %w", err)
 		}
 		return fmt.Errorf("invalid tool configuration in %q: %w", tool.ConfigFilePath, err)
+	}
+
+	for i := 1; i < len(sorted); i++ {
+		prev := sorted[i-1]
+		curr := sorted[i]
+		if curr.Name == prev.Name {
+			if prev.ConfigFilePath != "" && curr.ConfigFilePath != "" {
+				if prev.ConfigFilePath == curr.ConfigFilePath {
+					return fmt.Errorf("duplicate tool name %s declared twice in %q", curr.Name, curr.ConfigFilePath)
+				}
+				return fmt.Errorf("duplicate tool name %s declared in %q and %q", curr.Name, prev.ConfigFilePath, curr.ConfigFilePath)
+			}
+			if prev.ConfigFilePath != "" {
+				return fmt.Errorf("duplicate tool name %s declared in %q", curr.Name, prev.ConfigFilePath)
+			}
+			if curr.ConfigFilePath != "" {
+				return fmt.Errorf("duplicate tool name %s declared in %q", curr.Name, curr.ConfigFilePath)
+			}
+			return fmt.Errorf("duplicate tool name %s", curr.Name)
+		}
 	}
 
 	if err := validateFileClaims(sorted, projCfg); err != nil {

@@ -1141,3 +1141,79 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateToolConfigsRejectsDuplicateToolNames(t *testing.T) {
+	tests := []struct {
+		name     string
+		tools    []*ToolConfig
+		wantErrs []string
+	}{
+		{
+			name: "two tools with same name and different files",
+			tools: []*ToolConfig{
+				{Name: "dup", ConfigFilePath: "/repo/tools/b/dup.tool.ts"},
+				{Name: "dup", ConfigFilePath: "/repo/tools/a/dup.tool.ts"},
+			},
+			wantErrs: []string{`duplicate tool name dup declared in "/repo/tools/a/dup.tool.ts" and "/repo/tools/b/dup.tool.ts"`},
+		},
+		{
+			name: "two tools with same name and same file",
+			tools: []*ToolConfig{
+				{Name: "dup", ConfigFilePath: "/repo/tools/dup.tool.ts"},
+				{Name: "dup", ConfigFilePath: "/repo/tools/dup.tool.ts"},
+			},
+			wantErrs: []string{`duplicate tool name dup declared twice in "/repo/tools/dup.tool.ts"`},
+		},
+		{
+			name: "two tools with same name and only first has file",
+			tools: []*ToolConfig{
+				{Name: "dup", ConfigFilePath: "/repo/tools/a/dup.tool.ts"},
+				{Name: "dup"},
+			},
+			wantErrs: []string{`duplicate tool name dup declared in "/repo/tools/a/dup.tool.ts"`},
+		},
+		{
+			name: "two tools with same name and only second has file",
+			tools: []*ToolConfig{
+				{Name: "dup"},
+				{Name: "dup", ConfigFilePath: "/repo/tools/b/dup.tool.ts"},
+			},
+			wantErrs: []string{`duplicate tool name dup declared in "/repo/tools/b/dup.tool.ts"`},
+		},
+		{
+			name: "two tools with same name and neither has file",
+			tools: []*ToolConfig{
+				{Name: "dup"},
+				{Name: "dup"},
+			},
+			wantErrs: []string{`duplicate tool name dup`},
+		},
+		{
+			name: "unique tool names pass",
+			tools: []*ToolConfig{
+				{Name: "tool1", ConfigFilePath: "/repo/tools/tool1.tool.ts"},
+				{Name: "tool2", ConfigFilePath: "/repo/tools/tool2.tool.ts"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateToolConfigs(tt.tools, nil)
+			if len(tt.wantErrs) == 0 {
+				if err != nil {
+					t.Fatalf("ValidateToolConfigs() = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("ValidateToolConfigs() = nil, want an error")
+			}
+			for _, want := range tt.wantErrs {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("ValidateToolConfigs() = %v, want it to contain %s", err, want)
+				}
+			}
+		})
+	}
+}
