@@ -714,17 +714,33 @@ func (m *MemFS) CopyFile(src, dest string) error {
 	}
 
 	parent := filepath.Dir(cleanDest)
-	if filepath.Dir(parent) != parent {
-		parentNode, ok := m.files[parent]
-		if !ok || !parentNode.isDir {
-			return &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrNotExist}
-		}
+	if cleanDest == parent || cleanDest == "." {
+		return &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrInvalid}
+	}
+	if destNode, ok := m.files[cleanDest]; ok && destNode.isDir {
+		return &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrInvalid}
+	}
+
+	resolvedParent, err := m.resolveParentDirLocked(dest, parent)
+	if err != nil {
+		return err
+	}
+
+	targetDest := filepath.Join(resolvedParent, filepath.Base(cleanDest))
+	if destNode, ok := m.files[targetDest]; ok && destNode.isDir {
+		return &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrInvalid}
+	}
+	if curr == targetDest || cleanSrc == targetDest {
+		return &os.PathError{Op: "copyfile", Path: dest, Err: errSameFile}
+	}
+	if destNode, ok := m.files[targetDest]; ok && (destNode == srcNode || destNode == m.files[cleanSrc]) {
+		return &os.PathError{Op: "copyfile", Path: dest, Err: errSameFile}
 	}
 
 	dataCopy := make([]byte, len(srcNode.data))
 	copy(dataCopy, srcNode.data)
 
-	m.files[cleanDest] = &fileNode{
+	m.files[targetDest] = &fileNode{
 		data:       dataCopy,
 		perm:       srcNode.perm,
 		modTime:    time.Now(),
@@ -733,4 +749,87 @@ func (m *MemFS) CopyFile(src, dest string) error {
 		linkTarget: "",
 	}
 	return nil
+}
+
+func (m *MemFS) resolveParentDirLocked(dest, parent string) (string, error) {
+	parent = filepath.Clean(parent)
+	vol := filepath.VolumeName(parent)
+	rest := parent[len(vol):]
+	var root string
+	if strings.HasPrefix(rest, string(filepath.Separator)) {
+		root = vol + string(filepath.Separator)
+		rest = strings.TrimPrefix(rest, string(filepath.Separator))
+	} else if vol != "" {
+		root = vol
+	} else {
+		root = ""
+	}
+
+	var segments []string
+	if rest != "" {
+		for _, p := range strings.Split(rest, string(filepath.Separator)) {
+			if p != "" && p != "." {
+				segments = append(segments, p)
+			}
+		}
+	}
+
+	curr := root
+	symlinkDepth := 0
+	for i := 0; i < len(segments); i++ {
+		part := segments[i]
+		if part == ".." {
+			curr = filepath.Dir(curr)
+			continue
+		}
+		var candidate string
+		if curr == "" {
+			candidate = part
+		} else {
+			candidate = filepath.Join(curr, part)
+		}
+
+		node, ok := m.files[candidate]
+		if !ok {
+			m.files[candidate] = &fileNode{
+				isDir:   true,
+				perm:    0755,
+				modTime: time.Now(),
+			}
+			curr = candidate
+			continue
+		}
+
+		if node.isSymlink {
+			currCandidate := candidate
+			for node.isSymlink {
+				symlinkDepth++
+				if symlinkDepth > 40 {
+					return "", &os.PathError{Op: "copyfile", Path: dest, Err: fmt.Errorf("too many symlinks")}
+				}
+				target := node.linkTarget
+				if !filepath.IsAbs(target) {
+					target = filepath.Join(filepath.Dir(currCandidate), target)
+				}
+				target = filepath.Clean(target)
+				targetNode, ok := m.files[target]
+				if !ok {
+					return "", &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrNotExist}
+				}
+				currCandidate = target
+				node = targetNode
+			}
+			if !node.isDir {
+				return "", &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrExist}
+			}
+			curr = currCandidate
+			continue
+		}
+
+		if !node.isDir {
+			return "", &os.PathError{Op: "copyfile", Path: dest, Err: os.ErrExist}
+		}
+		curr = candidate
+	}
+	return curr, nil
 }

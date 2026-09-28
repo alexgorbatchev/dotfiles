@@ -781,6 +781,169 @@ func TestCopyFileLeavesTheDestinationUntouchedWhenTheCopyFails(t *testing.T) {
 	}
 }
 
+// TestCopyFileCreatesMissingParentDirectory covers a destination whose parent directory
+// does not yet exist: CopyFile creates the parent directories and lands the file.
+func TestCopyFileCreatesMissingParentDirectory(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := writeCopySource(t, filesystem, dir)
+			dest := filepath.Join(dir, "nested", "parent", "tool-bin")
+
+			if err := filesystem.CopyFile(src, dest); err != nil {
+				t.Fatalf("CopyFile(%s, %s) = %v, want nil", src, dest, err)
+			}
+
+			assertFileContent(t, filesystem, dest, copySourceContent)
+			info, err := filesystem.Stat(dest)
+			if err != nil {
+				t.Fatalf("Stat(%s): %v", dest, err)
+			}
+			if !info.Mode().IsRegular() {
+				t.Errorf("%s mode = %v, want regular file", dest, info.Mode())
+			}
+			parentInfo, err := filesystem.Stat(filepath.Dir(dest))
+			if err != nil {
+				t.Fatalf("Stat(%s): %v", filepath.Dir(dest), err)
+			}
+			if !parentInfo.IsDir() {
+				t.Errorf("%s is not a directory", filepath.Dir(dest))
+			}
+		})
+	}
+}
+
+// TestCopyFileResolvesSymlinkedParentDirectory covers a destination whose parent directory
+// is a symlink: the link is followed, landing the file in the resolved target directory,
+// while a final component symlink is replaced rather than followed.
+func TestCopyFileResolvesSymlinkedParentDirectory(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := writeCopySource(t, filesystem, dir)
+
+			realDir := filepath.Join(dir, "real-target")
+			if err := filesystem.MkdirAll(realDir, 0755); err != nil {
+				t.Fatalf("MkdirAll: %v", err)
+			}
+			linkDir := filepath.Join(dir, "symlink-parent")
+			if err := filesystem.Symlink(realDir, linkDir); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+
+			// Case 1: direct file inside symlinked parent
+			dest := filepath.Join(linkDir, "copied-tool")
+			if err := filesystem.CopyFile(src, dest); err != nil {
+				t.Fatalf("CopyFile(%s, %s) = %v, want nil", src, dest, err)
+			}
+
+			// File must land in the resolved directory.
+			resolvedDest := filepath.Join(realDir, "copied-tool")
+			assertFileContent(t, filesystem, resolvedDest, copySourceContent)
+
+			// The parent symlink must remain a symlink.
+			linkInfo, err := filesystem.Lstat(linkDir)
+			if err != nil {
+				t.Fatalf("Lstat(%s): %v", linkDir, err)
+			}
+			if linkInfo.Mode()&os.ModeSymlink == 0 {
+				t.Errorf("%s is not a symlink: %v", linkDir, linkInfo.Mode())
+			}
+
+			// Case 2: nested missing directory inside symlinked parent
+			destNested := filepath.Join(linkDir, "nested-sub", "tool-bin-2")
+			if err := filesystem.CopyFile(src, destNested); err != nil {
+				t.Fatalf("CopyFile(%s, %s) = %v, want nil", src, destNested, err)
+			}
+			resolvedNested := filepath.Join(realDir, "nested-sub", "tool-bin-2")
+			assertFileContent(t, filesystem, resolvedNested, copySourceContent)
+
+			// Case 3: final component is a symlink inside the symlinked parent:
+			// the final component symlink is replaced, not followed.
+			preserveTarget := filepath.Join(dir, "preserve-target")
+			if err := filesystem.WriteFile(preserveTarget, []byte("preserved-content"), 0644); err != nil {
+				t.Fatalf("WriteFile: %v", err)
+			}
+			resolvedSymlinkDest := filepath.Join(realDir, "link-to-preserve")
+			if err := filesystem.Symlink(preserveTarget, resolvedSymlinkDest); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+			destSymlink := filepath.Join(linkDir, "link-to-preserve")
+			if err := filesystem.CopyFile(src, destSymlink); err != nil {
+				t.Fatalf("CopyFile(%s, %s) = %v, want nil", src, destSymlink, err)
+			}
+			// Preserved target must still hold its original content.
+			assertFileContent(t, filesystem, preserveTarget, "preserved-content")
+			// Destination is now a regular file holding source content.
+			assertFileContent(t, filesystem, resolvedSymlinkDest, copySourceContent)
+			info, err := filesystem.Lstat(resolvedSymlinkDest)
+			if err != nil {
+				t.Fatalf("Lstat(%s): %v", resolvedSymlinkDest, err)
+			}
+			if !info.Mode().IsRegular() {
+				t.Errorf("%s mode = %v, want regular file", resolvedSymlinkDest, info.Mode())
+			}
+		})
+	}
+}
+
+// TestCopyFileRefusesDirectoryDestination covers a destination that is an existing
+// directory: CopyFile returns an error and leaves the directory and its children intact.
+func TestCopyFileRefusesDirectoryDestination(t *testing.T) {
+	for _, impl := range copyFileImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			filesystem, dir := impl.setup(t)
+			src := writeCopySource(t, filesystem, dir)
+
+			// Direct directory destination
+			destDir := filepath.Join(dir, "dest-directory")
+			if err := filesystem.MkdirAll(destDir, 0755); err != nil {
+				t.Fatalf("MkdirAll: %v", err)
+			}
+			childFile := filepath.Join(destDir, "child.txt")
+			if err := filesystem.WriteFile(childFile, []byte("child-data"), 0644); err != nil {
+				t.Fatalf("WriteFile: %v", err)
+			}
+
+			err := filesystem.CopyFile(src, destDir)
+			if err == nil {
+				t.Fatalf("CopyFile(%s, %s) = nil, want an error", src, destDir)
+			}
+
+			// Directory and its child must remain intact.
+			info, err := filesystem.Stat(destDir)
+			if err != nil {
+				t.Fatalf("Stat(%s): %v", destDir, err)
+			}
+			if !info.IsDir() {
+				t.Errorf("%s is not a directory: mode %v", destDir, info.Mode())
+			}
+			assertFileContent(t, filesystem, childFile, "child-data")
+
+			// Directory destination through symlinked parent
+			linkDir := filepath.Join(dir, "link-dir")
+			if err := filesystem.Symlink(destDir, linkDir); err != nil {
+				t.Fatalf("Symlink: %v", err)
+			}
+			subDir := filepath.Join(destDir, "sub-dir")
+			if err := filesystem.MkdirAll(subDir, 0755); err != nil {
+				t.Fatalf("MkdirAll: %v", err)
+			}
+			subChild := filepath.Join(subDir, "sub-child.txt")
+			if err := filesystem.WriteFile(subChild, []byte("sub-child-data"), 0644); err != nil {
+				t.Fatalf("WriteFile: %v", err)
+			}
+
+			destThroughLink := filepath.Join(linkDir, "sub-dir")
+			err = filesystem.CopyFile(src, destThroughLink)
+			if err == nil {
+				t.Fatalf("CopyFile(%s, %s) = nil, want an error", src, destThroughLink)
+			}
+			assertFileContent(t, filesystem, subChild, "sub-child-data")
+		})
+	}
+}
+
 // TestOSFSCopyFileErrors covers the operating system refusing a step of the copy: each
 // failure is reported and no temporary file is left beside the destination.
 func TestOSFSCopyFileErrors(t *testing.T) {
@@ -1028,6 +1191,51 @@ func TestMemFSCopyFileRefusesAHardLinkToTheSource(t *testing.T) {
 		t.Errorf("CopyFile(%s, %s) = %v, want %v", src, dest, err, errSameFile)
 	}
 	assertFileContent(t, filesystem, src, copySourceContent)
+}
+
+func TestMemFSCopyFileParentErrors(t *testing.T) {
+	filesystem := NewMemFS()
+	_ = filesystem.MkdirAll("/dir", 0755)
+	src := "/dir/source"
+	if err := filesystem.WriteFile(src, []byte(copySourceContent), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// 1. Destination is root
+	if err := filesystem.CopyFile(src, "/"); err == nil {
+		t.Errorf("CopyFile(root) = nil, want error")
+	}
+
+	// 2. Destination parent is a file
+	if err := filesystem.CopyFile(src, src+"/child"); err == nil {
+		t.Errorf("CopyFile(parent is file) = nil, want error")
+	}
+
+	// 3. Destination parent is a broken symlink
+	_ = filesystem.Symlink("/nonexistent", "/dir/broken-parent")
+	if err := filesystem.CopyFile(src, "/dir/broken-parent/file"); err == nil {
+		t.Errorf("CopyFile(broken parent symlink) = nil, want error")
+	}
+
+	// 4. Destination parent symlink points to a regular file
+	_ = filesystem.Symlink(src, "/dir/symlink-to-file")
+	if err := filesystem.CopyFile(src, "/dir/symlink-to-file/child"); err == nil {
+		t.Errorf("CopyFile(parent symlink points to file) = nil, want error")
+	}
+
+	// 5. Destination through symlinked parent is the same file as source
+	_ = filesystem.Symlink("/dir", "/dir/symlink-to-dir")
+	if err := filesystem.CopyFile(src, "/dir/symlink-to-dir/source"); !errors.Is(err, errSameFile) {
+		t.Errorf("CopyFile(same file through symlink) = %v, want %v", err, errSameFile)
+	}
+
+	// 6. Relative symlink in parent path
+	_ = filesystem.MkdirAll("/dir/real-sub", 0755)
+	_ = filesystem.Symlink("real-sub", "/dir/rel-symlink")
+	if err := filesystem.CopyFile(src, "/dir/rel-symlink/copied.txt"); err != nil {
+		t.Errorf("CopyFile(relative symlink parent) = %v, want nil", err)
+	}
+	assertFileContent(t, filesystem, "/dir/real-sub/copied.txt", copySourceContent)
 }
 
 func TestMemFS_LinkSemantics(t *testing.T) {
