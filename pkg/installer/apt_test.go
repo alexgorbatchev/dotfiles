@@ -50,15 +50,10 @@ func TestAptInstaller(t *testing.T) {
 			t.Errorf("expected [/usr/bin/jq] binaries list, got %v", res.Binaries)
 		}
 
-		// Verify hdiutil / apt / sudo commands
+		// Verify apt-get update and install commands
 		hasUpdate := false
 		hasInstall := false
 		for _, cmd := range runner.History {
-			if cmd.Name == "sudo" {
-				// We call sudo directly, or we execute command directly
-				// Wait! In apt.go, we did CommandContext(ctx, "sudo", "apt-get", "update")
-				// So cmd.Name is indeed "sudo" and cmd.Args has "apt-get", "update"
-			}
 			if cmd.Name == "sudo" && len(cmd.Args) > 1 && cmd.Args[0] == "apt-get" && cmd.Args[1] == "update" {
 				hasUpdate = true
 			}

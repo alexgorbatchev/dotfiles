@@ -115,8 +115,9 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	}
 
 	// Make script executable
-	chmodCmd := c.runner.CommandContext(ctx, "chmod", "+x", scriptPath)
-	_ = chmodCmd.Run()
+	if err := c.fsys.Chmod(scriptPath, 0o755); err != nil {
+		return nil, fmt.Errorf("making script executable: %w", err)
+	}
 
 	// Execute script. The arguments and environment are resolved here rather than when
 	// the configuration was read, because a resolver is given the script it is about to

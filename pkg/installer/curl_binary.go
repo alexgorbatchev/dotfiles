@@ -106,12 +106,9 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 	}
 
 	// Make binary executable (permission 0755).
-	// Since fsys doesn't have a direct Chmod method on the FS interface itself,
-	// we write/rewrite it or rely on MkdirAll / downloader default creation perm.
-	// But to be secure, let's verify if fsys is OSFS and apply os.Chmod, or we can use our runner to execute chmod!
-	// Running chmod via runner is extremely robust and works beautifully across OS boundaries and mock runners!
-	chmodCmd := c.runner.CommandContext(ctx, "chmod", "+x", destPath)
-	_ = chmodCmd.Run() // best effort
+	if err := c.fsys.Chmod(destPath, 0o755); err != nil {
+		return nil, fmt.Errorf("making binary executable: %w", err)
+	}
 
 	var detectedVersion string
 	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")

@@ -70,6 +70,11 @@ func TestCurlScriptInstaller(t *testing.T) {
 		if !hasShRun {
 			t.Error("expected script execution with sh")
 		}
+		for _, cmd := range runner.History {
+			if cmd.Name == "chmod" {
+				t.Error("unexpected chmod command executed on runner")
+			}
+		}
 	})
 
 	t.Run("Install success with bash", func(t *testing.T) {
@@ -181,6 +186,25 @@ func TestCurlScriptInstaller(t *testing.T) {
 		_, err := badInst.Install(context.Background(), tool)
 		if err == nil {
 			t.Error("expected error creating directory, got nil")
+		}
+	})
+
+	t.Run("Install fails chmod error", func(t *testing.T) {
+		chmodErrFS := &mockChmodErrorFS{FS: fs.NewMemFS()}
+		chmodDl := downloader.NewDownloader(chmodErrFS, nil)
+		chmodInst := NewCurlScriptInstaller(runner, chmodErrFS, chmodDl, nil)
+		chmodInst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"url": server.URL,
+			},
+		}
+
+		_, err := chmodInst.Install(context.Background(), tool)
+		if err == nil {
+			t.Error("expected error when chmod fails, got nil")
 		}
 	})
 }

@@ -83,13 +83,12 @@ func TestTrackedFileSystemOperations(t *testing.T) {
 		t.Fatalf("Failed during tracked operations: %v", err)
 	}
 
-	// Now query file operations and verify the transactional records!
+	// Query file operations and verify the transactional records.
 	ops, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{})
 	if err != nil {
 		t.Fatalf("Failed to fetch file operations: %v", err)
 	}
 
-	// Let's print or verify the ops
 	// Expected operations (in reverse order due to GetFileOperations ordering by CreatedAt DESC):
 	// 6. link /workspace/foo_link.txt
 	// 5. rm /workspace/bar.txt
@@ -101,7 +100,7 @@ func TestTrackedFileSystemOperations(t *testing.T) {
 		t.Fatalf("Expected 6 file operations recorded, got %d", len(ops))
 	}
 
-	// We can map them by operation type + path for easier assertions
+	// Map operations by operation type + path for assertions.
 	opMap := make(map[string]*registry.FileOperationRecord)
 	for _, op := range ops {
 		key := fmt.Sprintf("%s:%s", op.OperationType, op.FilePath)

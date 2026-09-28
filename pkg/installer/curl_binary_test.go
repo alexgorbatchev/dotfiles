@@ -67,13 +67,18 @@ func TestCurlBinaryInstaller(t *testing.T) {
 			t.Errorf("unexpected content: %s", string(data))
 		}
 
-		// Verify chmod +x command was run
-		if len(runner.History) == 0 {
-			t.Fatal("expected chmod command to run")
+		// Verify mode is 0755
+		fi, err := fsys.Stat(destPath)
+		if err != nil {
+			t.Fatalf("failed to stat downloaded binary: %v", err)
 		}
-		cmd := runner.History[0]
-		if cmd.Name != "chmod" || cmd.Args[0] != "+x" || cmd.Args[1] != destPath {
-			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
+		if fi.Mode().Perm() != 0o755 {
+			t.Errorf("expected mode 0755, got %#o", fi.Mode().Perm())
+		}
+
+		// Verify runner was not invoked for chmod
+		if len(runner.History) != 0 {
+			t.Errorf("expected no runner commands, got %v", runner.History)
 		}
 	})
 
@@ -125,6 +130,33 @@ func TestCurlBinaryInstaller(t *testing.T) {
 			t.Error("expected error creating directory, got nil")
 		}
 	})
+
+	t.Run("Install fails chmod error", func(t *testing.T) {
+		chmodErrFS := &mockChmodErrorFS{FS: fs.NewMemFS()}
+		chmodDl := downloader.NewDownloader(chmodErrFS, nil)
+		chmodInst := NewCurlBinaryInstaller(runner, chmodErrFS, chmodDl, nil)
+		chmodInst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"url": server.URL,
+			},
+		}
+
+		_, err := chmodInst.Install(context.Background(), tool)
+		if err == nil {
+			t.Error("expected error when chmod fails, got nil")
+		}
+	})
+}
+
+type mockChmodErrorFS struct {
+	fs.FS
+}
+
+func (m *mockChmodErrorFS) Chmod(path string, perm os.FileMode) error {
+	return errors.New("chmod error")
 }
 
 type mockErrorFS struct {

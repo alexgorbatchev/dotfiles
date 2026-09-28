@@ -1123,7 +1123,7 @@ func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 	}
 
 	// 3. Verify consecutive generate prunes the once directory
-	// Let's write a stray file inside onceDir
+	// Write a stray file inside onceDir
 	strayPath := filepath.Join(onceDir, "once-002.zsh")
 	_ = fsys.WriteFile(strayPath, []byte("echo stray"), 0755)
 
