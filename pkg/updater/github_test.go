@@ -12,10 +12,11 @@ import (
 
 // TestReleaseRequestsAuthenticateFromTheEnvironment pins the credentials the
 // self-updater presents. It resolves them through the same helper the installers
-// and the dashboard use, so the two environment variables rank the same way
-// everywhere; the project configuration's github.token is not among the sources,
-// because it authenticates the project's github.host and a self-update addresses
-// the public API instead.
+// and the dashboard use, so the environment variables rank the same way
+// everywhere following the gh CLI convention (GH_TOKEN before GITHUB_TOKEN for
+// the public API); the project configuration's github.token is not among the
+// sources, because it authenticates the project's github.host and a self-update
+// addresses the public API instead.
 func TestReleaseRequestsAuthenticateFromTheEnvironment(t *testing.T) {
 	tests := []struct {
 		name string
@@ -23,14 +24,14 @@ func TestReleaseRequestsAuthenticateFromTheEnvironment(t *testing.T) {
 		want string
 	}{
 		{
-			name: "GITHUB_TOKEN before GH_TOKEN",
-			env:  map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"},
-			want: "token gh",
+			name: "GH_TOKEN before GITHUB_TOKEN",
+			env:  map[string]string{"GH_TOKEN": "cli", "GITHUB_TOKEN": "gh"},
+			want: "token cli",
 		},
 		{
-			name: "GH_TOKEN as the last resort",
-			env:  map[string]string{"GH_TOKEN": "cli"},
-			want: "token cli",
+			name: "GITHUB_TOKEN as fallback",
+			env:  map[string]string{"GITHUB_TOKEN": "gh"},
+			want: "token gh",
 		},
 		{
 			name: "nothing configured anywhere",

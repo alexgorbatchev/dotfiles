@@ -196,10 +196,10 @@ func (c githubReleaseClient) downloadAssetViaGhCli(ctx context.Context, repo, ta
 // githubToken returns the token to authenticate a tool's GitHub API requests and
 // asset downloads with: the tool's own `token` install parameter, then
 // projectToken (the project configuration's github.token, which applies to every
-// tool), then the environment. github.Token owns the order, so every component
-// that talks to the API resolves a token the same way.
-func githubToken(params map[string]interface{}, projectToken string) string {
-	return github.Token(getStringParam(params, "token", ""), projectToken)
+// tool), then the environment scoped to host. github.Token owns the order, so
+// every component that talks to the API resolves a token the same way.
+func githubToken(host string, params map[string]interface{}, projectToken string) string {
+	return github.Token(host, getStringParam(params, "token", ""), projectToken)
 }
 
 // githubAuthorization is the Authorization header value a GitHub host takes for a

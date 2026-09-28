@@ -489,7 +489,7 @@ func (s *Server) fetchRemoteReadme(ctx context.Context, repo string) (string, er
 	if err == nil {
 		req.Header.Set("Accept", "application/vnd.github.raw+json")
 		req.Header.Set("User-Agent", "dotfiles-dashboard/1.0")
-		if token := github.Token(projectToken); token != "" {
+		if token := github.Token(apiBase, projectToken); token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}
 		resp, err := client.Do(req)

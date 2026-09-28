@@ -107,6 +107,13 @@ func (f macPackageFetcher) releaseClient() githubReleaseClient {
 	return githubReleaseClient{httpClient: f.httpClient, runner: f.runner, baseURL: f.baseURL, userAgent: f.github.UserAgent}
 }
 
+func (f macPackageFetcher) host() string {
+	if f.baseURL != "" {
+		return f.baseURL
+	}
+	return f.github.Host
+}
+
 // fetch resolves src for tool into destDir and returns the package with
 // extension ext (".dmg" or ".pkg"). On failure nothing is left in destDir.
 func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, src macPackageSource, destDir, ext string) (macPackagePayload, error) {
@@ -127,7 +134,7 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 			version:    version,
 			prerelease: src.prerelease,
 			ghCli:      src.ghCli,
-			token:      githubToken(tool.InstallParams, f.github.Token),
+			token:      githubToken(f.host(), tool.InstallParams, f.github.Token),
 		})
 		if err != nil {
 			return payload, err
@@ -200,7 +207,7 @@ func (f macPackageFetcher) checkUpdate(ctx context.Context, tool *config.ToolCon
 		version:    "latest",
 		prerelease: src.prerelease,
 		ghCli:      src.ghCli,
-		token:      githubToken(tool.InstallParams, f.github.Token),
+		token:      githubToken(f.host(), tool.InstallParams, f.github.Token),
 	})
 	if err != nil {
 		return nil, err

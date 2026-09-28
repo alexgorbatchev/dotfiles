@@ -128,15 +128,18 @@ only: a `cargo` crate's version is looked up here only with
 its archive come from the hosts of the [`cargo`](#cargo) section.
 
 `token` is the project-wide default. A tool that sets the `token` parameter of its
-installation method overrides it, and when neither names one the `GITHUB_TOKEN` and
-then `GH_TOKEN` environment variables are consulted. It applies to every method that
-resolves GitHub releases -- `github-release`, `cargo`, `dmg` and `pkg` -- and to the
-dashboard's README lookup. When asset downloads are authenticated with the token, it is
-scoped to the host it is sent to and is dropped across any redirect leaving that host,
-preventing the token from leaking to storage providers, subdomains, or other ports.
+installation method overrides it. When neither names one, the environment is consulted
+following the `gh` CLI convention: `GH_TOKEN`, then `GITHUB_TOKEN`, for `github.com`
+(including `api.github.com`) and `*.ghe.com`; `GH_ENTERPRISE_TOKEN`, then
+`GITHUB_ENTERPRISE_TOKEN`, for any other host (such as GitHub Enterprise Server).
+It applies to every method that resolves GitHub releases -- `github-release`, `cargo`,
+`dmg` and `pkg` -- and to the dashboard's README lookup. When asset downloads are
+authenticated with the token, it is scoped to the host it is sent to and is dropped
+across any redirect leaving that host, preventing the token from leaking to storage
+providers, subdomains, or other ports.
 
 `dotfiles self upgrade` is the exception: it upgrades the CLI itself from the public API
-rather than from `host`, so it authenticates from `GITHUB_TOKEN` or `GH_TOKEN` alone
+rather than from `host`, so it authenticates from `GH_TOKEN` or `GITHUB_TOKEN` alone
 and never sends a token written for your `host`.
 
 ### system

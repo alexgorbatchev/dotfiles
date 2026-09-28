@@ -8,15 +8,15 @@ Shared GitHub API token resolution and authentication utilities.
 
 ## Local conventions
 
-- Canonical token resolution (`Token`): resolves GitHub tokens in priority order:
+- Canonical token resolution (`Token`): resolves GitHub tokens in priority order following the `gh` CLI convention:
   1. Configured token arguments (e.g. tool-specific `token` parameter, project-level `github.token`).
-  2. `GITHUB_TOKEN` environment variable.
-  3. `GH_TOKEN` environment variable (read by GitHub CLI `gh`).
-- Context isolation: callers pass only the configuration they own (e.g. self-updater passes no configured token because project `github.token` may belong to an enterprise host while self-updater targets the public GitHub API).
+  2. For `github.com` (including `api.github.com`), `*.ghe.com`, or empty host (default): `GH_TOKEN`, then `GITHUB_TOKEN` environment variables.
+  3. For any other host (such as GitHub Enterprise Server): `GH_ENTERPRISE_TOKEN`, then `GITHUB_ENTERPRISE_TOKEN` environment variables.
+- Context isolation: callers pass their target host and only the configuration they own (e.g. self-updater targets the public GitHub API and passes no configured token because project `github.token` belongs to `github.host`).
 
 ## Local gotchas
 
-- Explicit configuration in `dotfiles.config.ts` or tool configuration files always overrides ambient shell environment variables (`GITHUB_TOKEN`, `GH_TOKEN`).
+- Explicit configuration in `dotfiles.config.ts` or tool configuration files always overrides ambient shell environment variables (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`).
 
 ## Boundaries
 

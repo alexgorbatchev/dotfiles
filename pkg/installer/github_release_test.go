@@ -180,6 +180,7 @@ func TestGithubReleaseClientGhCliArguments(t *testing.T) {
 func TestGithubToken(t *testing.T) {
 	tests := []struct {
 		name string
+		host string
 		// params is the tool's installParams, projectToken the project
 		// configuration's github.token.
 		params       map[string]interface{}
@@ -187,18 +188,21 @@ func TestGithubToken(t *testing.T) {
 		env          map[string]string
 		want         string
 	}{
-		{name: "parameter wins", params: map[string]interface{}{"token": "param"}, projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "param"},
-		{name: "github.token before the environment", projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "project"},
+		{name: "parameter wins", host: "https://api.github.com", params: map[string]interface{}{"token": "param"}, projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "param"},
+		{name: "github.token before the environment", host: "https://api.github.com", projectToken: "project", env: map[string]string{"GITHUB_TOKEN": "gh", "GH_TOKEN": "cli"}, want: "project"},
 		// The environment sources and their order are pinned once, in pkg/github;
 		// what matters here is that a tool naming no token reaches them at all.
-		{name: "the environment when a tool names no token", env: map[string]string{"GH_TOKEN": "cli"}, want: "cli"},
-		{name: "nothing configured", want: ""},
+		{name: "the environment when a tool names no token", host: "https://api.github.com", env: map[string]string{"GH_TOKEN": "cli"}, want: "cli"},
+		{name: "enterprise environment token for enterprise host", host: "https://ghe.example.com/api/v3", env: map[string]string{"GH_ENTERPRISE_TOKEN": "ghe_cli", "GH_TOKEN": "dotcom_cli"}, want: "ghe_cli"},
+		{name: "nothing configured", host: "", want: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("GITHUB_TOKEN", tt.env["GITHUB_TOKEN"])
 			t.Setenv("GH_TOKEN", tt.env["GH_TOKEN"])
-			if got := githubToken(tt.params, tt.projectToken); got != tt.want {
+			t.Setenv("GH_ENTERPRISE_TOKEN", tt.env["GH_ENTERPRISE_TOKEN"])
+			t.Setenv("GITHUB_ENTERPRISE_TOKEN", tt.env["GITHUB_ENTERPRISE_TOKEN"])
+			if got := githubToken(tt.host, tt.params, tt.projectToken); got != tt.want {
 				t.Fatalf("githubToken = %q, want %q", got, tt.want)
 			}
 		})

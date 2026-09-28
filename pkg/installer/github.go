@@ -97,6 +97,14 @@ func (g *GitHubInstaller) releaseClient() githubReleaseClient {
 	return githubReleaseClient{httpClient: g.httpClient, runner: g.runner, baseURL: g.BaseURL, userAgent: g.GitHub.UserAgent}
 }
 
+// host returns the API host release lookups and asset downloads address.
+func (g *GitHubInstaller) host() string {
+	if g.BaseURL != "" {
+		return g.BaseURL
+	}
+	return g.GitHub.Host
+}
+
 // releaseStore is where the release cache keeps entries for the current settings.
 func (g *GitHubInstaller) releaseStore() releaseCacheStore {
 	return releaseCacheStore{fsys: g.fsys, dir: g.CacheDir, ttl: g.CacheTTL}
@@ -231,7 +239,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
 	releaseClient := g.releaseClient()
-	token := githubToken(tool.InstallParams, g.GitHub.Token)
+	token := githubToken(g.host(), tool.InstallParams, g.GitHub.Token)
 	var release *githubRelease
 	useGhCli := ghCli
 
@@ -288,7 +296,7 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		// fetched with it. The token is dropped on any redirect that leaves the
 		// release asset host.
 		opts := downloader.DownloadOptions{}
-		if authorization := githubAuthorization(githubToken(tool.InstallParams, g.GitHub.Token)); authorization != "" {
+		if authorization := githubAuthorization(githubToken(g.host(), tool.InstallParams, g.GitHub.Token)); authorization != "" {
 			opts.Headers = map[string]string{
 				"Authorization": authorization,
 			}
@@ -335,7 +343,7 @@ func (g *GitHubInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	ghCli := getBoolParam(tool.InstallParams, "ghCli", false)
 	prerelease := getBoolParam(tool.InstallParams, "prerelease", false)
 	releaseClient := g.releaseClient()
-	token := githubToken(tool.InstallParams, g.GitHub.Token)
+	token := githubToken(g.host(), tool.InstallParams, g.GitHub.Token)
 	latestKey := releaseClient.cacheKey(repo, "latest", prerelease, token)
 
 	var release *githubRelease

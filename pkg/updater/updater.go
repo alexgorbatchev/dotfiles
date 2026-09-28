@@ -144,7 +144,7 @@ func (u *Updater) newRequest(ctx context.Context, url string) (*http.Request, er
 		return nil, err
 	}
 	req.Header.Set("User-Agent", updaterUserAgent)
-	if token := github.Token(); token != "" {
+	if token := github.Token("https://api.github.com"); token != "" {
 		req.Header.Set("Authorization", "token "+token)
 	}
 	return req, nil

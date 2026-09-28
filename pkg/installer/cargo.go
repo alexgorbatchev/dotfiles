@@ -79,6 +79,14 @@ func (c *CargoInstaller) SetGitHubSettings(settings GitHubSettings) {
 	}
 }
 
+// githubHost returns the API host for GitHub release lookups.
+func (c *CargoInstaller) githubHost() string {
+	if c.GitHubAPIURL != "" {
+		return c.GitHubAPIURL
+	}
+	return c.GitHub.Host
+}
+
 // SetCargoSettings applies the project configuration's cargo section.
 func (c *CargoInstaller) SetCargoSettings(settings CargoSettings) {
 	c.Cargo = settings
@@ -467,7 +475,7 @@ func (c *CargoInstaller) fetchGitHubReleaseTag(ctx context.Context, tool *config
 		repo:       githubRepo,
 		version:    "latest",
 		prerelease: prerelease,
-		token:      githubToken(tool.InstallParams, c.GitHub.Token),
+		token:      githubToken(c.githubHost(), tool.InstallParams, c.GitHub.Token),
 	})
 	if err != nil {
 		return "", err

@@ -1198,3 +1198,77 @@ func TestGitHubAssetDownloadTokensDoNotFollowRedirects(t *testing.T) {
 		})
 	}
 }
+
+// TestGitHubTokenHostScoping proves issue #145: ambient GITHUB_TOKEN and GH_TOKEN
+// for github.com are not leaked to a GitHub Enterprise Server or custom host, and
+// GH_ENTERPRISE_TOKEN / GITHUB_ENTERPRISE_TOKEN are sent instead.
+func TestGitHubTokenHostScoping(t *testing.T) {
+	tests := []struct {
+		name     string
+		env      map[string]string
+		settings GitHubSettings
+		params   map[string]interface{}
+		wantAuth string
+	}{
+		{
+			name:     "ambient GITHUB_TOKEN is not sent to non-github.com host",
+			env:      map[string]string{"GITHUB_TOKEN": "ghp_dotcom_token", "GH_TOKEN": "gh_dotcom_token"},
+			params:   map[string]interface{}{"repo": "owner/tool"},
+			wantAuth: "",
+		},
+		{
+			name:     "GH_ENTERPRISE_TOKEN is sent to non-github.com host",
+			env:      map[string]string{"GH_ENTERPRISE_TOKEN": "ghe_token", "GITHUB_TOKEN": "ghp_dotcom_token"},
+			params:   map[string]interface{}{"repo": "owner/tool"},
+			wantAuth: "token ghe_token",
+		},
+		{
+			name:     "GH_ENTERPRISE_TOKEN takes precedence over GITHUB_ENTERPRISE_TOKEN",
+			env:      map[string]string{"GH_ENTERPRISE_TOKEN": "ghe_token", "GITHUB_ENTERPRISE_TOKEN": "github_ghe_token"},
+			params:   map[string]interface{}{"repo": "owner/tool"},
+			wantAuth: "token ghe_token",
+		},
+		{
+			name:     "GITHUB_ENTERPRISE_TOKEN is used as fallback for enterprise host",
+			env:      map[string]string{"GITHUB_ENTERPRISE_TOKEN": "github_ghe_token"},
+			params:   map[string]interface{}{"repo": "owner/tool"},
+			wantAuth: "token github_ghe_token",
+		},
+		{
+			name:     "explicit project token still sent to configured enterprise host",
+			settings: GitHubSettings{Token: "project-enterprise-token"},
+			env:      map[string]string{"GH_ENTERPRISE_TOKEN": "ghe_token"},
+			params:   map[string]interface{}{"repo": "owner/tool"},
+			wantAuth: "token project-enterprise-token",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("GITHUB_TOKEN", tt.env["GITHUB_TOKEN"])
+			t.Setenv("GH_TOKEN", tt.env["GH_TOKEN"])
+			t.Setenv("GH_ENTERPRISE_TOKEN", tt.env["GH_ENTERPRISE_TOKEN"])
+			t.Setenv("GITHUB_ENTERPRISE_TOKEN", tt.env["GITHUB_ENTERPRISE_TOKEN"])
+
+			var gotAuth string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotAuth = r.Header.Get("Authorization")
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(githubRelease{TagName: "v1.0.0"})
+			}))
+			defer server.Close()
+
+			inst := NewGitHubInstaller(exec.NewMockRunner(), fs.NewMemFS(), downloader.NewDownloader(fs.NewMemFS(), nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			tt.settings.Host = server.URL
+			inst.SetGitHubSettings(tt.settings)
+			inst.httpClient = server.Client()
+
+			if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "tool", InstallParams: tt.params}); err != nil {
+				t.Fatalf("CheckUpdate failed: %v", err)
+			}
+			if gotAuth != tt.wantAuth {
+				t.Errorf("Authorization = %q, want %q", gotAuth, tt.wantAuth)
+			}
+		})
+	}
+}
