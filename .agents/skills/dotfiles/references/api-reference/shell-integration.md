@@ -307,13 +307,18 @@ Create symlinks for configuration files with `.symlink()`.
 ### Syntax
 
 ```typescript no-typecheck
-.symlink(source, target)
+.symlink(source, target, options?)
 ```
 
 | Parameter | Description                                                              |
 | --------- | ------------------------------------------------------------------------ |
 | `source`  | Path to source file/directory. `./` is relative to tool config directory |
 | `target`  | Absolute path for symlink. Use context variables or `~`                  |
+| `options` | Optional settings (`ISymlinkOptions`): `{ mode?: Mode }`                 |
+
+### Options
+
+A symbolic link carries no permission bits of its own on Unix filesystems. When `mode` is provided (e.g. `'0600'`), dotfiles enforces the permission bits on the link's source file in the repository. This guarantees sensitive files (such as SSH private keys or token files) have restrictive permissions without requiring an imperative `chmod` hook.
 
 ### Path Resolution
 
@@ -357,6 +362,9 @@ export default defineTool((install) =>
 // Configuration files
 .symlink('./gitconfig', '~/.gitconfig')
 
+// Sensitive files with permissions enforced on the source file
+.symlink('./id_ed25519', '~/.ssh/id_ed25519', { mode: '0600' })
+
 // Directories
 .symlink('./themes/', '~/.config/tool/themes')
 
@@ -384,10 +392,61 @@ Ensure directories exist with explicit permissions using `.ensureDir()`. Useful 
 
 ## Copies
 
-Copy static files or directory trees into place using `.copy()`.
+Copy static files or directory trees into place using `.copy()`. Use `.copy()` when the tool must own a real file (such as a file rewritten in place by the program, or when a tool refuses to follow symlinks) and [`.symlink()`](#symbolic-links) otherwise, so configuration changes remain versioned in the dotfiles repository.
+
+### Syntax
+
+```typescript no-typecheck
+.copy(source, target, options?)
+```
+
+| Parameter | Description                                                                      |
+| --------- | -------------------------------------------------------------------------------- |
+| `source`  | Path to source file or directory tree. `./` is relative to tool config directory |
+| `target`  | Destination file or directory path. Use context variables or `~`                 |
+| `options` | Optional settings (`ICopyOptions`): `{ mode?: Mode, conflict?: ConflictPolicy }` |
+
+### Path Resolution and Directories
+
+A relative `source` resolves against the directory containing the `.tool.ts` file; `target` expands `~` to the configured home directory.
+
+Copies can target a single file or an entire directory tree:
+
+- When copying a single file, a symlink at the target counts as a file dotfiles never wrote, so dotfiles never reads or writes through it.
+- When copying a directory, it is settled file by file: every directory in the source is created at the target (empty ones included), an edit to one file does not affect other files, and unmanaged files created inside the target directory that do not exist in the source are left alone. If a file or symlink sits where a source directory belongs, it is treated as an unmanaged entry dotfiles never wrote.
+
+### Drift Engine Settlement and Conflict Policies
+
+Copies are applied by `dotfiles generate` and again by `dotfiles install`. Each copied file is settled through the 3-way drift engine under its declared `conflict` policy against three versions: the repository version dotfiles last recorded, what is on disk now, and what the repository would write now.
+
+`dotfiles state diff` reports each copied file in the state the next run acts on (`in-sync`, `local-drift`, `upstream-update`, `conflict`, `missing`, or `unmanaged`).
+
+The `conflict` option (defaults to `'merge'`) controls how differences are resolved:
+
+- `merge` (the default): Merges line by line. Conflicting lines that cannot be merged automatically are marked with standard `<<<<<<<` conflict markers. If the file was edited locally but the repository has not changed, the local file is kept as local drift. Binary files that cannot be merged are kept with a warning.
+- `keep-local`: Preserves the local file on disk unchanged whenever it differs.
+- `overwrite`: Backs up the existing file to `<target>.bak` (or `<target>.bak.2` and upwards if the backup name exists) and replaces it with the repository source.
+- `prompt`: Keeps the local file unchanged and issues a warning to inspect and resolve differences with `dotfiles state diff`.
+
+See [Conflict Policies](#conflict-policies) for the complete 3-way settlement matrix.
+
+### Permissions (`mode`)
+
+The `mode` option sets the octal permission (e.g. `'0644'`, `'0600'`) enforced on every run on every copied file dotfiles owns. Without `mode`, a newly created file inherits the permission bits of its source file. A kept file that dotfiles never wrote is neither chmodded nor adopted.
+
+### Lifecycle and Cleanup
+
+A file removed from the source directory stops being declared, like the entire copy when its declaration is removed. On the next `dotfiles generate`:
+
+- A file that still matches what dotfiles wrote is removed.
+- A file that was edited locally since dotfiles wrote it is moved aside to a backup (`<target>.bak`).
+- A kept file that dotfiles never wrote is left untouched.
+- Only files are removed; directories created by a copy remain in place.
+
+### Example
 
 ```typescript builder
-.copy('config', '~/.config/tool/config', { mode: '0644', conflict: 'keep-local' })
+.copy('./config', '~/.config/tool/config', { mode: '0644', conflict: 'keep-local' })
 ```
 
 ## Managed Blocks

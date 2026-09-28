@@ -154,34 +154,6 @@ A `manual` or `curl-script` tool that sets `binaryPath` installs that one file a
 searches nothing, so a pattern cannot be combined with it; see
 [binaryPath and Binary Patterns](../installation-methods/manual.md#binarypath-and-binary-patterns).
 
-#### `.copy(src, dest)`
-
-Copies a file, or a directory and everything under it, to `dest`. A relative `src`
-resolves against the directory holding the `.tool.ts`; `dest` is expanded like any other
-path, so `~/` reaches the configured home directory.
-
-```typescript builder
-.copy('./config.toml', '~/.config/tool/config.toml')
-```
-
-Copies are applied by `dotfiles generate` and again by `dotfiles install`. Each copied
-file is settled under the `conflict` option, as described in
-[Conflict Policies](shell-integration.md#conflict-policies), and `dotfiles state diff`
-reports each one in the state the next run acts on. A symlink at the target counts as a
-file dotfiles never wrote, so the copy never reads or writes through it.
-
-A directory is settled file by file, so an edit to one file does not affect the others,
-and a file added inside the target that the source does not have is left alone. Every
-directory of the source is created at the target, empty ones included, and a file or
-symlink where one of them belongs counts as an entry dotfiles never wrote. A file
-removed from the source directory stops being declared, like the whole copy when the
-declaration is removed. `mode` is applied on every run to every copied file dotfiles
-owns; without it a newly created file starts with the permission of its source file.
-
-Use `.copy()` when the tool must own a real file -- something it rewrites in place, or a
-program that refuses to follow a symlink -- and [`.symlink()`](shell-integration.md#symbolic-links)
-otherwise, so edits stay in the dotfiles repository.
-
 #### `.updateCheck(config)`
 
 Records `{ enabled?: boolean, constraint?: string }` on the tool configuration.

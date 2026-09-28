@@ -138,7 +138,7 @@ install("github-release", { repo: "owner/tool" })
 ```
 
 Reference: [Symbolic Links](api-reference/shell-integration.md#symbolic-links) and
-[`.copy()`](api-reference/core-api.md#copysrc-dest).
+[`.copy()`](api-reference/shell-integration.md#copies).
 
 ### Step 5: Add Platform Support (only when needed)
 
