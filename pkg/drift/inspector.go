@@ -2,6 +2,7 @@ package drift
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,10 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
+
+func isNotExist(err error) bool {
+	return os.IsNotExist(err) || errors.Is(err, os.ErrNotExist)
+}
 
 // Item represents the drift status and diff for a single managed or declared artifact.
 type Item struct {
@@ -102,15 +107,31 @@ func (ins *Inspector) inspectSymlinks(ctx context.Context, tool *config.ToolConf
 		target := resolveTarget(sym.Target)
 		source := resolveSource(sym.Source)
 
-		recorded, _ := ins.reg.GetFileState(ctx, target)
+		var recorded *registry.FileState
+		if ins.reg != nil {
+			var err error
+			recorded, err = ins.reg.GetFileState(ctx, target)
+			if err != nil {
+				return nil, fmt.Errorf("tool %q: symlink target %q: %w", tool.Name, target, err)
+			}
+		}
 		base := ""
 		if recorded != nil && recorded.TargetPath != nil {
 			base = *recorded.TargetPath
 		}
 
 		current := ""
-		if isSym, _ := ins.isSymlink(target); isSym {
-			if linkTarget, err := ins.fs.Readlink(target); err == nil {
+		isSym, err := ins.isSymlink(target)
+		if err != nil {
+			return nil, fmt.Errorf("tool %q: symlink target %q: %w", tool.Name, target, err)
+		}
+		if isSym {
+			linkTarget, err := ins.fs.Readlink(target)
+			if err != nil {
+				if !isNotExist(err) {
+					return nil, fmt.Errorf("tool %q: symlink target %q: %w", tool.Name, target, err)
+				}
+			} else {
 				current = linkTarget
 			}
 		}
@@ -165,9 +186,16 @@ func (ins *Inspector) inspectCopies(ctx context.Context, tool *config.ToolConfig
 		source := resolveSource(cp.Source)
 
 		if _, err := ins.fs.Stat(source); err != nil {
+			if !isNotExist(err) {
+				return nil, fmt.Errorf("tool %q: copy source %q: %w", tool.Name, source, err)
+			}
 			// A missing source still gets an item, so the declaration that generate
 			// will fail on is visible in the report rather than silently absent.
-			items = append(items, ins.copyItem(ctx, tool.Name, CopyMember{Source: filepath.Clean(source), Target: filepath.Clean(target)}))
+			item, err := ins.copyItem(ctx, tool.Name, CopyMember{Source: filepath.Clean(source), Target: filepath.Clean(target)})
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
 			continue
 		}
 
@@ -184,7 +212,7 @@ func (ins *Inspector) inspectCopies(ctx context.Context, tool *config.ToolConfig
 			}
 			item, foreign, err := ins.foreignCopyItem(tool.Name, member.Target, member.Dir)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("tool %q: copy target %q: %w", tool.Name, member.Target, err)
 			}
 			switch {
 			case foreign:
@@ -193,7 +221,11 @@ func (ins *Inspector) inspectCopies(ctx context.Context, tool *config.ToolConfig
 				}
 				items = append(items, item)
 			case !member.Dir:
-				items = append(items, ins.copyItem(ctx, tool.Name, member))
+				item, err := ins.copyItem(ctx, tool.Name, member)
+				if err != nil {
+					return nil, err
+				}
+				items = append(items, item)
 			}
 		}
 	}
@@ -221,22 +253,37 @@ func (ins *Inspector) foreignCopyItem(toolName, target string, wantDir bool) (It
 }
 
 // copyItem measures one copied file against its source and its recorded base.
-func (ins *Inspector) copyItem(ctx context.Context, toolName string, member CopyMember) Item {
+func (ins *Inspector) copyItem(ctx context.Context, toolName string, member CopyMember) (Item, error) {
 	sourceData, err := ins.fs.ReadFile(member.Source)
 	desired := ""
 	sourceExists := err == nil
-	if sourceExists {
+	if err != nil {
+		if !isNotExist(err) {
+			return Item{}, fmt.Errorf("tool %q: copy target %q: reading source %q: %w", toolName, member.Target, member.Source, err)
+		}
+	} else {
 		desired = string(sourceData)
 	}
 
 	currentData, err := ins.fs.ReadFile(member.Target)
 	current := ""
 	currentExists := err == nil
-	if currentExists {
+	if err != nil {
+		if !isNotExist(err) {
+			return Item{}, fmt.Errorf("tool %q: copy target %q: %w", toolName, member.Target, err)
+		}
+	} else {
 		current = string(currentData)
 	}
 
-	recorded, _ := ins.reg.GetFileState(ctx, member.Target)
+	var recorded *registry.FileState
+	if ins.reg != nil {
+		var err error
+		recorded, err = ins.reg.GetFileState(ctx, member.Target)
+		if err != nil {
+			return Item{}, fmt.Errorf("tool %q: copy target %q: %w", toolName, member.Target, err)
+		}
+	}
 	baseHash := ""
 	if recorded != nil && recorded.ContentHash != nil {
 		baseHash = *recorded.ContentHash
@@ -270,7 +317,7 @@ func (ins *Inspector) copyItem(ctx context.Context, toolName string, member Copy
 		Diff:           diffText,
 		CurrentContent: current,
 		DesiredContent: desired,
-	}
+	}, nil
 }
 
 func (ins *Inspector) inspectTemplates(ctx context.Context, tool *config.ToolConfig, resolveTarget, resolveSource func(string) string) ([]Item, error) {
@@ -281,18 +328,37 @@ func (ins *Inspector) inspectTemplates(ctx context.Context, tool *config.ToolCon
 
 		raw, err := ins.fs.ReadFile(source)
 		desired := ""
-		if err == nil {
-			desired, _ = config.RenderTemplate(string(raw), tmpl.Variables, tool.Name, ins.projCfg)
+		if err != nil {
+			if !isNotExist(err) {
+				return nil, fmt.Errorf("tool %q: template target %q: reading source %q: %w", tool.Name, target, source, err)
+			}
+		} else {
+			var renderErr error
+			desired, renderErr = config.RenderTemplate(string(raw), tmpl.Variables, tool.Name, ins.projCfg)
+			if renderErr != nil {
+				return nil, fmt.Errorf("tool %q: template target %q: %w", tool.Name, target, renderErr)
+			}
 		}
 
 		currentData, err := ins.fs.ReadFile(target)
 		current := ""
 		currentExists := err == nil
-		if currentExists {
+		if err != nil {
+			if !isNotExist(err) {
+				return nil, fmt.Errorf("tool %q: template target %q: %w", tool.Name, target, err)
+			}
+		} else {
 			current = string(currentData)
 		}
 
-		recorded, _ := ins.reg.GetFileState(ctx, target)
+		var recorded *registry.FileState
+		if ins.reg != nil {
+			var err error
+			recorded, err = ins.reg.GetFileState(ctx, target)
+			if err != nil {
+				return nil, fmt.Errorf("tool %q: template target %q: %w", tool.Name, target, err)
+			}
+		}
 		baseHash := ""
 		if recorded != nil && recorded.ContentHash != nil {
 			baseHash = *recorded.ContentHash
@@ -337,15 +403,31 @@ func (ins *Inspector) inspectBlocks(ctx context.Context, tool *config.ToolConfig
 		currentContent := ""
 		currentBlockBody := ""
 		found := false
-		if data, err := ins.fs.ReadFile(target); err == nil {
+		data, err := ins.fs.ReadFile(target)
+		if err != nil {
+			if !isNotExist(err) {
+				return nil, fmt.Errorf("tool %q: block target %q: %w", tool.Name, target, err)
+			}
+		} else {
 			currentContent = string(data)
-			if reg, f, err := block.Find(currentContent, blk.ID); err == nil && f {
+			reg, f, findErr := block.Find(currentContent, blk.ID)
+			if findErr != nil {
+				return nil, fmt.Errorf("tool %q: block target %q: %w", tool.Name, target, findErr)
+			}
+			if f {
 				found = true
 				currentBlockBody = reg.Body
 			}
 		}
 
-		recorded, _ := ins.reg.GetBlockState(ctx, target, blk.ID)
+		var recorded *registry.FileState
+		if ins.reg != nil {
+			var err error
+			recorded, err = ins.reg.GetBlockState(ctx, target, blk.ID)
+			if err != nil {
+				return nil, fmt.Errorf("tool %q: block target %q: %w", tool.Name, target, err)
+			}
+		}
 		baseHash := ""
 		if recorded != nil && recorded.ContentHash != nil {
 			baseHash = *recorded.ContentHash
@@ -432,7 +514,7 @@ func (ins *Inspector) InspectAll(ctx context.Context, tools []*config.ToolConfig
 func (ins *Inspector) isSymlink(path string) (bool, error) {
 	info, err := ins.fs.Lstat(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if isNotExist(err) {
 			return false, nil
 		}
 		return false, err

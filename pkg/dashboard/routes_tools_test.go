@@ -314,3 +314,68 @@ func TestHandleDriftEndpoints(t *testing.T) {
 		t.Errorf("expected status 200 with error response, got %d", respNotFound.StatusCode)
 	}
 }
+
+func TestGetToolDetail_DriftInspectionFailure(t *testing.T) {
+	log := logger.New(logger.Config{Writer: io.Discard})
+	ctx := context.Background()
+	sqlDB, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to connect to db: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	tempDir := t.TempDir()
+
+	tmplSource := filepath.Join(tempDir, "unresolved.tmpl")
+	_ = os.WriteFile(tmplSource, []byte("val = {missing_var}\n"), 0644)
+
+	toolBroken := &config.ToolConfig{
+		Name: "broken-tool",
+		Templates: []config.TemplateConfig{
+			{
+				Source:    tmplSource,
+				Target:    filepath.Join(tempDir, "output.conf"),
+				Variables: map[string]any{},
+			},
+		},
+	}
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			DotfilesDir:    tempDir,
+			GeneratedDir:   filepath.Join(tempDir, ".generated"),
+			BinariesDir:    filepath.Join(tempDir, "binaries"),
+			TargetDir:      filepath.Join(tempDir, "bin"),
+			ToolConfigsDir: tempDir,
+		},
+	}
+
+	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, []*config.ToolConfig{toolBroken}, nil, nil)
+	if err := server.Start(); err != nil {
+		t.Fatalf("start server: %v", err)
+	}
+	defer server.Stop()
+
+	baseURL := fmt.Sprintf("http://127.0.0.1:%d", server.Port())
+
+	// GET /api/tools/:name must return success: false when drift inspection fails
+	resp, err := http.Get(baseURL + "/api/tools/broken-tool")
+	if err != nil {
+		t.Fatalf("GET /api/tools/broken-tool failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if body["success"] == true {
+		t.Fatalf("expected success: false for tool with failing drift inspection, got: %v", body)
+	}
+	errStr, _ := body["error"].(string)
+	if !strings.Contains(errStr, "broken-tool") {
+		t.Errorf("expected error message to contain tool name, got: %q", errStr)
+	}
+}

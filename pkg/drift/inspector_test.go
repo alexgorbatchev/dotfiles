@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -533,5 +535,257 @@ func TestCopyMembers(t *testing.T) {
 
 	if _, err := CopyMembers(mem, "/absent", "/dst"); err == nil {
 		t.Error("expected an error for a missing source")
+	}
+}
+
+type errorFS struct {
+	fs.FS
+	readTargetErr  map[string]error
+	lstatTargetErr map[string]error
+}
+
+func (e *errorFS) ReadFile(path string) ([]byte, error) {
+	if err, ok := e.readTargetErr[path]; ok {
+		return nil, err
+	}
+	return e.FS.ReadFile(path)
+}
+
+func (e *errorFS) Lstat(path string) (os.FileInfo, error) {
+	if err, ok := e.lstatTargetErr[path]; ok {
+		return nil, err
+	}
+	return e.FS.Lstat(path)
+}
+
+func TestInspector_Errors_ClosedRegistry(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	reg := registry.NewRegistry(database)
+	_ = database.Close()
+
+	mem := fs.NewMemFS()
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.HomeDir = "/home/user"
+	ins := NewInspector(mem, reg, projCfg)
+
+	t.Run("symlink with closed registry returns error", func(t *testing.T) {
+		tool := &config.ToolConfig{
+			Name: "sym-tool",
+			Symlinks: []config.SymlinkConfig{
+				{Source: "/repo/src", Target: "/home/user/target"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error from closed registry, got nil")
+		}
+		if !strings.Contains(err.Error(), "sym-tool") || !strings.Contains(err.Error(), "/home/user/target") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+
+	t.Run("copy with closed registry returns error", func(t *testing.T) {
+		_ = mem.WriteFile("/repo/src.txt", []byte("data"), 0644)
+		tool := &config.ToolConfig{
+			Name: "copy-tool",
+			Copies: []config.CopyConfig{
+				{Source: "/repo/src.txt", Target: "/home/user/target.txt"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error from closed registry, got nil")
+		}
+		if !strings.Contains(err.Error(), "copy-tool") || !strings.Contains(err.Error(), "/home/user/target.txt") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+
+	t.Run("template with closed registry returns error", func(t *testing.T) {
+		_ = mem.WriteFile("/repo/tmpl", []byte("hello"), 0644)
+		tool := &config.ToolConfig{
+			Name: "tmpl-tool",
+			Templates: []config.TemplateConfig{
+				{Source: "/repo/tmpl", Target: "/home/user/tmpl.txt"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error from closed registry, got nil")
+		}
+		if !strings.Contains(err.Error(), "tmpl-tool") || !strings.Contains(err.Error(), "/home/user/tmpl.txt") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+
+	t.Run("block with closed registry returns error", func(t *testing.T) {
+		_ = mem.WriteFile("/home/user/block.txt", []byte("data"), 0644)
+		tool := &config.ToolConfig{
+			Name: "block-tool",
+			Blocks: []config.BlockConfig{
+				{Target: "/home/user/block.txt", ID: "myblock", Content: "block body"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error from closed registry, got nil")
+		}
+		if !strings.Contains(err.Error(), "block-tool") || !strings.Contains(err.Error(), "/home/user/block.txt") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+}
+
+func TestInspector_Errors_UnreadableTarget(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.HomeDir = "/home/user"
+
+	t.Run("symlink unreadable target lstat fails InspectTool", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		efs := &errorFS{
+			FS: mem,
+			lstatTargetErr: map[string]error{
+				"/home/user/target": os.ErrPermission,
+			},
+		}
+		ins := NewInspector(efs, reg, projCfg)
+		tool := &config.ToolConfig{
+			Name: "sym-tool",
+			Symlinks: []config.SymlinkConfig{
+				{Source: "/repo/src", Target: "/home/user/target"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error for unreadable symlink target, got nil")
+		}
+		if !strings.Contains(err.Error(), "sym-tool") || !strings.Contains(err.Error(), "/home/user/target") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+
+	t.Run("copy unreadable target fails InspectTool", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		_ = mem.WriteFile("/repo/src.txt", []byte("hello"), 0644)
+		efs := &errorFS{
+			FS: mem,
+			readTargetErr: map[string]error{
+				"/home/user/target.txt": os.ErrPermission,
+			},
+		}
+		ins := NewInspector(efs, reg, projCfg)
+		tool := &config.ToolConfig{
+			Name: "copy-tool",
+			Copies: []config.CopyConfig{
+				{Source: "/repo/src.txt", Target: "/home/user/target.txt"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error for unreadable copy target, got nil")
+		}
+		if !strings.Contains(err.Error(), "copy-tool") || !strings.Contains(err.Error(), "/home/user/target.txt") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+
+	t.Run("template unreadable target fails InspectTool", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		_ = mem.WriteFile("/repo/tmpl", []byte("hello"), 0644)
+		efs := &errorFS{
+			FS: mem,
+			readTargetErr: map[string]error{
+				"/home/user/tmpl.txt": os.ErrPermission,
+			},
+		}
+		ins := NewInspector(efs, reg, projCfg)
+		tool := &config.ToolConfig{
+			Name: "tmpl-tool",
+			Templates: []config.TemplateConfig{
+				{Source: "/repo/tmpl", Target: "/home/user/tmpl.txt"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error for unreadable template target, got nil")
+		}
+		if !strings.Contains(err.Error(), "tmpl-tool") || !strings.Contains(err.Error(), "/home/user/tmpl.txt") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+
+	t.Run("block unreadable target fails InspectTool", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		efs := &errorFS{
+			FS: mem,
+			readTargetErr: map[string]error{
+				"/home/user/block.txt": os.ErrPermission,
+			},
+		}
+		ins := NewInspector(efs, reg, projCfg)
+		tool := &config.ToolConfig{
+			Name: "block-tool",
+			Blocks: []config.BlockConfig{
+				{Target: "/home/user/block.txt", ID: "myblock", Content: "body"},
+			},
+		}
+		_, err := ins.InspectTool(ctx, tool)
+		if err == nil {
+			t.Fatalf("expected error for unreadable block target, got nil")
+		}
+		if !strings.Contains(err.Error(), "block-tool") || !strings.Contains(err.Error(), "/home/user/block.txt") {
+			t.Errorf("expected error to name tool and target path, got: %v", err)
+		}
+	})
+}
+
+func TestInspector_Errors_TemplateRenderFailure(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+
+	mem := fs.NewMemFS()
+	projCfg := &config.ProjectConfig{}
+	projCfg.Paths.HomeDir = "/home/user"
+
+	_ = mem.MkdirAll("/repo/tools/tool", 0755)
+	if err := mem.WriteFile("/repo/tools/tool/tmpl", []byte("unresolved = {missing_var}\n"), 0644); err != nil {
+		t.Fatalf("failed to write tmpl: %v", err)
+	}
+
+	tool := &config.ToolConfig{
+		Name: "broken-tmpl-tool",
+		Templates: []config.TemplateConfig{
+			{
+				Source:    "/repo/tools/tool/tmpl",
+				Target:    "/home/user/.config/broken.conf",
+				Variables: map[string]any{},
+			},
+		},
+	}
+
+	ins := NewInspector(mem, reg, projCfg)
+	_, err = ins.InspectTool(ctx, tool)
+	if err == nil {
+		t.Fatalf("expected template render failure to fail InspectTool, got nil")
+	}
+	if !strings.Contains(err.Error(), "broken-tmpl-tool") || !strings.Contains(err.Error(), "/home/user/.config/broken.conf") {
+		t.Errorf("expected error to name tool and target path, got: %v", err)
 	}
 }

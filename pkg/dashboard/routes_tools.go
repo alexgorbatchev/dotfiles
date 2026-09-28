@@ -129,10 +129,19 @@ func toolFilesFromStates(states []*registry.FileState) []toolFile {
 }
 
 func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfig) (map[string]any, error) {
-	installRecord, _ := s.registry.GetToolInstallation(ctx, targetTool.Name)
-	fileStates, _ := s.registry.GetFileStatesForTool(ctx, targetTool.Name)
+	installRecord, err := s.registry.GetToolInstallation(ctx, targetTool.Name)
+	if err != nil {
+		return nil, fmt.Errorf("getting tool installation: %w", err)
+	}
+	fileStates, err := s.registry.GetFileStatesForTool(ctx, targetTool.Name)
+	if err != nil {
+		return nil, fmt.Errorf("getting file states: %w", err)
+	}
 	files := toolFilesFromStates(fileStates)
-	usages, _ := s.registry.GetToolUsagesForTool(ctx, targetTool.Name)
+	usages, err := s.registry.GetToolUsagesForTool(ctx, targetTool.Name)
+	if err != nil {
+		return nil, fmt.Errorf("getting tool usages: %w", err)
+	}
 
 	status := "not-installed"
 	var instVer *string
@@ -188,7 +197,10 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 	}
 
 	inspector := drift.NewInspector(s.fsys, s.registry, s.projectConfig)
-	driftItems, _ := inspector.InspectTool(ctx, targetTool)
+	driftItems, err := inspector.InspectTool(ctx, targetTool)
+	if err != nil {
+		return nil, fmt.Errorf("inspecting drift: %w", err)
+	}
 	if driftItems == nil {
 		driftItems = []drift.Item{}
 	}
@@ -216,7 +228,11 @@ func (s *Server) handleGetTools(w http.ResponseWriter, r *http.Request) {
 
 	tools := []map[string]any{}
 	for _, tc := range s.toolConfigs {
-		detail, _ := s.getToolDetail(ctx, tc)
+		detail, err := s.getToolDetail(ctx, tc)
+		if err != nil {
+			writeJSON(w, false, nil, err.Error())
+			return
+		}
 		tools = append(tools, detail)
 	}
 
@@ -244,7 +260,11 @@ func (s *Server) handleGetToolDetail(w http.ResponseWriter, r *http.Request, too
 		return
 	}
 
-	detail, _ := s.getToolDetail(ctx, targetTool)
+	detail, err := s.getToolDetail(ctx, targetTool)
+	if err != nil {
+		writeJSON(w, false, nil, err.Error())
+		return
+	}
 	writeJSON(w, true, detail, "")
 }
 
