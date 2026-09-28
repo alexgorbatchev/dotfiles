@@ -556,6 +556,7 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		Github: config.HostConfig{Host: githubAPI.URL, Cache: config.CacheConfig{Enabled: new(false)}},
 	}
 	pinned, latest := "v1.0.0", "latest"
+	disabled := false
 	toolConfigs := []*config.ToolConfig{
 		{Name: "pinned", Version: &pinned, InstallationMethod: mockInst.name},
 		{Name: "unpinned", Version: &latest, InstallationMethod: mockInst.name},
@@ -571,12 +572,18 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 			InstallationMethod: githubInst.name,
 			InstallParams:      map[string]any{"repo": "acme/param-latest", "version": "latest"},
 		},
+		{
+			Name:               "disabled-check",
+			Version:            &latest,
+			InstallationMethod: mockInst.name,
+			UpdateCheck:        &config.ToolConfigUpdateCheck{Enabled: &disabled},
+		},
 		// Pinned and never installed: the CLI reports such a tool as not installed.
 		{Name: "pinned-uninstalled", Version: &pinned, InstallationMethod: mockInst.name},
 	}
 	// Only an installed tool is updated, and a pinned one is refused only once it is
 	// installed, so the other tools start installed at an older release than upstream's.
-	for _, tool := range toolConfigs[:4] {
+	for _, tool := range toolConfigs[:5] {
 		if err := orch.InstallTool(ctx, tool.WithRequestedVersion("v1.0.0"), projCfg); err != nil {
 			t.Fatalf("installing %s: %v", tool.Name, err)
 		}
@@ -656,6 +663,27 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		}
 		if got := toolConfigs[2].InstallParams["version"]; got != "v2.1.0" {
 			t.Errorf("the pinned tool's version install parameter = %v, want the configured v2.1.0", got)
+		}
+	})
+
+	t.Run("a tool with updateCheck.enabled false is refused with 400 Bad Request", func(t *testing.T) {
+		checks, installs := mockInst.calls.Load(), mockInst.installs.Load()
+		status, body := update(t, "disabled-check")
+		if status != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d", status, http.StatusBadRequest)
+		}
+		if body["success"] != false {
+			t.Errorf("success = %v, want false for a refused update", body["success"])
+		}
+		errMsg := fmt.Sprint(body["error"])
+		if !strings.Contains(errMsg, "updateCheck.enabled") {
+			t.Errorf("error = %q, want containing updateCheck.enabled", errMsg)
+		}
+		if got := mockInst.calls.Load() - checks; got != 0 {
+			t.Errorf("the installer was asked for updates %d time(s); an enabled:false tool is refused before its check", got)
+		}
+		if got := mockInst.installs.Load() - installs; got != 0 {
+			t.Errorf("the installer installed %d time(s); an enabled:false tool must not be installed", got)
 		}
 	})
 

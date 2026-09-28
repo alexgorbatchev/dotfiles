@@ -167,6 +167,11 @@ When run without arguments, checks all installed tools for updates and installs 
 					continue
 				}
 
+				if !targetTool.UpdateCheckEnabled() {
+					toolLogs.report.Info(logger.Message("Skipping update: update checks are disabled in configuration"))
+					continue
+				}
+
 				if refusePinned(toolLogs.report, targetTool) {
 					continue
 				}
@@ -223,6 +228,10 @@ When run without arguments, checks all installed tools for updates and installs 
 			targetTool := config.FindTool(services.ToolConfigs, toolName)
 			if targetTool == nil {
 				return fmt.Errorf("tool %q not found in configuration", toolName)
+			}
+
+			if !targetTool.UpdateCheckEnabled() {
+				return fmt.Errorf("tool %q has update checks disabled via updateCheck.enabled", targetTool.Name)
 			}
 
 			installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)

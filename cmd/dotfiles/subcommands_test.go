@@ -2509,6 +2509,77 @@ func TestCheckUpdatesCommand_UpdateCheckSettings(t *testing.T) {
 	}
 }
 
+// TestUpdateCommand_UpdateCheckEnabled pins that bulk tool update skips a tool
+// with updateCheck.enabled: false without querying its installer, and targeted
+// update refuses it (#159).
+func TestUpdateCommand_UpdateCheckEnabled(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	const repoOff, repoUpd = "acme/uc-update-off", "acme/uc-update-upd"
+	var offRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "acme/uc-update-off") {
+			offRequests.Add(1)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/releases/latest") {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"tag_name": "v9.9.9", "assets": [{"name": %q, "browser_download_url": "%s/download/%s"}]}`,
+				releaseAssetName, "http://"+r.Host, releaseAssetName)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/"+releaseAssetName) {
+			w.Header().Set("Content-Type", "application/gzip")
+			_, _ = w.Write(createTestTarGz(t, map[string]string{"upd": "#!/bin/sh\necho upd v9.9.9\n"}))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+	u, _ := url.Parse(server.URL)
+	t.Setenv("MOCK_SERVER_PORT", u.Port())
+
+	p := newE2EProject(t, tsTools{
+		"off": fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q }).updateCheck({ enabled: false })`, repoOff, releaseAssetName),
+		"upd": fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q })`, repoUpd, releaseAssetName),
+	})
+	p.seedInstallation(t, "off", "v0.1.0", filepath.Join(p.Root, "installed", "off"))
+	p.seedInstallation(t, "upd", "v0.1.0", filepath.Join(p.Root, "installed", "upd"))
+
+	t.Run("bulk update skips enabled: false tool without querying installer", func(t *testing.T) {
+		out, err := p.run("tool", "update")
+		if err != nil {
+			t.Fatalf("tool update: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[off] Skipping update: update checks are disabled in configuration")
+		mustContain(t, "stderr", out.Stderr, "[upd] Successfully updated to version v9.9.9")
+		if got := offRequests.Load(); got != 0 {
+			t.Fatalf("installer for off was queried %d times; want 0", got)
+		}
+		if rec := p.installation(t, "off"); rec == nil || rec.Version != "v0.1.0" {
+			t.Fatalf("installation record for off = %+v, want untouched v0.1.0", rec)
+		}
+		if rec := p.installation(t, "upd"); rec == nil || rec.Version != "v9.9.9" {
+			t.Fatalf("installation record for upd = %+v, want updated v9.9.9", rec)
+		}
+	})
+
+	t.Run("targeted update refuses enabled: false tool", func(t *testing.T) {
+		offRequests.Store(0)
+		out, err := p.run("tool", "update", "off")
+		if err == nil {
+			t.Fatalf("expected tool update off to fail\n%s", out.Combined)
+		}
+		mustContain(t, "error", err.Error(), `tool "off" has update checks disabled via updateCheck.enabled`)
+		if got := offRequests.Load(); got != 0 {
+			t.Fatalf("installer for off was queried %d times; want 0", got)
+		}
+		if rec := p.installation(t, "off"); rec == nil || rec.Version != "v0.1.0" {
+			t.Fatalf("installation record for off = %+v, want untouched v0.1.0", rec)
+		}
+	})
+}
+
 // cargoUpstream is what newCratesServer publishes: the newest stable crates.io version of each
 // crate, and the latest GitHub release tag of each owner/repo.
 type cargoUpstream struct {

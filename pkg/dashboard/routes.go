@@ -9,7 +9,13 @@ import (
 
 // writeJSON writes a structured JSON response to the client.
 func writeJSON(w http.ResponseWriter, success bool, data any, errMsg string) {
+	writeJSONWithStatus(w, http.StatusOK, success, data, errMsg)
+}
+
+// writeJSONWithStatus writes a structured JSON response with an explicit HTTP status code.
+func writeJSONWithStatus(w http.ResponseWriter, status int, success bool, data any, errMsg string) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	var res map[string]any
 	if success {
 		res = map[string]any{

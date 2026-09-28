@@ -187,19 +187,19 @@ otherwise, so edits stay in the dotfiles repository.
 Records `{ enabled?: boolean, constraint?: string }` on the tool configuration.
 Platform overrides merge it field by field.
 
-`enabled: false` takes the tool out of update checks: `dotfiles tool check` skips it,
-and the dashboard reports no update for it without asking the installer. Omitted, it is
-checked.
+`enabled: false` takes the tool out of update checks and updates: `dotfiles tool check` skips it,
+bulk `dotfiles tool update` excludes it, targeted updates (`dotfiles tool update <tool>`
+and the dashboard update route) are refused, and the dashboard reports no update for it without
+asking the installer. Omitted, it is checked.
 
 `constraint` is a semver range (`^1.2.3`, `~1.2.0`, `>=1.0.0`, or an exact version) that
 bounds which releases count as an available update. A release outside the range is still
 reported as the latest version upstream, but not as an update: with `~1.2.0` installed at
 `1.2.3`, `1.2.9` is an update and `1.3.0` is not.
 
-Neither setting changes which version `dotfiles install` or `dotfiles update` installs.
-To hold a tool at one version, pin it with `.version()`, or with the version install
-parameter of a method that takes one: `dotfiles install` installs that version, and
-`dotfiles update` refuses the tool
+`dotfiles install` is unaffected by `updateCheck`. To hold a tool at one version, pin it
+with `.version()`, or with the version install parameter of a method that takes one:
+`dotfiles install` installs that version, and `dotfiles update` refuses the tool
 ([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
 
 ### Base Install Parameters

@@ -794,6 +794,11 @@ func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolNa
 		return
 	}
 
+	if !targetTool.UpdateCheckEnabled() {
+		writeJSONWithStatus(w, http.StatusBadRequest, false, nil, fmt.Sprintf("Tool %q has update checks disabled via updateCheck.enabled", toolName))
+		return
+	}
+
 	ctx := context.Background()
 	// Only an installed tool is updated, as the CLI's tool update <tool> refuses one that
 	// is not; the version it was installed at is what the update is measured against.
