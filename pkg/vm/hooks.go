@@ -3,10 +3,13 @@ package vm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -15,7 +18,48 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
+	"github.com/go-sourcemap/sourcemap"
 )
+
+// HookError represents a failure during a lifecycle hook's execution.
+// Error() returns a clean, single-line message naming the hook, the error message,
+// and the source location in the .tool.ts file:
+//
+//	hook "<event>" failed: <message> (<file>:<line>)
+//
+// The full JavaScript stack trace is preserved in Stack for trace logging.
+type HookError struct {
+	Event   string
+	Message string
+	File    string
+	Line    int
+	Stack   string
+}
+
+func (e *HookError) Error() string {
+	if e.File != "" && e.Line > 0 {
+		return fmt.Sprintf("hook %q failed: %s (%s:%d)", e.Event, e.Message, e.File, e.Line)
+	}
+	if e.File != "" {
+		return fmt.Sprintf("hook %q failed: %s (%s)", e.Event, e.Message, e.File)
+	}
+	return fmt.Sprintf("hook %q failed: %s", e.Event, e.Message)
+}
+
+func (e *HookError) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') && e.Stack != "" {
+			_, _ = io.WriteString(s, e.Error()+"\n"+e.Stack)
+			return
+		}
+		fallthrough
+	case 's':
+		_, _ = io.WriteString(s, e.Error())
+	case 'q':
+		_, _ = fmt.Fprintf(s, "%q", e.Error())
+	}
+}
 
 // Lifecycle events a tool can hook into. The installation reaches them in this order,
 // and each one carries the values that exist by the time it is reached.
@@ -148,7 +192,7 @@ func RunHook(
 		log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Running %s hook...", event)))
 	}
 
-	vm, err := evaluateToolFile(ctx, toolFileVM{
+	eval, err := evaluateToolFile(ctx, toolFileVM{
 		log:     log,
 		fsys:    fsys,
 		runner:  runner,
@@ -161,6 +205,7 @@ func RunHook(
 	if err != nil {
 		return err
 	}
+	vm := eval.vm
 
 	hookCtx, err = hookCtx.absolute(fsys)
 	if err != nil {
@@ -175,6 +220,30 @@ func RunHook(
 
 	what := fmt.Sprintf("%s hook for %q", event, tool.Name)
 	if _, err := settleInVM(vm, "__invokeHook(__hookToolName, __hookEvent, __hookEventContext)", what); err != nil {
+		outcomeVal := vm.Get("__vmOutcome")
+		if outcomeVal != nil && !goja.IsUndefined(outcomeVal) && !goja.IsNull(outcomeVal) {
+			outcome := outcomeVal.ToObject(vm)
+			if outcome.Get("settled").ToBoolean() {
+				errVal := outcome.Get("error")
+				if errVal != nil && !goja.IsNull(errVal) && !goja.IsUndefined(errVal) {
+					rawMsg := ""
+					if msgVal := outcome.Get("errorMessage"); msgVal != nil && !goja.IsNull(msgVal) && !goja.IsUndefined(msgVal) {
+						rawMsg = msgVal.String()
+					}
+					rawStack := ""
+					if stackVal := outcome.Get("errorStack"); stackVal != nil && !goja.IsNull(stackVal) && !goja.IsUndefined(stackVal) {
+						rawStack = stackVal.String()
+					}
+					return newHookError(event, tool, eval.sourceMap, rawMsg, rawStack)
+				}
+			}
+		}
+		var ex *goja.Exception
+		if errors.As(err, &ex) {
+			rawMsg := ex.Value().String()
+			rawStack := ex.String()
+			return newHookError(event, tool, eval.sourceMap, rawMsg, rawStack)
+		}
 		return err
 	}
 	return nil
@@ -199,14 +268,20 @@ type toolFileVM struct {
 	purpose string
 }
 
+// evaluatedToolFile holds the VM and the source map from evaluating a tool configuration file.
+type evaluatedToolFile struct {
+	vm        *goja.Runtime
+	sourceMap []byte
+}
+
 // evaluateToolFile builds the VM and evaluates the tool's configuration file in it.
-func evaluateToolFile(ctx context.Context, req toolFileVM) (*goja.Runtime, error) {
+func evaluateToolFile(ctx context.Context, req toolFileVM) (*evaluatedToolFile, error) {
 	tool := req.tool
 	if tool.ConfigFilePath == "" {
 		return nil, fmt.Errorf("tool %q needs its configuration file for the %s but has no path to it", tool.Name, req.purpose)
 	}
 
-	jsContent, err := compileFile(tool.ConfigFilePath)
+	script, err := compileFileWithSourceMap(tool.ConfigFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("compiling %q for its %s: %w", tool.ConfigFilePath, req.purpose, err)
 	}
@@ -274,7 +349,7 @@ func evaluateToolFile(ctx context.Context, req toolFileVM) (*goja.Runtime, error
 	_ = vm.Set("exports", exportsObj)
 
 	// Evaluating the tool file registers its handlers and resolvers.
-	if _, err := vm.RunString(jsContent); err != nil {
+	if _, err := vm.RunString(script.code); err != nil {
 		return nil, fmt.Errorf("evaluating %q for its %s: %w", tool.ConfigFilePath, req.purpose, err)
 	}
 	// An asynchronous factory hands the builder back rather than its promise, so nothing
@@ -286,7 +361,10 @@ func evaluateToolFile(ctx context.Context, req toolFileVM) (*goja.Runtime, error
 	if err := settleToolFactories(vm); err != nil {
 		return nil, err
 	}
-	return vm, nil
+	return &evaluatedToolFile{
+		vm:        vm,
+		sourceMap: script.sourceMap,
+	}, nil
 }
 
 // setProcessEnvGlobal exposes the CLI process's environment as `process.env`, the only
@@ -315,7 +393,7 @@ func setProcessEnvGlobal(vm *goja.Runtime) {
 // configuration supplied, so nothing a tool author writes is spliced into the script.
 func settleInVM(vm *goja.Runtime, expression, what string) (string, error) {
 	script := `
-		globalThis.__vmOutcome = { settled: false, error: null, value: "" };
+		globalThis.__vmOutcome = { settled: false, error: null, errorMessage: "", errorStack: "", value: "" };
 		Promise.resolve(` + expression + `).then(
 			function (v) {
 				__vmOutcome.settled = true;
@@ -326,7 +404,20 @@ func settleInVM(vm *goja.Runtime, expression, what string) (string, error) {
 			},
 			function (e) {
 				__vmOutcome.settled = true;
-				__vmOutcome.error = (e && (e.stack || e.message)) ? String(e.stack || e.message) : String(e);
+				var msg = "";
+				var stack = "";
+				if (e instanceof Error || (typeof e === "object" && e !== null)) {
+					msg = e.message ? String(e.message) : (e.name ? String(e.name) : String(e));
+					stack = e.stack ? String(e.stack) : "";
+				} else {
+					msg = String(e);
+				}
+				if (!stack) {
+					stack = msg;
+				}
+				__vmOutcome.error = stack;
+				__vmOutcome.errorMessage = msg;
+				__vmOutcome.errorStack = stack;
 			}
 		);
 	`
@@ -348,6 +439,80 @@ func settleInVM(vm *goja.Runtime, expression, what string) (string, error) {
 		return "", fmt.Errorf("%s failed: %s", what, errVal.String())
 	}
 	return outcome.Get("value").String(), nil
+}
+
+var gojaFramePosRegex = regexp.MustCompile(`:(\d+):(\d+)`)
+
+func newHookError(event string, tool *config.ToolConfig, sourceMap []byte, rawMsg, rawStack string) *HookError {
+	msg := formatSingleLine(rawMsg)
+	if msg == "" && rawStack != "" {
+		firstLine, _, _ := strings.Cut(rawStack, "\n")
+		msg = formatSingleLine(firstLine)
+	}
+	msg = strings.TrimPrefix(msg, "Error: ")
+	if msg == "" {
+		msg = "failed"
+	}
+
+	file := ""
+	if tool != nil && tool.ConfigFilePath != "" {
+		file = filepath.Base(tool.ConfigFilePath)
+	}
+	line := 0
+
+	if len(sourceMap) > 0 && rawStack != "" {
+		consumer, err := sourcemap.Parse("", sourceMap)
+		if err == nil {
+			lines := strings.Split(rawStack, "\n")
+			for _, l := range lines {
+				if !strings.Contains(l, "at ") {
+					continue
+				}
+				matches := gojaFramePosRegex.FindStringSubmatch(l)
+				if len(matches) < 3 {
+					continue
+				}
+				genLine, err1 := strconv.Atoi(matches[1])
+				genCol, err2 := strconv.Atoi(matches[2])
+				if err1 != nil || err2 != nil {
+					continue
+				}
+				src, _, srcLine, _, ok := consumer.Source(genLine, genCol)
+				if !ok || srcLine <= 0 {
+					continue
+				}
+				if strings.Contains(src, ".tool.") {
+					file = filepath.Base(src)
+					line = srcLine
+					break
+				}
+				if line == 0 && !strings.Contains(src, "loader-api") {
+					file = filepath.Base(src)
+					line = srcLine
+				}
+			}
+		}
+	}
+
+	return &HookError{
+		Event:   event,
+		Message: msg,
+		File:    file,
+		Line:    line,
+		Stack:   strings.TrimRight(rawStack, "\n"),
+	}
+}
+
+func formatSingleLine(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	var parts []string
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l != "" {
+			parts = append(parts, l)
+		}
+	}
+	return strings.Join(parts, ": ")
 }
 
 // hookWorkingDir decides where a hook's commands run.

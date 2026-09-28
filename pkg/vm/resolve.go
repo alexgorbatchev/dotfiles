@@ -63,7 +63,7 @@ func ResolveInstallParam(ctx context.Context, req ResolveRequest) (json.RawMessa
 	}
 
 	purpose := fmt.Sprintf("%s install parameter", req.Param)
-	vm, err := evaluateToolFile(ctx, toolFileVM{
+	eval, err := evaluateToolFile(ctx, toolFileVM{
 		log:     req.Log,
 		fsys:    req.FS,
 		runner:  req.Runner,
@@ -75,6 +75,7 @@ func ResolveInstallParam(ctx context.Context, req ResolveRequest) (json.RawMessa
 	if err != nil {
 		return nil, err
 	}
+	vm := eval.vm
 
 	resolverContext := req.Context
 	if resolverContext == nil {

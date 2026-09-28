@@ -196,6 +196,19 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 }
 
 func compileFile(entryPath string) (string, error) {
+	script, err := compileFileWithSourceMap(entryPath)
+	if err != nil {
+		return "", err
+	}
+	return script.code, nil
+}
+
+type compiledScript struct {
+	code      string
+	sourceMap []byte
+}
+
+func compileFileWithSourceMap(entryPath string) (compiledScript, error) {
 	resolverPlugin := api.Plugin{
 		Name: "resolver",
 		Setup: func(build api.PluginBuild) {
@@ -271,6 +284,8 @@ func compileFile(entryPath string) (string, error) {
 		LogLevel:    api.LogLevelSilent,
 		Format:      api.FormatCommonJS,
 		Target:      api.ES2015,
+		Sourcemap:   api.SourceMapExternal,
+		Outfile:     "bundle.js",
 	})
 
 	if len(result.Errors) > 0 {
@@ -278,15 +293,22 @@ func compileFile(entryPath string) (string, error) {
 		for _, e := range result.Errors {
 			msgs = append(msgs, e.Text)
 		}
-		return "", fmt.Errorf("esbuild compile errors: %s", strings.Join(msgs, "; "))
+		return compiledScript{}, fmt.Errorf("esbuild compile errors: %s", strings.Join(msgs, "; "))
 	}
 
 	if len(result.OutputFiles) == 0 {
-		return "", fmt.Errorf("esbuild compile output is empty")
+		return compiledScript{}, fmt.Errorf("esbuild compile output is empty")
 	}
 
-	code := string(result.OutputFiles[0].Contents)
-	return code, nil
+	var script compiledScript
+	for _, file := range result.OutputFiles {
+		if strings.HasSuffix(file.Path, ".map") {
+			script.sourceMap = file.Contents
+		} else {
+			script.code = string(file.Contents)
+		}
+	}
+	return script, nil
 }
 
 func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configPath string, target Target) (*config.ProjectConfig, error) {

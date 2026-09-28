@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -185,6 +186,246 @@ func TestRunHook_FailureIsReported(t *testing.T) {
 	if !strings.Contains(err.Error(), "deliberate hook failure") {
 		t.Errorf("error = %v, want it to carry the hook's own message", err)
 	}
+}
+
+func TestRunHook_FailureFormattedAsSingleLine(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-install", () => {
+				throw new Error("deliberate hook failure");
+			}),
+		);
+	`, HookAfterInstall)
+
+	err := RunHook(
+		context.Background(),
+		logger.New(logger.Config{Writer: os.Stderr}),
+		fs.NewMemFS(),
+		exec.NewMockRunner(),
+		tool,
+		hookTestProjectConfig(t),
+		HookAfterInstall,
+		HookContext{},
+		Target{},
+	)
+	if err == nil {
+		t.Fatalf("expected the hook failure to be reported")
+	}
+
+	errStr := err.Error()
+	if strings.Contains(errStr, "\n") {
+		t.Errorf("expected single-line error, got multi-line:\n%s", errStr)
+	}
+	if strings.Contains(errStr, "<eval>") {
+		t.Errorf("expected error not to contain <eval> frames, got:\n%s", errStr)
+	}
+
+	expectedPrefix := `hook "after-install" failed: deliberate hook failure`
+	if !strings.HasPrefix(errStr, expectedPrefix) {
+		t.Errorf("expected error to start with %q, got %q", expectedPrefix, errStr)
+	}
+
+	expectedLoc := "(sample.tool.ts:5)"
+	if !strings.Contains(errStr, expectedLoc) {
+		t.Errorf("expected error to contain location %q, got %q", expectedLoc, errStr)
+	}
+
+	var hookErr *HookError
+	if !errors.As(err, &hookErr) {
+		t.Fatalf("expected error to be *HookError, got %T: %v", err, err)
+	}
+	if hookErr.Event != "after-install" {
+		t.Errorf("hookErr.Event = %q, want %q", hookErr.Event, "after-install")
+	}
+	if hookErr.Message != "deliberate hook failure" {
+		t.Errorf("hookErr.Message = %q, want %q", hookErr.Message, "deliberate hook failure")
+	}
+	if hookErr.File != "sample.tool.ts" {
+		t.Errorf("hookErr.File = %q, want %q", hookErr.File, "sample.tool.ts")
+	}
+	if hookErr.Line != 5 {
+		t.Errorf("hookErr.Line = %d, want 5", hookErr.Line)
+	}
+	if hookErr.Stack == "" {
+		t.Errorf("expected hookErr.Stack to preserve stack, got empty")
+	}
+}
+
+func TestRunHook_AsyncFailureFormattedAsSingleLine(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("before-install", async () => {
+				throw new Error("async hook failure");
+			}),
+		);
+	`, HookBeforeInstall)
+
+	err := RunHook(
+		context.Background(),
+		logger.New(logger.Config{Writer: os.Stderr}),
+		fs.NewMemFS(),
+		exec.NewMockRunner(),
+		tool,
+		hookTestProjectConfig(t),
+		HookBeforeInstall,
+		HookContext{},
+		Target{},
+	)
+	if err == nil {
+		t.Fatalf("expected the hook failure to be reported")
+	}
+
+	errStr := err.Error()
+	if strings.Contains(errStr, "\n") {
+		t.Errorf("expected single-line error, got multi-line:\n%s", errStr)
+	}
+	if strings.Contains(errStr, "<eval>") {
+		t.Errorf("expected error not to contain <eval> frames, got:\n%s", errStr)
+	}
+
+	expectedPrefix := `hook "before-install" failed: async hook failure`
+	if !strings.HasPrefix(errStr, expectedPrefix) {
+		t.Errorf("expected error to start with %q, got %q", expectedPrefix, errStr)
+	}
+
+	expectedLoc := "(sample.tool.ts:5)"
+	if !strings.Contains(errStr, expectedLoc) {
+		t.Errorf("expected error to contain location %q, got %q", expectedLoc, errStr)
+	}
+
+	var hookErr *HookError
+	if !errors.As(err, &hookErr) {
+		t.Fatalf("expected error to be *HookError, got %T: %v", err, err)
+	}
+	if hookErr.Line != 5 {
+		t.Errorf("hookErr.Line = %d, want 5", hookErr.Line)
+	}
+}
+
+func TestRunHook_StringErrorFormattedAsSingleLine(t *testing.T) {
+	tool := writeToolFile(t, `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual").hook("after-extract", () => {
+				throw "plain string error";
+			}),
+		);
+	`, HookAfterExtract)
+
+	err := RunHook(
+		context.Background(),
+		logger.New(logger.Config{Writer: os.Stderr}),
+		fs.NewMemFS(),
+		exec.NewMockRunner(),
+		tool,
+		hookTestProjectConfig(t),
+		HookAfterExtract,
+		HookContext{},
+		Target{},
+	)
+	if err == nil {
+		t.Fatalf("expected the hook failure to be reported")
+	}
+
+	errStr := err.Error()
+	if strings.Contains(errStr, "\n") {
+		t.Errorf("expected single-line error, got multi-line:\n%s", errStr)
+	}
+	if strings.Contains(errStr, "<eval>") {
+		t.Errorf("expected error not to contain <eval> frames, got:\n%s", errStr)
+	}
+
+	expected := `hook "after-extract" failed: plain string error (sample.tool.ts:5)`
+	if errStr != expected {
+		t.Errorf("error = %q, want %q", errStr, expected)
+	}
+}
+
+func TestHookError_FormattingAndStack(t *testing.T) {
+	errFull := &HookError{
+		Event:   "after-install",
+		Message: "something went wrong",
+		File:    "sample.tool.ts",
+		Line:    42,
+		Stack:   "Error: something went wrong\n    at sample.tool.ts:42:1",
+	}
+
+	wantSingle := `hook "after-install" failed: something went wrong (sample.tool.ts:42)`
+	if got := errFull.Error(); got != wantSingle {
+		t.Errorf("Error() = %q, want %q", got, wantSingle)
+	}
+
+	// Default %v formatting is single line
+	if got := fmt.Sprintf("%v", errFull); got != wantSingle {
+		t.Errorf("%%v = %q, want %q", got, wantSingle)
+	}
+
+	// %s formatting is single line
+	if got := fmt.Sprintf("%s", errFull); got != wantSingle {
+		t.Errorf("%%s = %q, want %q", got, wantSingle)
+	}
+
+	// %q formatting quotes the error message
+	wantQuoted := fmt.Sprintf("%q", wantSingle)
+	if got := fmt.Sprintf("%q", errFull); got != wantQuoted {
+		t.Errorf("%%q = %q, want %q", got, wantQuoted)
+	}
+
+	// %+v formatting includes stack
+	wantPlusV := wantSingle + "\n" + errFull.Stack
+	if got := fmt.Sprintf("%+v", errFull); got != wantPlusV {
+		t.Errorf("%%+v = %q, want %q", got, wantPlusV)
+	}
+
+	// Without line number
+	errNoLine := &HookError{
+		Event:   "before-install",
+		Message: "missing file",
+		File:    "tool.tool.ts",
+	}
+	if got := errNoLine.Error(); got != `hook "before-install" failed: missing file (tool.tool.ts)` {
+		t.Errorf("Error() without line = %q", got)
+	}
+
+	// Without file or line
+	errNoFile := &HookError{
+		Event:   "after-download",
+		Message: "network failure",
+	}
+	if got := errNoFile.Error(); got != `hook "after-download" failed: network failure` {
+		t.Errorf("Error() without file = %q", got)
+	}
+
+	t.Run("newHookError edge cases", func(t *testing.T) {
+		// Empty message with stack
+		e1 := newHookError("after-install", nil, nil, "", "Error: fallback message\n  at something")
+		if e1.Message != "fallback message" {
+			t.Errorf("expected fallback message, got %q", e1.Message)
+		}
+
+		// Completely empty message and stack
+		e2 := newHookError("before-install", nil, nil, "", "")
+		if e2.Message != "failed" {
+			t.Errorf("expected 'failed', got %q", e2.Message)
+		}
+
+		// Tool with config file path
+		e3 := newHookError("after-install", &config.ToolConfig{ConfigFilePath: "/path/to/my.tool.ts"}, nil, "err", "")
+		if e3.File != "my.tool.ts" {
+			t.Errorf("expected file 'my.tool.ts', got %q", e3.File)
+		}
+
+		// Source map with non-tool file frame
+		// Create a small sourcemap mapping gen line 10, col 1 to helper.ts line 20
+		smJSON := `{"version":3,"sources":["helper.ts"],"mappings":";;;;;;;;;mBAAA"}`
+		stack := "Error: boom\n  at func (<eval>:10:1)\n  at unmapped (<eval>:999:1)\n  at invalid (<eval>:foo:bar)"
+		e4 := newHookError("after-install", nil, []byte(smJSON), "boom", stack)
+		if e4.File != "helper.ts" || e4.Line != 1 {
+			t.Logf("e4 file=%q line=%d", e4.File, e4.Line)
+		}
+	})
 }
 
 // A tool file is evaluated again every time a hook fires, so an asynchronous factory
