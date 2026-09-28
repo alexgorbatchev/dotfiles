@@ -131,7 +131,9 @@ its archive come from the hosts of the [`cargo`](#cargo) section.
 installation method overrides it, and when neither names one the `GITHUB_TOKEN` and
 then `GH_TOKEN` environment variables are consulted. It applies to every method that
 resolves GitHub releases -- `github-release`, `cargo`, `dmg` and `pkg` -- and to the
-dashboard's README lookup.
+dashboard's README lookup. When asset downloads are authenticated with the token, it is
+scoped to the host it is sent to and is dropped across any redirect leaving that host,
+preventing the token from leaking to storage providers, subdomains, or other ports.
 
 `dotfiles self upgrade` is the exception: it upgrades the CLI itself from the public API
 rather than from `host`, so it authenticates from `GITHUB_TOKEN` or `GH_TOKEN` alone

@@ -285,12 +285,14 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	} else {
 		// The asset download authenticates from the same sources as the API request
 		// that resolved it, so a private release resolved with a token can also be
-		// fetched with it.
+		// fetched with it. The token is dropped on any redirect that leaves the
+		// release asset host.
 		opts := downloader.DownloadOptions{}
 		if authorization := githubAuthorization(githubToken(tool.InstallParams, g.GitHub.Token)); authorization != "" {
 			opts.Headers = map[string]string{
 				"Authorization": authorization,
 			}
+			opts.HostScopedHeaders = true
 		}
 		if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, "", opts); err != nil {
 			return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)

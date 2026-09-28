@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1090,6 +1091,109 @@ func TestGitHubCacheEnabledGovernsReleaseMetadata(t *testing.T) {
 			}
 			if requests != tt.wantRequests {
 				t.Errorf("API was called %d times, want %d", requests, tt.wantRequests)
+			}
+		})
+	}
+}
+
+// TestGitHubAssetDownloadTokensDoNotFollowRedirects pins that when an asset download
+// redirects to a different server/port, the Authorization header is not forwarded to
+// the target, but is sent to the initial host.
+func TestGitHubAssetDownloadTokensDoNotFollowRedirects(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "")
+	t.Setenv("GH_TOKEN", "")
+
+	tests := []struct {
+		name     string
+		settings GitHubSettings
+		params   map[string]interface{}
+		wantAuth string
+	}{
+		{
+			name:     "tool token sent to initial host and dropped on redirect",
+			params:   map[string]interface{}{"repo": "owner/redirect-tool", "token": "tool-secret"},
+			wantAuth: "token tool-secret",
+		},
+		{
+			name:     "project token sent to initial host and dropped on redirect",
+			settings: GitHubSettings{Token: "project-secret"},
+			params:   map[string]interface{}{"repo": "owner/redirect-tool"},
+			wantAuth: "token project-secret",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mu sync.Mutex
+			originAuth := make(map[string]string)
+			storageAuth := make(map[string]string)
+
+			storage := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				storageAuth[r.URL.Path] = r.Header.Get("Authorization")
+				mu.Unlock()
+				_, _ = w.Write([]byte("binary-payload"))
+			}))
+			defer storage.Close()
+
+			origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				originAuth[r.URL.Path] = r.Header.Get("Authorization")
+				mu.Unlock()
+
+				switch {
+				case r.URL.Path == "/repos/owner/redirect-tool/releases/latest":
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(githubRelease{
+						TagName: "v1.0.0",
+						Assets: []githubAsset{
+							{
+								Name:               "redirect-tool-linux-amd64",
+								BrowserDownloadURL: "http://" + r.Host + "/download/redirect-tool-linux-amd64",
+							},
+						},
+					})
+				case r.URL.Path == "/download/redirect-tool-linux-amd64":
+					http.Redirect(w, r, storage.URL+"/storage/redirect-tool-linux-amd64", http.StatusFound)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer origin.Close()
+
+			runner := exec.NewMockRunner()
+			memFS := fs.NewMemFS()
+			dl := downloader.NewDownloader(memFS, nil)
+			dl.CacheEnabled = false
+			inst := NewGitHubInstaller(runner, memFS, dl, &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.SetGitHubSettings(tt.settings)
+			inst.httpClient = origin.Client()
+			inst.BaseURL = origin.URL
+			inst.BinDir = "/test/bin"
+
+			tool := &config.ToolConfig{
+				Name:          "redirect-tool",
+				InstallParams: tt.params,
+			}
+
+			res, err := inst.Install(context.Background(), tool)
+			if err != nil {
+				t.Fatalf("Install failed: %v", err)
+			}
+			if len(res.Binaries) != 1 || res.Binaries[0] != "redirect-tool" {
+				t.Fatalf("Install returned binaries %v, want [redirect-tool]", res.Binaries)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			if got := originAuth["/download/redirect-tool-linux-amd64"]; got != tt.wantAuth {
+				t.Errorf("origin download received Authorization %q, want %q", got, tt.wantAuth)
+			}
+			if got, ok := storageAuth["/storage/redirect-tool-linux-amd64"]; !ok {
+				t.Errorf("storage download was not reached")
+			} else if got != "" {
+				t.Errorf("redirect target received Authorization %q, want empty", got)
 			}
 		})
 	}
