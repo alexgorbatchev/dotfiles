@@ -246,6 +246,9 @@ func TestReleaseInstallers_RequireRepo(t *testing.T) {
 		{name: "no repo", wantErr: "repository 'repo' is required in installParams"},
 		{name: "an empty repo", repo: "", wantErr: "repository 'repo' is required in installParams"},
 		{name: "a repo without an owner", repo: "tool", wantErr: `invalid repository format "tool". Expected 'owner/repo'`},
+		{name: "a repo with a trailing slash", repo: "owner/", wantErr: `invalid repository format "owner/". Expected 'owner/repo'`},
+		{name: "a repo with a leading slash", repo: "/repo", wantErr: `invalid repository format "/repo". Expected 'owner/repo'`},
+		{name: "a repo with only a slash", repo: "/", wantErr: `invalid repository format "/". Expected 'owner/repo'`},
 	}
 	for _, ri := range installers {
 		for _, rp := range repos {
@@ -268,5 +271,35 @@ func TestReleaseInstallers_RequireRepo(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestValidateReleaseRepo(t *testing.T) {
+	tests := []struct {
+		name    string
+		repo    string
+		wantErr string
+	}{
+		{name: "empty repo", repo: "", wantErr: "repository 'repo' is required in installParams"},
+		{name: "no slash", repo: "tool", wantErr: `invalid repository format "tool". Expected 'owner/repo'`},
+		{name: "trailing slash", repo: "owner/", wantErr: `invalid repository format "owner/". Expected 'owner/repo'`},
+		{name: "leading slash", repo: "/repo", wantErr: `invalid repository format "/repo". Expected 'owner/repo'`},
+		{name: "only slash", repo: "/", wantErr: `invalid repository format "/". Expected 'owner/repo'`},
+		{name: "multiple slashes", repo: "owner/repo/extra", wantErr: `invalid repository format "owner/repo/extra". Expected 'owner/repo'`},
+		{name: "valid repo", repo: "owner/repo", wantErr: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateReleaseRepo(tt.repo)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("validateReleaseRepo(%q) = %v, want nil", tt.repo, err)
+				}
+			} else {
+				if err == nil || err.Error() != tt.wantErr {
+					t.Fatalf("validateReleaseRepo(%q) error = %v, want %q", tt.repo, err, tt.wantErr)
+				}
+			}
+		})
 	}
 }

@@ -211,4 +211,104 @@ func TestZshPluginInstaller(t *testing.T) {
 			t.Errorf("expected ShellInit %q, got %q", expectedShellInit, res.ShellInit)
 		}
 	})
+
+	t.Run("Derivation of pluginName with empty owner or repo", func(t *testing.T) {
+		runner.Clear()
+		fsys = fs.NewMemFS()
+		inst = NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/test/plugins"
+
+		runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+			if len(c.Args) > 0 && c.Args[0] == "clone" {
+				dest := c.Args[len(c.Args)-1]
+				_ = fsys.MkdirAll(dest, 0755)
+				_ = fsys.WriteFile(filepath.Join(dest, "plugin.zsh"), []byte("echo hello"), 0644)
+			}
+			return nil
+		})
+
+		// empty repo after slash: "owner/"
+		tool := &config.ToolConfig{
+			Name: "my-plugin",
+			InstallParams: map[string]interface{}{
+				"repo": "owner/",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expectedShellInit := `source "/test/plugins/my-plugin/plugin.zsh"`
+		if res.ShellInit != expectedShellInit {
+			t.Errorf("expected ShellInit %q, got %q", expectedShellInit, res.ShellInit)
+		}
+
+		// empty owner before slash: "/custom-plugin"
+		toolLeadingSlash := &config.ToolConfig{
+			Name: "fallback-name",
+			InstallParams: map[string]interface{}{
+				"repo": "/custom-plugin",
+			},
+		}
+		res2, err := inst.Install(context.Background(), toolLeadingSlash)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expectedShellInit2 := `source "/test/plugins/custom-plugin/plugin.zsh"`
+		if res2.ShellInit != expectedShellInit2 {
+			t.Errorf("expected ShellInit %q, got %q", expectedShellInit2, res2.ShellInit)
+		}
+
+		// both empty: "/"
+		toolOnlySlash := &config.ToolConfig{
+			Name: "slash-tool",
+			InstallParams: map[string]interface{}{
+				"repo": "/",
+			},
+		}
+		res3, err := inst.Install(context.Background(), toolOnlySlash)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expectedShellInit3 := `source "/test/plugins/slash-tool/plugin.zsh"`
+		if res3.ShellInit != expectedShellInit3 {
+			t.Errorf("expected ShellInit %q, got %q", expectedShellInit3, res3.ShellInit)
+		}
+
+		// url with trailing slash: "https://github.com/foo/bar-plugin/"
+		toolTrailingURL := &config.ToolConfig{
+			Name: "url-fallback",
+			InstallParams: map[string]interface{}{
+				"url": "https://github.com/foo/bar-plugin/",
+			},
+		}
+		res4, err := inst.Install(context.Background(), toolTrailingURL)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expectedShellInit4 := `source "/test/plugins/bar-plugin/plugin.zsh"`
+		if res4.ShellInit != expectedShellInit4 {
+			t.Errorf("expected ShellInit %q, got %q", expectedShellInit4, res4.ShellInit)
+		}
+
+		// Uninstall with empty pluginName param safely removes tool.Name path instead of destDir
+		toolEmptyParam := &config.ToolConfig{
+			Name: "safe-uninstall-tool",
+			InstallParams: map[string]interface{}{
+				"pluginName": "",
+			},
+		}
+		uninstallPath := filepath.Join(inst.BinDir, "safe-uninstall-tool")
+		_ = fsys.MkdirAll(uninstallPath, 0755)
+		if err := inst.Uninstall(context.Background(), toolEmptyParam, Installation{}); err != nil {
+			t.Fatalf("unexpected uninstall error: %v", err)
+		}
+		if ex, _ := fsys.Exists(inst.BinDir); !ex {
+			t.Fatalf("expected plugins directory %s to still exist", inst.BinDir)
+		}
+		if ex, _ := fsys.Exists(uninstallPath); ex {
+			t.Fatalf("expected %s to be removed", uninstallPath)
+		}
+	})
 }

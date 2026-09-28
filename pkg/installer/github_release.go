@@ -26,7 +26,8 @@ func validateReleaseRepo(repo string) error {
 	if repo == "" {
 		return errors.New("repository 'repo' is required in installParams")
 	}
-	if len(strings.Split(repo, "/")) != 2 {
+	owner, name, ok := strings.Cut(repo, "/")
+	if !ok || owner == "" || name == "" || strings.Contains(name, "/") {
 		return fmt.Errorf("invalid repository format %q. Expected 'owner/repo'", repo)
 	}
 	return nil

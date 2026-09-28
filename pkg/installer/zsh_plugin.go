@@ -78,21 +78,22 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 	pluginName := getStringParam(tool.InstallParams, "pluginName", "")
 	if pluginName == "" {
 		if repo != "" {
-			parts := strings.Split(repo, "/")
-			if len(parts) == 2 {
-				pluginName = parts[1]
+			if _, name, ok := strings.Cut(repo, "/"); ok {
+				pluginName = strings.Trim(name, "/")
 			} else {
 				pluginName = repo
 			}
 		} else {
 			// Extract from url
-			idx := strings.LastIndex(url, "/")
+			trimmedURL := strings.TrimRight(url, "/")
+			idx := strings.LastIndex(trimmedURL, "/")
 			if idx != -1 {
-				pluginName = strings.TrimSuffix(url[idx+1:], ".git")
-			} else {
-				pluginName = tool.Name
+				pluginName = strings.TrimSuffix(trimmedURL[idx+1:], ".git")
 			}
 		}
+	}
+	if pluginName == "" {
+		pluginName = tool.Name
 	}
 
 	destDir := z.BinDir
@@ -190,6 +191,9 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 
 func (z *ZshPluginInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	pluginName := getStringParam(tool.InstallParams, "pluginName", tool.Name)
+	if pluginName == "" {
+		pluginName = tool.Name
+	}
 	destDir := z.BinDir
 	if destDir != "" {
 		pluginPath := filepath.Join(destDir, pluginName)
