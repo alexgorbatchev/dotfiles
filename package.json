@@ -25,6 +25,7 @@
     "test:native": "just test",
     "test:task": "just test",
     "cli": "just run",
+    "compile": "just compile",
     "test-project": "just test-project",
     "check": "just check",
     "check:ci": "just check",
