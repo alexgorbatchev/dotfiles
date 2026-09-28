@@ -67,7 +67,6 @@ export interface IToolRuntimeState {
   installedAt: string | null;
   installPath: string | null;
   binaryPaths: string[];
-  hasUpdate: boolean;
 }
 
 /**
@@ -123,19 +122,6 @@ export interface IToolBinaryUsage {
 export interface IToolUsageSummary {
   totalCount: number;
   binaries: IToolBinaryUsage[];
-}
-
-/**
- * Tool summary for catalog listing (subset of detail).
- */
-export interface IToolSummary {
-  name: string;
-  version: string;
-  installationMethod: string;
-  status: ToolRuntimeStatus;
-  installedVersion: string | null;
-  hasUpdate: boolean;
-  binaries?: SerializableBinary[];
 }
 
 /**

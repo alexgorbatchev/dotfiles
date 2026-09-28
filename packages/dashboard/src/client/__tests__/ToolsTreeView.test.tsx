@@ -42,7 +42,6 @@ function createTool(name: string, status: ToolRuntimeStatus = "installed"): IToo
       installedAt: installedAtByStatus[status],
       installPath: installPathByStatus[status],
       binaryPaths: [],
-      hasUpdate: false,
     },
     files: [],
     binaryDiskSize: 0,

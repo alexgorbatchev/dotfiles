@@ -34,7 +34,6 @@ function createMockToolDetail(overrides: ToolDetailStub): IToolDetail {
       installedAt: "2026-01-01T00:00:00Z",
       installPath: "/path/to/tool",
       binaryPaths: [],
-      hasUpdate: false,
     },
     files: [],
     binaryDiskSize: 0,

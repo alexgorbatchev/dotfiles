@@ -2289,6 +2289,18 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 		assertExactKeys(t, "files[0]", file, "filePath", "toolName", "fileType")
 	})
 
+	t.Run("tool detail runtime matches IToolRuntimeState", func(t *testing.T) {
+		detail, ok := getJSONData(t, http.MethodGet, base+"/api/tools/bat").(map[string]any)
+		if !ok {
+			t.Fatal("expected tool detail object")
+		}
+		runtime, ok := detail["runtime"].(map[string]any)
+		if !ok {
+			t.Fatal("expected tool runtime object")
+		}
+		assertExactKeys(t, "runtime", runtime, "status", "installedVersion", "installedAt", "installPath", "binaryPaths")
+	})
+
 	t.Run("history entries match IToolHistoryEntry", func(t *testing.T) {
 		history, ok := getJSONData(t, http.MethodGet, base+"/api/tools/bat/history").(map[string]any)
 		if !ok {

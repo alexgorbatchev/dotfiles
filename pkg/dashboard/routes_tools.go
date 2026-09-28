@@ -185,7 +185,6 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 		"installedAt":      instAt,
 		"installPath":      instPath,
 		"binaryPaths":      binPaths,
-		"hasUpdate":        false,
 	}
 
 	inspector := drift.NewInspector(s.fsys, s.registry, s.projectConfig)
