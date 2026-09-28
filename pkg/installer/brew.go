@@ -68,6 +68,12 @@ func (b *BrewInstaller) Name() string {
 	return "brew"
 }
 
+// Clone returns an isolated copy of b for a single tool install.
+func (b *BrewInstaller) Clone() Installer {
+	clone := *b
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (b *BrewInstaller) SetSystemContext(sysCtx *SystemContext) {
 	b.sysCtx = sysCtx

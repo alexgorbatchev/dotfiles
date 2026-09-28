@@ -133,6 +133,15 @@ func (d *Downloader) SetQuiet(quiet bool) {
 	}
 }
 
+// Clone returns a shallow copy of d with isolated fsys and logger, sharing settings and HTTP client.
+func (d *Downloader) Clone() *Downloader {
+	if d == nil {
+		return nil
+	}
+	copy := *d
+	return &copy
+}
+
 // NewDownloader creates a new Downloader using the provided filesystem and HTTP client.
 func NewDownloader(fsys fs.FS, client *http.Client) *Downloader {
 	if client == nil {

@@ -36,6 +36,12 @@ func (z *ZshPluginInstaller) Name() string {
 	return "zsh-plugin"
 }
 
+// Clone returns an isolated copy of z for a single tool install.
+func (z *ZshPluginInstaller) Clone() Installer {
+	clone := *z
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (z *ZshPluginInstaller) SetSystemContext(sysCtx *SystemContext) {
 	z.sysCtx = sysCtx

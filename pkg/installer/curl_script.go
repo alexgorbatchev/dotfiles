@@ -47,6 +47,16 @@ func (c *CurlScriptInstaller) Name() string {
 	return "curl-script"
 }
 
+// Clone returns an isolated copy of c for a single tool install, sharing project-wide
+// settings, HTTP client, and runner.
+func (c *CurlScriptInstaller) Clone() Installer {
+	clone := *c
+	if c.dl != nil {
+		clone.dl = c.dl.Clone()
+	}
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (c *CurlScriptInstaller) SetSystemContext(sysCtx *SystemContext) {
 	c.sysCtx = sysCtx

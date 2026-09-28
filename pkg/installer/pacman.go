@@ -35,6 +35,12 @@ func (p *PacmanInstaller) Name() string {
 	return "pacman"
 }
 
+// Clone returns an isolated copy of p for a single tool install.
+func (p *PacmanInstaller) Clone() Installer {
+	clone := *p
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (p *PacmanInstaller) SetSystemContext(sysCtx *SystemContext) {
 	p.sysCtx = sysCtx

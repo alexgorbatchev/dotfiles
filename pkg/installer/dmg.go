@@ -63,6 +63,19 @@ func (d *DmgInstaller) Name() string {
 	return "dmg"
 }
 
+// Clone returns an isolated copy of d for a single tool install, sharing project-wide
+// settings, HTTP client, and runner.
+func (d *DmgInstaller) Clone() Installer {
+	clone := *d
+	if d.dl != nil {
+		clone.dl = d.dl.Clone()
+	}
+	if d.extractor != nil {
+		clone.extractor = d.extractor.Clone()
+	}
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (d *DmgInstaller) SetSystemContext(sysCtx *SystemContext) {
 	d.sysCtx = sysCtx

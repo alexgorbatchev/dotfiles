@@ -142,6 +142,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		return fmt.Errorf("getting installer: %w", err)
 	}
 
+	inst = installer.Clone(inst)
+
 	if err := installer.ValidateSudo(inst, tool); err != nil {
 		return err
 	}
@@ -551,6 +553,7 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		if err != nil {
 			return fmt.Errorf("uninstalling %s with %s: %w", tool.Name, method, err)
 		}
+		inst = installer.Clone(inst)
 		if tool.InstallationMethod == "" {
 			toolCopy := *tool
 			toolCopy.InstallationMethod = method

@@ -11,6 +11,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 type mockInstaller struct {
@@ -656,4 +657,50 @@ func TestPromoteBinariesFileSystemErrors(t *testing.T) {
 			tt.check(t, fsys)
 		})
 	}
+}
+
+func TestInstaller_Clone(t *testing.T) {
+	for _, method := range config.InstallMethods() {
+		t.Run(method, func(t *testing.T) {
+			inst, err := Get(method)
+			if err != nil {
+				t.Fatalf("getting installer %s: %v", method, err)
+			}
+			clone := Clone(inst)
+			if clone == nil {
+				t.Fatalf("clone of %s is nil", method)
+			}
+			if clone == inst {
+				t.Fatalf("clone of %s returned the same instance pointer", method)
+			}
+			if clone.Name() != inst.Name() {
+				t.Errorf("clone Name() = %q, want %q", clone.Name(), inst.Name())
+			}
+
+			// Verify mutating clone FS does not mutate original
+			origFS := fs.NewMemFS()
+			cloneFS := fs.NewMemFS()
+			SetFS(inst, origFS)
+			SetFS(clone, cloneFS)
+
+			// Verify mutating clone logger does not mutate original
+			origLog := logger.New(logger.Config{})
+			cloneLog := logger.New(logger.Config{})
+			SetLogger(inst, origLog)
+			SetLogger(clone, cloneLog)
+		})
+	}
+
+	t.Run("non-cloner fallback", func(t *testing.T) {
+		mock := &mockInstaller{name: "no-clone"}
+		if got := Clone(mock); got != mock {
+			t.Errorf("expected Clone to return original for non-cloner, got %v", got)
+		}
+	})
+
+	t.Run("nil installer", func(t *testing.T) {
+		if got := Clone(nil); got != nil {
+			t.Errorf("expected Clone(nil) == nil, got %v", got)
+		}
+	})
 }

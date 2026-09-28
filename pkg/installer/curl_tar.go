@@ -48,6 +48,19 @@ func (c *CurlTarInstaller) Name() string {
 	return "curl-tar"
 }
 
+// Clone returns an isolated copy of c for a single tool install, sharing project-wide
+// settings, HTTP client, and runner.
+func (c *CurlTarInstaller) Clone() Installer {
+	clone := *c
+	if c.dl != nil {
+		clone.dl = c.dl.Clone()
+	}
+	if c.extractor != nil {
+		clone.extractor = c.extractor.Clone()
+	}
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (c *CurlTarInstaller) SetSystemContext(sysCtx *SystemContext) {
 	c.sysCtx = sysCtx

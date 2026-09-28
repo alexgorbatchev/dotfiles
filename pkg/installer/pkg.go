@@ -61,6 +61,19 @@ func (p *PkgInstaller) Name() string {
 	return "pkg"
 }
 
+// Clone returns an isolated copy of p for a single tool install, sharing project-wide
+// settings, HTTP client, and runner.
+func (p *PkgInstaller) Clone() Installer {
+	clone := *p
+	if p.dl != nil {
+		clone.dl = p.dl.Clone()
+	}
+	if p.extractor != nil {
+		clone.extractor = p.extractor.Clone()
+	}
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (p *PkgInstaller) SetSystemContext(sysCtx *SystemContext) {
 	p.sysCtx = sysCtx

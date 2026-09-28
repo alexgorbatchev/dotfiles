@@ -34,6 +34,12 @@ func (d *DnfInstaller) Name() string {
 	return "dnf"
 }
 
+// Clone returns an isolated copy of d for a single tool install.
+func (d *DnfInstaller) Clone() Installer {
+	clone := *d
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (d *DnfInstaller) SetSystemContext(sysCtx *SystemContext) {
 	d.sysCtx = sysCtx

@@ -51,7 +51,7 @@ type GiteaInstaller struct {
 	extractor  *archive.Extractor
 	sysCtx     *SystemContext
 	httpClient *http.Client
-	releases   releaseCache[giteaRelease]
+	releases   *releaseCache[giteaRelease]
 	CacheDir   string        // Cache directory for release metadata
 	CacheTTL   time.Duration // Time-to-live for cached release metadata
 	BinDir     string        // Destination folder
@@ -66,6 +66,7 @@ func NewGiteaInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Dow
 	}
 	extractor := archive.NewExtractor(fsys, runner)
 	return &GiteaInstaller{
+		releases:   &releaseCache[giteaRelease]{},
 		runner:     runner,
 		fsys:       fsys,
 		dl:         dl,
@@ -118,14 +119,33 @@ func (t giteaReleaseTarget) request(version string) giteaReleaseRequest {
 }
 
 func (g *GiteaInstaller) getCachedRelease(ctx context.Context, key string) (*giteaRelease, bool) {
-	if config.IsOverwriteEnabled(ctx) {
+	if config.IsOverwriteEnabled(ctx) || g.releases == nil {
 		return nil, false
 	}
 	return g.releases.get(g.releaseStore(), key)
 }
 
 func (g *GiteaInstaller) setCachedRelease(key string, rel *giteaRelease) {
+	if g.releases == nil {
+		g.releases = &releaseCache[giteaRelease]{}
+	}
 	g.releases.set(g.releaseStore(), key, rel)
+}
+
+// Clone returns an isolated copy of g for a single tool install, sharing project-wide
+// settings, HTTP client, and the release metadata cache.
+func (g *GiteaInstaller) Clone() Installer {
+	clone := *g
+	if clone.releases == nil {
+		clone.releases = &releaseCache[giteaRelease]{}
+	}
+	if g.dl != nil {
+		clone.dl = g.dl.Clone()
+	}
+	if g.extractor != nil {
+		clone.extractor = g.extractor.Clone()
+	}
+	return &clone
 }
 
 // releaseStore is where the release cache keeps entries for the current settings.
@@ -303,6 +323,7 @@ func matchAsset(assets []giteaAsset, sysInfo arch.SystemInfo, assetPattern strin
 
 func init() {
 	_ = Register(&GiteaInstaller{
+		releases:   &releaseCache[giteaRelease]{},
 		runner:     exec.NewOSRunner(),
 		fsys:       &fs.OSFS{},
 		dl:         downloader.NewDownloader(&fs.OSFS{}, nil),

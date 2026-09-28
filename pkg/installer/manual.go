@@ -34,6 +34,12 @@ func (m *ManualInstaller) Name() string {
 	return "manual"
 }
 
+// Clone returns an isolated copy of m for a single tool install.
+func (m *ManualInstaller) Clone() Installer {
+	clone := *m
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (m *ManualInstaller) SetSystemContext(sysCtx *SystemContext) {
 	m.sysCtx = sysCtx

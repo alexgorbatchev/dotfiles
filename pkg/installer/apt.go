@@ -36,6 +36,12 @@ func (a *AptInstaller) Name() string {
 	return "apt"
 }
 
+// Clone returns an isolated copy of a for a single tool install.
+func (a *AptInstaller) Clone() Installer {
+	clone := *a
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (a *AptInstaller) SetSystemContext(sysCtx *SystemContext) {
 	a.sysCtx = sysCtx

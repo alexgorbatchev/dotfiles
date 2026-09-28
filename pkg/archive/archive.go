@@ -107,6 +107,15 @@ func (e *Extractor) SetFS(fsys fs.FS) {
 	}
 }
 
+// Clone returns a shallow copy of e with isolated fsys, sharing the external command runner.
+func (e *Extractor) Clone() *Extractor {
+	if e == nil {
+		return nil
+	}
+	copy := *e
+	return &copy
+}
+
 // isSafeTargetPath checks whether joining dest and entry name remains within dest directory boundaries.
 func isSafeTargetPath(dest, name string) (string, error) {
 	cleanDest := filepath.Clean(dest)

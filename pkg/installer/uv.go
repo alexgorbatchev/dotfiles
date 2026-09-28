@@ -52,6 +52,12 @@ func (u *UvInstaller) Name() string {
 	return "uv"
 }
 
+// Clone returns an isolated copy of u for a single tool install, sharing runner and HTTP client.
+func (u *UvInstaller) Clone() Installer {
+	clone := *u
+	return &clone
+}
+
 // SupportsSudo reports whether uv supports sudo elevation (always false).
 func (u *UvInstaller) SupportsSudo() bool {
 	return false

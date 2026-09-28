@@ -2542,3 +2542,41 @@ func TestDownloadCacheKeepsTheOldEntryWhenItsRecordCannotBeRemoved(t *testing.T)
 		t.Errorf("server requests = %d, want 2", got)
 	}
 }
+
+func TestDownloader_Clone(t *testing.T) {
+	t.Parallel()
+	var nilDl *Downloader
+	if got := nilDl.Clone(); got != nil {
+		t.Errorf("nil clone: got %v, want nil", got)
+	}
+
+	mem1 := fs.NewMemFS()
+	d := NewDownloader(mem1, http.DefaultClient)
+	d.CacheDir = "/cache"
+	d.CacheEnabled = true
+	d.CacheTTL = time.Hour
+	d.Timeout = 10 * time.Second
+
+	clone := d.Clone()
+	if clone == nil {
+		t.Fatal("expected non-nil clone")
+	}
+	if clone == d {
+		t.Fatal("expected clone to be a different pointer than original")
+	}
+	if clone.CacheDir != d.CacheDir || clone.CacheEnabled != d.CacheEnabled || clone.CacheTTL != d.CacheTTL || clone.Timeout != d.Timeout {
+		t.Errorf("clone settings mismatch: got %+v, want %+v", clone, d)
+	}
+	if clone.client != d.client {
+		t.Errorf("expected shared client pointer")
+	}
+
+	mem2 := fs.NewMemFS()
+	clone.SetFS(mem2)
+	if d.fsys != mem1 {
+		t.Errorf("modifying clone fsys affected original: got %v, want %v", d.fsys, mem1)
+	}
+	if clone.fsys != mem2 {
+		t.Errorf("clone fsys not updated: got %v, want %v", clone.fsys, mem2)
+	}
+}

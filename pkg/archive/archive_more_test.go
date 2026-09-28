@@ -33,6 +33,37 @@ func TestExtractorSetFS(t *testing.T) {
 	nilExt.SetFS(memFS)
 }
 
+func TestExtractorClone(t *testing.T) {
+	var nilExt *Extractor
+	if got := nilExt.Clone(); got != nil {
+		t.Errorf("nil clone: got %v, want nil", got)
+	}
+
+	mem1 := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	ext := NewExtractor(mem1, runner)
+
+	clone := ext.Clone()
+	if clone == nil {
+		t.Fatal("expected non-nil clone")
+	}
+	if clone == ext {
+		t.Fatal("expected clone to be different pointer")
+	}
+	if clone.runner != ext.runner {
+		t.Errorf("expected shared runner: got %v, want %v", clone.runner, ext.runner)
+	}
+
+	mem2 := fs.NewMemFS()
+	clone.SetFS(mem2)
+	if ext.fsys != mem1 {
+		t.Errorf("modifying clone affected original: got %v, want %v", ext.fsys, mem1)
+	}
+	if clone.fsys != mem2 {
+		t.Errorf("clone fsys not updated: got %v, want %v", clone.fsys, mem2)
+	}
+}
+
 func TestExtractTarXzSuccess(t *testing.T) {
 	memFS := fs.NewMemFS()
 	runner := exec.NewMockRunner()

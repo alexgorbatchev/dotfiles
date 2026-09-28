@@ -56,7 +56,7 @@ type GitHubInstaller struct {
 	extractor    *archive.Extractor
 	sysCtx       *SystemContext
 	httpClient   *http.Client
-	releases     releaseCache[githubRelease]
+	releases     *releaseCache[githubRelease]
 	CacheDir     string        // Cache directory for release metadata
 	CacheTTL     time.Duration // Time-to-live for cached release metadata
 	CacheEnabled bool          // Whether cached release metadata is reused
@@ -93,6 +93,7 @@ func NewGitHubInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Do
 		// Release metadata is cached unless a configuration turns it off, which is
 		// what github.cache.enabled defaults to.
 		CacheEnabled: true,
+		releases:     &releaseCache[githubRelease]{},
 		runner:       runner,
 		fsys:         fsys,
 		dl:           dl,
@@ -122,7 +123,7 @@ func (g *GitHubInstaller) releaseStore() releaseCacheStore {
 }
 
 func (g *GitHubInstaller) getCachedRelease(ctx context.Context, key string) (*githubRelease, bool) {
-	if config.IsOverwriteEnabled(ctx) || !g.CacheEnabled {
+	if config.IsOverwriteEnabled(ctx) || !g.CacheEnabled || g.releases == nil {
 		return nil, false
 	}
 	return g.releases.get(g.releaseStore(), key)
@@ -132,7 +133,26 @@ func (g *GitHubInstaller) setCachedRelease(key string, rel *githubRelease) {
 	if !g.CacheEnabled {
 		return
 	}
+	if g.releases == nil {
+		g.releases = &releaseCache[githubRelease]{}
+	}
 	g.releases.set(g.releaseStore(), key, rel)
+}
+
+// Clone returns an isolated copy of g for a single tool install, sharing project-wide
+// settings, HTTP client, and the release metadata cache.
+func (g *GitHubInstaller) Clone() Installer {
+	clone := *g
+	if clone.releases == nil {
+		clone.releases = &releaseCache[githubRelease]{}
+	}
+	if g.dl != nil {
+		clone.dl = g.dl.Clone()
+	}
+	if g.extractor != nil {
+		clone.extractor = g.extractor.Clone()
+	}
+	return &clone
 }
 
 func (g *GitHubInstaller) Name() string {
@@ -464,6 +484,7 @@ func verifyFileSize(fsys fs.FS, path string, expected int64) error {
 func init() {
 	_ = Register(&GitHubInstaller{
 		CacheEnabled: true,
+		releases:     &releaseCache[githubRelease]{},
 		runner:       exec.NewOSRunner(),
 		fsys:         &fs.OSFS{},
 		dl:           downloader.NewDownloader(&fs.OSFS{}, nil),

@@ -424,6 +424,22 @@ type HTTPClientSetter interface {
 	SetHTTPClient(client *http.Client)
 }
 
+// Cloner is implemented by installers that support creating an isolated clone
+// with shared project-wide settings and isolated per-install state.
+type Cloner interface {
+	Clone() Installer
+}
+
+// Clone returns an isolated copy of inst for a single installation run.
+// If inst implements Cloner, it calls inst.Clone().
+// Otherwise, it returns inst unchanged.
+func Clone(inst Installer) Installer {
+	if c, ok := inst.(Cloner); ok {
+		return c.Clone()
+	}
+	return inst
+}
+
 // SetFS dynamically binds the orchestrator's context-aware TrackedFileSystem to installer plugins prior to execution.
 func SetFS(inst Installer, fsys fs.FS) {
 	if s, ok := inst.(FSSetter); ok {

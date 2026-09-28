@@ -35,6 +35,12 @@ func (n *NpmInstaller) Name() string {
 	return "npm"
 }
 
+// Clone returns an isolated copy of n for a single tool install.
+func (n *NpmInstaller) Clone() Installer {
+	clone := *n
+	return &clone
+}
+
 // SetSystemContext applies the target the run was invoked for.
 func (n *NpmInstaller) SetSystemContext(sysCtx *SystemContext) {
 	n.sysCtx = sysCtx
