@@ -570,3 +570,107 @@ func TestManualInstaller_Install_PromoteStagedBinaries(t *testing.T) {
 		}
 	})
 }
+
+func TestManualInstallerSymlinkClearingDestination(t *testing.T) {
+	t.Run("fails when destPath is a non-empty directory", func(t *testing.T) {
+		fsys := fs.NewMemFS()
+		inst := NewManualInstaller(fsys, nil)
+		inst.BinDir = "/test/bin"
+
+		srcPath := "/src/mybinary"
+		if err := fsys.MkdirAll("/src", 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := fsys.WriteFile(srcPath, []byte("payload"), 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		destPath := filepath.Join(inst.BinDir, "mytool")
+		// Create destPath as a non-empty directory
+		if err := fsys.MkdirAll(filepath.Join(destPath, "subdir"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := fsys.WriteFile(filepath.Join(destPath, "subdir", "file.txt"), []byte("data"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+				"symlink":    true,
+			},
+		}
+
+		_, err := inst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		// Assert that Install returns an error wrapping the removal failure and naming destPath,
+		// rather than a "file exists" error from Symlink.
+		errMsg := err.Error()
+		if !strings.Contains(errMsg, destPath) {
+			t.Errorf("expected error to name destPath %q, got %q", destPath, errMsg)
+		}
+		if !strings.Contains(errMsg, "clearing") {
+			t.Errorf("expected error to mention clearing destination, got %q", errMsg)
+		}
+		if strings.Contains(errMsg, "file exists") {
+			t.Errorf("expected removal error, not symlink 'file exists' error, got %q", errMsg)
+		}
+		if strings.Contains(errMsg, "creating symlink") {
+			t.Errorf("expected removal error, not symlink creation error, got %q", errMsg)
+		}
+		if !errors.Is(err, os.ErrInvalid) {
+			t.Errorf("expected error to wrap removal failure (os.ErrInvalid), got %v", err)
+		}
+	})
+
+	t.Run("ignores os.ErrNotExist and creates link when destPath does not exist", func(t *testing.T) {
+		fsys := fs.NewMemFS()
+		inst := NewManualInstaller(fsys, nil)
+		inst.BinDir = "/test/bin"
+
+		srcPath := "/src/mybinary"
+		if err := fsys.MkdirAll("/src", 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := fsys.WriteFile(srcPath, []byte("payload"), 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+				"symlink":    true,
+			},
+		}
+
+		destPath := filepath.Join(inst.BinDir, "mytool")
+		exists, err := fsys.Exists(destPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if exists {
+			t.Fatalf("expected destPath %s to not exist initially", destPath)
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Errorf("expected [mytool], got %v", res.Binaries)
+		}
+
+		target, err := fsys.Readlink(destPath)
+		if err != nil {
+			t.Fatalf("expected symlink at %s, got error: %v", destPath, err)
+		}
+		if target != srcPath {
+			t.Errorf("expected symlink target %s, got %s", srcPath, target)
+		}
+	})
+}

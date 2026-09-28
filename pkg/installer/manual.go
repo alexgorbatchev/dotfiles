@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,7 +88,9 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 				if filepath.Clean(binaryPath) == filepath.Clean(destPath) {
 					continue
 				}
-				_ = m.fsys.Remove(destPath)
+				if err := m.fsys.Remove(destPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+					return nil, fmt.Errorf("%s: clearing %s for symlink: %w", tool.Name, destPath, err)
+				}
 				symlinkTarget := binaryPath
 				if rel, err := filepath.Rel(destDir, binaryPath); err == nil && !strings.HasPrefix(rel, "..") {
 					symlinkTarget = rel
