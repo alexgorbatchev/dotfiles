@@ -766,7 +766,7 @@ func TestLoadTypeScriptConfigNamesFailingToolFileAndMethod(t *testing.T) {
 			}
 
 			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-			configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)
+			configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, filepath.ToSlash(tmpDir), filepath.ToSlash(toolsDir))
 			if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 				t.Fatalf("writing config file: %v", err)
 			}
@@ -775,7 +775,7 @@ func TestLoadTypeScriptConfigNamesFailingToolFileAndMethod(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected loading to fail, got nil error")
 			}
-			for _, want := range []string{toolPath, tt.wantMethod} {
+			for _, want := range []string{filepath.ToSlash(toolPath), tt.wantMethod} {
 				if !strings.Contains(err.Error(), want) {
 					t.Errorf("expected error to name %q, got: %v", want, err)
 				}
@@ -817,7 +817,7 @@ func TestLoaderRecordsEveryDeclaredDependency(t *testing.T) {
 			}
 
 			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-			configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)
+			configContent := fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, filepath.ToSlash(tmpDir), filepath.ToSlash(toolsDir))
 			if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 				t.Fatalf("writing config file: %v", err)
 			}
@@ -958,7 +958,7 @@ func TestLoaderDefaultPathsConsistency(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 	configContent := `export default {
 		paths: {
-			dotfilesDir: "` + tmpDir + `",
+			dotfilesDir: ` + strconv.Quote(filepath.ToSlash(tmpDir)) + `,
 		}
 	};`
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -1034,7 +1034,7 @@ func TestLoaderBrewAutoDependency(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 	configContent := `export default {
 		paths: {
-			dotfilesDir: "` + tmpDir + `",
+			dotfilesDir: ` + strconv.Quote(filepath.ToSlash(tmpDir)) + `,
 		}
 	};`
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -1087,7 +1087,7 @@ func TestLoaderBrewPrefixedToolFile(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 	configContent := `export default {
 		paths: {
-			dotfilesDir: "` + tmpDir + `",
+			dotfilesDir: ` + strconv.Quote(filepath.ToSlash(tmpDir)) + `,
 		}
 	};`
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -1129,7 +1129,7 @@ func TestLoaderRegExpSerialization(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 	configContent := `export default {
 		paths: {
-			dotfilesDir: "` + tmpDir + `",
+			dotfilesDir: ` + strconv.Quote(filepath.ToSlash(tmpDir)) + `,
 		}
 	};`
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -1185,7 +1185,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 		configContent := `export default {
 			paths: {
-				dotfilesDir: "` + tmpDir + `",
+				dotfilesDir: ` + strconv.Quote(filepath.ToSlash(tmpDir)) + `,
 			},
 			features: {
 				features: {
@@ -1214,7 +1214,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 		configContent := `export default {
 			paths: {
-				dotfilesDir: "` + tmpDir + `",
+				dotfilesDir: ` + strconv.Quote(filepath.ToSlash(tmpDir)) + `,
 			},
 			nonExistentField: true
 		};`
@@ -1704,8 +1704,8 @@ func TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
 			configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-			configSource := "export default { paths: { dotfilesDir: " + strconv.Quote(tmpDir) +
-				", homeDir: " + strconv.Quote(tmpDir) + ", targetDir: " + strconv.Quote(tmpDir) +
+			configSource := "export default { paths: { dotfilesDir: " + strconv.Quote(filepath.ToSlash(tmpDir)) +
+				", homeDir: " + strconv.Quote(filepath.ToSlash(tmpDir)) + ", targetDir: " + strconv.Quote(filepath.ToSlash(tmpDir)) +
 				", toolConfigsDir: \"./tools\" } };"
 			if err := os.WriteFile(configPath, []byte(configSource), 0644); err != nil {
 				t.Fatalf("writing configuration: %v", err)
@@ -1726,8 +1726,8 @@ func TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expected the load to fail, got tools %v", slices.Sorted(maps.Keys(toolCfgs)))
 			}
-			if !strings.Contains(err.Error(), toolPath) {
-				t.Errorf("error = %v, want it to name %q", err, toolPath)
+			if !strings.Contains(err.Error(), filepath.ToSlash(toolPath)) {
+				t.Errorf("error = %v, want it to name %q", err, filepath.ToSlash(toolPath))
 			}
 			if !strings.Contains(err.Error(), tt.want) {
 				t.Errorf("error = %v, want it to report %q", err, tt.want)

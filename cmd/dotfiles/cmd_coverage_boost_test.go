@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -83,12 +85,13 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 			if tx != nil {
 				reg := registry.NewRegistry(conn)
 				method := "github-release"
+				batBin := filepath.ToSlash(filepath.Join(installPath, "sub", "bat"))
 				_ = reg.RecordToolInstallation(context.Background(), tx, &registry.ToolInstallationRecord{
 					ToolName:      "bat",
 					Version:       "v0.1.0",
 					InstallMethod: &method,
 					InstallPath:   installPath,
-					BinaryPaths:   `["` + filepath.Join(installPath, "sub", "bat") + `"]`,
+					BinaryPaths:   fmt.Sprintf("[%s]", strconv.Quote(batBin)),
 				})
 				_ = reg.RecordFileOperation(context.Background(), tx, &registry.FileOperationRecord{
 					ToolName: "bat",

@@ -15,7 +15,7 @@ import (
 func writeValidationConfig(t *testing.T, tools tsTools) string {
 	t.Helper()
 	dir := t.TempDir()
-	return writeTSProject(t, dir, fmt.Sprintf(`"paths": {%s, "dotfilesDir": %q}`, projectPathsTS(dir), dir), tools)
+	return writeTSProject(t, dir, fmt.Sprintf(`"paths": {%s, "dotfilesDir": %q}`, projectPathsTS(dir), filepath.ToSlash(dir)), tools)
 }
 
 func TestValidateCommand_ParameterRules(t *testing.T) {

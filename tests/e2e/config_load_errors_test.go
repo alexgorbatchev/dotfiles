@@ -94,8 +94,8 @@ func TestE2EAsyncToolFactoryFailureFailsTheLoad(t *testing.T) {
 	}
 
 	output := stdout + stderr
-	if !strings.Contains(output, toolPath) {
-		t.Errorf("expected the failure to name %q:\n%s", toolPath, output)
+	if !strings.Contains(output, filepath.ToSlash(toolPath)) {
+		t.Errorf("expected the failure to name %q:\n%s", filepath.ToSlash(toolPath), output)
 	}
 	if !strings.Contains(output, "factory exploded") {
 		t.Errorf("expected the failure to carry the error the factory threw:\n%s", output)

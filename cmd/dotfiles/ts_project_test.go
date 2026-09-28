@@ -16,7 +16,10 @@ type tsTools map[string]string
 // fixtures never point at directories outside the test's temp dir.
 func projectPathsTS(root string) string {
 	return fmt.Sprintf(`"homeDir": %q, "targetDir": %q, "generatedDir": %q`,
-		filepath.Join(root, "home"), filepath.Join(root, "target"), filepath.Join(root, "generated"))
+		filepath.ToSlash(filepath.Join(root, "home")),
+		filepath.ToSlash(filepath.Join(root, "target")),
+		filepath.ToSlash(filepath.Join(root, "generated")),
+	)
 }
 
 // writeTSProject writes the TypeScript project a user would: dir/dotfiles.config.ts,

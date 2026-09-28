@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -28,7 +29,7 @@ func loadScaffolded(t *testing.T, targetOS, targetArch string) map[string]*confi
 	}
 
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	if err := os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: "`+tmpDir+`" } };`), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: `+strconv.Quote(filepath.ToSlash(tmpDir))+` } };`), 0644); err != nil {
 		t.Fatalf("writing config: %v", err)
 	}
 

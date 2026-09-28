@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -155,7 +156,7 @@ func writeLibcProbeProject(t *testing.T) string {
 		t.Fatalf("writing tool: %v", err)
 	}
 	configPath := filepath.Join(projectDir, "dotfiles.config.ts")
-	configSource := `export default { paths: { dotfilesDir: "` + projectDir + `" } };`
+	configSource := `export default { paths: { dotfilesDir: ` + strconv.Quote(filepath.ToSlash(projectDir)) + ` } };`
 	if err := os.WriteFile(configPath, []byte(configSource), 0644); err != nil {
 		t.Fatalf("writing config: %v", err)
 	}

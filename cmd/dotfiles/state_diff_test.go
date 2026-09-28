@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
 
 func TestDiffCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+	dir := filepath.ToSlash(tmpDir)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	_ = os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: "`+tmpDir+`", generatedDir: "`+tmpDir+`/.generated", targetDir: "`+tmpDir+`/bin", homeDir: "`+tmpDir+`/home" } };`), 0644)
+	_ = os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: `+strconv.Quote(dir)+`, generatedDir: `+strconv.Quote(dir+"/.generated")+`, targetDir: `+strconv.Quote(dir+"/bin")+`, homeDir: `+strconv.Quote(dir+"/home")+` } };`), 0644)
 
 	toolsDir := filepath.Join(tmpDir, "tools")
 	_ = os.MkdirAll(toolsDir, 0755)
@@ -39,8 +41,9 @@ export default defineTool((i) => i("manual").block("~/.ssh/config", { id: "main"
 
 func TestDiffCommandJSON(t *testing.T) {
 	tmpDir := t.TempDir()
+	dir := filepath.ToSlash(tmpDir)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	_ = os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: "`+tmpDir+`", generatedDir: "`+tmpDir+`/.generated", targetDir: "`+tmpDir+`/bin", homeDir: "`+tmpDir+`/home" } };`), 0644)
+	_ = os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: `+strconv.Quote(dir)+`, generatedDir: `+strconv.Quote(dir+"/.generated")+`, targetDir: `+strconv.Quote(dir+"/bin")+`, homeDir: `+strconv.Quote(dir+"/home")+` } };`), 0644)
 
 	toolsDir := filepath.Join(tmpDir, "tools")
 	_ = os.MkdirAll(toolsDir, 0755)
@@ -71,8 +74,9 @@ export default defineTool((i) => i("manual").block("~/.ssh/config", { id: "main"
 func TestDiffCommandCopy(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_TEST", "true")
 	tmpDir := t.TempDir()
+	dir := filepath.ToSlash(tmpDir)
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	_ = os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: "`+tmpDir+`", generatedDir: "`+tmpDir+`/.generated", targetDir: "`+tmpDir+`/bin", homeDir: "`+tmpDir+`/home" } };`), 0644)
+	_ = os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: `+strconv.Quote(dir)+`, generatedDir: `+strconv.Quote(dir+"/.generated")+`, targetDir: `+strconv.Quote(dir+"/bin")+`, homeDir: `+strconv.Quote(dir+"/home")+` } };`), 0644)
 
 	toolsDir := filepath.Join(tmpDir, "tools")
 	_ = os.MkdirAll(toolsDir, 0755)

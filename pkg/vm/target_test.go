@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -45,7 +46,7 @@ func loadToolFiles(t *testing.T, tools map[string]string, opts ...Option) (map[s
 	}
 
 	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
-	if err := os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: "`+tmpDir+`" } };`), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: `+strconv.Quote(filepath.ToSlash(tmpDir))+` } };`), 0644); err != nil {
 		t.Fatalf("writing config: %v", err)
 	}
 

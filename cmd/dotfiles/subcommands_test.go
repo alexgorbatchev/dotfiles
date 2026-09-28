@@ -750,7 +750,7 @@ func TestDetectConflictsCommand_ErrorReturn(t *testing.T) {
 	}
 
 	configPath := writeTSProject(t, tmpDir,
-		fmt.Sprintf(`"paths": {"homeDir": %q, "targetDir": %q, "generatedDir": %q}`, tmpDir, targetDir, tmpDir),
+		fmt.Sprintf(`"paths": {"homeDir": %q, "targetDir": %q, "generatedDir": %q}`, filepath.ToSlash(tmpDir), filepath.ToSlash(targetDir), filepath.ToSlash(tmpDir)),
 		tsTools{"github-release--bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`})
 
 	_, err := executeCommand("-c", configPath, "shell", "audit")
@@ -1606,7 +1606,7 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 	release := func(repo string) string {
 		return fmt.Sprintf(`install("github-release", { repo: %q, assetPattern: %q })`, repo, releaseAssetName)
 	}
-	manual := fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin)
+	manual := fmt.Sprintf(`install("manual", { binaryPath: %q })`, filepath.ToSlash(manualBin))
 	p := newE2EProject(t, tsTools{
 		"newer":              release(repoNewer) + `.bin("newer-bin")`,
 		"unknown-current":    release(repoNewer),
@@ -1840,7 +1840,7 @@ func TestUpdateCommand_BulkExitStatus(t *testing.T) {
 				"same":            tool(repoSame),
 				"ahead":           tool(repoSame),
 				"pinned":          tool(repoSame) + `.version("v0.1.0")`,
-				"hand":            fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin),
+				"hand":            fmt.Sprintf(`install("manual", { binaryPath: %q })`, filepath.ToSlash(manualBin)),
 				"never-installed": tool(repoMissing),
 				// Disabled after it was installed: skipped as install and check skip it,
 				// so its check, which would fail, never runs.
@@ -1901,7 +1901,7 @@ func TestUpdateCommand_RecordedVersion(t *testing.T) {
 	}))
 	t.Cleanup(scriptServer.Close)
 
-	manual := fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin)
+	manual := fmt.Sprintf(`install("manual", { binaryPath: %q })`, filepath.ToSlash(manualBin))
 	p := newE2EProject(t, tsTools{
 		"stamped-forced": manual,
 		"stamped-named":  manual,
@@ -2042,7 +2042,7 @@ func TestUpdateCommand_RefusesPinnedTools(t *testing.T) {
 		"pinned":        release + `.version("v0.1.0")`,
 		"param-pinned":  releaseAt("v0.1.0") + `.version("latest")`,
 		"both-pinned":   releaseAt("v0.1.0") + `.version("v0.2.0")`,
-		"manual-pinned": fmt.Sprintf(`install("manual", { binaryPath: %q }).version("v1.0.0")`, manualBin),
+		"manual-pinned": fmt.Sprintf(`install("manual", { binaryPath: %q }).version("v1.0.0")`, filepath.ToSlash(manualBin)),
 		"free":          release + `.version("latest")`,
 	})
 	pins := []struct{ name, version, message string }{
@@ -2340,7 +2340,7 @@ func TestUpdateCommand_SkipsConfigurationOnlyTools(t *testing.T) {
 	}
 	p := newE2EProject(t, tsTools{
 		"cfg":  `install()`,
-		"hand": fmt.Sprintf(`install("manual", { binaryPath: %q })`, manualBin),
+		"hand": fmt.Sprintf(`install("manual", { binaryPath: %q })`, filepath.ToSlash(manualBin)),
 	})
 	for _, name := range []string{"cfg", "hand"} {
 		p.seedInstallation(t, name, "v1.0.0", filepath.Join(p.Root, "installed", name))
@@ -3197,7 +3197,7 @@ func TestLogCommand_DiskLogFallback(t *testing.T) {
 func TestScaffoldCommand(t *testing.T) {
 	p := newE2EProject(t, nil)
 	toolsDir := filepath.Join(p.Root, "tools")
-	p.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, toolsDir), "")
+	p.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, filepath.ToSlash(toolsDir)), "")
 	dotfilesTool := filepath.Join(toolsDir, "dotfiles.tool.ts")
 
 	t.Run("creates the starter files", func(t *testing.T) {
@@ -3243,7 +3243,7 @@ func TestScaffoldCommand(t *testing.T) {
 	t.Run("dry run only reports", func(t *testing.T) {
 		fresh := newE2EProject(t, nil)
 		freshTools := filepath.Join(fresh.Root, "tools")
-		fresh.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, freshTools), "")
+		fresh.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, filepath.ToSlash(freshTools)), "")
 		out, err := fresh.run("tool", "scaffold", "--dry-run")
 		if err != nil {
 			t.Fatalf("tool scaffold --dry-run: %v\n%s", err, out.Combined)
@@ -3300,7 +3300,7 @@ func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
 	t.Run("falls back to the repository root for the default config", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		configPath := writeTSProject(t, repoRoot, fmt.Sprintf(`"paths": {"homeDir": %q, "generatedDir": %q}`,
-			filepath.Join(repoRoot, "home"), filepath.Join(repoRoot, "generated")), nil)
+			filepath.ToSlash(filepath.Join(repoRoot, "home")), filepath.ToSlash(filepath.Join(repoRoot, "generated"))), nil)
 		enterTempDir(t)
 		t.Setenv("DOTFILES_REPO_ROOT", repoRoot)
 
@@ -3337,7 +3337,7 @@ func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
 		if err := os.WriteFile(blocker, []byte("not a directory"), 0644); err != nil {
 			t.Fatalf("writing blocker: %v", err)
 		}
-		path := writeTSProject(t, dir, fmt.Sprintf(`"paths": {"homeDir": %q, "generatedDir": %q}`, dir, blocker), nil)
+		path := writeTSProject(t, dir, fmt.Sprintf(`"paths": {"homeDir": %q, "generatedDir": %q}`, filepath.ToSlash(dir), filepath.ToSlash(blocker)), nil)
 		_, err := BootstrapServices(context.Background(), path)
 		if err == nil || !strings.Contains(err.Error(), "failed connecting to SQLite database") {
 			t.Fatalf("error = %v, want database connection failure", err)
@@ -4128,7 +4128,7 @@ func TestNewHierarchySubcommandsCoverage(t *testing.T) {
 		"dotfilesDir": %q,
 		"shellScriptsDir": %q,
 		"toolConfigsDir": %q,
-	}`, tmpDir, filepath.Join(tmpDir, "bin"), filepath.Join(tmpDir, ".generated"), filepath.Join(tmpDir, ".generated", "binaries"), tmpDir, filepath.Join(tmpDir, ".generated", "shell-scripts"), toolsDir),
+	}`, filepath.ToSlash(tmpDir), filepath.ToSlash(filepath.Join(tmpDir, "bin")), filepath.ToSlash(filepath.Join(tmpDir, ".generated")), filepath.ToSlash(filepath.Join(tmpDir, ".generated", "binaries")), filepath.ToSlash(tmpDir), filepath.ToSlash(filepath.Join(tmpDir, ".generated", "shell-scripts")), filepath.ToSlash(toolsDir)),
 		tsTools{"bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`})
 
 	t.Run("venv list coverage", func(t *testing.T) {
@@ -4354,7 +4354,7 @@ func TestNewHierarchySubcommandsCoverage(t *testing.T) {
 func TestRootShortcutsAndDomainAliases(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := writeTSProject(t, tmpDir,
-		fmt.Sprintf(`"paths": {"targetDir": %q, "generatedDir": %q}`, filepath.Join(tmpDir, "target"), filepath.Join(tmpDir, ".generated")),
+		fmt.Sprintf(`"paths": {"targetDir": %q, "generatedDir": %q}`, filepath.ToSlash(filepath.Join(tmpDir, "target")), filepath.ToSlash(filepath.Join(tmpDir, ".generated"))),
 		tsTools{"bat": `install("github-release", { repo: "sharkdp/bat" }).bin("bat")`})
 
 	t.Run("generate and g root shortcuts", func(t *testing.T) {
