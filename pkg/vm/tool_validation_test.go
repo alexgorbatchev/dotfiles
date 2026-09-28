@@ -247,3 +247,152 @@ func TestLoaderRejectsToolWithoutName(t *testing.T) {
 		}
 	}
 }
+
+// Declarations in a .platform() or .arch() block are evaluated and validated on every
+// platform, not only on the platform matching the active target. An invalid declaration
+// in a Linux-specific block must fail when loaded targeting either darwin or linux.
+func TestLoaderRejectsInvalidDeclarationsInInactivePlatformBlocks(t *testing.T) {
+	tool := `
+import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+  install("manual")
+    .platform(Platform.Linux, (install) =>
+      install().block("~/.ssh/config", { id: "bad block id with spaces" })
+    ),
+);`
+
+	targets := []struct {
+		name       string
+		targetOS   string
+		targetArch string
+		wantBranch bool
+	}{
+		{name: "darwin target (inactive branch)", targetOS: "darwin", targetArch: "arm64", wantBranch: true},
+		{name: "linux target (active branch)", targetOS: "linux", targetArch: "amd64", wantBranch: false},
+	}
+
+	for _, tt := range targets {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := loadToolSource(t, tool, WithTarget(Target{OS: tt.targetOS, Arch: tt.targetArch}))
+			if err == nil {
+				t.Fatalf("expected load to fail for target %s/%s", tt.targetOS, tt.targetArch)
+			}
+			for _, want := range []string{"probe.tool.ts", `tool "probe"`, `block id "bad block id with spaces"`} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected error to contain %q, got: %v", want, err)
+				}
+			}
+			if tt.wantBranch {
+				if !strings.Contains(err.Error(), "Linux") {
+					t.Errorf("expected error to name platform branch 'Linux', got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// An invalid declaration inside an .arch() block must fail when loaded targeting either
+// amd64 (where the arm64 block is inactive) or arm64 (where it is active).
+func TestLoaderRejectsInvalidDeclarationsInInactiveArchBlocks(t *testing.T) {
+	tool := `
+import { Architecture, defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+  install("manual")
+    .arch(Architecture.Arm64, (install) =>
+      install().copy("./src", "~/.config/test", { conflict: "invalid-policy" as any })
+    ),
+);`
+
+	targets := []struct {
+		name       string
+		targetOS   string
+		targetArch string
+		wantBranch bool
+	}{
+		{name: "amd64 target (inactive branch)", targetOS: "darwin", targetArch: "amd64", wantBranch: true},
+		{name: "arm64 target (active branch)", targetOS: "darwin", targetArch: "arm64", wantBranch: false},
+	}
+
+	for _, tt := range targets {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := loadToolSource(t, tool, WithTarget(Target{OS: tt.targetOS, Arch: tt.targetArch}))
+			if err == nil {
+				t.Fatalf("expected load to fail for target %s/%s", tt.targetOS, tt.targetArch)
+			}
+			for _, want := range []string{"probe.tool.ts", `tool "probe"`, `conflict "invalid-policy" is not one of`} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected error to contain %q, got: %v", want, err)
+				}
+			}
+			if tt.wantBranch {
+				if !strings.Contains(err.Error(), "arm64") {
+					t.Errorf("expected error to name arch branch 'arm64', got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// An invalid install parameter in an inactive platform block is rejected and names the
+// branch even when the tool is loaded for another platform.
+func TestLoaderRejectsInvalidInstallParamsInInactivePlatformBlocks(t *testing.T) {
+	tool := `
+import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+  install("brew", { formula: "mytool" })
+    .platform(Platform.Linux, (install) =>
+      install("apt", { package: "-badpkg" })
+    ),
+);`
+
+	_, err := loadToolSource(t, tool, WithTarget(Target{OS: "darwin", Arch: "arm64"}))
+	if err == nil {
+		t.Fatal("expected load to fail on darwin")
+	}
+	for _, want := range []string{"probe.tool.ts", `tool "probe"`, "platform Linux", `package "-badpkg" cannot start with '-'`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("expected error to contain %q, got: %v", want, err)
+		}
+	}
+}
+
+// Only the matching branch is applied to the active tool configuration; non-matching
+// branches are for validation only.
+func TestLoaderAppliesOnlyMatchingBranchToActiveTool(t *testing.T) {
+	tool := `
+import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+export default defineTool((install) =>
+  install()
+    .bin("mytool")
+    .platform(Platform.Linux, (install) =>
+      install("manual", { binaryPath: "/usr/bin/linux-tool" })
+        .block("~/.bashrc", { id: "linux-blk" })
+    )
+    .platform(Platform.MacOS, (install) =>
+      install("manual", { binaryPath: "/usr/bin/mac-tool" })
+        .block("~/.zshrc", { id: "mac-blk" })
+    ),
+);`
+
+	tools, err := loadToolSource(t, tool, WithTarget(Target{OS: "darwin", Arch: "arm64"}))
+	if err != nil {
+		t.Fatalf("expected load to succeed, got: %v", err)
+	}
+
+	tc := tools["probe"]
+	if tc.Disabled {
+		t.Fatal("expected tool to be enabled on macOS")
+	}
+	if got := tc.InstallParams["binaryPath"]; got != "/usr/bin/mac-tool" {
+		t.Errorf("binaryPath = %v, want /usr/bin/mac-tool", got)
+	}
+	if len(tc.Blocks) != 1 || tc.Blocks[0].ID != "mac-blk" {
+		t.Errorf("blocks = %v, want only mac-blk", tc.Blocks)
+	}
+	if len(tc.InactivePlatformConfigs) != 1 {
+		t.Fatalf("expected 1 inactive platform config, got %d", len(tc.InactivePlatformConfigs))
+	}
+	if tc.InactivePlatformConfigs[0].Blocks[0].ID != "linux-blk" {
+		t.Errorf("inactive block = %v, want linux-blk", tc.InactivePlatformConfigs[0].Blocks)
+	}
+}

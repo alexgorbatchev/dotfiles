@@ -2161,9 +2161,10 @@ func TestLoaderRejectsUnknownInstallationMethod(t *testing.T) {
 			wantErr: `"no-such-linux-method"`,
 		},
 		{
-			name:   "unknown method in a platform block for another target",
-			tool:   platformBlock,
-			target: Target{OS: arch.OSDarwin, Arch: arch.ArchARM64},
+			name:    "unknown method in a platform block for another target",
+			tool:    platformBlock,
+			target:  Target{OS: arch.OSDarwin, Arch: arch.ArchARM64},
+			wantErr: `"no-such-linux-method"`,
 		},
 		{
 			name:   "install() without a method",

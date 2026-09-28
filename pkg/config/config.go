@@ -364,10 +364,36 @@ func (tc *ToolConfig) UpdateRefusal() (reason string, refused bool) {
 
 // ToolConfig matches complete configurations of individual packages or tools.
 type ToolConfig struct {
-	Name               string                 `json:"name" yaml:"name"`
+	Name                    string                   `json:"name" yaml:"name"`
+	Version                 *string                  `json:"version,omitempty" yaml:"version,omitempty"`
+	ConfigFilePath          string                   `json:"configFilePath,omitempty" yaml:"configFilePath,omitempty"`
+	Binaries                []interface{}            `json:"binaries,omitempty" yaml:"binaries,omitempty"` // Can be strings or BinaryConfigs
+	Dependencies            []string                 `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Disabled                bool                     `json:"disabled,omitempty" yaml:"disabled,omitempty"`
+	Hostname                string                   `json:"hostname,omitempty" yaml:"hostname,omitempty"`
+	Sudo                    bool                     `json:"sudo,omitempty" yaml:"sudo,omitempty"`
+	ShellConfigs            *ShellConfigs            `json:"shellConfigs,omitempty" yaml:"shellConfigs,omitempty"`
+	Symlinks                []SymlinkConfig          `json:"symlinks,omitempty" yaml:"symlinks,omitempty"`
+	Copies                  []CopyConfig             `json:"copies,omitempty" yaml:"copies,omitempty"`
+	Directories             []DirectoryConfig        `json:"directories,omitempty" yaml:"directories,omitempty"`
+	Blocks                  []BlockConfig            `json:"blocks,omitempty" yaml:"blocks,omitempty"`
+	Templates               []TemplateConfig         `json:"templates,omitempty" yaml:"templates,omitempty"`
+	UpdateCheck             *ToolConfigUpdateCheck   `json:"updateCheck,omitempty" yaml:"updateCheck,omitempty"`
+	InactivePlatformConfigs []InactivePlatformConfig `json:"inactivePlatformConfigs,omitempty" yaml:"inactivePlatformConfigs,omitempty"`
+	InstallationMethod      string                   `json:"installationMethod,omitempty" yaml:"installationMethod,omitempty"`
+	InstallParams           map[string]interface{}   `json:"installParams,omitempty" yaml:"installParams,omitempty"`
+}
+
+// InactivePlatformConfig represents a platform or architecture branch configuration
+// that was not selected for the active target, preserved for validation.
+type InactivePlatformConfig struct {
+	Platforms          int                    `json:"platforms,omitempty" yaml:"platforms,omitempty"`
+	Architectures      *int                   `json:"architectures,omitempty" yaml:"architectures,omitempty"`
+	Branch             string                 `json:"branch,omitempty" yaml:"branch,omitempty"`
+	Name               string                 `json:"name,omitempty" yaml:"name,omitempty"`
 	Version            *string                `json:"version,omitempty" yaml:"version,omitempty"`
 	ConfigFilePath     string                 `json:"configFilePath,omitempty" yaml:"configFilePath,omitempty"`
-	Binaries           []interface{}          `json:"binaries,omitempty" yaml:"binaries,omitempty"` // Can be strings or BinaryConfigs
+	Binaries           []interface{}          `json:"binaries,omitempty" yaml:"binaries,omitempty"`
 	Dependencies       []string               `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	Disabled           bool                   `json:"disabled,omitempty" yaml:"disabled,omitempty"`
 	Hostname           string                 `json:"hostname,omitempty" yaml:"hostname,omitempty"`
@@ -381,6 +407,131 @@ type ToolConfig struct {
 	UpdateCheck        *ToolConfigUpdateCheck `json:"updateCheck,omitempty" yaml:"updateCheck,omitempty"`
 	InstallationMethod string                 `json:"installationMethod,omitempty" yaml:"installationMethod,omitempty"`
 	InstallParams      map[string]interface{} `json:"installParams,omitempty" yaml:"installParams,omitempty"`
+}
+
+// UnmarshalJSON decodes an inactive platform configuration and materialises the
+// installation method's parameter defaults into InstallParams.
+func (ipc *InactivePlatformConfig) UnmarshalJSON(data []byte) error {
+	type plain InactivePlatformConfig
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode((*plain)(ipc)); err != nil {
+		return err
+	}
+	ipc.applyInstallParamDefaults()
+	return nil
+}
+
+func (ipc *InactivePlatformConfig) applyInstallParamDefaults() {
+	defaults, ok := installParamDefaults[ipc.InstallationMethod]
+	if !ok {
+		return
+	}
+	if ipc.InstallParams == nil {
+		ipc.InstallParams = make(map[string]interface{}, len(defaults))
+	}
+	for key, value := range defaults {
+		if _, set := ipc.InstallParams[key]; !set {
+			ipc.InstallParams[key] = value
+		}
+	}
+}
+
+// BranchName returns a human-readable description of this platform/arch branch.
+func (ipc *InactivePlatformConfig) BranchName() string {
+	if ipc.Branch != "" {
+		return ipc.Branch
+	}
+	var parts []string
+	if ipc.Platforms != 0 && ipc.Platforms != PlatformAll {
+		names := PlatformNames(ipc.Platforms)
+		if len(names) > 0 {
+			parts = append(parts, "platform "+strings.Join(names, ", "))
+		}
+	}
+	if ipc.Architectures != nil && *ipc.Architectures != 0 && *ipc.Architectures != ArchAll {
+		names := ArchitectureNames(*ipc.Architectures)
+		if len(names) > 0 {
+			parts = append(parts, "arch "+strings.Join(names, ", "))
+		}
+	}
+	if len(parts) == 0 {
+		return "inactive branch"
+	}
+	return strings.Join(parts, ", ")
+}
+
+func (ipc *InactivePlatformConfig) asToolConfig(toolName string) *ToolConfig {
+	return &ToolConfig{
+		Name:               toolName,
+		ConfigFilePath:     ipc.ConfigFilePath,
+		InstallationMethod: ipc.InstallationMethod,
+		InstallParams:      ipc.InstallParams,
+		Binaries:           ipc.Binaries,
+		Dependencies:       ipc.Dependencies,
+		Disabled:           ipc.Disabled,
+		Hostname:           ipc.Hostname,
+		Sudo:               ipc.Sudo,
+		ShellConfigs:       ipc.ShellConfigs,
+		Symlinks:           ipc.Symlinks,
+		Copies:             ipc.Copies,
+		Directories:        ipc.Directories,
+		Blocks:             ipc.Blocks,
+		Templates:          ipc.Templates,
+		UpdateCheck:        ipc.UpdateCheck,
+	}
+}
+
+// Validate checks declarations and install parameters inside this inactive platform branch.
+func (ipc *InactivePlatformConfig) Validate(toolName string) error {
+	branch := ipc.BranchName()
+
+	tc := ipc.asToolConfig(toolName)
+	if err := tc.validateInstallParams(); err != nil {
+		prefix := fmt.Sprintf("tool %q: ", toolName)
+		if strings.HasPrefix(err.Error(), prefix) {
+			return fmt.Errorf("tool %q (%s): %s", toolName, branch, strings.TrimPrefix(err.Error(), prefix))
+		}
+		return fmt.Errorf("tool %q (%s): %w", toolName, branch, err)
+	}
+
+	for _, sym := range ipc.Symlinks {
+		if err := sym.Validate(); err != nil {
+			return fmt.Errorf("invalid symlink in tool %q (%s): %w", toolName, branch, err)
+		}
+	}
+
+	for _, cp := range ipc.Copies {
+		if err := cp.Validate(); err != nil {
+			return fmt.Errorf("invalid copy in tool %q (%s): %w", toolName, branch, err)
+		}
+	}
+
+	for _, dir := range ipc.Directories {
+		if err := dir.Validate(); err != nil {
+			return fmt.Errorf("invalid directory in tool %q (%s): %w", toolName, branch, err)
+		}
+	}
+
+	for _, blk := range ipc.Blocks {
+		if err := blk.Validate(); err != nil {
+			return fmt.Errorf("invalid block in tool %q (%s): %w", toolName, branch, err)
+		}
+	}
+
+	for _, tmpl := range ipc.Templates {
+		if err := tmpl.Validate(); err != nil {
+			return fmt.Errorf("invalid template in tool %q (%s): %w", toolName, branch, err)
+		}
+	}
+
+	if ipc.ShellConfigs != nil {
+		if err := ipc.ShellConfigs.Validate(); err != nil {
+			return fmt.Errorf("invalid shell config in tool %q (%s): %w", toolName, branch, err)
+		}
+	}
+
+	return nil
 }
 
 // installParamDefaults lists the install parameters an installation method fills
@@ -512,6 +663,12 @@ func (tc *ToolConfig) Validate() error {
 	if tc.ShellConfigs != nil {
 		if err := tc.ShellConfigs.Validate(); err != nil {
 			return fmt.Errorf("invalid shell config in tool %q: %w", tc.Name, err)
+		}
+	}
+
+	for _, ipc := range tc.InactivePlatformConfigs {
+		if err := ipc.Validate(tc.Name); err != nil {
+			return err
 		}
 	}
 

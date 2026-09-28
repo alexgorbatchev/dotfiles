@@ -281,12 +281,45 @@ func validateToolMap(prefix string, m map[string]interface{}) error {
 		"shellConfigs", "symlinks", "copies", "updateCheck",
 		"installationMethod", "installParams",
 		"directories", "blocks", "templates",
+		"inactivePlatformConfigs",
 	}
 
 	for k, v := range m {
 		if !contains(allowedToolKeys, k) {
 			return unknownPropertyError(prefix, k, allowedToolKeys)
 		}
+		path := qualifyPath(prefix, k)
+		if k == "inactivePlatformConfigs" {
+			allowedInactiveKeys := []string{
+				"platforms", "architectures", "branch",
+				"name", "version", "configFilePath", "binaries", "dependencies",
+				"disabled", "hostname", "sudo",
+				"shellConfigs", "symlinks", "copies", "updateCheck",
+				"installationMethod", "installParams",
+				"directories", "blocks", "templates",
+			}
+			if list, ok := v.([]interface{}); ok {
+				for i, item := range list {
+					sub, ok := item.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					entryPath := fmt.Sprintf("%s[%d]", path, i)
+					if err := checkKeys(entryPath, sub, allowedInactiveKeys); err != nil {
+						return err
+					}
+					if err := validateToolDeclarations(entryPath, sub); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return validateToolDeclarations(prefix, m)
+}
+
+func validateToolDeclarations(prefix string, m map[string]interface{}) error {
+	for k, v := range m {
 		path := qualifyPath(prefix, k)
 		switch k {
 		case "updateCheck":

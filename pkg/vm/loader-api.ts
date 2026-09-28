@@ -286,6 +286,46 @@ function captureParamResolvers(toolName: string, installParams: Record<string, u
 }
 
 /**
+ * Drops function-valued parameters from inactive branch configurations so they cannot
+ * be invoked from Go or register uncalled resolvers.
+ */
+function cleanInactiveParamResolvers(installParams: Record<string, unknown>): void {
+  for (const path of RESOLVABLE_INSTALL_PARAMS) {
+    const parent = resolvableParent(installParams, path);
+    if (!parent) continue;
+    const leaf = path.slice(path.indexOf(".") + 1);
+    if (typeof parent[leaf] === "function") {
+      delete parent[leaf];
+    }
+  }
+}
+
+/**
+ * Formats a platform and architecture constraint as a human-readable branch name.
+ */
+function formatBranchName(platforms: unknown, architectures?: unknown): string {
+  const parts: string[] = [];
+  if (typeof platforms === "number" && platforms > 0 && platforms !== Platform.All) {
+    const pNames: string[] = [];
+    if (platforms & Platform.Linux) pNames.push("Linux");
+    if (platforms & Platform.MacOS) pNames.push("macOS");
+    if (platforms & Platform.Windows) pNames.push("Windows");
+    if (pNames.length > 0) {
+      parts.push("platform " + pNames.join(", "));
+    }
+  }
+  if (typeof architectures === "number" && architectures > 0 && architectures !== Architecture.All) {
+    const aNames: string[] = [];
+    if (architectures & Architecture.X86_64) aNames.push("x86_64");
+    if (architectures & Architecture.Arm64) aNames.push("arm64");
+    if (aNames.length > 0) {
+      parts.push("arch " + aNames.join(", "));
+    }
+  }
+  return parts.length > 0 ? parts.join(", ") : "inactive branch";
+}
+
+/**
  * Invoked from Go when an installer needs a function-valued install parameter. Returns
  * a promise so an async resolver is awaited rather than handed back unresolved.
  */
@@ -639,19 +679,47 @@ export function defineConfig(callback: ConfigFactory): unknown {
  * @param callback Builder function configuring installer, binaries, symlinks, and shell settings.
  */
 export function defineTool(callback: AsyncConfigureTool): unknown {
-  const builder: Record<string, unknown> = {
-    name: "",
-    installationMethod: "",
-    installParams: {} as Record<string, unknown>,
-    binaries: [] as unknown[],
-    dependencies: [] as unknown[],
-    symlinks: [] as unknown[],
-    copies: [] as unknown[],
-    directories: [] as unknown[],
-    blocks: [] as unknown[],
-    templates: [] as unknown[],
-    shellConfigs: {} as Record<string, unknown>,
+  function createInstall(targetBuilder: Record<string, unknown>) {
+    return function install(method?: string, params?: unknown): unknown {
+      if (method) {
+        targetBuilder["installationMethod"] = method;
+        if (method === "brew") {
+          const deps = (targetBuilder["dependencies"] || []) as unknown[];
+          if (!deps.includes("brew")) {
+            deps.push("brew");
+          }
+          targetBuilder["dependencies"] = deps;
+        }
+      }
+      if (params) {
+        targetBuilder["installParams"] = params as Record<string, unknown>;
+      }
+      return targetBuilder;
+    };
+  }
 
+  function createInactiveBuilder(): Record<string, unknown> {
+    const inactive: Record<string, unknown> = {
+      name: (builder["name"] as string) || globalThis.currentToolName || "",
+      configFilePath: globalThis.currentToolPath || "",
+      installationMethod: "",
+      installParams: {} as Record<string, unknown>,
+      binaries: [] as unknown[],
+      dependencies: [] as unknown[],
+      symlinks: [] as unknown[],
+      copies: [] as unknown[],
+      directories: [] as unknown[],
+      blocks: [] as unknown[],
+      templates: [] as unknown[],
+      shellConfigs: {} as Record<string, unknown>,
+      _version: "latest",
+      _isInactive: true,
+    };
+    Object.assign(inactive, builderMethods);
+    return inactive;
+  }
+
+  const builderMethods: Record<string, unknown> = {
     // `extra` exists only to reject a call that passed more than the two declared
     // arguments; a binary is declared one .bin() call at a time.
     bin(name: unknown, pattern: unknown, ...extra: unknown[]) {
@@ -854,8 +922,10 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         // installation actually reaches this lifecycle event. Only the set of event
         // names crosses the JSON boundary into Go, so the orchestrator knows which
         // events are worth re-entering the VM for.
-        const toolName = (this["name"] as string) || globalThis.currentToolName || "";
-        registerHookHandler(toolName, name, cb as HookHandlerFn);
+        if (!this["_isInactive"]) {
+          const toolName = (this["name"] as string) || globalThis.currentToolName || "";
+          registerHookHandler(toolName, name, cb as HookHandlerFn);
+        }
 
         const ip = (this["installParams"] || {}) as Record<string, unknown>;
         const events = (ip["hooks"] || []) as string[];
@@ -901,6 +971,10 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     },
 
     platform(plat: unknown, arg2: unknown, arg3?: unknown) {
+      if (this["_isInactive"]) {
+        return this;
+      }
+
       let arch: unknown = undefined;
       let cb: Function | undefined = undefined;
 
@@ -931,13 +1005,37 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         this["_hasMatchingPlatform"] = true;
         delete this["disabled"];
         if (cb) cb(install);
-      } else if (!this["_hasMatchingPlatform"]) {
-        this["disabled"] = true;
+      } else {
+        if (!this["_hasMatchingPlatform"]) {
+          this["disabled"] = true;
+        }
+        if (cb) {
+          const inactiveBuilder = createInactiveBuilder();
+          const inactiveInstall = createInstall(inactiveBuilder);
+          const res = cb(inactiveInstall);
+          recordToolFactory(res);
+          cleanInternalProps(inactiveBuilder);
+          inactiveBuilder["version"] = inactiveBuilder["_version"] || "latest";
+          inactiveBuilder["platforms"] = plat;
+          if (archGiven && arch !== undefined) {
+            inactiveBuilder["architectures"] = arch;
+          }
+          inactiveBuilder["branch"] = formatBranchName(plat, archGiven ? arch : undefined);
+          if (inactiveBuilder["installParams"] && typeof inactiveBuilder["installParams"] === "object") {
+            cleanInactiveParamResolvers(inactiveBuilder["installParams"] as Record<string, unknown>);
+          }
+          const list = (this["inactivePlatformConfigs"] ||= []) as unknown[];
+          list.push(inactiveBuilder);
+        }
       }
       return this;
     },
 
     arch(arc: unknown, cb: Function) {
+      if (this["_isInactive"]) {
+        return this;
+      }
+
       const matches = matchesTarget(Platform.All, arc);
 
       this["_hasArchBlocks"] = true;
@@ -946,14 +1044,48 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         this["_hasMatchingArch"] = true;
         delete this["disabled"];
         if (typeof cb === "function") cb(install);
-      } else if (!this["_hasMatchingArch"]) {
-        this["disabled"] = true;
+      } else {
+        if (!this["_hasMatchingArch"]) {
+          this["disabled"] = true;
+        }
+        if (typeof cb === "function") {
+          const inactiveBuilder = createInactiveBuilder();
+          const inactiveInstall = createInstall(inactiveBuilder);
+          const res = cb(inactiveInstall);
+          recordToolFactory(res);
+          cleanInternalProps(inactiveBuilder);
+          inactiveBuilder["version"] = inactiveBuilder["_version"] || "latest";
+          inactiveBuilder["platforms"] = Platform.All;
+          inactiveBuilder["architectures"] = arc;
+          inactiveBuilder["branch"] = formatBranchName(Platform.All, arc);
+          if (inactiveBuilder["installParams"] && typeof inactiveBuilder["installParams"] === "object") {
+            cleanInactiveParamResolvers(inactiveBuilder["installParams"] as Record<string, unknown>);
+          }
+          const list = (this["inactivePlatformConfigs"] ||= []) as unknown[];
+          list.push(inactiveBuilder);
+        }
       }
       return this;
     },
   };
 
-  (builder as unknown as Record<string, string>)["_version"] = "latest";
+  const builder: Record<string, unknown> = {
+    name: "",
+    installationMethod: "",
+    installParams: {} as Record<string, unknown>,
+    binaries: [] as unknown[],
+    dependencies: [] as unknown[],
+    symlinks: [] as unknown[],
+    copies: [] as unknown[],
+    directories: [] as unknown[],
+    blocks: [] as unknown[],
+    templates: [] as unknown[],
+    shellConfigs: {} as Record<string, unknown>,
+    _version: "latest",
+  };
+  Object.assign(builder, builderMethods);
+
+  const install = createInstall(builder);
 
   function createShellBuilder(shConfig: Record<string, unknown>, _shellType: string) {
     const shFunctions = (shConfig["functions"] || {}) as Record<string, string>;
@@ -1079,23 +1211,6 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     };
   }
 
-  function install(method: string, params?: unknown): unknown {
-    if (method) {
-      builder["installationMethod"] = method;
-      if (method === "brew") {
-        const deps = (builder["dependencies"] || []) as unknown[];
-        if (!deps.includes("brew")) {
-          deps.push("brew");
-        }
-        builder["dependencies"] = deps;
-      }
-    }
-    if (params) {
-      builder["installParams"] = params as Record<string, unknown>;
-    }
-    return builder;
-  }
-
   const toolCtx = createToolContext(globalThis.currentToolName || "", {});
 
   function cleanInternalProps(obj: Record<string, unknown>) {
@@ -1104,6 +1219,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
     delete obj["_hasMatchingPlatform"];
     delete obj["_hasArchBlocks"];
     delete obj["_hasMatchingArch"];
+    delete obj["_isInactive"];
   }
 
   if (typeof callback === "function") {

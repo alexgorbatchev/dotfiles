@@ -41,6 +41,7 @@ func generateTypes(outputPath string) error {
 	t.Add(config.ShellTypeConfig{})
 	t.Add(config.ShellConfigs{})
 	t.Add(config.ToolConfigUpdateCheck{})
+	t.Add(config.InactivePlatformConfig{})
 	t.Add(config.ToolConfig{})
 
 	if err := t.ConvertToFile(outputPath); err != nil {

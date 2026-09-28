@@ -116,6 +116,28 @@ export interface DirectoryConfig {
   path: string;
   mode?: string;
 }
+export interface InactivePlatformConfig {
+  platforms?: number;
+  architectures?: number;
+  branch?: string;
+  name?: string;
+  version?: string;
+  configFilePath?: string;
+  binaries?: any[];
+  dependencies?: string[];
+  disabled?: boolean;
+  hostname?: string;
+  sudo?: boolean;
+  shellConfigs?: ShellConfigs;
+  symlinks?: SymlinkConfig[];
+  copies?: CopyConfig[];
+  directories?: DirectoryConfig[];
+  blocks?: BlockConfig[];
+  templates?: TemplateConfig[];
+  updateCheck?: ToolConfigUpdateCheck;
+  installationMethod?: string;
+  installParams?: { [key: string]: any };
+}
 export interface ToolConfig {
   name: string;
   version?: string;
@@ -132,6 +154,7 @@ export interface ToolConfig {
   blocks?: BlockConfig[];
   templates?: TemplateConfig[];
   updateCheck?: ToolConfigUpdateCheck;
+  inactivePlatformConfigs?: InactivePlatformConfig[];
   installationMethod?: string;
   installParams?: { [key: string]: any };
 }
