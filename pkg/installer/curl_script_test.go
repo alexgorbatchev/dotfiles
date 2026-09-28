@@ -497,6 +497,65 @@ func TestCurlScriptInstaller_BinaryPath(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("resolves stagingDir in binaryPath to active staging directory and creates relative symlink surviving promotion", func(t *testing.T) {
+		inst, runner, fsys, ctx, url := newBinaryPathInstaller(t)
+		stagingDir := "/home/user/.generated/binaries/curl-tool/.staging"
+		inst.BinDir = stagingDir
+
+		runner.RegisterFunc("sh", func(c *exec.MockCmd) error {
+			if err := fsys.MkdirAll(filepath.Join(stagingDir, "bin"), 0755); err != nil {
+				return err
+			}
+			return fsys.WriteFile(filepath.Join(stagingDir, "bin", "curl-tool"), []byte("#!/bin/sh\necho ok\n"), 0755)
+		})
+
+		tool := &config.ToolConfig{
+			Name:     "curl-tool",
+			Binaries: []interface{}{map[string]interface{}{"name": "curl-tool"}},
+			InstallParams: map[string]interface{}{
+				"url":        url,
+				"shell":      "sh",
+				"binaryPath": "{stagingDir}/bin/curl-tool",
+			},
+		}
+
+		res, err := inst.Install(ctx, tool)
+		if err != nil {
+			t.Fatalf("Install() error = %v", err)
+		}
+		if !slices.Equal(res.Binaries, []string{"curl-tool"}) {
+			t.Errorf("Binaries = %v, want [curl-tool]", res.Binaries)
+		}
+
+		linkPath := filepath.Join(stagingDir, "curl-tool")
+		target, err := fsys.Readlink(linkPath)
+		if err != nil {
+			t.Fatalf("the staging entry is not a symlink: %v", err)
+		}
+		if target != "bin/curl-tool" {
+			t.Errorf("staging entry links to %q, want relative target %q", target, "bin/curl-tool")
+		}
+
+		// Simulate orchestrator promotion: rename .staging to current
+		currentDir := "/home/user/.generated/binaries/curl-tool/current"
+		if err := fsys.Rename(stagingDir, currentDir); err != nil {
+			t.Fatalf("promoting staging to current: %v", err)
+		}
+
+		promotedLink := filepath.Join(currentDir, "curl-tool")
+		exists, err := fsys.Exists(promotedLink)
+		if err != nil || !exists {
+			t.Fatalf("promoted link at %s does not exist or failed: %v", promotedLink, err)
+		}
+		promotedTarget, err := fsys.Readlink(promotedLink)
+		if err != nil {
+			t.Fatalf("reading promoted symlink: %v", err)
+		}
+		if promotedTarget != "bin/curl-tool" {
+			t.Errorf("promoted link target = %q, want %q", promotedTarget, "bin/curl-tool")
+		}
+	})
 }
 
 // writeLauncher installs claude the way its script does: a versioned binary and a

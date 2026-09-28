@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -58,7 +59,7 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
 		}, nil
 	}
-	binaryPath, err := ResolveBinaryPath(m.fsys, tool, config.GetProjectConfig(ctx))
+	binaryPath, err := ResolveBinaryPath(m.fsys, tool, config.GetProjectConfig(ctx), m.BinDir)
 	if err != nil {
 		return nil, err
 	}
@@ -83,9 +84,16 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		if symlink {
 			for _, binName := range binNames {
 				destPath := filepath.Join(destDir, binName)
+				if filepath.Clean(binaryPath) == filepath.Clean(destPath) {
+					continue
+				}
 				_ = m.fsys.Remove(destPath)
-				if err := m.fsys.Symlink(binaryPath, destPath); err != nil {
-					return nil, fmt.Errorf("creating symlink %s -> %s: %w", destPath, binaryPath, err)
+				symlinkTarget := binaryPath
+				if rel, err := filepath.Rel(destDir, binaryPath); err == nil && !strings.HasPrefix(rel, "..") {
+					symlinkTarget = rel
+				}
+				if err := m.fsys.Symlink(symlinkTarget, destPath); err != nil {
+					return nil, fmt.Errorf("creating symlink %s -> %s: %w", destPath, symlinkTarget, err)
 				}
 			}
 			return &InstallResult{
@@ -97,8 +105,10 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		// executable, so each copy is made executable explicitly.
 		for _, binName := range binNames {
 			destPath := filepath.Join(destDir, binName)
-			if err := m.fsys.CopyFile(binaryPath, destPath); err != nil {
-				return nil, fmt.Errorf("copying binary %s from %s: %w", binName, binaryPath, err)
+			if filepath.Clean(binaryPath) != filepath.Clean(destPath) {
+				if err := m.fsys.CopyFile(binaryPath, destPath); err != nil {
+					return nil, fmt.Errorf("copying binary %s from %s: %w", binName, binaryPath, err)
+				}
 			}
 			if err := m.fsys.Chmod(destPath, 0755); err != nil {
 				return nil, fmt.Errorf("making binary %s executable: %w", binName, err)

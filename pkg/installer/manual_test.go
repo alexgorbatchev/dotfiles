@@ -146,13 +146,13 @@ func TestManualInstaller(t *testing.T) {
 	})
 
 	t.Run("Install success with binaryPath containing placeholder", func(t *testing.T) {
-		_ = fsys.MkdirAll("/home/user/.binaries/mytool/current", 0755)
-		_ = fsys.WriteFile("/home/user/.binaries/mytool/current/mybinary", []byte("manual-payload-placeholder"), 0755)
+		_ = fsys.MkdirAll(filepath.Join(inst.BinDir, "payload"), 0755)
+		_ = fsys.WriteFile(filepath.Join(inst.BinDir, "payload", "mybinary"), []byte("manual-payload-placeholder"), 0755)
 
 		tool := &config.ToolConfig{
 			Name: "mytool",
 			InstallParams: map[string]interface{}{
-				"binaryPath": "{stagingDir}/mybinary",
+				"binaryPath": "{stagingDir}/payload/mybinary",
 			},
 		}
 
@@ -178,6 +178,140 @@ func TestManualInstaller(t *testing.T) {
 		data, err := fsys.ReadFile(destPath)
 		if err != nil || string(data) != "manual-payload-placeholder" {
 			t.Errorf("unexpected content: %s", string(data))
+		}
+	})
+
+	t.Run("Install binaryPath with stagingDir copies staged file instead of current", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		instStaging := NewManualInstaller(memFS, nil)
+		stagingDir := "/home/user/.binaries/mytool/.staging"
+		currentDir := "/home/user/.binaries/mytool/current"
+		instStaging.BinDir = stagingDir
+
+		// Seed current with old file
+		_ = memFS.MkdirAll(filepath.Join(currentDir, "payload"), 0755)
+		_ = memFS.WriteFile(filepath.Join(currentDir, "payload", "mybinary"), []byte("old-current-payload"), 0755)
+
+		// Seed staging with new file
+		_ = memFS.MkdirAll(filepath.Join(stagingDir, "payload"), 0755)
+		_ = memFS.WriteFile(filepath.Join(stagingDir, "payload", "mybinary"), []byte("staged-payload"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": "{stagingDir}/payload/mybinary",
+			},
+		}
+
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.BinariesDir = "/home/user/.binaries"
+		ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+		res, err := instStaging.Install(ctx, tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Fatalf("expected [mytool], got %v", res.Binaries)
+		}
+
+		destPath := filepath.Join(stagingDir, "mytool")
+		data, err := memFS.ReadFile(destPath)
+		if err != nil {
+			t.Fatalf("reading copied binary: %v", err)
+		}
+		if string(data) != "staged-payload" {
+			t.Errorf("copied content = %q, want %q (staged-payload)", string(data), "staged-payload")
+		}
+	})
+
+	t.Run("Install binaryPath with stagingDir succeeds on first install when current does not exist", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		instStaging := NewManualInstaller(memFS, nil)
+		stagingDir := "/home/user/.binaries/mytool/.staging"
+		instStaging.BinDir = stagingDir
+
+		// Only staging has the payload
+		_ = memFS.MkdirAll(filepath.Join(stagingDir, "payload"), 0755)
+		_ = memFS.WriteFile(filepath.Join(stagingDir, "payload", "mybinary"), []byte("first-install-payload"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": "{stagingDir}/payload/mybinary",
+			},
+		}
+
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.BinariesDir = "/home/user/.binaries"
+		ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+		res, err := instStaging.Install(ctx, tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Fatalf("expected [mytool], got %v", res.Binaries)
+		}
+
+		destPath := filepath.Join(stagingDir, "mytool")
+		data, err := memFS.ReadFile(destPath)
+		if err != nil {
+			t.Fatalf("reading copied binary: %v", err)
+		}
+		if string(data) != "first-install-payload" {
+			t.Errorf("copied content = %q, want %q", string(data), "first-install-payload")
+		}
+	})
+
+	t.Run("Install binaryPath symlink with stagingDir uses relative link surviving promotion", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		instStaging := NewManualInstaller(memFS, nil)
+		stagingDir := "/home/user/.binaries/mytool/.staging"
+		instStaging.BinDir = stagingDir
+
+		_ = memFS.MkdirAll(filepath.Join(stagingDir, "payload"), 0755)
+		_ = memFS.WriteFile(filepath.Join(stagingDir, "payload", "mybinary"), []byte("symlink-payload"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": "{stagingDir}/payload/mybinary",
+				"symlink":    true,
+			},
+		}
+
+		projCfg := &config.ProjectConfig{}
+		projCfg.Paths.BinariesDir = "/home/user/.binaries"
+		ctx := config.WithProjectConfig(context.Background(), projCfg)
+
+		res, err := instStaging.Install(ctx, tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Fatalf("expected [mytool], got %v", res.Binaries)
+		}
+
+		linkPath := filepath.Join(stagingDir, "mytool")
+		target, err := memFS.Readlink(linkPath)
+		if err != nil {
+			t.Fatalf("readlink error: %v", err)
+		}
+		if target != "payload/mybinary" {
+			t.Errorf("symlink target = %q, want %q", target, "payload/mybinary")
+		}
+
+		// Promotion
+		currentDir := "/home/user/.binaries/mytool/current"
+		if err := memFS.Rename(stagingDir, currentDir); err != nil {
+			t.Fatalf("promotion error: %v", err)
+		}
+		promotedData, err := memFS.ReadFile(filepath.Join(currentDir, "mytool"))
+		if err != nil || string(promotedData) != "symlink-payload" {
+			t.Errorf("promoted content = %q, err = %v", string(promotedData), err)
 		}
 	})
 

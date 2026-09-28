@@ -73,6 +73,13 @@ func unresolvedTokens(value string) []string {
 // caller that ignores the error operates on a path nobody wrote. Every caller has to
 // report the error.
 func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (string, error) {
+	return ResolvePlaceholdersWithStagingDir(val, toolName, projCfg, "")
+}
+
+// ResolvePlaceholdersWithStagingDir is like ResolvePlaceholders, but overrides the
+// {stagingDir} placeholder with stagingDir when non-empty instead of defaulting to
+// <binariesDir>/<toolName>/current.
+func ResolvePlaceholdersWithStagingDir(val string, toolName string, projCfg *ProjectConfig, stagingDir string) (string, error) {
 	if projCfg == nil {
 		return val, nil
 	}
@@ -82,8 +89,13 @@ func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (s
 		shellScriptsDir = filepath.Join(projCfg.Paths.GeneratedDir, "shell-scripts")
 	}
 
+	effectiveStagingDir := stagingDir
+	if effectiveStagingDir == "" {
+		effectiveStagingDir = filepath.Join(projCfg.Paths.BinariesDir, toolName, "current")
+	}
+
 	vars := map[string]string{
-		"stagingDir":            filepath.Join(projCfg.Paths.BinariesDir, toolName, "current"),
+		"stagingDir":            effectiveStagingDir,
 		"paths.homeDir":         projCfg.Paths.HomeDir,
 		"paths.dotfilesDir":     projCfg.Paths.DotfilesDir,
 		"paths.targetDir":       projCfg.Paths.TargetDir,
@@ -137,7 +149,13 @@ func ResolvePlaceholders(val string, toolName string, projCfg *ProjectConfig) (s
 // It is the rule checkPathPlaceholders applies to the paths block, one layer up: a
 // placeholder nothing can fill stops the run rather than becoming part of a path.
 func ResolvePathPlaceholders(val string, toolName string, projCfg *ProjectConfig) (string, error) {
-	resolved, err := ResolvePlaceholders(val, toolName, projCfg)
+	return ResolvePathPlaceholdersWithStagingDir(val, toolName, projCfg, "")
+}
+
+// ResolvePathPlaceholdersWithStagingDir resolves the placeholders of a value that names
+// a filesystem path with an explicit staging directory override.
+func ResolvePathPlaceholdersWithStagingDir(val string, toolName string, projCfg *ProjectConfig, stagingDir string) (string, error) {
+	resolved, err := ResolvePlaceholdersWithStagingDir(val, toolName, projCfg, stagingDir)
 	if err != nil {
 		return "", err
 	}

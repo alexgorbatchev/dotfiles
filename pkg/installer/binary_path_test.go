@@ -20,6 +20,7 @@ func TestResolveBinaryPath(t *testing.T) {
 	tests := []struct {
 		name       string
 		binaryPath string
+		stagingDir string
 		configFile string
 		want       string
 		plainFS    bool
@@ -32,6 +33,8 @@ func TestResolveBinaryPath(t *testing.T) {
 		{name: "home without a resolving filesystem", binaryPath: "~/.local/bin/tool", plainFS: true, want: "/home/user/.local/bin/tool"},
 		{name: "relative without a tool file", binaryPath: "vendor/tool", want: "/home/user/dotfiles/vendor/tool"},
 		{name: "relative to the tool file", binaryPath: "./vendor/tool", configFile: "/dotfiles/tools/tool.tool.ts", want: "/dotfiles/tools/vendor/tool"},
+		{name: "stagingDir defaults to current", binaryPath: "{stagingDir}/bin/tool", want: "/home/user/.generated/binaries/tool/current/bin/tool"},
+		{name: "stagingDir resolves to active staging directory", binaryPath: "{stagingDir}/bin/tool", stagingDir: "/home/user/.generated/binaries/tool/.staging", want: "/home/user/.generated/binaries/tool/.staging/bin/tool"},
 		{name: "unknown placeholder", binaryPath: "{configFileDir}/tool", wantErr: []string{"tool", "binaryPath", "{configFileDir}"}},
 	}
 
@@ -46,7 +49,13 @@ func TestResolveBinaryPath(t *testing.T) {
 			if tt.plainFS {
 				fsys = fs.NewMemFS()
 			}
-			got, err := ResolveBinaryPath(fsys, tool, projCfg)
+			var got string
+			var err error
+			if tt.stagingDir != "" {
+				got, err = ResolveBinaryPath(fsys, tool, projCfg, tt.stagingDir)
+			} else {
+				got, err = ResolveBinaryPath(fsys, tool, projCfg)
+			}
 			if len(tt.wantErr) > 0 {
 				if err == nil {
 					t.Fatalf("ResolveBinaryPath() = %q, want an error", got)

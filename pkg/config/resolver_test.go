@@ -73,6 +73,26 @@ func TestResolvePlaceholders(t *testing.T) {
 		}
 	})
 
+	t.Run("stagingDir default vs override", func(t *testing.T) {
+		gotDefault, err := ResolvePlaceholders("{stagingDir}/bin", "mytool", projCfg)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		wantDefault := "/home/user/.binaries/mytool/current/bin"
+		if gotDefault != wantDefault {
+			t.Errorf("got %q, want %q", gotDefault, wantDefault)
+		}
+
+		gotCustom, err := ResolvePlaceholdersWithStagingDir("{stagingDir}/bin", "mytool", projCfg, "/custom/staging")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		wantCustom := "/custom/staging/bin"
+		if gotCustom != wantCustom {
+			t.Errorf("got %q, want %q", gotCustom, wantCustom)
+		}
+	})
+
 	t.Run("cycle detection error", func(t *testing.T) {
 		projCfgCycle := *projCfg
 		projCfgCycle.Paths.HomeDir = "{paths.dotfilesDir}/sub"
@@ -173,4 +193,14 @@ func TestResolvePathPlaceholders(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("stagingDir override", func(t *testing.T) {
+		got, err := ResolvePathPlaceholdersWithStagingDir("{stagingDir}/bin/tool", "tool", projCfg, "/my/staging")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != "/my/staging/bin/tool" {
+			t.Errorf("got %q, want %q", got, "/my/staging/bin/tool")
+		}
+	})
 }

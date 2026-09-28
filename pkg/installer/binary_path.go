@@ -20,13 +20,20 @@ import (
 //
 // The manual and curl-script installers and the orchestrator's shim generation all read
 // binaryPath, and share this so the same value cannot come to mean different paths.
-func ResolveBinaryPath(fsys fs.FS, tool *config.ToolConfig, projCfg *config.ProjectConfig) (string, error) {
+// When stagingDir is provided, {stagingDir} resolves to that directory instead of
+// <binariesDir>/<tool>/current.
+func ResolveBinaryPath(fsys fs.FS, tool *config.ToolConfig, projCfg *config.ProjectConfig, stagingDir ...string) (string, error) {
 	written := getStringParam(tool.InstallParams, "binaryPath", "")
 	if written == "" {
 		return "", nil
 	}
 
-	resolved, err := config.ResolvePathPlaceholders(written, tool.Name, projCfg)
+	var activeStagingDir string
+	if len(stagingDir) > 0 {
+		activeStagingDir = stagingDir[0]
+	}
+
+	resolved, err := config.ResolvePathPlaceholdersWithStagingDir(written, tool.Name, projCfg, activeStagingDir)
 	if err != nil {
 		return "", fmt.Errorf("%s: install parameter binaryPath %q: %w", tool.Name, written, err)
 	}

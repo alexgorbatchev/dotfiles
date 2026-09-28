@@ -95,7 +95,7 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	}
 	// Resolved before the script runs, so a path that cannot be resolved stops the
 	// installation before anything has been executed.
-	binaryPath, err := ResolveBinaryPath(c.fsys, tool, config.GetProjectConfig(ctx))
+	binaryPath, err := ResolveBinaryPath(c.fsys, tool, config.GetProjectConfig(ctx), c.BinDir)
 	if err != nil {
 		return nil, err
 	}
@@ -304,11 +304,17 @@ func (c *CurlScriptInstaller) stageBinaries(tool *config.ToolConfig, stagingDir,
 
 	binName := GetBinaryNames(tool.Name, tool.Binaries)[0]
 	linkPath := filepath.Join(stagingDir, binName)
-	if err := c.fsys.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("%s: clearing %s for the binaryPath link: %w", tool.Name, linkPath, err)
-	}
-	if err := c.fsys.Symlink(binaryPath, linkPath); err != nil {
-		return nil, fmt.Errorf("%s: linking %s to binaryPath %s: %w", tool.Name, linkPath, binaryPath, err)
+	if filepath.Clean(binaryPath) != filepath.Clean(linkPath) {
+		if err := c.fsys.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("%s: clearing %s for the binaryPath link: %w", tool.Name, linkPath, err)
+		}
+		symlinkTarget := binaryPath
+		if rel, err := filepath.Rel(stagingDir, binaryPath); err == nil && !strings.HasPrefix(rel, "..") {
+			symlinkTarget = rel
+		}
+		if err := c.fsys.Symlink(symlinkTarget, linkPath); err != nil {
+			return nil, fmt.Errorf("%s: linking %s to binaryPath %s: %w", tool.Name, linkPath, binaryPath, err)
+		}
 	}
 	return []string{binName}, nil
 }

@@ -2494,6 +2494,108 @@ func TestInstallTool_BeforeInstallHookStagesThePayload(t *testing.T) {
 	}
 }
 
+// A manual tool with binaryPath pointing to {stagingDir}/... relies on its before-install
+// hook to stage the binary. During install, {stagingDir} must resolve to .staging rather
+// than current, and after promotion .staging is renamed to current and the shim generated.
+func TestInstallTool_ManualHookStagingWithBinaryPath(t *testing.T) {
+	t.Parallel()
+	const toolName = "staged-tool"
+	stagingDir := "/home/user/.generated/binaries/" + toolName + "/.staging"
+	currentDir := "/home/user/.generated/binaries/" + toolName + "/current"
+	afterInstallMarker := "/home/user/markers/after-install"
+
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(installer.NewManualInstaller(memFS, nil))
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			DotfilesDir:     "/home/user/dotfiles",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	toolPath := filepath.Join(t.TempDir(), toolName+".tool.ts")
+	body := `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install, ctx) =>
+			install("manual", { binaryPath: ctx.stagingDir + "/payload/staged-tool" })
+				.bin("staged-tool")
+				.hook("before-install", async ({ stagingDir, fileSystem }) => {
+					await fileSystem.mkdir(stagingDir + "/payload", { recursive: true });
+					await fileSystem.writeFile(stagingDir + "/payload/staged-tool", "#!/bin/sh\necho staged\n");
+				})
+				.hook("after-install", async ({ installedDir, fileSystem }) => {
+					await fileSystem.mkdir("/home/user/markers", { recursive: true });
+					await fileSystem.writeFile("/home/user/markers/after-install", installedDir);
+				}),
+		);
+	`
+	if err := os.WriteFile(toolPath, []byte(body), 0644); err != nil {
+		t.Fatalf("writing tool file: %v", err)
+	}
+
+	tool := &config.ToolConfig{
+		Name:               toolName,
+		ConfigFilePath:     toolPath,
+		InstallationMethod: "manual",
+		Binaries:           []interface{}{map[string]interface{}{"name": "staged-tool"}},
+		InstallParams: map[string]interface{}{
+			"binaryPath": "{stagingDir}/payload/staged-tool",
+			"hooks":      []any{"before-install", "after-install"},
+		},
+	}
+
+	err = orch.InstallTool(ctx, tool, projCfg)
+	if err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	if stagingExists, _ := memFS.Exists(stagingDir); stagingExists {
+		t.Errorf("staging directory %s was left behind", stagingDir)
+	}
+	currentExists, _ := memFS.Exists(currentDir)
+	if !currentExists {
+		t.Fatalf("current directory %s does not exist", currentDir)
+	}
+
+	binaryContent, readErr := memFS.ReadFile(filepath.Join(currentDir, "staged-tool"))
+	if readErr != nil {
+		t.Fatalf("reading promoted binary: %v", readErr)
+	}
+	if string(binaryContent) != "#!/bin/sh\necho staged\n" {
+		t.Errorf("binary content = %q, want %q", string(binaryContent), "#!/bin/sh\necho staged\n")
+	}
+
+	marker, readErr := memFS.ReadFile(afterInstallMarker)
+	if readErr != nil {
+		t.Fatalf("after-install marker not found: %v", readErr)
+	}
+	if string(marker) != currentDir {
+		t.Errorf("after-install installedDir = %q, want %q", string(marker), currentDir)
+	}
+
+	record, recordErr := reg.GetToolInstallation(ctx, toolName)
+	if recordErr != nil || record == nil {
+		t.Fatalf("reading installation record: %v", recordErr)
+	}
+}
+
 const (
 	copyToolDir    = "/home/user/tools/copy-tool"
 	copyToolTarget = "/home/user/.config/copy-tool/config.toml"
