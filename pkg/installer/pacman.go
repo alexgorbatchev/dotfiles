@@ -116,13 +116,25 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 	// Fetch version via pacman -Q
 	var detectedVersion string
-	queryCmd := p.runner.CommandContext(ctx, "pacman", "-Q", "--", localPackageName)
-	out, err := queryCmd.Output()
-	if err == nil {
-		output := strings.TrimSpace(string(out))
-		prefix := localPackageName + " "
-		if strings.HasPrefix(output, prefix) {
-			detectedVersion = strings.TrimSpace(output[len(prefix):])
+	queryArgs := []string{"-Q", "--", localPackageName}
+	query := runQuery(p.runner.CommandContext(ctx, "pacman", queryArgs...), "pacman", queryArgs...)
+	if query.err != nil {
+		if p.log != nil {
+			p.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("failed to determine installed version: %v", query.fail(query.err))))
+		}
+	} else {
+		output := strings.TrimSpace(query.stdout)
+		fields := strings.Fields(output)
+		if len(fields) >= 2 {
+			detectedVersion = fields[1]
+		} else {
+			if p.log != nil {
+				out := output
+				if out == "" {
+					out = "output was empty"
+				}
+				p.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("could not determine installed version from %s: %s", query.command, out)))
+			}
 		}
 	}
 

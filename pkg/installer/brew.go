@@ -299,9 +299,23 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 
 	if version == "" {
-		v, _, _, err := b.getBrewInfo(ctx, formula, isCask)
-		if err == nil {
-			version = v
+		_, installed, _, err := b.getBrewInfo(ctx, formula, isCask)
+		if err != nil {
+			if b.log != nil {
+				b.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("failed to determine installed version: %v", err)))
+			}
+		} else if installed == "" {
+			if b.log != nil {
+				args := []string{"info", "--json=v2"}
+				if isCask {
+					args = append(args, "--cask")
+				}
+				args = append(args, "--", formula)
+				cmdName := shellCommandLine(b.getBrewExecutable(), args...)
+				b.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("could not determine installed version from %s: output had no installed version", cmdName)))
+			}
+		} else {
+			version = installed
 		}
 	}
 

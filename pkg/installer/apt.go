@@ -143,10 +143,42 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	// Step 3: Fetch version via dpkg-query
 	var detectedVersion string
-	queryCmd := a.runner.CommandContext(ctx, "dpkg-query", "-W", "-f=${Version}", "--", packageName)
-	out, err := queryCmd.Output()
-	if err == nil {
-		detectedVersion = strings.TrimSpace(string(out))
+	queryArgs := []string{"-W", "-f=${Version}", "--", packageName}
+	query := runQuery(a.runner.CommandContext(ctx, "dpkg-query", queryArgs...), "dpkg-query", queryArgs...)
+	if query.err == nil && strings.TrimSpace(query.stdout) != "" {
+		detectedVersion = strings.TrimSpace(query.stdout)
+	} else {
+		// When dpkg-query -W gives an empty result or error (e.g. for a virtual package),
+		// resolve the provider and query that provider's version.
+		provArgs := []string{"-W", "-f=${Package} ${Version} ${Provides}\n"}
+		provQuery := runQuery(a.runner.CommandContext(ctx, "dpkg-query", provArgs...), "dpkg-query", provArgs...)
+		var providerPkg string
+		if provQuery.err == nil {
+			providerPkg, _ = parseDpkgProvides(provQuery.stdout, packageName)
+		}
+		if providerPkg != "" {
+			verArgs := []string{"-W", "-f=${Version}", "--", providerPkg}
+			verQuery := runQuery(a.runner.CommandContext(ctx, "dpkg-query", verArgs...), "dpkg-query", verArgs...)
+			if verQuery.err == nil && strings.TrimSpace(verQuery.stdout) != "" {
+				detectedVersion = strings.TrimSpace(verQuery.stdout)
+			} else if verQuery.err != nil {
+				if a.log != nil {
+					a.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("failed to determine installed version: %v", verQuery.fail(verQuery.err))))
+				}
+			} else {
+				if a.log != nil {
+					a.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("could not determine installed version from %s: output was empty", verQuery.command)))
+				}
+			}
+		} else {
+			if a.log != nil {
+				if query.err != nil {
+					a.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("failed to determine installed version: %v", query.fail(query.err))))
+				} else {
+					a.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("could not determine installed version from %s: output was empty", query.command)))
+				}
+			}
+		}
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
@@ -302,6 +334,50 @@ func parseAptPolicy(out string) []aptPolicySection {
 		}
 	}
 	return sections
+}
+
+// parseDpkgProvides searches dpkg status output (formatted as "${Package} ${Version} ${Provides}\n")
+// for an installed package that provides targetPkg. It returns the provider package name and version.
+func parseDpkgProvides(output, targetPkg string) (string, string) {
+	bareTarget, _, _ := strings.Cut(targetPkg, ":")
+	for line := range strings.Lines(output) {
+		line = strings.TrimRight(line, "\r\n")
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		pkg := fields[0]
+		ver := fields[1]
+		if len(fields) < 3 {
+			continue
+		}
+		idx := strings.Index(line, ver)
+		provides := strings.TrimSpace(line[idx+len(ver):])
+
+		for _, item := range strings.Split(provides, ",") {
+			item = strings.TrimSpace(item)
+			if item == "" {
+				continue
+			}
+			fieldsItem := strings.Fields(item)
+			if len(fieldsItem) == 0 {
+				continue
+			}
+			provName := fieldsItem[0]
+			if cutIdx := strings.IndexAny(provName, "(=<>"); cutIdx != -1 {
+				provName = provName[:cutIdx]
+			}
+			bareProv, _, _ := strings.Cut(provName, ":")
+			if provName == targetPkg || provName == bareTarget || bareProv == bareTarget {
+				barePkg, _, _ := strings.Cut(pkg, ":")
+				return barePkg, ver
+			}
+		}
+	}
+	return "", ""
 }
 
 func init() {

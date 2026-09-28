@@ -1,14 +1,18 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 func TestAptInstaller(t *testing.T) {
@@ -186,6 +190,109 @@ func TestAptInstaller(t *testing.T) {
 		}
 		if aptCacheCmd == nil || !slices.Equal(aptCacheCmd.Args, []string{"policy", "--", "bash"}) {
 			t.Errorf("apt-cache args = %v, want [policy -- bash]", aptCacheCmd)
+		}
+	})
+
+	t.Run("Install virtual package provider resolution", func(t *testing.T) {
+		runner.Clear()
+		runner.RegisterFunc("dpkg-query", func(c *exec.MockCmd) error {
+			if slices.Contains(c.Args, "libz-dev") {
+				if c.Stderr() != nil {
+					_, _ = io.WriteString(c.Stderr(), "dpkg-query: no package found matching libz-dev\n")
+				}
+				return exitStatusError(1)
+			}
+			if slices.Contains(c.Args, "-f=${Package} ${Version} ${Provides}\n") {
+				c.SetOutput([]byte("zlib1g-dev 1:1.2.13.dfsg-1ubuntu5 libz-dev (= 1:1.2.13.dfsg-1ubuntu5)\n"))
+				return nil
+			}
+			if slices.Contains(c.Args, "zlib1g-dev") {
+				c.SetOutput([]byte("1:1.2.13.dfsg-1ubuntu5\n"))
+				return nil
+			}
+			return nil
+		})
+
+		tool := &config.ToolConfig{
+			Name: "libz-dev",
+			InstallParams: map[string]interface{}{
+				"package": "libz-dev",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "1:1.2.13.dfsg-1ubuntu5" {
+			t.Errorf("expected provider version 1:1.2.13.dfsg-1ubuntu5, got %q", res.Version)
+		}
+		if res.ShellEnv["APT_INSTALLED_VERSION"] != "1:1.2.13.dfsg-1ubuntu5" {
+			t.Errorf("expected env version 1:1.2.13.dfsg-1ubuntu5, got %q", res.ShellEnv["APT_INSTALLED_VERSION"])
+		}
+	})
+
+	t.Run("Install version query failure logs warning", func(t *testing.T) {
+		runner.Clear()
+		var logBuf bytes.Buffer
+		testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+		warnInst := NewAptInstaller(runner, fsys, nil)
+		warnInst.SetLogger(testLog)
+
+		runner.RegisterFunc("dpkg-query", func(c *exec.MockCmd) error {
+			if c.Stderr() != nil {
+				_, _ = io.WriteString(c.Stderr(), "dpkg-query: no package found matching nonexistent\n")
+			}
+			return exitStatusError(1)
+		})
+
+		tool := &config.ToolConfig{
+			Name: "nonexistent",
+			InstallParams: map[string]interface{}{
+				"package": "nonexistent",
+			},
+		}
+
+		res, err := warnInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "" {
+			t.Errorf("expected empty version, got %q", res.Version)
+		}
+		logStr := logBuf.String()
+		if !strings.Contains(logStr, "WARN") || !strings.Contains(logStr, "dpkg-query") || !strings.Contains(logStr, "no package found matching nonexistent") {
+			t.Errorf("expected warning naming command and output, got: %s", logStr)
+		}
+	})
+
+	t.Run("parseDpkgProvides branches", func(t *testing.T) {
+		output := " \r\n" +
+			"shortline\n" +
+			"curl 7.88.1\n" + // 2 fields, no provides
+			"pkg1 1.0.0   \n" + // empty provides after spaces
+			"pkg2 2.0.0 provA (= 1.0), , provB(=2.0), provC:any\n" +
+			"pkg3:amd64 3.0.0 provD:any\n"
+
+		// Empty/short lines
+		if p, _ := parseDpkgProvides(output, "missing"); p != "" {
+			t.Errorf("expected empty provider, got %q", p)
+		}
+		// Match provA
+		if p, v := parseDpkgProvides(output, "provA"); p != "pkg2" || v != "2.0.0" {
+			t.Errorf("provA: got %q, %q", p, v)
+		}
+		// Match provB without space before (
+		if p, v := parseDpkgProvides(output, "provB"); p != "pkg2" || v != "2.0.0" {
+			t.Errorf("provB: got %q, %q", p, v)
+		}
+		// Match provC with architecture
+		if p, v := parseDpkgProvides(output, "provC"); p != "pkg2" || v != "2.0.0" {
+			t.Errorf("provC: got %q, %q", p, v)
+		}
+		// Match provD with bare pkg
+		if p, v := parseDpkgProvides(output, "provD"); p != "pkg3" || v != "3.0.0" {
+			t.Errorf("provD: got %q, %q", p, v)
 		}
 	})
 }

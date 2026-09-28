@@ -139,12 +139,25 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		writer.Flush()
 	}
 
-	// Step 3: Fetch version via rpm -q
+	// Step 3: Fetch version via rpm -q --whatprovides
 	var detectedVersion string
-	queryCmd := d.runner.CommandContext(ctx, "rpm", "-q", "--qf", rpmVersionFormat, packageName)
-	out, err := queryCmd.Output()
-	if err == nil {
-		detectedVersion = rpmFirstVersion(string(out))
+	rpmArgs := []string{"-q", "--whatprovides", "--qf", rpmVersionFormat, packageName}
+	query := runQuery(d.runner.CommandContext(ctx, "rpm", rpmArgs...), "rpm", rpmArgs...)
+	if query.err != nil {
+		if d.log != nil {
+			d.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("failed to determine installed version: %v", query.fail(query.err))))
+		}
+	} else {
+		detectedVersion = rpmFirstVersion(query.stdout)
+		if detectedVersion == "" {
+			if d.log != nil {
+				out := strings.TrimSpace(query.stdout)
+				if out == "" {
+					out = "output was empty"
+				}
+				d.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("could not determine installed version from %s: %s", query.command, out)))
+			}
+		}
 	}
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)

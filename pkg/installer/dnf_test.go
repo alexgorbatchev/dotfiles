@@ -1,13 +1,18 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 func TestDnfInstaller(t *testing.T) {
@@ -99,6 +104,109 @@ func TestDnfInstaller(t *testing.T) {
 		_, err := inst.Install(context.Background(), tool)
 		if err == nil {
 			t.Error("expected error installing, got nil")
+		}
+	})
+
+	t.Run("Install whatprovides virtual capability resolution", func(t *testing.T) {
+		runner.Clear()
+		runner.RegisterFunc("rpm", func(c *exec.MockCmd) error {
+			if slices.Contains(c.Args, "--whatprovides") {
+				c.SetOutput([]byte("1.2.11-40.fc38\n"))
+				return nil
+			}
+			return exitStatusError(1)
+		})
+
+		tool := &config.ToolConfig{
+			Name: "pkgconfig-zlib",
+			InstallParams: map[string]interface{}{
+				"package": "pkgconfig(zlib)",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "1.2.11-40.fc38" {
+			t.Errorf("expected version 1.2.11-40.fc38, got %q", res.Version)
+		}
+		if res.ShellEnv["DNF_INSTALLED_VERSION"] != "1.2.11-40.fc38" {
+			t.Errorf("expected env version 1.2.11-40.fc38, got %q", res.ShellEnv["DNF_INSTALLED_VERSION"])
+		}
+
+		// Verify --whatprovides was passed to rpm
+		hasWhatProvides := false
+		for _, cmd := range runner.History {
+			if cmd.Name == "rpm" && slices.Contains(cmd.Args, "--whatprovides") {
+				hasWhatProvides = true
+			}
+		}
+		if !hasWhatProvides {
+			t.Errorf("expected rpm command to include --whatprovides, got: %v", runner.History)
+		}
+	})
+
+	t.Run("Install version query failure logs warning", func(t *testing.T) {
+		runner.Clear()
+		var logBuf bytes.Buffer
+		testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+		warnInst := NewDnfInstaller(runner, fsys, nil)
+		warnInst.SetLogger(testLog)
+
+		runner.RegisterFunc("rpm", func(c *exec.MockCmd) error {
+			if c.Stderr() != nil {
+				_, _ = io.WriteString(c.Stderr(), "no package provides nonexistent\n")
+			}
+			return exitStatusError(1)
+		})
+
+		tool := &config.ToolConfig{
+			Name: "nonexistent",
+			InstallParams: map[string]interface{}{
+				"package": "nonexistent",
+			},
+		}
+
+		res, err := warnInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "" {
+			t.Errorf("expected empty version, got %q", res.Version)
+		}
+		logStr := logBuf.String()
+		if !strings.Contains(logStr, "WARN") || !strings.Contains(logStr, "rpm") || !strings.Contains(logStr, "no package provides nonexistent") {
+			t.Errorf("expected warning naming command and output, got: %s", logStr)
+		}
+	})
+
+	t.Run("Install empty rpm output logs warning", func(t *testing.T) {
+		runner.Clear()
+		var logBuf bytes.Buffer
+		testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+		warnInst := NewDnfInstaller(runner, fsys, nil)
+		warnInst.SetLogger(testLog)
+
+		runner.Register("rpm", []byte(" \n"), nil)
+
+		tool := &config.ToolConfig{
+			Name: "empty",
+			InstallParams: map[string]interface{}{
+				"package": "empty",
+			},
+		}
+
+		res, err := warnInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "" {
+			t.Errorf("expected empty version, got %q", res.Version)
+		}
+		logStr := logBuf.String()
+		if !strings.Contains(logStr, "WARN") || !strings.Contains(logStr, "output was empty") {
+			t.Errorf("expected empty output warning, got: %s", logStr)
 		}
 	})
 }

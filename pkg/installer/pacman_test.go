@@ -1,14 +1,18 @@
 package installer
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 func TestPacmanInstaller(t *testing.T) {
@@ -217,6 +221,101 @@ func TestPacmanInstaller(t *testing.T) {
 		}
 		if quCmd == nil || !slices.Equal(quCmd.Args, []string{"-Qu", "--", "jq"}) {
 			t.Errorf("pacman -Qu args = %v, want [-Qu -- jq]", quCmd)
+		}
+	})
+
+	t.Run("Install provided package name resolution", func(t *testing.T) {
+		runner.Clear()
+		runner.RegisterFunc("pacman", func(c *exec.MockCmd) error {
+			if len(c.Args) >= 2 && c.Args[0] == "-Q" {
+				c.SetOutput([]byte("bash 5.3.20-1\n"))
+				return nil
+			}
+			return nil
+		})
+
+		tool := &config.ToolConfig{
+			Name: "sh",
+			InstallParams: map[string]interface{}{
+				"package": "sh",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "5.3.20-1" {
+			t.Errorf("expected version 5.3.20-1, got %q", res.Version)
+		}
+		if res.ShellEnv["PACMAN_INSTALLED_VERSION"] != "5.3.20-1" {
+			t.Errorf("expected env version 5.3.20-1, got %q", res.ShellEnv["PACMAN_INSTALLED_VERSION"])
+		}
+	})
+
+	t.Run("Install version query failure logs warning", func(t *testing.T) {
+		runner.Clear()
+		var logBuf bytes.Buffer
+		testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+		warnInst := NewPacmanInstaller(runner, fsys, nil)
+		warnInst.SetLogger(testLog)
+
+		runner.RegisterFunc("pacman", func(c *exec.MockCmd) error {
+			if len(c.Args) >= 2 && c.Args[0] == "-Q" {
+				if c.Stderr() != nil {
+					_, _ = io.WriteString(c.Stderr(), "error: package 'nonexistent' was not found\n")
+				}
+				return exitStatusError(1)
+			}
+			return nil
+		})
+
+		tool := &config.ToolConfig{
+			Name: "nonexistent",
+			InstallParams: map[string]interface{}{
+				"package": "nonexistent",
+			},
+		}
+
+		res, err := warnInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "" {
+			t.Errorf("expected empty version, got %q", res.Version)
+		}
+		logStr := logBuf.String()
+		if !strings.Contains(logStr, "WARN") || !strings.Contains(logStr, "pacman") || !strings.Contains(logStr, "error: package 'nonexistent' was not found") {
+			t.Errorf("expected warning naming command and output, got: %s", logStr)
+		}
+	})
+
+	t.Run("Install empty/malformed pacman output logs warning", func(t *testing.T) {
+		runner.Clear()
+		var logBuf bytes.Buffer
+		testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+		warnInst := NewPacmanInstaller(runner, fsys, nil)
+		warnInst.SetLogger(testLog)
+
+		runner.Register("pacman", []byte("singleword\n"), nil)
+
+		tool := &config.ToolConfig{
+			Name: "malformed",
+			InstallParams: map[string]interface{}{
+				"package": "malformed",
+			},
+		}
+
+		res, err := warnInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "" {
+			t.Errorf("expected empty version, got %q", res.Version)
+		}
+		logStr := logBuf.String()
+		if !strings.Contains(logStr, "WARN") || !strings.Contains(logStr, "singleword") {
+			t.Errorf("expected malformed output warning, got: %s", logStr)
 		}
 	})
 }

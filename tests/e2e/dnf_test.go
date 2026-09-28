@@ -61,7 +61,7 @@ func TestE2EDnf(t *testing.T) {
 	logStr := string(logBytes)
 	// The rpm query format ends in a newline so that each installed instance of a
 	// package prints on a line of its own; the stub logs that argument verbatim.
-	expectedLog := "dnf makecache\ndnf install -y ripgrep-13.0.0-1.fc40\nrpm -q --qf %{VERSION}-%{RELEASE}\n ripgrep\n"
+	expectedLog := "dnf makecache\ndnf install -y ripgrep-13.0.0-1.fc40\nrpm -q --whatprovides --qf %{VERSION}-%{RELEASE}\n ripgrep\n"
 	if logStr != expectedLog {
 		t.Errorf("expected log file content %q, but got %q", expectedLog, logStr)
 	}

@@ -36,7 +36,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("Install success with taps and force", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"},"installed":[{"version":"1.7"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "jq",
@@ -90,7 +90,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("Install cask success", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"iterm2","versions":{"stable":"3.4"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"iterm2","versions":{"stable":"3.4"},"installed":[{"version":"3.4"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "iterm2",
@@ -117,7 +117,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("Install success with trust args link and service", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"redis","versions":{"stable":"7.0"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"redis","versions":{"stable":"7.0"},"installed":[{"version":"7.0"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "redis",
@@ -177,7 +177,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("Install success with boolean trust: true", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"},"installed":[{"version":"1.0"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "borders",
@@ -210,7 +210,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("Install success with boolean trust: true and multiple taps", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"},"installed":[{"version":"1.0"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "borders",
@@ -244,7 +244,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("Install with boolean trust: false (default)", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"borders","versions":{"stable":"1.0"},"installed":[{"version":"1.0"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "borders",
@@ -272,7 +272,7 @@ func TestBrewInstaller(t *testing.T) {
 
 	t.Run("Install success with boolean service parameter", func(t *testing.T) {
 		runner.Clear()
-		runner.Register("brew", []byte(`[{"name":"redis","versions":{"stable":"7.0"}}]`), nil)
+		runner.Register("brew", []byte(`[{"name":"redis","versions":{"stable":"7.0"},"installed":[{"version":"7.0"}]}]`), nil)
 
 		tool := &config.ToolConfig{
 			Name: "redis",
@@ -648,6 +648,112 @@ func TestBrewInstaller(t *testing.T) {
 			t.Errorf("expected piped error '| exec: \"brew\": executable file not found in $PATH', got:\n%s", logStr)
 		}
 	})
+
+	t.Run("Install records installed version rather than stable", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.8"},"installed":[{"version":"1.7"}]}]`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "jq",
+			InstallParams: map[string]interface{}{
+				"formula": "jq",
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "1.7" {
+			t.Errorf("expected installed version 1.7, got %q", res.Version)
+		}
+	})
+
+	t.Run("Install cask records installed version rather than stable", func(t *testing.T) {
+		runner.Clear()
+		runner.Register("brew", []byte(`{"formulae":[],"casks":[{"token":"iterm2","version":"3.5","installed":"3.4","outdated":true}]}`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "iterm2",
+			InstallParams: map[string]interface{}{
+				"cask": true,
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "3.4" {
+			t.Errorf("expected installed version 3.4, got %q", res.Version)
+		}
+	})
+
+	t.Run("Install warning when output has no installed version", func(t *testing.T) {
+		runner.Clear()
+		var warnLogBuf bytes.Buffer
+		warnLog := logger.New(logger.Config{Writer: &warnLogBuf, Level: logger.LogLevelDefault})
+		warnInst := NewBrewInstaller(runner, fsys, NewDefaultSystemContext())
+		warnInst.SetLogger(warnLog)
+
+		runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.8"},"installed":[]}]`), nil)
+
+		tool := &config.ToolConfig{
+			Name: "jq",
+			InstallParams: map[string]interface{}{
+				"formula": "jq",
+			},
+		}
+
+		res, err := warnInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "" {
+			t.Errorf("expected empty version, got %q", res.Version)
+		}
+		logStr := warnLogBuf.String()
+		if !strings.Contains(logStr, "WARN") || !strings.Contains(logStr, "output had no installed version") {
+			t.Errorf("expected warning, got: %s", logStr)
+		}
+	})
+
+	t.Run("Install version query failure logs warning", func(t *testing.T) {
+		runner.Clear()
+		var warnLogBuf bytes.Buffer
+		warnLog := logger.New(logger.Config{Writer: &warnLogBuf, Level: logger.LogLevelDefault})
+		warnInst := NewBrewInstaller(runner, fsys, NewDefaultSystemContext())
+		warnInst.SetLogger(warnLog)
+
+		runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+			if len(c.Args) > 0 && c.Args[0] == "info" {
+				if c.Stderr() != nil {
+					_, _ = io.WriteString(c.Stderr(), "Error: No available formula with the name \"unknown\"\n")
+				}
+				return exitStatusError(1)
+			}
+			return nil
+		})
+
+		tool := &config.ToolConfig{
+			Name: "unknown",
+			InstallParams: map[string]interface{}{
+				"formula": "unknown",
+			},
+		}
+
+		res, err := warnInst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Version != "" {
+			t.Errorf("expected empty version on query failure, got %q", res.Version)
+		}
+		logStr := warnLogBuf.String()
+		if !strings.Contains(logStr, "WARN") || !strings.Contains(logStr, "info") || !strings.Contains(logStr, "No available formula") {
+			t.Errorf("expected warning naming command and output, got: %s", logStr)
+		}
+	})
 }
 
 // TestBrewInstallerLinkParameter pins the v1 contract for `link`: a truthy
@@ -686,7 +792,7 @@ func TestBrewInstallerLinkParameter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := exec.NewMockRunner()
-			runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"}}]`), nil)
+			runner.Register("brew", []byte(`[{"name":"jq","versions":{"stable":"1.7"},"installed":[{"version":"1.7"}]}]`), nil)
 			inst := NewBrewInstaller(runner, fs.NewMemFS(), NewDefaultSystemContext())
 
 			if _, err := inst.Install(context.Background(), &config.ToolConfig{Name: "jq", InstallParams: tt.params}); err != nil {
