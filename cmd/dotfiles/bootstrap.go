@@ -35,6 +35,9 @@ type Services struct {
 	DB            *sql.DB
 	Registry      *registry.Registry
 	Orchestrator  *orchestrator.Orchestrator
+	// Evaluator is the retained load-time VM evaluator handle for lifecycle hooks
+	// and parameter resolvers.
+	Evaluator *vm.Evaluator
 	// Target is the resolved target OS, architecture and C library for this run.
 	Target vm.Target
 	// Installers is the registry the Orchestrator installs from. Commands that
@@ -169,7 +172,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	// everything a tool file derives from ctx.systemInfo are evaluated while the
 	// configuration is being loaded. The loader also validates the project and every
 	// tool, so nothing below sees a configuration that fails either check.
-	projCfg, toolMap, err := vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(target))
+	projCfg, toolMap, eval, err := vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(target))
 	if err != nil {
 		return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
 	}
@@ -231,6 +234,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	orch := orchestrator.NewOrchestrator(GetLogger("orchestrator", os.Stderr), trackedFS, runner, reg, instReg)
 	orch.SetConfigFilePath(absConfigPath)
 	orch.SetTarget(target)
+	orch.SetEvaluator(eval)
 	if inMemory {
 		orch.SetSymlinkFS(fsys)
 	}
@@ -291,6 +295,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		ConfigPath:    absConfigPath,
 		ProjectConfig: projCfg,
 		ToolConfigs:   toolConfigs,
+		Evaluator:     eval,
 		FS:            trackedFS,
 		DB:            sqlDB,
 		Registry:      reg,

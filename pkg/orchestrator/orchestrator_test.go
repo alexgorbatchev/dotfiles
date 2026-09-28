@@ -28,6 +28,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 // mockInstaller implements installer.Installer for testing
@@ -558,6 +559,15 @@ func TestOrchestrator_AdditionalBranches(t *testing.T) {
 	_ = instReg.Register(mockInst)
 
 	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+	if orch.Evaluator() != nil {
+		t.Error("expected default evaluator to be nil")
+	}
+	dummyEval := vm.NewEvaluator(nil, nil)
+	orch.SetEvaluator(dummyEval)
+	if orch.Evaluator() != dummyEval {
+		t.Errorf("expected evaluator %v, got %v", dummyEval, orch.Evaluator())
+	}
+
 	// Do not set symlinkFS to cover the o.symlinkFS == nil path in getSymlinkEvaluator
 	eval := orch.getSymlinkEvaluator()
 	if eval == nil {

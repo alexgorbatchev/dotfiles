@@ -40,6 +40,9 @@ type Orchestrator struct {
 	// target is what the run was invoked for. The zero value means the host, which is
 	// what an installation started without --platform/--arch/--libc targets.
 	target vm.Target
+	// evaluator is the retained load-time VM evaluator handle for lifecycle hooks
+	// and parameter resolvers.
+	evaluator *vm.Evaluator
 }
 
 // NewOrchestrator creates a new Orchestrator instance.
@@ -78,6 +81,16 @@ func (o *Orchestrator) getTrackedFS(ctx context.Context, tx *sql.Tx, toolName, f
 // function-valued install parameter describe the machine the configuration describes.
 func (o *Orchestrator) SetTarget(target vm.Target) {
 	o.target = target
+}
+
+// SetEvaluator provides the load-time VM evaluator handle for lifecycle hooks and parameter resolvers.
+func (o *Orchestrator) SetEvaluator(eval *vm.Evaluator) {
+	o.evaluator = eval
+}
+
+// Evaluator returns the retained load-time VM evaluator handle, or nil if none was provided.
+func (o *Orchestrator) Evaluator() *vm.Evaluator {
+	return o.evaluator
 }
 
 // SetSymlinkFS allows injecting a custom fs.FS (primarily for testing).

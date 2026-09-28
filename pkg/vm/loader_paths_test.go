@@ -28,7 +28,7 @@ func writePathsConfig(t *testing.T, pathsBlock string) string {
 func loadPathsConfig(t *testing.T, dir string) (*config.ProjectConfig, error) {
 	t.Helper()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	projCfg, _, err := LoadTypeScriptConfig(log, fs.NewOSFS(), filepath.Join(dir, "dotfiles.config.ts"))
+	projCfg, _, _, err := LoadTypeScriptConfig(log, fs.NewOSFS(), filepath.Join(dir, "dotfiles.config.ts"))
 	return projCfg, err
 }
 

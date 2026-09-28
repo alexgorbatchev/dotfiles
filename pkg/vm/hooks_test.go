@@ -621,7 +621,7 @@ func TestRunHook_DirnameIsTheToolFilesDirectory(t *testing.T) {
 	}
 
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	projCfg, tools, err := LoadTypeScriptConfig(log, fs.NewOSFS(), configPath)
+	projCfg, tools, _, err := LoadTypeScriptConfig(log, fs.NewOSFS(), configPath)
 	if err != nil {
 		t.Fatalf("loading the configuration: %v", err)
 	}
@@ -1168,5 +1168,223 @@ func TestRunHook_EmitsInfoLogWhenHookRuns(t *testing.T) {
 
 	if buf.Len() > 0 {
 		t.Errorf("expected no log output for unregistered hook event, but got:\n%s", buf.String())
+	}
+}
+
+// TestRunHook_RetainedEvaluatorExecutesDefineToolBodyOnlyOnce proves that running
+// before-install and after-install hooks using a retained Evaluator does not re-evaluate
+// the tool file, ensuring defineTool bodies and their closures execute only once.
+func TestRunHook_RetainedEvaluatorExecutesDefineToolBodyOnlyOnce(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating tools dir: %v", err)
+	}
+
+	configContent := fmt.Sprintf(`
+import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig({
+	paths: {
+		dotfilesDir: %q,
+		homeDir: %q,
+		targetDir: %q,
+		toolConfigsDir: %q,
+	},
+});
+`, tmpDir, tmpDir, filepath.Join(tmpDir, "bin"), toolsDir)
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing config: %v", err)
+	}
+
+	toolContent := `
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+let defineToolBodyRuns = 0;
+
+export default defineTool((install, ctx) => {
+	defineToolBodyRuns++;
+	ctx.log.info("DEFINETOOL_BODY_EVALUATED_COUNT: " + defineToolBodyRuns);
+	return install("manual")
+		.hook("before-install", async ({ fileSystem, log }) => {
+			log.info("BEFORE_INSTALL_RAN");
+			await fileSystem.writeFile("/before-runs", String(defineToolBodyRuns));
+		})
+		.hook("after-install", async ({ fileSystem, log }) => {
+			log.info("AFTER_INSTALL_RAN");
+			await fileSystem.writeFile("/after-runs", String(defineToolBodyRuns));
+		});
+});
+`
+	toolPath := filepath.Join(toolsDir, "counted.tool.ts")
+	if err := os.WriteFile(toolPath, []byte(toolContent), 0644); err != nil {
+		t.Fatalf("writing tool: %v", err)
+	}
+
+	var logBuf bytes.Buffer
+	testLogger := logger.New(logger.Config{Writer: &logBuf})
+	memFS := fs.NewMemFS()
+
+	projCfg, tools, eval, err := LoadTypeScriptConfig(testLogger, fs.NewOSFS(), configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	tool := tools["counted"]
+	if tool == nil {
+		t.Fatalf("expected tool 'counted' to be loaded")
+	}
+
+	// Verify defineTool body ran once during load
+	if count := strings.Count(logBuf.String(), "DEFINETOOL_BODY_EVALUATED_COUNT: 1"); count != 1 {
+		t.Fatalf("expected 1 initial evaluation log, got %d. Logs:\n%s", count, logBuf.String())
+	}
+
+	// Run before-install hook using retained evaluator
+	err = RunHook(
+		t.Context(),
+		testLogger,
+		memFS,
+		exec.NewMockRunner(),
+		tool,
+		projCfg,
+		HookBeforeInstall,
+		HookContext{},
+		Target{},
+		WithHookEvaluator(eval),
+	)
+	if err != nil {
+		t.Fatalf("RunHook(before-install) failed: %v", err)
+	}
+
+	beforeContent, err := memFS.ReadFile("/before-runs")
+	if err != nil {
+		t.Fatalf("reading /before-runs: %v", err)
+	}
+	if string(beforeContent) != "1" {
+		t.Errorf("expected before-runs to be '1', got %q", string(beforeContent))
+	}
+
+	// Run after-install hook using retained evaluator
+	err = RunHook(
+		t.Context(),
+		testLogger,
+		memFS,
+		exec.NewMockRunner(),
+		tool,
+		projCfg,
+		HookAfterInstall,
+		HookContext{InstalledDir: "/installed"},
+		Target{},
+		WithHookEvaluator(eval),
+	)
+	if err != nil {
+		t.Fatalf("RunHook(after-install) failed: %v", err)
+	}
+
+	afterContent, err := memFS.ReadFile("/after-runs")
+	if err != nil {
+		t.Fatalf("reading /after-runs: %v", err)
+	}
+	if string(afterContent) != "1" {
+		t.Errorf("expected after-runs to be '1', got %q", string(afterContent))
+	}
+
+	// Verify defineTool body was NOT re-evaluated during either hook
+	evalCount := strings.Count(logBuf.String(), "DEFINETOOL_BODY_EVALUATED_COUNT:")
+	if evalCount != 1 {
+		t.Errorf("expected defineTool body to run exactly 1 time across load and hooks, but it ran %d times. Logs:\n%s", evalCount, logBuf.String())
+	}
+
+	// Verify running hook with evaluator attached to context rather than option
+	ctxWithEval := WithEvaluator(t.Context(), eval)
+	err = RunHook(
+		ctxWithEval,
+		testLogger,
+		memFS,
+		exec.NewMockRunner(),
+		tool,
+		projCfg,
+		HookBeforeInstall,
+		HookContext{},
+		Target{},
+	)
+	if err != nil {
+		t.Fatalf("RunHook with context evaluator failed: %v", err)
+	}
+
+	// Still only 1 defineTool body execution
+	if total := strings.Count(logBuf.String(), "DEFINETOOL_BODY_EVALUATED_COUNT:"); total != 1 {
+		t.Errorf("expected defineTool body count to remain 1, got %d", total)
+	}
+}
+
+func TestRunHook_RetainedEvaluatorFailureIsReported(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating tools dir: %v", err)
+	}
+
+	configContent := fmt.Sprintf(`
+import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig({
+	paths: {
+		dotfilesDir: %q,
+		homeDir: %q,
+		targetDir: %q,
+		toolConfigsDir: %q,
+	},
+});
+`, tmpDir, tmpDir, filepath.Join(tmpDir, "bin"), toolsDir)
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing config: %v", err)
+	}
+
+	toolContent := `
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) => {
+	return install("manual")
+		.hook("before-install", async () => {
+			throw new Error("deliberate hook error with retained evaluator");
+		});
+});
+`
+	toolPath := filepath.Join(toolsDir, "failing-hook.tool.ts")
+	if err := os.WriteFile(toolPath, []byte(toolContent), 0644); err != nil {
+		t.Fatalf("writing tool: %v", err)
+	}
+
+	var logBuf bytes.Buffer
+	testLogger := logger.New(logger.Config{Writer: &logBuf})
+	memFS := fs.NewMemFS()
+
+	projCfg, tools, eval, err := LoadTypeScriptConfig(testLogger, fs.NewOSFS(), configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	tool := tools["failing-hook"]
+	if tool == nil {
+		t.Fatalf("expected tool 'failing-hook' to be loaded")
+	}
+
+	err = RunHook(
+		t.Context(),
+		testLogger,
+		memFS,
+		exec.NewMockRunner(),
+		tool,
+		projCfg,
+		HookBeforeInstall,
+		HookContext{},
+		Target{},
+		WithHookEvaluator(eval),
+	)
+	if err == nil {
+		t.Fatal("expected hook failure with retained evaluator to be reported")
+	}
+	if !strings.Contains(err.Error(), "deliberate hook error with retained evaluator") {
+		t.Errorf("expected error to mention deliberate failure, got: %v", err)
 	}
 }

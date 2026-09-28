@@ -39,6 +39,12 @@ func TestBootstrapServicesValid(t *testing.T) {
 	if services == nil || services.FS == nil || services.Registry == nil {
 		t.Errorf("expected non-nil services")
 	}
+	if services.Evaluator == nil {
+		t.Errorf("expected non-nil services.Evaluator")
+	}
+	if services.Orchestrator == nil || services.Orchestrator.Evaluator() != services.Evaluator {
+		t.Errorf("expected orchestrator to receive services.Evaluator")
+	}
 	if services.DB != nil {
 		services.DB.Close()
 	}

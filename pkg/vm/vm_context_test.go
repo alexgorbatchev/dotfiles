@@ -62,7 +62,7 @@ func TestVMContextAndFSBindings(t *testing.T) {
 		}
 
 		// Dynamically compile and load the TypeScript configuration!
-		projCfg, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+		projCfg, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err != nil {
 			t.Fatalf("failed to load TS config: %v", err)
 		}
@@ -106,7 +106,7 @@ func TestVMContextAndFSBindings(t *testing.T) {
 			t.Fatalf("failed to write config.ts: %v", err)
 		}
 
-		_, _, err = LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err = LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil {
 			t.Fatal("expected LoadTypeScriptConfig to fail on compilation error, but got nil")
 		}
@@ -137,7 +137,7 @@ func TestVMContextAndFSBindings(t *testing.T) {
 			t.Fatalf("failed to write config.ts: %v", err)
 		}
 
-		projCfg, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		projCfg, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err != nil {
 			t.Fatalf("unexpected compilation failure with relative imports: %v", err)
 		}

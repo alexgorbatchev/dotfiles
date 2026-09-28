@@ -46,7 +46,7 @@ export default defineTool((install) =>
 		t.Fatal(err)
 	}
 
-	_, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolMap, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}

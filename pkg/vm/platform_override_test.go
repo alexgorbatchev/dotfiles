@@ -59,7 +59,8 @@ func loadProjectSource(t *testing.T, configSource, toolSource string, opts ...Op
 		t.Fatalf("writing config: %v", err)
 	}
 
-	return LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewOSFS(), configPath, opts...)
+	projCfg, toolConfigs, _, err := LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewOSFS(), configPath, opts...)
+	return projCfg, toolConfigs, err
 }
 
 // Project-level platform overrides are matched against the same target as tool-level
@@ -120,7 +121,7 @@ func TestEvaluateUnifiedBundleRejectsMalformedToolConfigs(t *testing.T) {
 	log := logger.New(logger.Config{Writer: io.Discard})
 	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}
 
-	_, err := evaluateUnifiedBundle(log, fs.NewMemFS(), "globalThis.__loaderResult = { toolConfigs: 12345 };", "/tmp", projCfg, Target{})
+	_, _, err := evaluateUnifiedBundle(log, fs.NewMemFS(), compiledScript{code: "globalThis.__loaderResult = { toolConfigs: 12345 };"}, "/tmp", projCfg, Target{})
 	if err == nil {
 		t.Fatal("expected evaluateUnifiedBundle to fail")
 	}

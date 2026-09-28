@@ -1,9 +1,12 @@
 package vm
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -202,5 +205,189 @@ func TestResolveInstallParam_RejectsWhatItCannotAnswer(t *testing.T) {
 				t.Errorf("error = %v, want it to mention %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// TestResolveInstallParam_RetainedEvaluatorExecutesWithoutReevaluatingToolFile proves
+// that resolving an install parameter using a retained Evaluator runs the resolver function
+// in the load VM without re-evaluating the tool file.
+func TestResolveInstallParam_RetainedEvaluatorExecutesWithoutReevaluatingToolFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating tools dir: %v", err)
+	}
+
+	configContent := fmt.Sprintf(`
+import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig({
+	paths: {
+		dotfilesDir: %q,
+		homeDir: %q,
+		targetDir: %q,
+		toolConfigsDir: %q,
+	},
+});
+`, tmpDir, tmpDir, filepath.Join(tmpDir, "bin"), toolsDir)
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing config: %v", err)
+	}
+
+	toolContent := `
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+let bodyRunCount = 0;
+
+export default defineTool((install, ctx) => {
+	bodyRunCount++;
+	ctx.log.info("RESOLVE_TOOL_BODY_EVALUATED_COUNT: " + bodyRunCount);
+	return install("curl-script", {
+		url: "https://example.test/install.sh",
+		args: (c) => ["--runs", String(bodyRunCount)],
+	});
+});
+`
+	toolPath := filepath.Join(toolsDir, "resolve-tool.tool.ts")
+	if err := os.WriteFile(toolPath, []byte(toolContent), 0644); err != nil {
+		t.Fatalf("writing tool: %v", err)
+	}
+
+	var logBuf bytes.Buffer
+	testLogger := logger.New(logger.Config{Writer: &logBuf})
+	memFS := fs.NewMemFS()
+
+	projCfg, tools, eval, err := LoadTypeScriptConfig(testLogger, fs.NewOSFS(), configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	tool := tools["resolve-tool"]
+	if tool == nil {
+		t.Fatalf("expected tool 'resolve-tool' to be loaded")
+	}
+
+	// Verify defineTool body ran once during load
+	if count := strings.Count(logBuf.String(), "RESOLVE_TOOL_BODY_EVALUATED_COUNT: 1"); count != 1 {
+		t.Fatalf("expected 1 initial evaluation log, got %d. Logs:\n%s", count, logBuf.String())
+	}
+
+	// Resolve the "args" parameter using the retained evaluator
+	value, err := ResolveInstallParam(t.Context(), ResolveRequest{
+		Log:       testLogger,
+		FS:        memFS,
+		Runner:    exec.NewMockRunner(),
+		Tool:      tool,
+		ProjCfg:   projCfg,
+		Param:     "args",
+		Context:   map[string]any{},
+		Evaluator: eval,
+	})
+	if err != nil {
+		t.Fatalf("ResolveInstallParam failed: %v", err)
+	}
+
+	var gotArgs []string
+	if err := json.Unmarshal(value, &gotArgs); err != nil {
+		t.Fatalf("unmarshaling resolved args %s: %v", value, err)
+	}
+	if len(gotArgs) != 2 || gotArgs[0] != "--runs" || gotArgs[1] != "1" {
+		t.Errorf("expected ['--runs', '1'], got %v", gotArgs)
+	}
+
+	// Verify the tool file was NOT re-evaluated during parameter resolution
+	evalCount := strings.Count(logBuf.String(), "RESOLVE_TOOL_BODY_EVALUATED_COUNT:")
+	if evalCount != 1 {
+		t.Errorf("expected defineTool body to run exactly 1 time, but it ran %d times. Logs:\n%s", evalCount, logBuf.String())
+	}
+
+	// Verify resolving with evaluator on context (req.Evaluator == nil) and req.Context == nil
+	ctxWithEval := WithEvaluator(t.Context(), eval)
+	valFromCtx, err := ResolveInstallParam(ctxWithEval, ResolveRequest{
+		Log:     testLogger,
+		FS:      memFS,
+		Runner:  exec.NewMockRunner(),
+		Tool:    tool,
+		ProjCfg: projCfg,
+		Param:   "args",
+	})
+	if err != nil {
+		t.Fatalf("ResolveInstallParam with context evaluator failed: %v", err)
+	}
+	var ctxArgs []string
+	if err := json.Unmarshal(valFromCtx, &ctxArgs); err != nil {
+		t.Fatalf("unmarshaling args from ctx: %v", err)
+	}
+	if len(ctxArgs) != 2 || ctxArgs[1] != "1" {
+		t.Errorf("expected ['--runs', '1'], got %v", ctxArgs)
+	}
+}
+
+func TestResolveInstallParam_RetainedEvaluatorFailureIsReported(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
+	toolsDir := filepath.Join(tmpDir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatalf("creating tools dir: %v", err)
+	}
+
+	configContent := fmt.Sprintf(`
+import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig({
+	paths: {
+		dotfilesDir: %q,
+		homeDir: %q,
+		targetDir: %q,
+		toolConfigsDir: %q,
+	},
+});
+`, tmpDir, tmpDir, filepath.Join(tmpDir, "bin"), toolsDir)
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("writing config: %v", err)
+	}
+
+	toolContent := `
+import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) => {
+	return install("curl-script", {
+		url: "https://example.test/install.sh",
+		args: () => {
+			throw new Error("deliberate retained resolver failure");
+		},
+	});
+});
+`
+	toolPath := filepath.Join(toolsDir, "failing-resolver.tool.ts")
+	if err := os.WriteFile(toolPath, []byte(toolContent), 0644); err != nil {
+		t.Fatalf("writing tool: %v", err)
+	}
+
+	var logBuf bytes.Buffer
+	testLogger := logger.New(logger.Config{Writer: &logBuf})
+	memFS := fs.NewMemFS()
+
+	projCfg, tools, eval, err := LoadTypeScriptConfig(testLogger, fs.NewOSFS(), configPath)
+	if err != nil {
+		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
+	}
+	tool := tools["failing-resolver"]
+	if tool == nil {
+		t.Fatalf("expected tool 'failing-resolver' to be loaded")
+	}
+
+	_, err = ResolveInstallParam(t.Context(), ResolveRequest{
+		Log:       testLogger,
+		FS:        memFS,
+		Runner:    exec.NewMockRunner(),
+		Tool:      tool,
+		ProjCfg:   projCfg,
+		Param:     "args",
+		Evaluator: eval,
+	})
+	if err == nil {
+		t.Fatal("expected resolver failure with retained evaluator to be reported")
+	}
+	if !strings.Contains(err.Error(), "deliberate retained resolver failure") {
+		t.Errorf("expected error to mention deliberate failure, got: %v", err)
 	}
 }

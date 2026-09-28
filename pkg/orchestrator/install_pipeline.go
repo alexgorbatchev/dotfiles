@@ -219,13 +219,16 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		installerInstance.BinDir = installDir
 	}
 
+	if o.evaluator != nil {
+		ctx = vm.WithEvaluator(ctx, o.evaluator)
+	}
+	ctx = config.WithProjectConfig(ctx, projCfg)
+
 	// 1. Download, unpack, and install via the native installer plugin
 	beforeInstallCtx := vm.HookContext{StagingDir: stagingDir, Env: o.buildHookEnv(tool, projCfg, nil)}
 	if err := o.runHooks(ctx, vm.HookBeforeInstall, tool, projCfg, beforeInstallCtx); err != nil {
 		return fmt.Errorf("running before-install hooks: %w", err)
 	}
-
-	ctx = config.WithProjectConfig(ctx, projCfg)
 	// Downloading and extraction happen inside the installer, so it announces them
 	// through the context rather than the orchestrator guessing when they occurred.
 	ctx = lifecycle.WithEmitter(ctx, func(emitCtx context.Context, event lifecycle.Event, details lifecycle.Details) error {
@@ -803,7 +806,7 @@ func (o *Orchestrator) runHooks(ctx context.Context, event string, tool *config.
 	if config.IsDryRunEnabled(ctx) || tool == nil {
 		return nil
 	}
-	return vm.RunHook(ctx, o.logger, o.fs, o.runner, tool, projCfg, event, hookCtx, o.target)
+	return vm.RunHook(ctx, o.logger, o.fs, o.runner, tool, projCfg, event, hookCtx, o.target, vm.WithHookEvaluator(o.evaluator))
 }
 
 func isMountPoint(fsys fs.FS, path string) bool {

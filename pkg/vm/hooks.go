@@ -166,13 +166,25 @@ func HasHook(tool *config.ToolConfig, event string) bool {
 	return tool.HasHook(event)
 }
 
+// HookOption configures how a lifecycle hook is executed.
+type HookOption func(*hookOptions)
+
+type hookOptions struct {
+	evaluator *Evaluator
+}
+
+// WithHookEvaluator provides a retained Evaluator handle to RunHook.
+func WithHookEvaluator(eval *Evaluator) HookOption {
+	return func(o *hookOptions) {
+		o.evaluator = eval
+	}
+}
+
 // RunHook invokes the handlers a tool registered for a lifecycle event.
 //
-// The tool's configuration file is re-evaluated in a fresh VM so the handler closure is
-// available to call: a function cannot survive the JSON boundary the configuration
-// crosses to reach Go. Re-evaluating is cheap next to an installation, and a VM per
-// invocation keeps hooks from sharing mutable state with configuration loading or with
-// each other.
+// When an Evaluator is provided (via opts or ctx), the tool's handler is called in that
+// retained VM without re-evaluating the tool file. If no Evaluator is provided, the tool's
+// configuration file is re-evaluated in a fresh VM as a fallback.
 func RunHook(
 	ctx context.Context,
 	log *logger.Logger,
@@ -183,6 +195,7 @@ func RunHook(
 	event string,
 	hookCtx HookContext,
 	target Target,
+	opts ...HookOption,
 ) error {
 	if !HasHook(tool, event) {
 		return nil
@@ -190,6 +203,19 @@ func RunHook(
 
 	if log != nil {
 		log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Running %s hook...", event)))
+	}
+
+	var ho hookOptions
+	for _, opt := range opts {
+		opt(&ho)
+	}
+	evaluator := ho.evaluator
+	if evaluator == nil {
+		evaluator = GetEvaluator(ctx)
+	}
+
+	if evaluator != nil {
+		return runHookInEvaluator(ctx, evaluator, log, fsys, runner, tool, projCfg, event, hookCtx)
 	}
 
 	eval, err := evaluateToolFile(ctx, toolFileVM{
@@ -205,8 +231,77 @@ func RunHook(
 	if err != nil {
 		return err
 	}
-	vm := eval.vm
+	return invokeHookInVM(eval.vm, eval.sourceMap, tool, projCfg, fsys, event, hookCtx)
+}
 
+func runHookInEvaluator(
+	ctx context.Context,
+	evaluator *Evaluator,
+	log *logger.Logger,
+	fsys fs.FS,
+	runner exec.CommandRunner,
+	tool *config.ToolConfig,
+	projCfg *config.ProjectConfig,
+	event string,
+	hookCtx HookContext,
+) error {
+	evaluator.mu.Lock()
+	defer evaluator.mu.Unlock()
+	vm := evaluator.vm
+
+	homeDir := ""
+	if projCfg != nil {
+		homeDir = projCfg.Paths.HomeDir
+	}
+	if err := RegisterContextBindings(vm, log, fsys, homeDir); err != nil {
+		return fmt.Errorf("registering context bindings: %w", err)
+	}
+	if err := registerHookShell(ctx, vm, log, runner, hookCtx.Env); err != nil {
+		return fmt.Errorf("registering hook shell: %w", err)
+	}
+
+	configFileDir := ""
+	binariesDir := ""
+	generatedDir := ""
+	if projCfg != nil {
+		configFileDir = projCfg.ConfigFileDir
+		binariesDir = projCfg.Paths.BinariesDir
+		generatedDir = projCfg.Paths.GeneratedDir
+	}
+	var err error
+	for _, dir := range []*string{&configFileDir, &binariesDir, &generatedDir} {
+		if *dir, err = absolutePath(fsys, *dir); err != nil {
+			return err
+		}
+	}
+	_ = vm.Set("configFileDir", configFileDir)
+	_ = vm.Set("binariesDir", binariesDir)
+	_ = vm.Set("generatedDir", generatedDir)
+	_ = vm.Set("currentToolName", tool.Name)
+	_ = vm.Set("currentToolPath", tool.ConfigFilePath)
+
+	if projCfg != nil {
+		if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
+			return fmt.Errorf("providing project configuration to the %s hook: %w", event, err)
+		}
+	}
+	if err := setJSONGlobal(vm, "currentToolConfig", tool); err != nil {
+		return fmt.Errorf("providing the tool configuration to the %s hook: %w", event, err)
+	}
+
+	return invokeHookInVM(vm, evaluator.sourceMap, tool, projCfg, fsys, event, hookCtx)
+}
+
+func invokeHookInVM(
+	vm *goja.Runtime,
+	sourceMap []byte,
+	tool *config.ToolConfig,
+	projCfg *config.ProjectConfig,
+	fsys fs.FS,
+	event string,
+	hookCtx HookContext,
+) error {
+	var err error
 	hookCtx, err = hookCtx.absolute(fsys)
 	if err != nil {
 		return err
@@ -234,7 +329,7 @@ func RunHook(
 					if stackVal := outcome.Get("errorStack"); stackVal != nil && !goja.IsNull(stackVal) && !goja.IsUndefined(stackVal) {
 						rawStack = stackVal.String()
 					}
-					return newHookError(event, tool, eval.sourceMap, rawMsg, rawStack)
+					return newHookError(event, tool, sourceMap, rawMsg, rawStack)
 				}
 			}
 		}
@@ -242,7 +337,7 @@ func RunHook(
 		if errors.As(err, &ex) {
 			rawMsg := ex.Value().String()
 			rawStack := ex.String()
-			return newHookError(event, tool, eval.sourceMap, rawMsg, rawStack)
+			return newHookError(event, tool, sourceMap, rawMsg, rawStack)
 		}
 		return err
 	}

@@ -103,13 +103,13 @@ func newLoadOptions(opts []Option) loadOptions {
 }
 
 // LoadTypeScriptConfig loads and compiles a TypeScript config file and all tool configs
-// dynamically, returning the unmarshaled ProjectConfig and map of ToolConfigs.
-func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opts ...Option) (*config.ProjectConfig, map[string]*config.ToolConfig, error) {
+// dynamically, returning the unmarshaled ProjectConfig, map of ToolConfigs, and retained Evaluator.
+func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opts ...Option) (*config.ProjectConfig, map[string]*config.ToolConfig, *Evaluator, error) {
 	target := newLoadOptions(opts).target
 
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("resolving absolute config path: %w", err)
+		return nil, nil, nil, fmt.Errorf("resolving absolute config path: %w", err)
 	}
 
 	configFileDir := filepath.Dir(absConfigPath)
@@ -117,19 +117,19 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// Step 1: Pre-evaluate config.ts to discover Paths.ToolConfigsDir
 	configJS, err := compileFile(absConfigPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("compiling project config %q: %w", absConfigPath, err)
+		return nil, nil, nil, fmt.Errorf("compiling project config %q: %w", absConfigPath, err)
 	}
 
 	projCfg, err := evaluateProjectConfig(log, fsys, configJS, absConfigPath, target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("evaluating project config: %w", err)
+		return nil, nil, nil, fmt.Errorf("evaluating project config: %w", err)
 	}
 
 	// Resolve path placeholders and defaults once, here, so tool discovery, the values
 	// handed to the JS VM, and the config the caller receives all agree instead of each
 	// re-deriving them from the raw config.
 	if err := projCfg.ResolvePlaceholders(configFileDir); err != nil {
-		return nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+		return nil, nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
 	}
 
 	// Step 2: Scan the resolved ToolConfigsDir(s) for *.tool.ts files
@@ -143,7 +143,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 		}
 		files, err := findToolConfigFiles(resolvedDir)
 		if err != nil {
-			return nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedDir, err)
+			return nil, nil, nil, fmt.Errorf("finding tool config files under %q: %w", resolvedDir, err)
 		}
 		for _, f := range files {
 			if !seenFiles[f] {
@@ -157,25 +157,25 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// and compile/bundle everything together with esbuild
 	entryFileContent, err := generateEntryLoader(absConfigPath, toolFiles)
 	if err != nil {
-		return nil, nil, fmt.Errorf("generating entry loader content: %w", err)
+		return nil, nil, nil, fmt.Errorf("generating entry loader content: %w", err)
 	}
 
 	tempEntryName := fmt.Sprintf(".dotfiles-loader-entry-%d-%d.ts", os.Getpid(), time.Now().UnixNano())
 	tempEntryPath := filepath.Join(configFileDir, tempEntryName)
 	if err := os.WriteFile(tempEntryPath, []byte(entryFileContent), 0644); err != nil {
-		return nil, nil, fmt.Errorf("writing temporary loader entry: %w", err)
+		return nil, nil, nil, fmt.Errorf("writing temporary loader entry: %w", err)
 	}
 	defer os.Remove(tempEntryPath)
 
-	bundledJS, err := compileFile(tempEntryPath)
+	script, err := compileFileWithSourceMap(tempEntryPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("bundling configuration: %w", err)
+		return nil, nil, nil, fmt.Errorf("bundling configuration: %w", err)
 	}
 
 	// Step 4: Run the unified bundle in Goja and marshal the result
-	fullConfig, err := evaluateUnifiedBundle(log, fsys, bundledJS, absConfigPath, projCfg, target)
+	fullConfig, eval, err := evaluateUnifiedBundle(log, fsys, script, absConfigPath, projCfg, target)
 	if err != nil {
-		return nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
+		return nil, nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
 	}
 
 	// The configuration is only complete here: placeholders are resolved, defaults are
@@ -183,16 +183,16 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// is the first point at which a required setting can be reported as missing rather
 	// than silently resolved against the working directory.
 	if err := fullConfig.ProjectConfig.ResolvePlaceholders(configFileDir); err != nil {
-		return nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+		return nil, nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
 	}
 	if err := fullConfig.ProjectConfig.Validate(); err != nil {
-		return nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
+		return nil, nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
 	}
 	if err := config.ValidateToolConfigs(slices.Collect(maps.Values(fullConfig.ToolConfigs)), fullConfig.ProjectConfig); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, nil
+	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, eval, nil
 }
 
 func compileFile(entryPath string) (string, error) {
@@ -505,7 +505,7 @@ func decodeProjectConfig(jsonBytes []byte, target Target) (*config.ProjectConfig
 // projCfg is the project configuration already resolved from the configuration file,
 // which the bundle hands to tool files as ctx.projectConfig so that they observe the
 // same paths Go does rather than the raw value the file returned.
-func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, configPath string, projCfg *config.ProjectConfig, target Target) (*unifiedLoaderResult, error) {
+func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, script compiledScript, configPath string, projCfg *config.ProjectConfig, target Target) (*unifiedLoaderResult, *Evaluator, error) {
 	configFileDir := filepath.Dir(configPath)
 
 	vm := goja.New()
@@ -513,16 +513,16 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	registry.Enable(vm)
 
 	if err := RegisterBindings(vm, target); err != nil {
-		return nil, fmt.Errorf("registering Go bindings: %w", err)
+		return nil, nil, fmt.Errorf("registering Go bindings: %w", err)
 	}
 
 	if err := RegisterContextBindings(vm, log, fsys, projCfg.Paths.HomeDir); err != nil {
-		return nil, fmt.Errorf("registering context bindings: %w", err)
+		return nil, nil, fmt.Errorf("registering context bindings: %w", err)
 	}
 
 	// Register file system / path polyfills
 	if _, err := vm.RunString(LoaderPolyfills); err != nil {
-		return nil, fmt.Errorf("initializing loader polyfills: %w", err)
+		return nil, nil, fmt.Errorf("initializing loader polyfills: %w", err)
 	}
 
 	// Set globals
@@ -530,7 +530,7 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("generatedDir", projCfg.Paths.GeneratedDir)
 	_ = vm.Set("binariesDir", projCfg.Paths.BinariesDir)
 	if err := setJSONGlobal(vm, "projectConfig", projCfg); err != nil {
-		return nil, fmt.Errorf("providing project configuration to tool files: %w", err)
+		return nil, nil, fmt.Errorf("providing project configuration to tool files: %w", err)
 	}
 	setProcessEnvGlobal(vm)
 
@@ -540,43 +540,44 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("module", moduleObj)
 	_ = vm.Set("exports", exportsObj)
 
-	if _, err := vm.RunString(jsContent); err != nil {
-		return nil, describeBundleFailure(vm, jsContent, err)
+	if _, err := vm.RunString(script.code); err != nil {
+		return nil, nil, describeBundleFailure(vm, script.code, err)
 	}
 
 	if err := settleToolFactories(vm); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := settleDeclarationResolutions(vm); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Retrieve dynamic loader results
 	loaderResultVal := vm.Get("__loaderResult")
 	if loaderResultVal == nil || goja.IsUndefined(loaderResultVal) || goja.IsNull(loaderResultVal) {
-		return nil, fmt.Errorf("loader result __loaderResult is missing or undefined")
+		return nil, nil, fmt.Errorf("loader result __loaderResult is missing or undefined")
 	}
 
 	jsonVal, err := vm.RunString("JSON.stringify(__loaderResult, function(k, v) { return v instanceof RegExp ? v.toString() : v; })")
 	if err != nil {
-		return nil, fmt.Errorf("stringifying loader result inside JS VM: %w", err)
+		return nil, nil, fmt.Errorf("stringifying loader result inside JS VM: %w", err)
 	}
 
 	jsonBytes := []byte(jsonVal.String())
 
 	if err := config.ValidateLoaderResultRawJSON(jsonBytes); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var envelope loaderResultEnvelope
 	dec := json.NewDecoder(bytes.NewReader(jsonBytes))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&envelope); err != nil {
-		return nil, fmt.Errorf("unmarshaling loader result: %w", err)
+		return nil, nil, fmt.Errorf("unmarshaling loader result: %w", err)
 	}
 
-	return &unifiedLoaderResult{ProjectConfig: projCfg, ToolConfigs: envelope.ToolConfigs}, nil
+	eval := NewEvaluator(vm, script.sourceMap)
+	return &unifiedLoaderResult{ProjectConfig: projCfg, ToolConfigs: envelope.ToolConfigs}, eval, nil
 }
 
 // settleToolFactories waits for the promise every asynchronous tool factory returned and

@@ -60,7 +60,7 @@ func TestLoaderFileSystemWriteOperations(t *testing.T) {
 		t.Fatalf("failed to write test-write.tool.ts: %v", err)
 	}
 
-	_, _, err = LoadTypeScriptConfig(log, memFS, configPath)
+	_, _, _, err = LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("failed to load TS config: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestLoaderAPIFeatures(t *testing.T) {
 		t.Fatalf("failed to write multi-plat.tool.ts: %v", err)
 	}
 
-	projCfg, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	projCfg, toolMap, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("failed to load TS config: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestRegisterContextBindingsLogsAndFS(t *testing.T) {
 	toolPath := filepath.Join(toolsDir, "test-logs.tool.ts")
 	_ = os.WriteFile(toolPath, []byte(script), 0644)
 
-	_, _, err = LoadTypeScriptConfig(log, memFS, configPath)
+	_, _, _, err = LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("failed to load TS config: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestLoadTypeScriptConfigErrors(t *testing.T) {
 	memFS := fs.NewMemFS()
 
 	// 1. Non-existent config path
-	_, _, err := LoadTypeScriptConfig(log, memFS, "/nonexistent/config.ts")
+	_, _, _, err := LoadTypeScriptConfig(log, memFS, "/nonexistent/config.ts")
 	if err == nil {
 		t.Error("expected error loading non-existent config.ts")
 	}
@@ -258,7 +258,7 @@ func TestLoadTypeScriptConfigErrors(t *testing.T) {
 	badConfigPath := filepath.Join(tmpDir, "bad_config.ts")
 	_ = os.WriteFile(badConfigPath, []byte("const x: = ;"), 0644)
 
-	_, _, err = LoadTypeScriptConfig(log, memFS, badConfigPath)
+	_, _, _, err = LoadTypeScriptConfig(log, memFS, badConfigPath)
 	if err == nil {
 		t.Error("expected error loading config.ts with TS syntax error")
 	}
@@ -267,19 +267,19 @@ func TestLoadTypeScriptConfigErrors(t *testing.T) {
 	runtimeErrConfigPath := filepath.Join(tmpDir, "runtime_err.ts")
 	_ = os.WriteFile(runtimeErrConfigPath, []byte("throw new Error('config runtime failure');"), 0644)
 
-	_, _, err = LoadTypeScriptConfig(log, memFS, runtimeErrConfigPath)
+	_, _, _, err = LoadTypeScriptConfig(log, memFS, runtimeErrConfigPath)
 	if err == nil || !strings.Contains(err.Error(), "executing script") {
 		t.Errorf("expected executing script error, got %v", err)
 	}
 
 	// 4. Evaluate unified bundle with missing __loaderResult
-	_, err = evaluateUnifiedBundle(log, memFS, "var x = 1;", "/cfg", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/gen", BinariesDir: "/bin"}}, Target{})
+	_, _, err = evaluateUnifiedBundle(log, memFS, compiledScript{code: "var x = 1;"}, "/cfg", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/gen", BinariesDir: "/bin"}}, Target{})
 	if err == nil || !strings.Contains(err.Error(), "missing or undefined") {
 		t.Errorf("expected missing __loaderResult error, got %v", err)
 	}
 
 	// 5. Evaluate unified bundle with unmarshal error
-	_, err = evaluateUnifiedBundle(log, memFS, "var __loaderResult = 12345;", "/cfg", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/gen", BinariesDir: "/bin"}}, Target{})
+	_, _, err = evaluateUnifiedBundle(log, memFS, compiledScript{code: "var __loaderResult = 12345;"}, "/cfg", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/gen", BinariesDir: "/bin"}}, Target{})
 	if err == nil || (!strings.Contains(err.Error(), "unmarshaling") && !strings.Contains(err.Error(), "invalid JSON syntax") && !strings.Contains(err.Error(), "invalid configuration")) {
 		t.Errorf("expected unmarshaling or invalid JSON error, got %v", err)
 	}
@@ -349,7 +349,7 @@ func TestFindToolConfigFilesAndDirExists(t *testing.T) {
 	runtimeConfigPath := filepath.Join(tmpDir, "runtime_config_err.ts")
 	_ = os.WriteFile(runtimeConfigPath, []byte("throw new Error('runtime error in config');"), 0644)
 
-	_, _, err = LoadTypeScriptConfig(logErr, memFSErr, runtimeConfigPath)
+	_, _, _, err = LoadTypeScriptConfig(logErr, memFSErr, runtimeConfigPath)
 	if err == nil || !strings.Contains(err.Error(), "evaluating project config") {
 		t.Errorf("expected evaluating project config error, got %v", err)
 	}
@@ -460,7 +460,7 @@ func TestLoadTypeScriptConfigToolDirnameMatchesToolFileDirectory(t *testing.T) {
 		t.Fatalf("writing tool file: %v", err)
 	}
 
-	projCfg, toolCfgs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	projCfg, toolCfgs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -531,7 +531,7 @@ func TestLoadTypeScriptConfigMultipleTools(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(toolsDir, "tool1.tool.ts"), []byte(tool1Content), 0644)
 	_ = os.WriteFile(filepath.Join(toolsDir, "sub", "tool2.tool.ts"), []byte(tool2Content), 0644)
 
-	_, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolMap, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig with multiple tools failed: %v", err)
 	}
@@ -577,7 +577,7 @@ export default defineTool((install) =>
 );`
 	_ = os.WriteFile(filepath.Join(toolsDir, "order-tool.tool.ts"), []byte(toolContent), 0644)
 
-	_, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolMap, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -638,7 +638,7 @@ export default defineTool((install) =>
 );`
 	_ = os.WriteFile(filepath.Join(toolsDir, "cross-tool.tool.ts"), []byte(toolContent), 0644)
 
-	_, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolMap, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -714,7 +714,7 @@ func TestLoadTypeScriptConfigToolWithoutName(t *testing.T) {
 	toolContent := `import { defineTool } from "@dotfiles/cli"; export default defineTool((i) => i("manual").bin("unnamed"));`
 	_ = os.WriteFile(filepath.Join(toolsDir, "unnamed.tool.ts"), []byte(toolContent), 0644)
 
-	_, toolMap, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolMap, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -771,7 +771,7 @@ func TestLoadTypeScriptConfigNamesFailingToolFileAndMethod(t *testing.T) {
 				t.Fatalf("writing config file: %v", err)
 			}
 
-			_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+			_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 			if err == nil {
 				t.Fatal("expected loading to fail, got nil error")
 			}
@@ -822,7 +822,7 @@ func TestLoaderRecordsEveryDeclaredDependency(t *testing.T) {
 				t.Fatalf("writing config file: %v", err)
 			}
 
-			_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+			_, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 			if err != nil {
 				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 			}
@@ -871,7 +871,7 @@ func TestLoadTypeScriptConfigToolConfigsDirAndBinariesDir(t *testing.T) {
 		t.Fatalf("failed to write config.ts: %v", err)
 	}
 
-	projCfg, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+	projCfg, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -886,7 +886,7 @@ func TestLoadTypeScriptConfigToolConfigsDirAndBinariesDir(t *testing.T) {
 	_ = os.WriteFile(roConfigPath, []byte(`export default { paths: { generatedDir: "./.generated" } };`), 0644)
 	_ = os.Chmod(roDir, 0555) // read-only directory
 
-	_, _, err = LoadTypeScriptConfig(log, memFS, roConfigPath)
+	_, _, _, err = LoadTypeScriptConfig(log, memFS, roConfigPath)
 	if err == nil {
 		t.Error("expected error writing temp entry file in read-only directory")
 	}
@@ -920,7 +920,7 @@ export default defineTool((install) => install("manual", {}).bin("tool-two").ver
 	};`
 	_ = os.WriteFile(configPath, []byte(configContent), 0644)
 
-	projCfg, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	projCfg, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig with multiple toolConfigsDirs failed: %v", err)
 	}
@@ -984,7 +984,7 @@ func TestLoaderDefaultPathsConsistency(t *testing.T) {
 		t.Fatalf("failed to write tool: %v", err)
 	}
 
-	projCfg, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	projCfg, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -1057,7 +1057,7 @@ func TestLoaderBrewAutoDependency(t *testing.T) {
 		t.Fatalf("failed to write tool: %v", err)
 	}
 
-	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -1111,7 +1111,7 @@ func TestLoaderBrewPrefixedToolFile(t *testing.T) {
 		t.Fatalf("failed to write tool: %v", err)
 	}
 
-	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -1155,7 +1155,7 @@ func TestLoaderRegExpSerialization(t *testing.T) {
 		t.Fatalf("failed to write bun.tool.ts: %v", err)
 	}
 
-	_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+	_, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -1199,7 +1199,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 			t.Fatalf("failed to write config.ts: %v", err)
 		}
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil {
 			t.Fatal("expected error due to unknown field under features, got nil")
 		}
@@ -1222,7 +1222,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 			t.Fatalf("failed to write config.ts: %v", err)
 		}
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil {
 			t.Fatal("expected error due to top-level unknown field, got nil")
 		}
@@ -1237,7 +1237,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 		_ = os.WriteFile(configPath, []byte(`export default { invalid syntax :::`), 0644)
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil {
 			t.Fatal("expected compilation error, got nil")
 		}
@@ -1271,7 +1271,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 
 		_ = os.WriteFile(configPath, []byte(configContent), 0644)
 
-		projCfg, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+		projCfg, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err != nil {
 			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 		}
@@ -1309,7 +1309,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 			}
 		};`, tmpDir, genDir)), 0644)
 
-		_, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
+		_, toolConfigs, _, err := LoadTypeScriptConfig(log, osFS, configPath)
 		if err != nil {
 			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 		}
@@ -1323,7 +1323,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 		_ = os.WriteFile(configPath, []byte(`throw new Error("intentional config exception");`), 0644)
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil || !strings.Contains(err.Error(), "intentional config exception") {
 			t.Errorf("expected intentional config exception, got %v", err)
 		}
@@ -1338,7 +1338,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`export default { paths: { dotfilesDir: %q, toolConfigsDir: %q } };`, tmpDir, toolsDir)), 0644)
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil || !strings.Contains(err.Error(), "intentional tool error") {
 			t.Errorf("expected intentional tool error, got %v", err)
 		}
@@ -1349,7 +1349,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "dotfiles.config.ts")
 		_ = os.WriteFile(configPath, []byte(fmt.Sprintf(`module.exports = { paths: { dotfilesDir: %q, homeDir: %q, targetDir: %q } };`, tmpDir, tmpDir, tmpDir)), 0644)
 
-		projCfg, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		projCfg, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err != nil {
 			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 		}
@@ -1359,21 +1359,21 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 	t.Run("LoadTypeScriptConfig with non-existent config path", func(t *testing.T) {
-		_, _, err := LoadTypeScriptConfig(log, memFS, "/non/existent/path/dotfiles.config.ts")
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, "/non/existent/path/dotfiles.config.ts")
 		if err == nil {
 			t.Error("expected error for non-existent config path")
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle with missing __loaderResult", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "var x = 1;", "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
+		_, _, err := evaluateUnifiedBundle(log, memFS, compiledScript{code: "var x = 1;"}, "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
 		if err == nil || !strings.Contains(err.Error(), "missing or undefined") {
 			t.Errorf("expected error for missing __loaderResult, got: %v", err)
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle with runtime script error", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "throw new Error('bundle err');", "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
+		_, _, err := evaluateUnifiedBundle(log, memFS, compiledScript{code: "throw new Error('bundle err');"}, "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
 		if err == nil || !strings.Contains(err.Error(), "bundle err") {
 			t.Errorf("expected script error, got: %v", err)
 		}
@@ -1417,14 +1417,14 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 	})
 
 	t.Run("evaluateUnifiedBundle json stringify error branch", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toJSON: function() { throw new Error('json stringify err'); } };", "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
+		_, _, err := evaluateUnifiedBundle(log, memFS, compiledScript{code: "globalThis.__loaderResult = { toJSON: function() { throw new Error('json stringify err'); } };"}, "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
 		if err == nil || !strings.Contains(err.Error(), "stringifying loader result") {
 			t.Errorf("expected stringifying error, got %v", err)
 		}
 	})
 
 	t.Run("evaluateUnifiedBundle unmarshaling error branch", func(t *testing.T) {
-		_, err := evaluateUnifiedBundle(log, memFS, "globalThis.__loaderResult = { toolConfigs: 12345 };", "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
+		_, _, err := evaluateUnifiedBundle(log, memFS, compiledScript{code: "globalThis.__loaderResult = { toolConfigs: 12345 };"}, "/tmp", &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/tmp/.gen", BinariesDir: "/tmp/bin"}}, Target{})
 		if err == nil {
 			t.Error("expected error when unifiedLoaderResult has invalid structure")
 		}
@@ -1449,7 +1449,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 			}
 		};`, tmpDir, filepath.Join(tmpDir, ".gen"), toolsDir)), 0644)
 
-		projCfg, toolConfigs, err := LoadTypeScriptConfig(log, osFS, configPath)
+		projCfg, toolConfigs, _, err := LoadTypeScriptConfig(log, osFS, configPath)
 		if err != nil {
 			t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 		}
@@ -1476,7 +1476,7 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		_ = os.Chmod(readOnlyDir, 0555)
 		defer os.Chmod(readOnlyDir, 0755)
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil || !strings.Contains(err.Error(), "writing temporary loader entry") {
 			t.Logf("readonly directory result: %v", err)
 		}
@@ -1517,7 +1517,7 @@ func TestLoaderToolContextSystemInfo(t *testing.T) {
 		t.Fatalf("writing the tool file: %v", err)
 	}
 
-	_, toolConfigs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+	_, toolConfigs, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
 	if err != nil {
 		t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 	}
@@ -1574,7 +1574,7 @@ func TestLoadTypeScriptConfigPathDefaults(t *testing.T) {
 				t.Fatalf("writing configuration: %v", err)
 			}
 
-			projCfg, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			projCfg, _, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
 			if err != nil {
 				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 			}
@@ -1624,7 +1624,7 @@ func TestLoadTypeScriptConfigRejectsUnresolvablePath(t *testing.T) {
 		t.Fatalf("writing configuration: %v", err)
 	}
 
-	_, _, err := LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewMemFS(), configPath)
+	_, _, _, err := LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewMemFS(), configPath)
 	if err == nil {
 		t.Fatal("expected the load to fail, got nil")
 	}
@@ -1663,7 +1663,7 @@ func TestLoadTypeScriptConfigRefusesNonConfigurationExport(t *testing.T) {
 				t.Fatalf("writing configuration: %v", err)
 			}
 
-			projCfg, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			projCfg, toolCfgs, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
 			if err == nil {
 				t.Fatalf("expected the load to fail, got projCfg = %+v", projCfg)
 			}
@@ -1722,7 +1722,7 @@ func TestLoadTypeScriptConfigReportsAsyncToolFactoryFailure(t *testing.T) {
 				t.Fatalf("writing tool file: %v", err)
 			}
 
-			_, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			_, toolCfgs, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
 			if err == nil {
 				t.Fatalf("expected the load to fail, got tools %v", slices.Sorted(maps.Keys(toolCfgs)))
 			}
@@ -1802,7 +1802,7 @@ func TestLoadTypeScriptConfigResolvesConfigurationFactory(t *testing.T) {
 				t.Fatalf("writing configuration: %v", err)
 			}
 
-			projCfg, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath, WithTarget(target))
+			projCfg, _, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath, WithTarget(target))
 			if err != nil {
 				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 			}
@@ -1860,7 +1860,7 @@ func TestLoadTypeScriptConfigReportsConfigurationFactoryFailure(t *testing.T) {
 				t.Fatalf("writing configuration: %v", err)
 			}
 
-			projCfg, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
+			projCfg, toolCfgs, _, err := LoadTypeScriptConfig(log, fs.NewMemFS(), configPath)
 			if err == nil {
 				t.Fatalf("expected the load to fail, got projCfg = %+v", projCfg)
 			}
@@ -1949,7 +1949,7 @@ export default defineTool((install, ctx) => {
 				t.Fatalf("writing tool file: %v", err)
 			}
 
-			projCfg, toolCfgs, err := LoadTypeScriptConfig(log, fs.NewOSFS(), configPath)
+			projCfg, toolCfgs, _, err := LoadTypeScriptConfig(log, fs.NewOSFS(), configPath)
 			if err != nil {
 				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 			}
@@ -2075,7 +2075,7 @@ export default defineTool((install) =>
 				t.Fatalf("writing config file: %v", err)
 			}
 
-			_, toolConfigs, err := LoadTypeScriptConfig(log, memFS, configPath)
+			_, toolConfigs, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 			if err != nil {
 				t.Fatalf("LoadTypeScriptConfig failed: %v", err)
 			}
@@ -2428,7 +2428,7 @@ export default defineTool((install) => install("manual", { binaryPath: "/bin/ls"
 			t.Fatalf("writing config: %v", err)
 		}
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil {
 			t.Fatal("expected loading to fail for duplicate tool names, got nil")
 		}
@@ -2473,7 +2473,7 @@ export default defineTool((install) => install("manual", { binaryPath: "/bin/ls"
 			t.Fatalf("writing config: %v", err)
 		}
 
-		_, _, err := LoadTypeScriptConfig(log, memFS, configPath)
+		_, _, _, err := LoadTypeScriptConfig(log, memFS, configPath)
 		if err == nil {
 			t.Fatal("expected loading to fail for duplicate tool names across toolConfigsDir, got nil")
 		}

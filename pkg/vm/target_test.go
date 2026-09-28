@@ -50,7 +50,7 @@ func loadToolFiles(t *testing.T, tools map[string]string, opts ...Option) (map[s
 		t.Fatalf("writing config: %v", err)
 	}
 
-	_, toolConfigs, err := LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewOSFS(), configPath, opts...)
+	_, toolConfigs, _, err := LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewOSFS(), configPath, opts...)
 	return toolConfigs, err
 }
 
