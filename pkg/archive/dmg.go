@@ -73,6 +73,14 @@ func prepareMountPoint(fsys fs.FS, mountPoint string) error {
 	return nil
 }
 
+// DetachDmg detaches a disk image mounted at mountPoint using hdiutil detach,
+// retrying once with -force if the first attempt fails. If detaching succeeds,
+// it removes the empty mount point directory. If detaching fails, the mount point
+// is left in place and an error is returned.
+func DetachDmg(ctx context.Context, runner exec.CommandRunner, fsys fs.FS, mountPoint string) error {
+	return detachDmg(ctx, runner, fsys, mountPoint)
+}
+
 func detachDmg(ctx context.Context, runner exec.CommandRunner, fsys fs.FS, mountPoint string) error {
 	out, err := runner.CommandContext(ctx, "hdiutil", "detach", mountPoint).CombinedOutput()
 	if err != nil {
@@ -98,9 +106,13 @@ func commandError(out []byte, err error) error {
 	return err
 }
 
-// dmgMountPoint is where extractDmg mounts an image it extracts into dest: a hidden
+// DmgMountPoint is where extractDmg mounts an image it extracts into dest: a hidden
 // sibling of dest, so the mount point is on the file system the extraction goes
 // through and outside the tree it walks and copies into.
+func DmgMountPoint(dest string) string {
+	return dmgMountPoint(dest)
+}
+
 func dmgMountPoint(dest string) string {
 	clean := filepath.Clean(dest)
 	return filepath.Join(filepath.Dir(clean), "."+filepath.Base(clean)+".dmg-mount")

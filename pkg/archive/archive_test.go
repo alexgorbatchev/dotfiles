@@ -2011,6 +2011,25 @@ func TestExtractDmgAttachFailureRemovesMountPoint(t *testing.T) {
 	}
 }
 
+func TestDetachDmgAndDmgMountPoint(t *testing.T) {
+	t.Parallel()
+	mp := DmgMountPoint("/stage/.staging")
+	if !strings.HasSuffix(mp, "..staging.dmg-mount") {
+		t.Fatalf("unexpected mount point %q", mp)
+	}
+
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	archivetest.Hdiutil{FS: memFS}.Register(runner)
+
+	mountPoint := "/tmp/test-mount"
+	_ = memFS.MkdirAll(mountPoint, 0755)
+
+	if err := DetachDmg(context.Background(), runner, memFS, mountPoint); err != nil {
+		t.Fatalf("DetachDmg failed: %v", err)
+	}
+}
+
 type tarCustomEntry struct {
 	name     string
 	typeflag byte

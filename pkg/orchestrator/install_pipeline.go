@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -178,7 +180,11 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	if !isExternal {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
-			if err := activeFSWithTx.RemoveAll(stagingDir); err != nil {
+			siblingMount := archive.DmgMountPoint(stagingDir)
+			if err := o.safeRemoveAll(ctx, activeFSWithTx, siblingMount); err != nil {
+				return fmt.Errorf("cleaning stale staging mount point: %w", err)
+			}
+			if err := o.safeRemoveAll(ctx, activeFSWithTx, stagingDir); err != nil {
 				return fmt.Errorf("cleaning stale staging directory: %w", err)
 			}
 			return activeFSWithTx.MkdirAll(stagingDir, 0755)
@@ -281,7 +287,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	} else if !isExternal && !config.IsDryRunEnabled(ctx) {
 		err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 			activeFSWithTx := o.getTrackedFS(ctx, tx, tool.Name, "binary")
-			if err := activeFSWithTx.RemoveAll(toolDestDir); err != nil {
+			if err := o.safeRemoveAll(ctx, activeFSWithTx, toolDestDir); err != nil {
 				return err
 			}
 			return activeFSWithTx.Rename(stagingDir, toolDestDir)
@@ -504,13 +510,21 @@ func (o *Orchestrator) discardStaging(ctx context.Context, toolName, stagingDir 
 	if stagingDir == "" {
 		return
 	}
-	_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		activeFSWithTx := o.getTrackedFS(ctx, tx, toolName, "binary")
-		_ = activeFSWithTx.RemoveAll(stagingDir)
+	clean := func(activeFSWithTx fs.FS) {
+		siblingMount := archive.DmgMountPoint(stagingDir)
+		_ = o.safeRemoveAll(ctx, activeFSWithTx, siblingMount)
+		_ = o.safeRemoveAll(ctx, activeFSWithTx, stagingDir)
 		toolDir := filepath.Dir(stagingDir)
 		if entries, err := activeFSWithTx.ReadDir(toolDir); err == nil && len(entries) == 0 {
 			_ = activeFSWithTx.Remove(toolDir)
 		}
+	}
+	if o.reg == nil {
+		clean(o.getTrackedFS(ctx, nil, toolName, "binary"))
+		return
+	}
+	_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		clean(o.getTrackedFS(ctx, tx, toolName, "binary"))
 		return nil
 	})
 }
@@ -579,7 +593,7 @@ func (o *Orchestrator) purgeToolState(ctx context.Context, toolName string, proj
 	var toolBinDir string
 	if projCfg != nil && projCfg.Paths.BinariesDir != "" {
 		toolBinDir = filepath.Join(projCfg.Paths.BinariesDir, toolName)
-		if err := o.fs.RemoveAll(toolBinDir); err != nil && !os.IsNotExist(err) {
+		if err := o.safeRemoveAll(ctx, o.fs, toolBinDir); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("removing binaries directory %s: %w", toolBinDir, err)
 		}
 	}
@@ -798,4 +812,115 @@ func (o *Orchestrator) runHooks(ctx context.Context, event string, tool *config.
 		return nil
 	}
 	return vm.RunHook(ctx, o.logger, o.fs, o.runner, tool, projCfg, event, hookCtx, o.target)
+}
+
+func isMountPoint(fsys fs.FS, path string) bool {
+	info, err := fsys.Lstat(path)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	parent := filepath.Dir(path)
+	if parent != path {
+		if parentInfo, err := fsys.Lstat(parent); err == nil {
+			dev, okDev := fileDev(info)
+			parentDev, okParentDev := fileDev(parentInfo)
+			if okDev && okParentDev {
+				return dev != parentDev
+			}
+		}
+	}
+	base := filepath.Base(path)
+	return strings.HasSuffix(base, ".dmg-mount") || strings.HasSuffix(base, "-mount")
+}
+
+func findMountPoints(fsys fs.FS, dir string) ([]string, error) {
+	var mountPoints []string
+	entries, err := fsys.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	for _, entry := range entries {
+		childPath := filepath.Join(dir, entry)
+		info, err := fsys.Lstat(childPath)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+		if !info.IsDir() {
+			continue
+		}
+		if isMountPoint(fsys, childPath) {
+			mountPoints = append(mountPoints, childPath)
+			continue
+		}
+		subMounts, err := findMountPoints(fsys, childPath)
+		if err != nil {
+			return nil, err
+		}
+		mountPoints = append(mountPoints, subMounts...)
+	}
+	return mountPoints, nil
+}
+
+// safeRemoveAll removes path, first checking for attached mount points. If a mount point
+// is found beneath path or at path itself, it attempts to detach it. If detaching fails,
+// removal is refused to prevent RemoveAll from descending into a mounted volume.
+func (o *Orchestrator) safeRemoveAll(ctx context.Context, fsys fs.FS, path string) error {
+	if path == "" {
+		return nil
+	}
+	exists, err := fsys.Exists(path)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fsys.RemoveAll(path)
+	}
+	info, err := fsys.Lstat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fsys.RemoveAll(path)
+		}
+		return err
+	}
+	if !info.IsDir() {
+		return fsys.RemoveAll(path)
+	}
+
+	var mountPoints []string
+	if isMountPoint(fsys, path) {
+		mountPoints = []string{path}
+	} else {
+		mps, err := findMountPoints(fsys, path)
+		if err != nil {
+			return fmt.Errorf("inspecting %s for mount points: %w", path, err)
+		}
+		mountPoints = mps
+	}
+
+	for _, mp := range mountPoints {
+		if o.runner == nil {
+			return fmt.Errorf("refusing to remove %s: directory contains attached mount point %s; detach it with `hdiutil detach -force %s`", path, mp, mp)
+		}
+		if err := archive.DetachDmg(ctx, o.runner, fsys, mp); err != nil {
+			return fmt.Errorf("refusing to remove %s: %w; detach it with `hdiutil detach -force %s`", path, err, mp)
+		}
+	}
+
+	stillExists, err := fsys.Exists(path)
+	if err != nil {
+		return err
+	}
+	if !stillExists {
+		return nil
+	}
+	return fsys.RemoveAll(path)
 }

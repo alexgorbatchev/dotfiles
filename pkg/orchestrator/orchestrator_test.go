@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/internal/testutil"
+	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -4440,5 +4441,430 @@ func TestManualTool_ShimTargetUnifiedBetweenInstallAndGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(genShimBytes), expectedExecutable) {
 		t.Fatalf("GenerateTool shim target mismatch:\nwant to contain %s\ngot:\n%s", expectedExecutable, string(genShimBytes))
+	}
+}
+
+func TestOrchestrator_CleanupMountPoint_UninstallRefusesWhenDetachFails(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	// Register an Hdiutil that fails detach even with -force
+	archivetest.Hdiutil{
+		FS:     fsys,
+		Detach: func(force bool) error { return archivetest.ErrResourceBusy },
+	}.Register(runner)
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:     "/home/user",
+			TargetDir:   "/home/user/bin",
+			BinariesDir: "/home/user/binaries",
+		},
+	}
+
+	tool := &config.ToolConfig{
+		Name: "slack",
+	}
+
+	// Create a mount point under the tool's binaries directory
+	mountPoint := "/home/user/binaries/slack/current/slack-mount"
+	volumeFile := filepath.Join(mountPoint, "Slack.app", "Contents", "MacOS", "slack")
+	if err := fsys.MkdirAll(filepath.Dir(volumeFile), 0755); err != nil {
+		t.Fatalf("creating volume dirs: %v", err)
+	}
+	if err := fsys.WriteFile(volumeFile, []byte("app-binary"), 0755); err != nil {
+		t.Fatalf("writing volume file: %v", err)
+	}
+
+	// UninstallTool should fail because detach failed
+	err = orch.UninstallTool(ctx, tool, projCfg)
+	if err == nil {
+		t.Fatal("expected UninstallTool to fail when mount point cannot be detached, got nil")
+	}
+
+	// Error must name the mount point and instruct hdiutil detach -force
+	if !strings.Contains(err.Error(), mountPoint) {
+		t.Fatalf("expected error to name mount point %q, got: %v", mountPoint, err)
+	}
+	if !strings.Contains(err.Error(), "hdiutil detach -force") {
+		t.Fatalf("expected error to instruct 'hdiutil detach -force', got: %v", err)
+	}
+
+	// Most importantly: RemoveAll must NOT have descended into the mounted volume!
+	exists, err := fsys.Exists(volumeFile)
+	if err != nil || !exists {
+		t.Fatalf("expected volume file %q to be preserved, but it was deleted", volumeFile)
+	}
+}
+
+func TestOrchestrator_CleanupMountPoint_UninstallDetachesAndRemoves(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	// Register an Hdiutil where detach succeeds
+	archivetest.Hdiutil{
+		FS: fsys,
+	}.Register(runner)
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:     "/home/user",
+			TargetDir:   "/home/user/bin",
+			BinariesDir: "/home/user/binaries",
+		},
+	}
+
+	tool := &config.ToolConfig{
+		Name: "slack",
+	}
+
+	// Create mount point under tool's binaries dir
+	mountPoint := "/home/user/binaries/slack/current/slack-mount"
+	volumeFile := filepath.Join(mountPoint, "Slack.app", "Contents", "MacOS", "slack")
+	if err := fsys.MkdirAll(filepath.Dir(volumeFile), 0755); err != nil {
+		t.Fatalf("creating volume dirs: %v", err)
+	}
+	if err := fsys.WriteFile(volumeFile, []byte("app-binary"), 0755); err != nil {
+		t.Fatalf("writing volume file: %v", err)
+	}
+
+	// UninstallTool should succeed
+	err = orch.UninstallTool(ctx, tool, projCfg)
+	if err != nil {
+		t.Fatalf("expected UninstallTool to succeed, got: %v", err)
+	}
+
+	// Verify hdiutil detach was called
+	calls := archivetest.Calls(runner)
+	detached := false
+	for _, call := range calls {
+		if len(call) >= 2 && call[0] == "detach" && call[1] == mountPoint {
+			detached = true
+			break
+		}
+	}
+	if !detached {
+		t.Fatalf("expected hdiutil detach call on %s, calls: %v", mountPoint, calls)
+	}
+
+	// Verify the tool binaries directory is completely removed
+	exists, err := fsys.Exists("/home/user/binaries/slack")
+	if err != nil || exists {
+		t.Fatalf("expected tool binaries dir to be removed, exists: %v", exists)
+	}
+}
+
+func TestOrchestrator_CleanupMountPoint_StaleStagingRefusesWhenDetachFails(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	archivetest.Hdiutil{
+		FS:     fsys,
+		Detach: func(force bool) error { return archivetest.ErrResourceBusy },
+	}.Register(runner)
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.DefaultRegistry()
+
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:     "/home/user",
+			TargetDir:   "/home/user/bin",
+			BinariesDir: "/home/user/binaries",
+		},
+	}
+
+	tool := &config.ToolConfig{
+		Name:               "slack",
+		InstallationMethod: "github-release",
+		InstallParams:      map[string]any{"repo": "owner/repo"},
+	}
+
+	// Sibling mount point (from DMG extraction)
+	stagingDir := "/home/user/binaries/slack/.staging"
+	mountPoint := "/home/user/binaries/slack/..staging.dmg-mount"
+	volumeFile := filepath.Join(mountPoint, "Slack.app", "Contents", "MacOS", "slack")
+	if err := fsys.MkdirAll(filepath.Dir(volumeFile), 0755); err != nil {
+		t.Fatalf("creating volume dirs: %v", err)
+	}
+	if err := fsys.WriteFile(volumeFile, []byte("app-binary"), 0755); err != nil {
+		t.Fatalf("writing volume file: %v", err)
+	}
+	if err := fsys.MkdirAll(stagingDir, 0755); err != nil {
+		t.Fatalf("creating staging dir: %v", err)
+	}
+
+	// InstallTool should fail in stale staging cleanup
+	err = orch.InstallTool(ctx, tool, projCfg)
+	if err == nil {
+		t.Fatal("expected InstallTool to fail on stale staging cleanup when detach fails, got nil")
+	}
+
+	if !strings.Contains(err.Error(), mountPoint) {
+		t.Fatalf("expected error to name mount point %q, got: %v", mountPoint, err)
+	}
+	if !strings.Contains(err.Error(), "hdiutil detach -force") {
+		t.Fatalf("expected error to instruct 'hdiutil detach -force', got: %v", err)
+	}
+
+	// Volume file must still exist
+	exists, err := fsys.Exists(volumeFile)
+	if err != nil || !exists {
+		t.Fatalf("expected volume file %q to be preserved, but it was deleted", volumeFile)
+	}
+}
+
+func TestOrchestrator_CleanupMountPoint_DiscardStagingProtectsMountPoint(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	archivetest.Hdiutil{
+		FS:     fsys,
+		Detach: func(force bool) error { return archivetest.ErrResourceBusy },
+	}.Register(runner)
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	orch := NewOrchestrator(nil, fsys, runner, reg, nil)
+	stagingDir := "/home/user/binaries/slack/.staging"
+	mountPoint := filepath.Join(stagingDir, "sub-mount")
+	volumeFile := filepath.Join(mountPoint, "some-volume-file")
+	if err := fsys.MkdirAll(filepath.Dir(volumeFile), 0755); err != nil {
+		t.Fatalf("creating dirs: %v", err)
+	}
+	if err := fsys.WriteFile(volumeFile, []byte("data"), 0755); err != nil {
+		t.Fatalf("writing file: %v", err)
+	}
+
+	orch.discardStaging(ctx, "slack", stagingDir)
+
+	// Because detach failed, discardStaging must NOT have removed the mount point or descended into it
+	exists, err := fsys.Exists(volumeFile)
+	if err != nil || !exists {
+		t.Fatalf("expected volume file %q to be preserved after discardStaging, but it was deleted", volumeFile)
+	}
+}
+
+func TestOrchestrator_SafeRemoveAll_EdgeCases(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	orch := NewOrchestrator(nil, fsys, runner, nil, nil)
+
+	// 1. Empty path returns nil
+	if err := orch.safeRemoveAll(ctx, fsys, ""); err != nil {
+		t.Fatalf("expected nil for empty path, got: %v", err)
+	}
+
+	// 2. Non-existent path returns nil
+	if err := orch.safeRemoveAll(ctx, fsys, "/does/not/exist"); err != nil {
+		t.Fatalf("expected nil for non-existent path, got: %v", err)
+	}
+
+	// 3. Regular file removes file
+	filePath := "/tmp/testfile"
+	if err := fsys.MkdirAll("/tmp", 0755); err != nil {
+		t.Fatalf("creating tmp dir: %v", err)
+	}
+	if err := fsys.WriteFile(filePath, []byte("hello"), 0644); err != nil {
+		t.Fatalf("writing file: %v", err)
+	}
+	if err := orch.safeRemoveAll(ctx, fsys, filePath); err != nil {
+		t.Fatalf("expected file to be removed, got: %v", err)
+	}
+	if exists, _ := fsys.Exists(filePath); exists {
+		t.Fatal("expected file to be gone")
+	}
+
+	// 4. Runner nil when mount point exists returns error
+	mountPath := "/tmp/foo-mount"
+	if err := fsys.MkdirAll(mountPath, 0755); err != nil {
+		t.Fatalf("creating mount dir: %v", err)
+	}
+	orchNilRunner := NewOrchestrator(nil, fsys, nil, nil, nil)
+	err := orchNilRunner.safeRemoveAll(ctx, fsys, mountPath)
+	if err == nil || !strings.Contains(err.Error(), "hdiutil detach -force") {
+		t.Fatalf("expected nil runner to refuse removal with hdiutil detach -force, got: %v", err)
+	}
+
+	// 5. Path itself is a mount point and detaching succeeds
+	archivetest.Hdiutil{FS: fsys}.Register(runner)
+	if err := orch.safeRemoveAll(ctx, fsys, mountPath); err != nil {
+		t.Fatalf("expected mount point itself to be safely detached and removed, got: %v", err)
+	}
+	if exists, _ := fsys.Exists(mountPath); exists {
+		t.Fatal("expected mount point to be gone")
+	}
+
+	// 6. Tree with symlink and normal files and nested mount point
+	treeDir := "/tmp/tree"
+	subDir := filepath.Join(treeDir, "sub")
+	nestedMount := filepath.Join(subDir, "app.dmg-mount")
+	normalFile := filepath.Join(treeDir, "file.txt")
+	symlinkPath := filepath.Join(treeDir, "link")
+
+	if err := fsys.MkdirAll(nestedMount, 0755); err != nil {
+		t.Fatalf("creating dirs: %v", err)
+	}
+	if err := fsys.WriteFile(normalFile, []byte("data"), 0644); err != nil {
+		t.Fatalf("writing normal file: %v", err)
+	}
+	if err := fsys.Symlink(normalFile, symlinkPath); err != nil {
+		t.Fatalf("creating symlink: %v", err)
+	}
+
+	if err := orch.safeRemoveAll(ctx, fsys, treeDir); err != nil {
+		t.Fatalf("expected tree with mount to be safely detached and removed, got: %v", err)
+	}
+	if exists, _ := fsys.Exists(treeDir); exists {
+		t.Fatal("expected treeDir to be removed")
+	}
+}
+
+func TestOrchestrator_IsMountPoint_Cases(t *testing.T) {
+	t.Parallel()
+	fsys := fs.NewMemFS()
+
+	// Non-existent path is false
+	if isMountPoint(fsys, "/nonexistent") {
+		t.Fatal("expected false for nonexistent path")
+	}
+
+	// Regular file is false
+	file := "/file.txt"
+	_ = fsys.WriteFile(file, []byte("hi"), 0644)
+	if isMountPoint(fsys, file) {
+		t.Fatal("expected false for regular file")
+	}
+
+	// Normal directory is false
+	dir := "/normal"
+	_ = fsys.MkdirAll(dir, 0755)
+	if isMountPoint(fsys, dir) {
+		t.Fatal("expected false for normal dir")
+	}
+
+	// Directory ending in -mount is true
+	mountDir := "/normal/tool-mount"
+	_ = fsys.MkdirAll(mountDir, 0755)
+	if !isMountPoint(fsys, mountDir) {
+		t.Fatal("expected true for -mount dir")
+	}
+
+	// Directory ending in .dmg-mount is true
+	dmgMountDir := "/normal/..staging.dmg-mount"
+	_ = fsys.MkdirAll(dmgMountDir, 0755)
+	if !isMountPoint(fsys, dmgMountDir) {
+		t.Fatal("expected true for .dmg-mount dir")
+	}
+
+	// fileDev nil info
+	if _, ok := fileDev(nil); ok {
+		t.Fatal("expected false for nil info")
+	}
+}
+
+type safeRemoveAllErrFS struct {
+	fs.FS
+	existsErr  error
+	lstatErr   error
+	readDirErr error
+}
+
+func (s *safeRemoveAllErrFS) Exists(path string) (bool, error) {
+	if s.existsErr != nil {
+		return false, s.existsErr
+	}
+	return s.FS.Exists(path)
+}
+
+func (s *safeRemoveAllErrFS) Lstat(path string) (os.FileInfo, error) {
+	if s.lstatErr != nil {
+		return nil, s.lstatErr
+	}
+	return s.FS.Lstat(path)
+}
+
+func (s *safeRemoveAllErrFS) ReadDir(path string) ([]string, error) {
+	if s.readDirErr != nil {
+		return nil, s.readDirErr
+	}
+	return s.FS.ReadDir(path)
+}
+
+func TestOrchestrator_SafeRemoveAll_Errors(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	// Exists error
+	errFS := &safeRemoveAllErrFS{FS: memFS, existsErr: errors.New("exists failed")}
+	orch := NewOrchestrator(nil, errFS, runner, nil, nil)
+	if err := orch.safeRemoveAll(ctx, errFS, "/some/path"); err == nil || !strings.Contains(err.Error(), "exists failed") {
+		t.Fatalf("expected exists failed error, got: %v", err)
+	}
+
+	// Lstat error
+	_ = memFS.MkdirAll("/some/dir", 0755)
+	errFS = &safeRemoveAllErrFS{FS: memFS, lstatErr: errors.New("lstat failed")}
+	orch = NewOrchestrator(nil, errFS, runner, nil, nil)
+	if err := orch.safeRemoveAll(ctx, errFS, "/some/dir"); err == nil || !strings.Contains(err.Error(), "lstat failed") {
+		t.Fatalf("expected lstat failed error, got: %v", err)
+	}
+
+	// ReadDir error in findMountPoints
+	errFS = &safeRemoveAllErrFS{FS: memFS, readDirErr: errors.New("readdir failed")}
+	orch = NewOrchestrator(nil, errFS, runner, nil, nil)
+	if err := orch.safeRemoveAll(ctx, errFS, "/some/dir"); err == nil || !strings.Contains(err.Error(), "readdir failed") {
+		t.Fatalf("expected readdir failed error, got: %v", err)
+	}
+}
+
+func TestOrchestrator_FileDev_Host(t *testing.T) {
+	t.Parallel()
+	if info, err := os.Stat("."); err == nil {
+		dev, ok := fileDev(info)
+		if !ok || dev == 0 {
+			t.Fatalf("expected valid dev from host os.Stat, got %d, %v", dev, ok)
+		}
 	}
 }
