@@ -92,6 +92,10 @@ func (r *ResolvedFS) Rename(oldname, newname string) error {
 	return r.inner.Rename(r.expand(oldname), r.expand(newname))
 }
 
+func (r *ResolvedFS) Link(oldname, newname string) error {
+	return r.inner.Link(r.expand(oldname), r.expand(newname))
+}
+
 func (r *ResolvedFS) Symlink(oldname, newname string) error {
 	return r.inner.Symlink(r.expand(oldname), r.expand(newname))
 }

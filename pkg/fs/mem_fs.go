@@ -130,6 +130,13 @@ func (m *MemFS) WriteFile(path string, data []byte, perm os.FileMode) error {
 	dataCopy := make([]byte, len(data))
 	copy(dataCopy, data)
 
+	if ok && !node.isSymlink {
+		node.data = dataCopy
+		node.perm = perm
+		node.modTime = time.Now()
+		return nil
+	}
+
 	m.files[cleanPath] = &fileNode{
 		data:    dataCopy,
 		perm:    perm,
@@ -248,6 +255,13 @@ func (w *memFileWriter) Close() error {
 	perm := w.perm
 	if perm == 0 {
 		perm = 0644
+	}
+
+	if ok && !node.isDir && !node.isSymlink {
+		node.data = w.buf.Bytes()
+		node.perm = perm
+		node.modTime = time.Now()
+		return nil
 	}
 
 	w.fs.files[w.path] = &fileNode{
@@ -481,6 +495,39 @@ func (fi *memFileInfo) ModTime() time.Time { return fi.modTime }
 func (fi *memFileInfo) IsDir() bool        { return fi.isDir }
 func (fi *memFileInfo) Sys() any           { return nil }
 
+func (m *MemFS) Link(oldname, newname string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cleanOld := filepath.Clean(oldname)
+	cleanNew := filepath.Clean(newname)
+
+	oldNode, ok := m.files[cleanOld]
+	if !ok {
+		return &os.LinkError{Op: "link", Old: oldname, New: newname, Err: os.ErrNotExist}
+	}
+
+	if oldNode.isDir {
+		return &os.LinkError{Op: "link", Old: oldname, New: newname, Err: os.ErrInvalid}
+	}
+
+	parent := filepath.Dir(cleanNew)
+	if filepath.Dir(parent) != parent {
+		parentNode, ok := m.files[parent]
+		if !ok || !parentNode.isDir {
+			return &os.LinkError{Op: "link", Old: oldname, New: newname, Err: os.ErrNotExist}
+		}
+	}
+
+	_, ok = m.files[cleanNew]
+	if ok {
+		return &os.LinkError{Op: "link", Old: oldname, New: newname, Err: os.ErrExist}
+	}
+
+	m.files[cleanNew] = oldNode
+	return nil
+}
+
 func (m *MemFS) Symlink(oldname, newname string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -660,6 +707,9 @@ func (m *MemFS) CopyFile(src, dest string) error {
 	// curr is the regular file src resolves to; a dest symlink is replaced below,
 	// but dest naming that file, or src's own entry, is a copy onto itself.
 	if curr == cleanDest || cleanSrc == cleanDest {
+		return &os.PathError{Op: "copyfile", Path: dest, Err: errSameFile}
+	}
+	if destNode, ok := m.files[cleanDest]; ok && (destNode == srcNode || destNode == m.files[cleanSrc]) {
 		return &os.PathError{Op: "copyfile", Path: dest, Err: errSameFile}
 	}
 

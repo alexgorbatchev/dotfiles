@@ -70,6 +70,12 @@ func TestTrackedFileSystemOperations(t *testing.T) {
 			return err
 		}
 
+		// 6. Link
+		err = txTfs.Link("/workspace/foo.txt", "/workspace/foo_link.txt")
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -85,13 +91,14 @@ func TestTrackedFileSystemOperations(t *testing.T) {
 
 	// Let's print or verify the ops
 	// Expected operations (in reverse order due to GetFileOperations ordering by CreatedAt DESC):
+	// 6. link /workspace/foo_link.txt
 	// 5. rm /workspace/bar.txt
 	// 4. writeFile /workspace/bar.txt
 	// 3. chmod /workspace/foo.txt
 	// 2. writeFile /workspace/foo.txt
 	// 1. mkdir /workspace
-	if len(ops) != 5 {
-		t.Fatalf("Expected 5 file operations recorded, got %d", len(ops))
+	if len(ops) != 6 {
+		t.Fatalf("Expected 6 file operations recorded, got %d", len(ops))
 	}
 
 	// We can map them by operation type + path for easier assertions
@@ -150,6 +157,16 @@ func TestTrackedFileSystemOperations(t *testing.T) {
 	_, ok = opMap["rm:/workspace/bar.txt"]
 	if !ok {
 		t.Errorf("Missing rm operation for /workspace/bar.txt")
+	}
+
+	// 6. link /workspace/foo_link.txt
+	linkOp, ok := opMap["link:/workspace/foo_link.txt"]
+	if !ok {
+		t.Errorf("Missing link operation for /workspace/foo_link.txt")
+	} else {
+		if linkOp.TargetPath == nil || *linkOp.TargetPath != "/workspace/foo.txt" {
+			t.Errorf("Expected target path '/workspace/foo.txt', got %v", linkOp.TargetPath)
+		}
 	}
 
 	// Verify database content representation directly is in decimal base-10
@@ -365,6 +382,12 @@ func TestTrackedFS_Logging(t *testing.T) {
 		t.Fatalf("Symlink failed: %v", err)
 	}
 
+	// 2b. Link (hard link)
+	err = tfs.Link("/home/testuser/test.txt", "/home/testuser/test_hardlink.txt")
+	if err != nil {
+		t.Fatalf("Link failed: %v", err)
+	}
+
 	// 3. Remove
 	err = tfs.Remove("/home/testuser/test_link.txt")
 	if err != nil {
@@ -377,12 +400,16 @@ func TestTrackedFS_Logging(t *testing.T) {
 	// It should log:
 	// INFO	write ~/test.txt
 	// INFO	ln -s ~/test.txt ~/test_link.txt
+	// INFO	ln ~/test.txt ~/test_hardlink.txt
 	// INFO	rm ~/test_link.txt
 	if !strings.Contains(logOutput, "write ~/test.txt") {
 		t.Errorf("Expected log containing 'write ~/test.txt', got:\n%s", logOutput)
 	}
 	if !strings.Contains(logOutput, "ln -s ~/test.txt ~/test_link.txt") {
 		t.Errorf("Expected log containing 'ln -s ~/test.txt ~/test_link.txt', got:\n%s", logOutput)
+	}
+	if !strings.Contains(logOutput, "ln ~/test.txt ~/test_hardlink.txt") {
+		t.Errorf("Expected log containing 'ln ~/test.txt ~/test_hardlink.txt', got:\n%s", logOutput)
 	}
 	if !strings.Contains(logOutput, "rm ~/test_link.txt") {
 		t.Errorf("Expected log containing 'rm ~/test_link.txt', got:\n%s", logOutput)

@@ -2010,3 +2010,707 @@ func TestExtractDmgAttachFailureRemovesMountPoint(t *testing.T) {
 		t.Errorf("mount point %s left behind after a failed attach", mountPoint)
 	}
 }
+
+type tarCustomEntry struct {
+	name     string
+	typeflag byte
+	linkname string
+	content  string
+	mode     int64
+}
+
+func createCustomTarBytes(entries []tarCustomEntry) ([]byte, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	for _, e := range entries {
+		mode := e.mode
+		if mode == 0 {
+			if e.typeflag == tar.TypeDir {
+				mode = 0755
+			} else {
+				mode = 0644
+			}
+		}
+		hdr := &tar.Header{
+			Name:     e.name,
+			Typeflag: e.typeflag,
+			Linkname: e.linkname,
+			Mode:     mode,
+			Size:     int64(len(e.content)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return nil, err
+		}
+		if len(e.content) > 0 {
+			if _, err := tw.Write([]byte(e.content)); err != nil {
+				return nil, err
+			}
+		}
+	}
+	_ = tw.Close()
+	return buf.Bytes(), nil
+}
+
+func createCustomTarGzBytes(entries []tarCustomEntry) ([]byte, error) {
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	for _, e := range entries {
+		mode := e.mode
+		if mode == 0 {
+			if e.typeflag == tar.TypeDir {
+				mode = 0755
+			} else {
+				mode = 0644
+			}
+		}
+		hdr := &tar.Header{
+			Name:     e.name,
+			Typeflag: e.typeflag,
+			Linkname: e.linkname,
+			Mode:     mode,
+			Size:     int64(len(e.content)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return nil, err
+		}
+		if len(e.content) > 0 {
+			if _, err := tw.Write([]byte(e.content)); err != nil {
+				return nil, err
+			}
+		}
+	}
+	_ = tw.Close()
+	_ = gw.Close()
+	return buf.Bytes(), nil
+}
+
+func TestExtract_TarGzHardLinkInSubdirectory(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	ext := NewExtractor(memFS, runner)
+
+	const originalContent = "binary payload 12345"
+	entries := []tarCustomEntry{
+		{
+			name:     "bin/my-app",
+			typeflag: tar.TypeReg,
+			content:  originalContent,
+			mode:     0755,
+		},
+		{
+			name:     "sub/dir/my-app-link",
+			typeflag: tar.TypeLink,
+			linkname: "bin/my-app",
+			mode:     0755,
+		},
+	}
+
+	tarGzBytes, err := createCustomTarGzBytes(entries)
+	if err != nil {
+		t.Fatalf("failed to create tar.gz bytes: %v", err)
+	}
+
+	if err := memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := ext.Extract(context.Background(), "/test.tar.gz", "/dest"); err != nil {
+		t.Fatalf("extract failed: %v", err)
+	}
+
+	// Verify hard link is not a symlink
+	linkInfo, err := memFS.Lstat("/dest/sub/dir/my-app-link")
+	if err != nil {
+		t.Fatalf("Lstat hard link: %v", err)
+	}
+	if linkInfo.Mode()&os.ModeSymlink != 0 {
+		t.Errorf("expected hard link to NOT be a symlink, but mode is %v", linkInfo.Mode())
+	}
+
+	// Verify reading the hard link yields original content
+	linkData, err := memFS.ReadFile("/dest/sub/dir/my-app-link")
+	if err != nil {
+		t.Fatalf("ReadFile hard link: %v", err)
+	}
+	if string(linkData) != originalContent {
+		t.Errorf("expected %q, got %q", originalContent, string(linkData))
+	}
+}
+
+func TestExtract_TarXzHardLinkInSubdirectory(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	const originalContent = "xz binary payload 67890"
+	entries := []tarCustomEntry{
+		{
+			name:     "bin/my-app",
+			typeflag: tar.TypeReg,
+			content:  originalContent,
+			mode:     0755,
+		},
+		{
+			name:     "sub/dir/my-app-link",
+			typeflag: tar.TypeLink,
+			linkname: "bin/my-app",
+			mode:     0755,
+		},
+	}
+
+	tarBytes, err := createCustomTarBytes(entries)
+	if err != nil {
+		t.Fatalf("failed to create tar bytes: %v", err)
+	}
+
+	runner.RegisterFunc("xz", func(c *exec.MockCmd) error {
+		stdout := c.Stdout()
+		if stdout != nil {
+			_, err := stdout.Write(tarBytes)
+			return err
+		}
+		return nil
+	})
+
+	if err := memFS.WriteFile("/test.tar.xz", []byte("xz data"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	ext := NewExtractor(memFS, runner)
+	if err := ext.Extract(context.Background(), "/test.tar.xz", "/dest"); err != nil {
+		t.Fatalf("extract failed: %v", err)
+	}
+
+	// Verify hard link is not a symlink
+	linkInfo, err := memFS.Lstat("/dest/sub/dir/my-app-link")
+	if err != nil {
+		t.Fatalf("Lstat hard link: %v", err)
+	}
+	if linkInfo.Mode()&os.ModeSymlink != 0 {
+		t.Errorf("expected hard link to NOT be a symlink, but mode is %v", linkInfo.Mode())
+	}
+
+	linkData, err := memFS.ReadFile("/dest/sub/dir/my-app-link")
+	if err != nil {
+		t.Fatalf("ReadFile hard link: %v", err)
+	}
+	if string(linkData) != originalContent {
+		t.Errorf("expected %q, got %q", originalContent, string(linkData))
+	}
+}
+
+func TestExtract_TarHardLinkEscapingDestRejected(t *testing.T) {
+	tests := []struct {
+		name     string
+		linkname string
+	}{
+		{"relative parent traversal", "../../etc/passwd"},
+		{"absolute path", "/etc/passwd"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memFS := fs.NewMemFS()
+			runner := exec.NewMockRunner()
+			ext := NewExtractor(memFS, runner)
+
+			entries := []tarCustomEntry{
+				{
+					name:     "valid.txt",
+					typeflag: tar.TypeReg,
+					content:  "safe content",
+				},
+				{
+					name:     "evil-link",
+					typeflag: tar.TypeLink,
+					linkname: tt.linkname,
+				},
+			}
+
+			tarGzBytes, err := createCustomTarGzBytes(entries)
+			if err != nil {
+				t.Fatalf("createCustomTarGzBytes: %v", err)
+			}
+
+			if err := memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644); err != nil {
+				t.Fatalf("WriteFile: %v", err)
+			}
+
+			err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+			if err == nil {
+				t.Fatalf("expected error for escaping hard link, got nil")
+			}
+			if !errors.Is(err, ErrZipSlipDetected) {
+				t.Errorf("expected ErrZipSlipDetected, got %v", err)
+			}
+		})
+	}
+}
+
+func TestExtract_TarHardLinkTargetDoesNotExist(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	ext := NewExtractor(memFS, runner)
+
+	entries := []tarCustomEntry{
+		{
+			name:     "broken-link",
+			typeflag: tar.TypeLink,
+			linkname: "nonexistent-target.txt",
+		},
+	}
+
+	tarGzBytes, err := createCustomTarGzBytes(entries)
+	if err != nil {
+		t.Fatalf("createCustomTarGzBytes: %v", err)
+	}
+
+	if err := memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+	if err == nil {
+		t.Fatalf("expected error for non-existent hard link target, got nil")
+	}
+}
+
+type unsupportedLinkFS struct {
+	fs.FS
+}
+
+func (u *unsupportedLinkFS) Link(oldname, newname string) error {
+	return errors.ErrUnsupported
+}
+
+func TestExtract_TarHardLinkFallbackToCopy(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	fallbackFS := &unsupportedLinkFS{FS: memFS}
+	ext := NewExtractor(fallbackFS, runner)
+
+	const content = "fallback copy content"
+	entries := []tarCustomEntry{
+		{
+			name:     "orig.txt",
+			typeflag: tar.TypeReg,
+			content:  content,
+		},
+		{
+			name:     "sub/copy-link.txt",
+			typeflag: tar.TypeLink,
+			linkname: "orig.txt",
+		},
+	}
+
+	tarGzBytes, err := createCustomTarGzBytes(entries)
+	if err != nil {
+		t.Fatalf("createCustomTarGzBytes: %v", err)
+	}
+
+	if err := memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := ext.Extract(context.Background(), "/test.tar.gz", "/dest"); err != nil {
+		t.Fatalf("extract with fallback failed: %v", err)
+	}
+
+	data, err := memFS.ReadFile("/dest/sub/copy-link.txt")
+	if err != nil {
+		t.Fatalf("ReadFile fallback copy: %v", err)
+	}
+	if string(data) != content {
+		t.Errorf("got %q, want %q", string(data), content)
+	}
+}
+
+type removeErrorFS struct {
+	fs.FS
+	failOnRemovePath string
+}
+
+func (r *removeErrorFS) Remove(name string) error {
+	if name == r.failOnRemovePath {
+		return os.ErrPermission
+	}
+	return r.FS.Remove(name)
+}
+
+func TestExtract_TarSymlinkAndLinkRemoveExistingTargetError(t *testing.T) {
+	t.Run("symlink removal failure", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		const targetFile = "/dest/existing-link"
+		_ = memFS.MkdirAll("/dest", 0755)
+		_ = memFS.WriteFile(targetFile, []byte("existing"), 0644)
+
+		rfs := &removeErrorFS{FS: memFS, failOnRemovePath: targetFile}
+		ext := NewExtractor(rfs, runner)
+
+		entries := []tarCustomEntry{
+			{
+				name:     "existing-link",
+				typeflag: tar.TypeSymlink,
+				linkname: "target.txt",
+			},
+		}
+
+		tarGzBytes, err := createCustomTarGzBytes(entries)
+		if err != nil {
+			t.Fatalf("createCustomTarGzBytes: %v", err)
+		}
+		_ = memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+
+		err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil {
+			t.Fatalf("expected error on Remove failure for symlink, got nil")
+		}
+		if !errors.Is(err, os.ErrPermission) {
+			t.Errorf("expected os.ErrPermission, got %v", err)
+		}
+	})
+
+	t.Run("hard link removal failure", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		const targetFile = "/dest/existing-hardlink"
+		_ = memFS.MkdirAll("/dest", 0755)
+		_ = memFS.WriteFile(targetFile, []byte("existing"), 0644)
+
+		rfs := &removeErrorFS{FS: memFS, failOnRemovePath: targetFile}
+		ext := NewExtractor(rfs, runner)
+
+		entries := []tarCustomEntry{
+			{
+				name:     "orig.txt",
+				typeflag: tar.TypeReg,
+				content:  "orig",
+			},
+			{
+				name:     "existing-hardlink",
+				typeflag: tar.TypeLink,
+				linkname: "orig.txt",
+			},
+		}
+
+		tarGzBytes, err := createCustomTarGzBytes(entries)
+		if err != nil {
+			t.Fatalf("createCustomTarGzBytes: %v", err)
+		}
+		_ = memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+
+		err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil {
+			t.Fatalf("expected error on Remove failure for hard link, got nil")
+		}
+		if !errors.Is(err, os.ErrPermission) {
+			t.Errorf("expected os.ErrPermission, got %v", err)
+		}
+	})
+}
+
+type chmodErrorFS struct {
+	fs.FS
+	chmodCalls int
+	failAfter  int
+}
+
+func (c *chmodErrorFS) Chmod(name string, mode os.FileMode) error {
+	c.chmodCalls++
+	if c.failAfter > 0 && c.chmodCalls > c.failAfter {
+		return os.ErrPermission
+	}
+	return c.FS.Chmod(name, mode)
+}
+
+func TestExtract_DetectAndSetExecutablesPropagatesChmodError(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	cfs := &chmodErrorFS{FS: memFS, failAfter: 1}
+	ext := NewExtractor(cfs, runner)
+
+	entries := []tarCustomEntry{
+		{
+			name:     "mycmd",
+			typeflag: tar.TypeReg,
+			content:  "#!/bin/sh\necho hi\n",
+			mode:     0644,
+		},
+	}
+
+	tarGzBytes, err := createCustomTarGzBytes(entries)
+	if err != nil {
+		t.Fatalf("createCustomTarGzBytes: %v", err)
+	}
+	_ = memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+
+	err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+	if err == nil {
+		t.Fatalf("expected error when detectAndSetExecutables chmod fails, got nil")
+	}
+	if !errors.Is(err, os.ErrPermission) {
+		t.Errorf("expected os.ErrPermission, got %v", err)
+	}
+}
+
+func TestExtract_IsLinkNotSupported(t *testing.T) {
+	if !isLinkNotSupported(errors.ErrUnsupported) {
+		t.Error("expected true for ErrUnsupported")
+	}
+	if !isLinkNotSupported(&os.LinkError{Err: syscall.ENOTSUP}) {
+		t.Error("expected true for ENOTSUP in LinkError")
+	}
+	if !isLinkNotSupported(&os.LinkError{Err: syscall.EXDEV}) {
+		t.Error("expected true for EXDEV in LinkError")
+	}
+	if isLinkNotSupported(os.ErrPermission) {
+		t.Error("expected false for ErrPermission")
+	}
+	if isLinkNotSupported(&os.LinkError{Err: syscall.EPERM}) {
+		t.Error("expected false for EPERM in LinkError")
+	}
+}
+
+func TestExtract_TarHardLinkTargetIsDirectory(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	ext := NewExtractor(memFS, runner)
+
+	entries := []tarCustomEntry{
+		{
+			name:     "somedir/",
+			typeflag: tar.TypeDir,
+		},
+		{
+			name:     "dir-link",
+			typeflag: tar.TypeLink,
+			linkname: "somedir",
+		},
+	}
+
+	tarGzBytes, err := createCustomTarGzBytes(entries)
+	if err != nil {
+		t.Fatalf("createCustomTarGzBytes: %v", err)
+	}
+	_ = memFS.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+
+	err = ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+	if err == nil {
+		t.Fatalf("expected error when hard link target is a directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "is a directory") {
+		t.Errorf("expected error message to mention 'is a directory', got %v", err)
+	}
+}
+
+type hardLinkFaultFS struct {
+	fs.FS
+	failOnLstatPath string
+	failOnMkdirPath string
+	failOnLink      error
+	failOnCopyFile  error
+}
+
+func (f *hardLinkFaultFS) Lstat(path string) (os.FileInfo, error) {
+	if f.failOnLstatPath != "" && path == f.failOnLstatPath {
+		return nil, os.ErrPermission
+	}
+	return f.FS.Lstat(path)
+}
+
+func (f *hardLinkFaultFS) MkdirAll(path string, perm os.FileMode) error {
+	if f.failOnMkdirPath != "" && path == f.failOnMkdirPath {
+		return os.ErrPermission
+	}
+	return f.FS.MkdirAll(path, perm)
+}
+
+func (f *hardLinkFaultFS) Link(oldname, newname string) error {
+	if f.failOnLink != nil {
+		return f.failOnLink
+	}
+	return f.FS.Link(oldname, newname)
+}
+
+func (f *hardLinkFaultFS) CopyFile(src, dest string) error {
+	if f.failOnCopyFile != nil {
+		return f.failOnCopyFile
+	}
+	return f.FS.CopyFile(src, dest)
+}
+
+func TestExtract_TarHardLinkFaultBranches(t *testing.T) {
+	entries := []tarCustomEntry{
+		{
+			name:     "orig.txt",
+			typeflag: tar.TypeReg,
+			content:  "some payload",
+		},
+		{
+			name:     "sub/link.txt",
+			typeflag: tar.TypeLink,
+			linkname: "orig.txt",
+		},
+	}
+	tarGzBytes, err := createCustomTarGzBytes(entries)
+	if err != nil {
+		t.Fatalf("createCustomTarGzBytes: %v", err)
+	}
+
+	t.Run("lstat target error", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		_ = mem.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+		faultFS := &hardLinkFaultFS{FS: mem, failOnLstatPath: "/dest/orig.txt"}
+		ext := NewExtractor(faultFS, exec.NewMockRunner())
+		err := ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil || !errors.Is(err, os.ErrPermission) {
+			t.Errorf("expected os.ErrPermission on lstat fault, got %v", err)
+		}
+	})
+
+	t.Run("mkdirall parent error", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		_ = mem.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+		faultFS := &hardLinkFaultFS{FS: mem, failOnMkdirPath: "/dest/sub"}
+		ext := NewExtractor(faultFS, exec.NewMockRunner())
+		err := ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil || !errors.Is(err, os.ErrPermission) {
+			t.Errorf("expected os.ErrPermission on mkdir fault, got %v", err)
+		}
+	})
+
+	t.Run("link non-supported error", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		_ = mem.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+		faultFS := &hardLinkFaultFS{FS: mem, failOnLink: os.ErrPermission}
+		ext := NewExtractor(faultFS, exec.NewMockRunner())
+		err := ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil || !errors.Is(err, os.ErrPermission) {
+			t.Errorf("expected os.ErrPermission on link failure, got %v", err)
+		}
+	})
+
+	t.Run("copyfile fallback error", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		_ = mem.WriteFile("/test.tar.gz", tarGzBytes, 0644)
+		faultFS := &hardLinkFaultFS{FS: mem, failOnLink: errors.ErrUnsupported, failOnCopyFile: os.ErrPermission}
+		ext := NewExtractor(faultFS, exec.NewMockRunner())
+		err := ext.Extract(context.Background(), "/test.tar.gz", "/dest")
+		if err == nil || !errors.Is(err, os.ErrPermission) {
+			t.Errorf("expected os.ErrPermission on copy fallback failure, got %v", err)
+		}
+	})
+}
+
+func TestExtract_ZipSymlinkRemoveExistingTargetError(t *testing.T) {
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	const targetFile = "/dest/link.txt"
+	_ = memFS.MkdirAll("/dest", 0755)
+	_ = memFS.WriteFile(targetFile, []byte("existing"), 0644)
+
+	rfs := &removeErrorFS{FS: memFS, failOnRemovePath: targetFile}
+	ext := NewExtractor(rfs, runner)
+
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	header := &zip.FileHeader{Name: "link.txt"}
+	header.SetMode(os.ModeSymlink | 0777)
+	f, err := w.CreateHeader(header)
+	if err != nil {
+		t.Fatalf("CreateHeader: %v", err)
+	}
+	_, _ = f.Write([]byte("target.txt"))
+	_ = w.Close()
+
+	_ = memFS.WriteFile("/test.zip", buf.Bytes(), 0644)
+
+	err = ext.Extract(context.Background(), "/test.zip", "/dest")
+	if err == nil {
+		t.Fatalf("expected error on Remove failure for zip symlink, got nil")
+	}
+	if !errors.Is(err, os.ErrPermission) {
+		t.Errorf("expected os.ErrPermission, got %v", err)
+	}
+}
+
+func TestExtract_TarXzSymlinkAndLinkErrors(t *testing.T) {
+	t.Run("tar.xz symlink remove error", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		const targetFile = "/dest/existing-link"
+		_ = memFS.MkdirAll("/dest", 0755)
+		_ = memFS.WriteFile(targetFile, []byte("existing"), 0644)
+
+		rfs := &removeErrorFS{FS: memFS, failOnRemovePath: targetFile}
+		ext := NewExtractor(rfs, runner)
+
+		entries := []tarCustomEntry{
+			{
+				name:     "existing-link",
+				typeflag: tar.TypeSymlink,
+				linkname: "target.txt",
+			},
+		}
+
+		tarBytes, err := createCustomTarBytes(entries)
+		if err != nil {
+			t.Fatalf("createCustomTarBytes: %v", err)
+		}
+
+		runner.RegisterFunc("xz", func(c *exec.MockCmd) error {
+			stdout := c.Stdout()
+			if stdout != nil {
+				_, err := stdout.Write(tarBytes)
+				return err
+			}
+			return nil
+		})
+
+		_ = memFS.WriteFile("/test.tar.xz", []byte("xz data"), 0644)
+
+		err = ext.Extract(context.Background(), "/test.tar.xz", "/dest")
+		if err == nil {
+			t.Fatalf("expected error on Remove failure for tar.xz symlink, got nil")
+		}
+		if !errors.Is(err, os.ErrPermission) {
+			t.Errorf("expected os.ErrPermission, got %v", err)
+		}
+	})
+
+	t.Run("tar.xz hard link error", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		entries := []tarCustomEntry{
+			{
+				name:     "broken-link",
+				typeflag: tar.TypeLink,
+				linkname: "missing.txt",
+			},
+		}
+
+		tarBytes, err := createCustomTarBytes(entries)
+		if err != nil {
+			t.Fatalf("createCustomTarBytes: %v", err)
+		}
+
+		runner.RegisterFunc("xz", func(c *exec.MockCmd) error {
+			stdout := c.Stdout()
+			if stdout != nil {
+				_, err := stdout.Write(tarBytes)
+				return err
+			}
+			return nil
+		})
+
+		_ = memFS.WriteFile("/test.tar.xz", []byte("xz data"), 0644)
+
+		err = ext.Extract(context.Background(), "/test.tar.xz", "/dest")
+		if err == nil {
+			t.Fatalf("expected error for missing hard link target in tar.xz, got nil")
+		}
+	})
+}

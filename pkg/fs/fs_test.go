@@ -1000,7 +1000,7 @@ func TestOSFSCopyFileRefusesAHardLinkToTheSource(t *testing.T) {
 	filesystem, dir := NewOSFS(), t.TempDir()
 	src := writeCopySource(t, filesystem, dir)
 	dest := filepath.Join(dir, "hard-link")
-	if err := os.Link(src, dest); err != nil {
+	if err := filesystem.Link(src, dest); err != nil {
 		t.Fatalf("Link: %v", err)
 	}
 
@@ -1009,6 +1009,104 @@ func TestOSFSCopyFileRefusesAHardLinkToTheSource(t *testing.T) {
 		t.Errorf("CopyFile(%s, %s) = %v, want %v", src, dest, err, errSameFile)
 	}
 	assertFileContent(t, filesystem, src, copySourceContent)
+}
+
+func TestMemFSCopyFileRefusesAHardLinkToTheSource(t *testing.T) {
+	filesystem := NewMemFS()
+	_ = filesystem.MkdirAll("/dir", 0o755)
+	src := "/dir/source"
+	if err := filesystem.WriteFile(src, []byte(copySourceContent), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	dest := "/dir/hard-link"
+	if err := filesystem.Link(src, dest); err != nil {
+		t.Fatalf("Link: %v", err)
+	}
+
+	err := filesystem.CopyFile(src, dest)
+	if !errors.Is(err, errSameFile) {
+		t.Errorf("CopyFile(%s, %s) = %v, want %v", src, dest, err, errSameFile)
+	}
+	assertFileContent(t, filesystem, src, copySourceContent)
+}
+
+func TestMemFS_LinkSemantics(t *testing.T) {
+	mem := NewMemFS()
+	if err := mem.MkdirAll("/a/b", 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	// Non-existent source
+	if err := mem.Link("/a/b/missing", "/a/b/link"); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Link(missing) = %v, want ErrNotExist", err)
+	}
+
+	// Directory source
+	if err := mem.Link("/a/b", "/a/b/dirlink"); !errors.Is(err, os.ErrInvalid) {
+		t.Errorf("Link(dir) = %v, want ErrInvalid", err)
+	}
+
+	// Create source file
+	src := "/a/b/orig.txt"
+	if err := mem.WriteFile(src, []byte("initial"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Missing parent directory for newname
+	if err := mem.Link(src, "/nonexistent/link.txt"); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Link(missing parent) = %v, want ErrNotExist", err)
+	}
+
+	// Create hard link
+	link := "/a/link.txt"
+	if err := mem.Link(src, link); err != nil {
+		t.Fatalf("Link: %v", err)
+	}
+
+	// Dest already exists
+	if err := mem.Link(src, link); !errors.Is(err, os.ErrExist) {
+		t.Errorf("Link(existing) = %v, want ErrExist", err)
+	}
+
+	// Initial content matches
+	assertFileContent(t, mem, link, "initial")
+
+	// Shared content: WriteFile on link updates src
+	if err := mem.WriteFile(link, []byte("updated via link"), 0o644); err != nil {
+		t.Fatalf("WriteFile(link): %v", err)
+	}
+	assertFileContent(t, mem, src, "updated via link")
+
+	// Shared content: OpenFile append on src updates link
+	f, err := mem.OpenFile(src, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("OpenFile(src): %v", err)
+	}
+	if _, err := f.Write([]byte(" + appended")); err != nil {
+		t.Fatalf("f.Write: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("f.Close: %v", err)
+	}
+	assertFileContent(t, mem, link, "updated via link + appended")
+
+	// Shared permissions: Chmod on link updates src
+	if err := mem.Chmod(link, 0o755); err != nil {
+		t.Fatalf("Chmod(link): %v", err)
+	}
+	srcInfo, err := mem.Stat(src)
+	if err != nil {
+		t.Fatalf("Stat(src): %v", err)
+	}
+	if srcInfo.Mode().Perm() != 0o755 {
+		t.Errorf("src perm = %v, want 0755", srcInfo.Mode().Perm())
+	}
+
+	// Independent removal: remove src, link remains with content
+	if err := mem.Remove(src); err != nil {
+		t.Fatalf("Remove(src): %v", err)
+	}
+	assertFileContent(t, mem, link, "updated via link + appended")
 }
 
 // treeFile and treeLink describe the entries of a tree built by buildTree, relative

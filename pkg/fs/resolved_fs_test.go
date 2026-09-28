@@ -127,3 +127,28 @@ func TestResolvedFS_IsAbs(t *testing.T) {
 		t.Errorf("mem.IsAbs should be true for absolute path")
 	}
 }
+
+func TestResolvedFS_Link(t *testing.T) {
+	homeDir := "/home/testuser"
+	mem := NewMemFS()
+	if err := mem.MkdirAll(homeDir, 0755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	rfs := NewResolvedFS(mem, homeDir)
+
+	if err := rfs.WriteFile("~/orig.txt", []byte("linked content"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := rfs.Link("~/orig.txt", "~/hardlink.txt"); err != nil {
+		t.Fatalf("Link: %v", err)
+	}
+
+	data, err := rfs.ReadFile("~/hardlink.txt")
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if string(data) != "linked content" {
+		t.Errorf("got %q, want 'linked content'", string(data))
+	}
+}

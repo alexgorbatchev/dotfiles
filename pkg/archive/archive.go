@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -257,7 +258,9 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
 				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 			}
-			_ = e.fsys.Remove(cleanTarget)
+			if err := e.fsys.Remove(cleanTarget); err != nil && !errors.Is(err, os.ErrNotExist) && !os.IsNotExist(err) {
+				return fmt.Errorf("removing existing target for zip symlink %q: %w", cleanTarget, err)
+			}
 			if err := e.fsys.Symlink(targetPath, cleanTarget); err != nil {
 				return fmt.Errorf("creating zip symlink from %q to %q: %w", targetPath, cleanTarget, err)
 			}
@@ -355,7 +358,7 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 				return fmt.Errorf("setting permissions on %q: %w", cleanTarget, err)
 			}
 
-		case tar.TypeSymlink, tar.TypeLink:
+		case tar.TypeSymlink:
 			if err := e.checkPath(dest, cleanTarget, entrySymlink); err != nil {
 				return err
 			}
@@ -365,9 +368,16 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
 				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 			}
-			_ = e.fsys.Remove(cleanTarget)
+			if err := e.fsys.Remove(cleanTarget); err != nil && !errors.Is(err, os.ErrNotExist) && !os.IsNotExist(err) {
+				return fmt.Errorf("removing existing target for tar symlink %q: %w", cleanTarget, err)
+			}
 			if err := e.fsys.Symlink(header.Linkname, cleanTarget); err != nil {
 				return fmt.Errorf("creating tar symlink from %q to %q: %w", header.Linkname, cleanTarget, err)
+			}
+
+		case tar.TypeLink:
+			if err := e.extractHardLink(dest, cleanTarget, header); err != nil {
+				return err
 			}
 		}
 	}
@@ -475,7 +485,7 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 				return extractErr
 			}
 
-		case tar.TypeSymlink, tar.TypeLink:
+		case tar.TypeSymlink:
 			if err := e.checkPath(dest, cleanTarget, entrySymlink); err != nil {
 				extractErr = err
 				return extractErr
@@ -488,9 +498,18 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 				extractErr = fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 				return extractErr
 			}
-			_ = e.fsys.Remove(cleanTarget)
+			if err := e.fsys.Remove(cleanTarget); err != nil && !errors.Is(err, os.ErrNotExist) && !os.IsNotExist(err) {
+				extractErr = fmt.Errorf("removing existing target for tar symlink %q: %w", cleanTarget, err)
+				return extractErr
+			}
 			if err := e.fsys.Symlink(header.Linkname, cleanTarget); err != nil {
 				extractErr = fmt.Errorf("creating tar symlink from %q to %q: %w", header.Linkname, cleanTarget, err)
+				return extractErr
+			}
+
+		case tar.TypeLink:
+			if err := e.extractHardLink(dest, cleanTarget, header); err != nil {
+				extractErr = err
 				return extractErr
 			}
 		}
@@ -597,7 +616,9 @@ func (e *Extractor) detectAndSetExecutables(dest string) ([]string, []string, er
 		}
 
 		if shouldBeExec {
-			_ = e.fsys.Chmod(path, info.Mode()|0111)
+			if err := e.fsys.Chmod(path, info.Mode()|0111); err != nil {
+				return nil, nil, fmt.Errorf("setting executable permissions on %q: %w", path, err)
+			}
 			executables = append(executables, path)
 		}
 	}
@@ -775,5 +796,60 @@ func (e *Extractor) checkPath(dest, cleanTarget string, kind entryKind) error {
 		}
 	}
 
+	return nil
+}
+
+func isLinkNotSupported(err error) bool {
+	if errors.Is(err, errors.ErrUnsupported) {
+		return true
+	}
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		switch errno {
+		case syscall.ENOTSUP, syscall.ENOSYS, syscall.EXDEV:
+			return true
+		}
+	}
+	return false
+}
+
+func (e *Extractor) extractHardLink(dest, cleanTarget string, header *tar.Header) error {
+	cleanLinkTarget, err := isSafeTargetPath(dest, header.Linkname)
+	if err != nil {
+		return fmt.Errorf("resolving hard link target %q for %q: %w", header.Linkname, header.Name, err)
+	}
+
+	info, err := e.fsys.Lstat(cleanLinkTarget)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) || os.IsNotExist(err) {
+			return fmt.Errorf("hard link target %q does not exist: %w", cleanLinkTarget, os.ErrNotExist)
+		}
+		return fmt.Errorf("checking hard link target %q: %w", cleanLinkTarget, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("hard link target %q is a directory", cleanLinkTarget)
+	}
+
+	if err := e.checkPath(dest, cleanTarget, entryFile); err != nil {
+		return err
+	}
+
+	if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
+		return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+	}
+
+	if err := e.fsys.Remove(cleanTarget); err != nil && !errors.Is(err, os.ErrNotExist) && !os.IsNotExist(err) {
+		return fmt.Errorf("removing existing target for hard link %q: %w", cleanTarget, err)
+	}
+
+	if err := e.fsys.Link(cleanLinkTarget, cleanTarget); err != nil {
+		if isLinkNotSupported(err) {
+			if err := e.fsys.CopyFile(cleanLinkTarget, cleanTarget); err != nil {
+				return fmt.Errorf("copying hard link fallback from %q to %q: %w", cleanLinkTarget, cleanTarget, err)
+			}
+		} else {
+			return fmt.Errorf("creating hard link from %q to %q: %w", cleanLinkTarget, cleanTarget, err)
+		}
+	}
 	return nil
 }

@@ -74,6 +74,10 @@ func (o *OSFS) Rename(oldname, newname string) error {
 	return os.Rename(oldname, newname)
 }
 
+func (o *OSFS) Link(oldname, newname string) error {
+	return os.Link(oldname, newname)
+}
+
 func (o *OSFS) Symlink(oldname, newname string) error {
 	return os.Symlink(oldname, newname)
 }

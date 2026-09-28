@@ -405,6 +405,18 @@ func (t *TrackedFileSystem) Rename(oldname, newname string) error {
 	return t.recordOperation(operationDetails{opType: "rename", path: newname, targetPath: &oldname})
 }
 
+func (t *TrackedFileSystem) Link(oldname, newname string) error {
+	err := t.fs.Link(oldname, newname)
+	if err != nil {
+		return err
+	}
+	l := t.getLogger()
+	if l != nil {
+		l.Info(logger.Message(fmt.Sprintf("ln %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+	}
+	return t.recordOperation(operationDetails{opType: "link", path: newname, targetPath: &oldname})
+}
+
 func (t *TrackedFileSystem) Symlink(oldname, newname string) error {
 	err := t.fs.Symlink(oldname, newname)
 	if err != nil {
