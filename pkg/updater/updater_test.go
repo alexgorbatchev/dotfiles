@@ -166,6 +166,27 @@ func TestCheckForUpdate(t *testing.T) {
 			t.Errorf("expected LatestVersion = 2.0.0, got %q", res.LatestVersion)
 		}
 	})
+
+	t.Run("ahead of latest release", func(t *testing.T) {
+		res, err := u.CheckForUpdate(ctx, updater.Options{
+			CurrentVersion: "2.7.0",
+		})
+		if err != nil {
+			t.Fatalf("CheckForUpdate error: %v", err)
+		}
+		if res.HasUpdate {
+			t.Errorf("expected HasUpdate = false")
+		}
+		if !res.AheadOfLatest {
+			t.Errorf("expected AheadOfLatest = true")
+		}
+		if res.LatestVersion != "2.0.1" {
+			t.Errorf("expected LatestVersion = 2.0.1, got %q", res.LatestVersion)
+		}
+		if res.CurrentVersion != "2.7.0" {
+			t.Errorf("expected CurrentVersion = 2.7.0, got %q", res.CurrentVersion)
+		}
+	})
 }
 
 func TestCheckForUpdate_Errors(t *testing.T) {
@@ -415,6 +436,188 @@ func TestUpgrade(t *testing.T) {
 		}
 		if !res.Updated {
 			t.Errorf("expected Updated = true with force")
+		}
+	})
+}
+
+func TestUpgrade_AheadOfLatest(t *testing.T) {
+	ctx := context.Background()
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+
+	bin260Content := "#!/bin/sh\necho v2.6.0"
+	tar260Data := createTestTarGz(t, bin260Content)
+	sum260 := sha256.Sum256(tar260Data)
+	sum260Hex := hex.EncodeToString(sum260[:])
+	tar260Name := fmt.Sprintf("dotfiles_2.6.0_%s_%s.tar.gz", goos, goarch)
+
+	bin270Content := "#!/bin/sh\necho v2.7.0"
+	tar270Data := createTestTarGz(t, bin270Content)
+	sum270 := sha256.Sum256(tar270Data)
+	sum270Hex := hex.EncodeToString(sum270[:])
+	tar270Name := fmt.Sprintf("dotfiles_2.7.0_%s_%s.tar.gz", goos, goarch)
+
+	mux := http.NewServeMux()
+	var serverURL string
+
+	mux.HandleFunc("/download/"+tar260Name, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		_, _ = w.Write(tar260Data)
+	})
+	mux.HandleFunc("/download/"+tar270Name, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		_, _ = w.Write(tar270Data)
+	})
+	mux.HandleFunc("/download/checksums_260.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintf(w, "%s  %s\n", sum260Hex, tar260Name)
+	})
+	mux.HandleFunc("/download/checksums_270.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintf(w, "%s  %s\n", sum270Hex, tar270Name)
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/alexgorbatchev/dotfiles/releases":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `[
+				{
+					"tag_name": "v2.6.0",
+					"prerelease": false,
+					"assets": [
+						{"name": "%s", "browser_download_url": "%s/download/%s"},
+						{"name": "checksums.txt", "browser_download_url": "%s/download/checksums_260.txt"}
+					]
+				}
+			]`, tar260Name, serverURL, tar260Name, serverURL)
+		case "/repos/alexgorbatchev/dotfiles/releases/tags/v2.7.0":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{
+				"tag_name": "v2.7.0",
+				"prerelease": false,
+				"assets": [
+					{"name": "%s", "browser_download_url": "%s/download/%s"},
+					{"name": "checksums.txt", "browser_download_url": "%s/download/checksums_270.txt"}
+				]
+			}`, tar270Name, serverURL, tar270Name, serverURL)
+		default:
+			mux.ServeHTTP(w, r)
+		}
+	}))
+	serverURL = server.URL
+	defer server.Close()
+
+	u := updater.New(updater.Config{BaseURL: server.URL})
+
+	t.Run("ahead of latest without force does not downgrade", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		targetBin := filepath.Join(tmpDir, "dotfiles")
+		if err := os.WriteFile(targetBin, []byte(bin270Content), 0755); err != nil {
+			t.Fatalf("writing target binary: %v", err)
+		}
+
+		res, err := u.Upgrade(ctx, updater.Options{
+			CurrentVersion: "2.7.0",
+			ExecPath:       targetBin,
+			Force:          false,
+		})
+		if err != nil {
+			t.Fatalf("Upgrade error: %v", err)
+		}
+		if res.HasUpdate {
+			t.Errorf("expected HasUpdate = false")
+		}
+		if !res.AheadOfLatest {
+			t.Errorf("expected AheadOfLatest = true")
+		}
+		if res.Updated {
+			t.Errorf("expected Updated = false")
+		}
+		content, _ := os.ReadFile(targetBin)
+		if string(content) != bin270Content {
+			t.Errorf("binary was downgraded, got content: %s", string(content))
+		}
+	})
+
+	t.Run("ahead of latest with force refuses downgrade when current release not found", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		targetBin := filepath.Join(tmpDir, "dotfiles")
+		bin300Content := "#!/bin/sh\necho v3.0.0"
+		if err := os.WriteFile(targetBin, []byte(bin300Content), 0755); err != nil {
+			t.Fatalf("writing target binary: %v", err)
+		}
+
+		// CurrentVersion 3.0.0 is ahead of 2.6.0, and 3.0.0 tag does not exist on server (404)
+		_, err := u.Upgrade(ctx, updater.Options{
+			CurrentVersion: "3.0.0",
+			ExecPath:       targetBin,
+			Force:          true,
+		})
+		if err == nil {
+			t.Fatalf("expected error on --force when ahead of latest and release not found")
+		}
+		wantErr := "dotfiles (3.0.0) is ahead of the latest known version (2.6.0); moving to an older release requires dotfiles self upgrade <version>"
+		if !strings.Contains(err.Error(), wantErr) {
+			t.Errorf("error = %v, want to contain %q", err, wantErr)
+		}
+		content, _ := os.ReadFile(targetBin)
+		if string(content) != bin300Content {
+			t.Errorf("binary was modified on refused upgrade: %s", string(content))
+		}
+	})
+
+	t.Run("ahead of latest with force reinstalls current version when release exists", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		targetBin := filepath.Join(tmpDir, "dotfiles")
+		if err := os.WriteFile(targetBin, []byte("#!/bin/sh\necho old-2.7.0"), 0755); err != nil {
+			t.Fatalf("writing target binary: %v", err)
+		}
+
+		res, err := u.Upgrade(ctx, updater.Options{
+			CurrentVersion: "2.7.0",
+			ExecPath:       targetBin,
+			Force:          true,
+		})
+		if err != nil {
+			t.Fatalf("Upgrade with force error: %v", err)
+		}
+		if !res.Updated {
+			t.Errorf("expected Updated = true with force")
+		}
+		if res.LatestVersion != "2.7.0" {
+			t.Errorf("expected LatestVersion = 2.7.0, got %q", res.LatestVersion)
+		}
+		content, _ := os.ReadFile(targetBin)
+		if string(content) != bin270Content {
+			t.Errorf("expected reinstalled binary content %q, got %q", bin270Content, string(content))
+		}
+	})
+
+	t.Run("explicit target version allows downgrade", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		targetBin := filepath.Join(tmpDir, "dotfiles")
+		if err := os.WriteFile(targetBin, []byte(bin270Content), 0755); err != nil {
+			t.Fatalf("writing target binary: %v", err)
+		}
+
+		res, err := u.Upgrade(ctx, updater.Options{
+			CurrentVersion: "2.7.0",
+			TargetVersion:  "2.6.0",
+			ExecPath:       targetBin,
+		})
+		if err != nil {
+			t.Fatalf("Upgrade error: %v", err)
+		}
+		if !res.Updated {
+			t.Errorf("expected Updated = true for downgrade")
+		}
+		if res.LatestVersion != "2.6.0" {
+			t.Errorf("expected LatestVersion = 2.6.0, got %q", res.LatestVersion)
+		}
+		content, _ := os.ReadFile(targetBin)
+		if string(content) != bin260Content {
+			t.Errorf("expected downgraded binary content %q, got %q", bin260Content, string(content))
 		}
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/updater"
 	"github.com/spf13/cobra"
 )
@@ -76,7 +77,10 @@ Use --check to inspect available updates without downloading or modifying the ex
 				return fmt.Errorf("checking for update: %w", err)
 			}
 
-			if res.HasUpdate {
+			if res.AheadOfLatest {
+				toolLog.Info(logger.Message(orchestrator.AheadOfLatestMessage(res.CurrentVersion, res.LatestVersion)))
+				fmt.Fprintln(cmd.OutOrStdout(), orchestrator.AheadOfLatestMessage(fmt.Sprintf("dotfiles (%s)", res.CurrentVersion), res.LatestVersion))
+			} else if res.HasUpdate {
 				toolLog.Info(logger.Message(fmt.Sprintf("New version available: %s -> %s", res.CurrentVersion, res.LatestVersion)))
 				fmt.Fprintf(cmd.OutOrStdout(), "New version available: %s -> %s\n", res.CurrentVersion, res.LatestVersion)
 			} else {
@@ -93,7 +97,10 @@ Use --check to inspect available updates without downloading or modifying the ex
 		}
 
 		if dryRun {
-			if res.HasUpdate {
+			if res.AheadOfLatest {
+				toolLog.Info(logger.Message(fmt.Sprintf("[dry-run] %s", orchestrator.AheadOfLatestMessage(res.CurrentVersion, res.LatestVersion))))
+				fmt.Fprintln(cmd.OutOrStdout(), fmt.Sprintf("[dry-run] %s", orchestrator.AheadOfLatestMessage(fmt.Sprintf("dotfiles (%s)", res.CurrentVersion), res.LatestVersion)))
+			} else if res.HasUpdate {
 				toolLog.Info(logger.Message(fmt.Sprintf("[dry-run] Would upgrade from %s to %s", res.CurrentVersion, res.LatestVersion)))
 				fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] Would upgrade dotfiles: %s -> %s\n", res.CurrentVersion, res.LatestVersion)
 			} else {
@@ -106,6 +113,9 @@ Use --check to inspect available updates without downloading or modifying the ex
 		if res.Updated {
 			toolLog.Info(logger.Message(fmt.Sprintf("Successfully upgraded from %s to %s", res.CurrentVersion, res.LatestVersion)))
 			fmt.Fprintf(cmd.OutOrStdout(), "Successfully upgraded dotfiles: %s -> %s\n", res.CurrentVersion, res.LatestVersion)
+		} else if res.AheadOfLatest {
+			toolLog.Info(logger.Message(orchestrator.AheadOfLatestMessage(res.CurrentVersion, res.LatestVersion)))
+			fmt.Fprintln(cmd.OutOrStdout(), orchestrator.AheadOfLatestMessage(fmt.Sprintf("dotfiles (%s)", res.CurrentVersion), res.LatestVersion))
 		} else {
 			toolLog.Info(logger.Message(fmt.Sprintf("Already up to date (%s)", res.CurrentVersion)))
 			fmt.Fprintf(cmd.OutOrStdout(), "dotfiles is already up to date (%s)\n", res.CurrentVersion)

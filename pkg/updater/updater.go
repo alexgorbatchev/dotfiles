@@ -82,6 +82,7 @@ type GitHubRelease struct {
 // UpdateResult provides the summary status of an update evaluation or operation.
 type UpdateResult struct {
 	HasUpdate      bool
+	AheadOfLatest  bool
 	CurrentVersion string
 	LatestVersion  string
 	ReleaseNotes   string
@@ -272,10 +273,12 @@ func (u *Updater) CheckForUpdate(ctx context.Context, opts Options) (*UpdateResu
 	cleanCurrent := version.ParseVersion(opts.CurrentVersion)
 
 	status := version.CheckVersionStatus(cleanCurrent, cleanLatest)
+	aheadOfLatest := opts.TargetVersion == "" && status == version.StatusAheadOfLatest
 	hasUpdate := status == version.StatusNewerAvailable || (opts.TargetVersion != "" && cleanCurrent != cleanLatest)
 
 	return &UpdateResult{
 		HasUpdate:      hasUpdate,
+		AheadOfLatest:  aheadOfLatest,
 		CurrentVersion: cleanCurrent,
 		LatestVersion:  cleanLatest,
 		ReleaseNotes:   rel.Body,
@@ -313,17 +316,45 @@ func (u *Updater) Upgrade(ctx context.Context, opts Options) (*UpdateResult, err
 	cleanCurrent := version.ParseVersion(opts.CurrentVersion)
 
 	status := version.CheckVersionStatus(cleanCurrent, cleanLatest)
+	aheadOfLatest := opts.TargetVersion == "" && status == version.StatusAheadOfLatest
 	hasUpdate := status == version.StatusNewerAvailable || (opts.TargetVersion != "" && cleanCurrent != cleanLatest)
 
 	result := &UpdateResult{
 		HasUpdate:      hasUpdate,
+		AheadOfLatest:  aheadOfLatest,
 		CurrentVersion: cleanCurrent,
 		LatestVersion:  cleanLatest,
 		ReleaseNotes:   rel.Body,
 		ExecutablePath: execPath,
 	}
 
-	if !hasUpdate && !opts.Force {
+	if aheadOfLatest {
+		if !opts.Force {
+			return result, nil
+		}
+
+		currentRel, err := findTargetRelease(releases, Options{
+			TargetVersion:   opts.CurrentVersion,
+			AllowPrerelease: true,
+		})
+		if err != nil {
+			if tagged, tagErr := u.fetchReleases(ctx, opts.CurrentVersion); tagErr == nil {
+				currentRel, _ = findTargetRelease(tagged, Options{
+					TargetVersion:   opts.CurrentVersion,
+					AllowPrerelease: true,
+				})
+			}
+		}
+		if currentRel == nil {
+			return nil, fmt.Errorf("dotfiles (%s) is ahead of the latest known version (%s); moving to an older release requires dotfiles self upgrade <version>", cleanCurrent, cleanLatest)
+		}
+
+		rel = currentRel
+		cleanLatest = version.ParseVersion(rel.TagName)
+		result.AheadOfLatest = false
+		result.LatestVersion = cleanLatest
+		result.ReleaseNotes = rel.Body
+	} else if !hasUpdate && !opts.Force {
 		return result, nil
 	}
 
