@@ -15,7 +15,9 @@ import (
 func acceptedProjectKeys() []string {
 	host := func(prefix string) []string {
 		allowed := hostKeys
-		if prefix == "cargo.githubRelease" {
+		if prefix == "cargo.cratesIo" || prefix == "cargo.githubRaw" {
+			allowed = cargoHostKeys
+		} else if prefix == "cargo.githubRelease" {
 			allowed = cargoReleaseHostKeys
 		}
 		var keys []string
@@ -40,7 +42,7 @@ func acceptedProjectKeys() []string {
 	}
 	keys = append(keys, host("github")...)
 	for _, k := range cargoKeys {
-		if slices.Contains(cargoHostKeys, k) {
+		if slices.Contains(cargoSubHosts, k) {
 			keys = append(keys, host("cargo."+k)...)
 			continue
 		}
@@ -113,12 +115,6 @@ var projectConfigConsumers = map[string]string{
 	"cargo.githubRaw.cache.ttl":     "installer.CargoSettings.GitHubRawCache.TTL, CargoInstaller Cargo.toml response cache",
 	"cargo.githubRelease.host":      "installer.CargoSettings.GitHubRelease.Host, the host of quickinstall and github-releases archive downloads",
 	"cargo.githubRelease.token":     "installer.CargoSettings.GitHubRelease.Token, authenticates those archive downloads",
-
-	// v1 declared a per-host userAgent, but its cargo client only ever sent
-	// cargo.userAgent; whether these are wired or removed is for the owner to decide.
-	"cargo.cratesIo.userAgent":      "",
-	"cargo.githubRaw.userAgent":     "",
-	"cargo.githubRelease.userAgent": "",
 }
 
 // keysAwaitingRemoval are the accepted keys that change nothing today. Every one of
@@ -127,9 +123,6 @@ var projectConfigConsumers = map[string]string{
 // keys are in that state, and the test below fails if the set and the consumer table
 // disagree. It is expected to end up empty.
 var keysAwaitingRemoval = []string{
-	"cargo.cratesIo.userAgent",
-	"cargo.githubRaw.userAgent",
-	"cargo.githubRelease.userAgent",
 	"features.catalog.filePath",
 	"features.catalog.generate",
 }

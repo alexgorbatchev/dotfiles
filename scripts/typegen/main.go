@@ -28,6 +28,8 @@ func generateTypes(outputPath string) error {
 	t.Add(config.HostConfig{})
 	t.Add(config.PathsConfig{})
 	t.Add(config.SystemConfig{})
+	t.Add(config.CargoHostConfig{})
+	t.Add(config.CargoReleaseHostConfig{})
 	t.Add(config.CargoConfig{})
 	t.Add(config.DownloaderConfig{})
 	t.Add(config.CatalogConfig{})

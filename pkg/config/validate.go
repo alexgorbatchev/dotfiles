@@ -66,12 +66,12 @@ var platformMatchKeys = []string{"os", "arch"}
 // than inline in validateProjectSection so that the accepted surface is one readable
 // table, and so that TestEveryAcceptedProjectKeyIsAccountedFor can walk it.
 var (
-	pathsKeys     = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir}
-	systemKeys    = []string{"sudoPrompt"}
-	cargoKeys     = []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
-	cargoHostKeys = []string{"cratesIo", "githubRaw", "githubRelease"}
-	// cargoReleaseHostKeys are the keys of cargo.githubRelease, which has no cache.
-	cargoReleaseHostKeys = []string{"host", "token", "userAgent"}
+	pathsKeys            = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir}
+	systemKeys           = []string{"sudoPrompt"}
+	cargoKeys            = []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
+	cargoSubHosts        = []string{"cratesIo", "githubRaw", "githubRelease"}
+	cargoHostKeys        = []string{"host", "cache", "token"}
+	cargoReleaseHostKeys = []string{"host", "token"}
 	downloaderKeys       = []string{"timeout", "retryCount", "retryDelay", "cache"}
 	featuresKeys         = []string{"catalog", "shellInstall"}
 	catalogKeys          = []string{"generate", "filePath"}
@@ -224,23 +224,8 @@ func validateProjectSection(path, key string, v interface{}) error {
 		}
 	case "cargo":
 		if sub, ok := v.(map[string]interface{}); ok {
-			if err := checkKeys(path, sub, cargoKeys); err != nil {
+			if err := validateCargoMap(path, sub); err != nil {
 				return err
-			}
-			for _, subHost := range cargoHostKeys {
-				hostMap, ok := sub[subHost].(map[string]interface{})
-				if !ok {
-					continue
-				}
-				if subHost == "githubRelease" {
-					if err := checkKeys(qualifyPath(path, subHost), hostMap, cargoReleaseHostKeys); err != nil {
-						return err
-					}
-					continue
-				}
-				if err := validateHostMap(qualifyPath(path, subHost), hostMap); err != nil {
-					return err
-				}
 			}
 		}
 	case "downloader":
@@ -382,6 +367,40 @@ func checkListEntryKeys(path string, value interface{}, allowed []string) error 
 			continue
 		}
 		if err := checkKeys(fmt.Sprintf("%s[%d]", path, i), sub, allowed); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateCargoMap(path string, sub map[string]interface{}) error {
+	if err := checkKeys(path, sub, cargoKeys); err != nil {
+		return err
+	}
+	for _, subHost := range cargoSubHosts {
+		hostMap, ok := sub[subHost].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if subHost == "githubRelease" {
+			if err := checkKeys(qualifyPath(path, subHost), hostMap, cargoReleaseHostKeys); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := validateCargoHostMap(qualifyPath(path, subHost), hostMap); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateCargoHostMap(prefix string, m map[string]interface{}) error {
+	if err := checkKeys(prefix, m, cargoHostKeys); err != nil {
+		return err
+	}
+	if cacheMap, ok := m["cache"].(map[string]interface{}); ok {
+		if err := validateCacheMap(qualifyPath(prefix, "cache"), cacheMap); err != nil {
 			return err
 		}
 	}

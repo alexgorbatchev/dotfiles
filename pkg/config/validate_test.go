@@ -167,14 +167,29 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 			{
 				name:     "cargo.cratesIo.badProp error",
 				json:     `{ "cargo": { "cratesIo": { "badProp": true } } }`,
-				expected: `unknown property "cargo.cratesIo.badProp" (valid properties under 'cargo.cratesIo': cache, host, token, userAgent)`,
+				expected: `unknown property "cargo.cratesIo.badProp" (valid properties under 'cargo.cratesIo': cache, host, token)`,
+			},
+			{
+				name:     "cargo.cratesIo.userAgent rejected",
+				json:     `{ "cargo": { "cratesIo": { "userAgent": "bot" } } }`,
+				expected: `unknown property "cargo.cratesIo.userAgent" (valid properties under 'cargo.cratesIo': cache, host, token)`,
+			},
+			{
+				name:     "cargo.githubRaw.userAgent rejected",
+				json:     `{ "cargo": { "githubRaw": { "userAgent": "bot" } } }`,
+				expected: `unknown property "cargo.githubRaw.userAgent" (valid properties under 'cargo.githubRaw': cache, host, token)`,
+			},
+			{
+				name:     "cargo.githubRelease.userAgent rejected",
+				json:     `{ "cargo": { "githubRelease": { "userAgent": "bot" } } }`,
+				expected: `unknown property "cargo.githubRelease.userAgent" (valid properties under 'cargo.githubRelease': host, token)`,
 			},
 			{
 				// Nothing caches release archive downloads per host (the downloader
 				// section's cache covers every download), so the key is not accepted.
 				name:     "cargo.githubRelease.cache error",
 				json:     `{ "cargo": { "githubRelease": { "cache": { "enabled": false } } } }`,
-				expected: `unknown property "cargo.githubRelease.cache" (valid properties under 'cargo.githubRelease': host, token, userAgent)`,
+				expected: `unknown property "cargo.githubRelease.cache" (valid properties under 'cargo.githubRelease': host, token)`,
 			},
 			{
 				name:     "downloader.badProp error",

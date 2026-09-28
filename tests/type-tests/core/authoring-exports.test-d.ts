@@ -123,6 +123,25 @@ expectError(
   })),
 );
 
+// userAgent is rejected under individual cargo hosts (it belongs directly under cargo).
+expectError(
+  defineConfig(() => ({
+    cargo: { cratesIo: { userAgent: "foo" } },
+  })),
+);
+
+expectError(
+  defineConfig(() => ({
+    cargo: { githubRaw: { userAgent: "foo" } },
+  })),
+);
+
+expectError(
+  defineConfig(() => ({
+    cargo: { githubRelease: { userAgent: "foo" } },
+  })),
+);
+
 defineTool((install, ctx) => {
   expectType<IInstallFunction>(install);
   expectType<IToolConfigContext>(ctx);

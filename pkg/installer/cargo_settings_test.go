@@ -96,8 +96,8 @@ func newCargoHosts(t *testing.T) cargoHosts {
 // cargoConfig is the project configuration's cargo section pointing at the hosts.
 func (h cargoHosts) cargoConfig() config.CargoConfig {
 	return config.CargoConfig{
-		CratesIo:      config.HostConfig{Host: h.cratesIO.URL, Token: "crates-secret"},
-		GithubRaw:     config.HostConfig{Host: h.raw.URL, Token: "raw-secret"},
+		CratesIo:      config.CargoHostConfig{Host: h.cratesIO.URL, Token: "crates-secret"},
+		GithubRaw:     config.CargoHostConfig{Host: h.raw.URL, Token: "raw-secret"},
 		GithubRelease: config.CargoReleaseHostConfig{Host: h.release.URL, Token: "release-secret"},
 		UserAgent:     "my-bot (me@example.com)",
 	}
@@ -280,8 +280,8 @@ func TestNewCargoSettings(t *testing.T) {
 		{
 			name: "every key is carried over as written",
 			cfg: config.ProjectConfig{Cargo: config.CargoConfig{
-				CratesIo:      config.HostConfig{Host: "https://mirror.example/", Token: "a", Cache: config.CacheConfig{Enabled: &disabled, TTL: 1000}},
-				GithubRaw:     config.HostConfig{Host: "https://raw.example", Token: "b", Cache: config.CacheConfig{TTL: 2000}},
+				CratesIo:      config.CargoHostConfig{Host: "https://mirror.example/", Token: "a", Cache: config.CacheConfig{Enabled: &disabled, TTL: 1000}},
+				GithubRaw:     config.CargoHostConfig{Host: "https://raw.example", Token: "b", Cache: config.CacheConfig{TTL: 2000}},
 				GithubRelease: config.CargoReleaseHostConfig{Host: "https://ghe.example/", Token: "c"},
 				UserAgent:     "bot",
 			}},
@@ -324,8 +324,8 @@ func TestCargoSettingsDefaultURLs(t *testing.T) {
 
 	// A configured host is used as written, less a trailing slash.
 	SetCargoSettings(inst, NewCargoSettings(&config.ProjectConfig{Cargo: config.CargoConfig{
-		CratesIo:      config.HostConfig{Host: "https://mirror.example/"},
-		GithubRaw:     config.HostConfig{Host: "https://raw.example/"},
+		CratesIo:      config.CargoHostConfig{Host: "https://mirror.example/"},
+		GithubRaw:     config.CargoHostConfig{Host: "https://raw.example/"},
 		GithubRelease: config.CargoReleaseHostConfig{Host: "https://ghe.example/"},
 	}}))
 	for _, tt := range []struct{ got, want string }{
@@ -362,8 +362,8 @@ func TestCargoTokensDoNotFollowRedirects(t *testing.T) {
 		http.Redirect(w, r, storage.URL+r.URL.Path, http.StatusFound)
 	})
 	inst := newCargoSettingsInstaller(t, fs.NewMemFS(), NewCargoSettings(&config.ProjectConfig{Cargo: config.CargoConfig{
-		CratesIo:      config.HostConfig{Host: redirecting.URL, Token: "crates-secret"},
-		GithubRaw:     config.HostConfig{Host: redirecting.URL, Token: "raw-secret"},
+		CratesIo:      config.CargoHostConfig{Host: redirecting.URL, Token: "crates-secret"},
+		GithubRaw:     config.CargoHostConfig{Host: redirecting.URL, Token: "raw-secret"},
 		GithubRelease: config.CargoReleaseHostConfig{Host: redirecting.URL, Token: "release-secret"},
 	}}))
 
@@ -541,7 +541,7 @@ func TestCargoResponseCache(t *testing.T) {
 		})
 		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{
 			Paths: config.PathsConfig{GeneratedDir: t.TempDir()},
-			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
+			Cargo: config.CargoConfig{CratesIo: config.CargoHostConfig{Host: host.URL}},
 		}))
 		tool := &config.ToolConfig{Name: "mycrate"}
 		if _, err := resolveToolVersion(t, inst, context.Background(), tool, "mycrate"); err == nil {
@@ -568,7 +568,7 @@ func TestCargoResponseCache(t *testing.T) {
 		runner := exec.NewMockRunner()
 		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{
 			Paths: config.PathsConfig{GeneratedDir: t.TempDir()},
-			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
+			Cargo: config.CargoConfig{CratesIo: config.CargoHostConfig{Host: host.URL}},
 		}))
 		inst.runner = runner
 
@@ -597,7 +597,7 @@ func TestCargoResponseCache(t *testing.T) {
 		})
 		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{
 			Paths: config.PathsConfig{GeneratedDir: t.TempDir()},
-			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
+			Cargo: config.CargoConfig{CratesIo: config.CargoHostConfig{Host: host.URL}},
 		}))
 		for range 2 {
 			if _, err := inst.fetchCratesIOVersion(context.Background(), "mycrate", false); !errors.Is(err, errNoCrateVersion) {
@@ -626,7 +626,7 @@ func TestCargoResponseCache(t *testing.T) {
 		})
 		inst := newCargoSettingsInstaller(t, &fs.OSFS{}, NewCargoSettings(&config.ProjectConfig{
 			Paths: config.PathsConfig{GeneratedDir: t.TempDir()},
-			Cargo: config.CargoConfig{CratesIo: config.HostConfig{Host: host.URL}},
+			Cargo: config.CargoConfig{CratesIo: config.CargoHostConfig{Host: host.URL}},
 		}))
 		if _, err := inst.fetchCratesIOVersion(context.Background(), "mycrate", false); !errors.Is(err, errNoCrateVersion) {
 			t.Fatalf("first lookup error = %v, want errNoCrateVersion", err)

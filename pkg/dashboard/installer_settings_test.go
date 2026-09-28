@@ -76,7 +76,7 @@ func TestDashboard_CheckUpdateAppliesProjectSettings(t *testing.T) {
 		Paths:  config.PathsConfig{ToolConfigsDir: t.TempDir(), GeneratedDir: "/gen"},
 		Github: config.HostConfig{Host: "https://ghe.example/api/v3", Token: "github-secret"},
 		Cargo: config.CargoConfig{
-			CratesIo:  config.HostConfig{Host: "https://crates.mirror.example", Token: "crates-secret"},
+			CratesIo:  config.CargoHostConfig{Host: "https://crates.mirror.example", Token: "crates-secret"},
 			UserAgent: "my-bot",
 		},
 	}

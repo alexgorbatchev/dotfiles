@@ -2183,7 +2183,7 @@ func TestInstallTool_AppliesCargoSettings(t *testing.T) {
 			ShellScriptsDir: "/home/test/.generated/shell-scripts",
 		},
 		Cargo: config.CargoConfig{
-			CratesIo:      config.HostConfig{Host: "https://crates.mirror.example", Token: "crates-secret"},
+			CratesIo:      config.CargoHostConfig{Host: "https://crates.mirror.example", Token: "crates-secret"},
 			GithubRelease: config.CargoReleaseHostConfig{Host: "https://ghe.example", Token: "release-secret"},
 			UserAgent:     "my-bot",
 		},

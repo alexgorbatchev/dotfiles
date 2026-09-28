@@ -1,5 +1,7 @@
 import type {
   CargoConfig,
+  CargoHostConfig,
+  CargoReleaseHostConfig,
   CatalogConfig,
   DownloaderConfig,
   FeaturesConfig,
@@ -200,6 +202,16 @@ export interface IShellInstallConfig extends DeepPartial<ShellInstallConfig> {}
  * Remote host repository and token configuration.
  */
 export interface IHostConfig extends DeepPartial<HostConfig> {}
+
+/**
+ * Cargo host repository and token configuration.
+ */
+export interface ICargoHostConfig extends DeepPartial<CargoHostConfig> {}
+
+/**
+ * Cargo release host configuration.
+ */
+export interface ICargoReleaseHostConfig extends DeepPartial<CargoReleaseHostConfig> {}
 
 /**
  * Cargo package manager host and user-agent configuration.

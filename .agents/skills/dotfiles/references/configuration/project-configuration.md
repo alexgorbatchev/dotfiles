@@ -197,9 +197,6 @@ Cached responses live in `cache/cargo/crates-io` and `cache/cargo/github-raw` un
 `--force` fetches fresh data. The archives themselves are cached by the `downloader`
 section.
 
-`cratesIo.userAgent`, `githubRaw.userAgent` and `githubRelease.userAgent` are accepted
-by the loader but read by nothing; `userAgent` is the one that is sent.
-
 ## Platform Overrides
 
 The `platform` list applies partial configuration only on matching machines. Each entry

@@ -84,19 +84,25 @@ type SystemConfig struct {
 	SudoPrompt string `json:"sudoPrompt" yaml:"sudoPrompt"`
 }
 
+// CargoHostConfig defines host settings for Cargo registries and raw content hosts.
+type CargoHostConfig struct {
+	Host  string      `json:"host" yaml:"host"`
+	Cache CacheConfig `json:"cache" yaml:"cache"`
+	Token string      `json:"token" yaml:"token"`
+}
+
 // CargoReleaseHostConfig is the host cargo downloads quickinstall and GitHub release
 // archives from. Unlike the other hosts it has no response cache: an archive is a
 // download, which the downloader section's cache already covers.
 type CargoReleaseHostConfig struct {
-	Host      string `json:"host" yaml:"host"`
-	Token     string `json:"token" yaml:"token"`
-	UserAgent string `json:"userAgent" yaml:"userAgent"`
+	Host  string `json:"host" yaml:"host"`
+	Token string `json:"token" yaml:"token"`
 }
 
 // CargoConfig defines Cargo registry and repository hosts.
 type CargoConfig struct {
-	CratesIo      HostConfig             `json:"cratesIo" yaml:"cratesIo"`
-	GithubRaw     HostConfig             `json:"githubRaw" yaml:"githubRaw"`
+	CratesIo      CargoHostConfig        `json:"cratesIo" yaml:"cratesIo"`
+	GithubRaw     CargoHostConfig        `json:"githubRaw" yaml:"githubRaw"`
 	GithubRelease CargoReleaseHostConfig `json:"githubRelease" yaml:"githubRelease"`
 	UserAgent     string                 `json:"userAgent" yaml:"userAgent"`
 }

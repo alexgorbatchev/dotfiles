@@ -22,14 +22,18 @@ export interface PathsConfig {
 export interface SystemConfig {
   sudoPrompt: string;
 }
+export interface CargoHostConfig {
+  host: string;
+  cache: CacheConfig;
+  token: string;
+}
 export interface CargoReleaseHostConfig {
   host: string;
   token: string;
-  userAgent: string;
 }
 export interface CargoConfig {
-  cratesIo: HostConfig;
-  githubRaw: HostConfig;
+  cratesIo: CargoHostConfig;
+  githubRaw: CargoHostConfig;
   githubRelease: CargoReleaseHostConfig;
   userAgent: string;
 }
