@@ -20,6 +20,12 @@ export interface IMarkdownProblem {
   message: string;
 }
 
+export interface IFrontmatterDescription {
+  /** 1-based line number where the description was declared. */
+  line: number;
+  text: string;
+}
+
 export interface IParsedMarkdownDocument {
   /**
    * First level-1 heading outside code fences. The website turns it into the page title and drops
@@ -30,6 +36,7 @@ export interface IParsedMarkdownDocument {
   headings: IMarkdownHeading[];
   links: IMarkdownLink[];
   problems: IMarkdownProblem[];
+  description: IFrontmatterDescription | undefined;
 }
 
 export type StarlightSidebarEntryKind = "link" | "slug" | "autogenerate";

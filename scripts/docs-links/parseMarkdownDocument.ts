@@ -1,5 +1,11 @@
 import { GithubSlugger } from "./GithubSlugger";
-import type { IMarkdownHeading, IMarkdownLink, IMarkdownProblem, IParsedMarkdownDocument } from "./types";
+import type {
+  IFrontmatterDescription,
+  IMarkdownHeading,
+  IMarkdownLink,
+  IMarkdownProblem,
+  IParsedMarkdownDocument,
+} from "./types";
 
 const FRONTMATTER_DELIMITER = /^---\s*$/;
 const FENCE_OPENER = /^(\s*)(`{3,}|~{3,})(.*)$/;
@@ -165,6 +171,37 @@ interface ILinePlan {
   contentLines: boolean[];
   structuralProblems: IMarkdownProblem[];
   headingLines: number[];
+  description: IFrontmatterDescription | undefined;
+}
+
+function parseFrontmatterDescription(lines: string[], closingIndex: number): IFrontmatterDescription | undefined {
+  for (let i = 1; i < closingIndex; i += 1) {
+    const line = lines[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("description:")) {
+      const lineNum = i + 1;
+      const rawVal = trimmed.slice("description:".length).trim();
+      if (rawVal === "" || rawVal.startsWith(">") || rawVal.startsWith("|")) {
+        const parts: string[] = [];
+        for (let j = i + 1; j < closingIndex; j += 1) {
+          const nextLine = lines[j] ?? "";
+          if (nextLine.trim() === "") continue;
+          if (nextLine.startsWith(" ") || nextLine.startsWith("\t")) {
+            parts.push(nextLine.trim());
+          } else {
+            break;
+          }
+        }
+        return { line: lineNum, text: parts.join(" ") };
+      }
+      let val = rawVal;
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      return { line: lineNum, text: val };
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -175,6 +212,7 @@ function planLines(lines: string[]): ILinePlan {
   const contentLines: boolean[] = lines.map(() => false);
   const structuralProblems: IMarkdownProblem[] = [];
   const headingLines: number[] = [];
+  let description: IFrontmatterDescription | undefined;
   let openFence: IOpenFence | undefined;
   let index = 0;
 
@@ -182,8 +220,9 @@ function planLines(lines: string[]): ILinePlan {
     const closingIndex = lines.findIndex((line, lineIndex) => lineIndex > 0 && FRONTMATTER_DELIMITER.test(line));
     if (closingIndex === -1) {
       structuralProblems.push({ line: 1, message: "frontmatter opened here is never closed" });
-      return { contentLines, structuralProblems, headingLines };
+      return { contentLines, structuralProblems, headingLines, description: undefined };
     }
+    description = parseFrontmatterDescription(lines, closingIndex);
     index = closingIndex + 1;
   }
 
@@ -234,7 +273,7 @@ function planLines(lines: string[]): ILinePlan {
     structuralProblems.push({ line: openFence.line, message: "code fence opened here is never closed" });
   }
 
-  return { contentLines, structuralProblems, headingLines };
+  return { contentLines, structuralProblems, headingLines, description };
 }
 
 function parseHeading(line: string, lineNumber: number, slugger: GithubSlugger): IMarkdownHeading | undefined {
@@ -321,5 +360,5 @@ export function parseMarkdownDocument(source: string): IParsedMarkdownDocument {
     collectLineLinks(line, index + 1, definitions, links, problems);
   });
 
-  return { titleHeading, headings, links, problems };
+  return { titleHeading, headings, links, problems, description: plan.description };
 }

@@ -271,8 +271,59 @@ export function checkDocsLinks(input: IDocsLinkCheckInput): IDocsLinkCheckResult
     });
   }
 
+  checkInstallationMethods(input, problems);
+
   return {
     problems: problems.sort(compareProblems),
     summary: { pageCount: input.documents.size, linkCount, anchorCount },
   };
+}
+
+function checkInstallationMethods(input: IDocsLinkCheckInput, problems: IDocsLinkProblem[]): void {
+  const published = path.posix.join(input.docsRoot, input.publishedDirectory);
+  const methodsDirPrefix = `${published}/installation-methods/`;
+
+  const methodDocs = new Map<string, string>();
+  for (const file of input.documents.keys()) {
+    if (file.startsWith(methodsDirPrefix) && file.endsWith(".md")) {
+      const fileName = path.posix.basename(file);
+      if (fileName === "overview.md") continue;
+      const method = path.posix.basename(file, ".md");
+      methodDocs.set(method, file);
+    }
+  }
+
+  if (methodDocs.size === 0) return;
+
+  const entryPage = path.posix.join(input.docsRoot, input.entryPage);
+  const entryDocument = input.documents.get(entryPage);
+  if (!entryDocument) return;
+
+  if (!entryDocument.description || entryDocument.description.text.trim() === "") {
+    problems.push({
+      file: entryPage,
+      line: entryDocument.description?.line ?? 1,
+      message: `frontmatter description is missing from ${input.entryPage}`,
+    });
+    return;
+  }
+
+  const descText = entryDocument.description.text;
+  const line = entryDocument.description.line;
+
+  const sortedMethods = [...methodDocs.keys()].sort(compareStrings);
+  for (const method of sortedMethods) {
+    const docFile = methodDocs.get(method);
+    if (!docFile) continue;
+    const escaped = method.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(?<![a-zA-Z0-9_-])${escaped}(?![a-zA-Z0-9_-])`);
+    if (!regex.test(descText)) {
+      const relativeDoc = path.posix.relative(input.docsRoot, docFile);
+      problems.push({
+        file: entryPage,
+        line,
+        message: `frontmatter description does not mention installation method "${method}" (documented in ${relativeDoc})`,
+      });
+    }
+  }
 }

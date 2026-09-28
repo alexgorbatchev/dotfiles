@@ -161,6 +161,37 @@ describe("parseMarkdownDocument fences", () => {
   });
 });
 
+describe("parseMarkdownDocument frontmatter description", () => {
+  test("extracts single-line description with or without quotes", () => {
+    const unquoted = parseMarkdownDocument(markdown("---", "name: test", "description: simple desc", "---", "# Title"));
+    expect(unquoted.description).toEqual({ line: 3, text: "simple desc" });
+
+    const doubleQuoted = parseMarkdownDocument(markdown("---", 'description: "quoted desc"', "---", "# Title"));
+    expect(doubleQuoted.description).toEqual({ line: 2, text: "quoted desc" });
+
+    const singleQuoted = parseMarkdownDocument(markdown("---", "description: 'single quoted'", "---", "# Title"));
+    expect(singleQuoted.description).toEqual({ line: 2, text: "single quoted" });
+  });
+
+  test("extracts multiline description folded or literal", () => {
+    const folded = parseMarkdownDocument(
+      markdown("---", "name: dotfiles", "description: >-", "  line 1", "  line 2", "---", "# Title"),
+    );
+    expect(folded.description).toEqual({ line: 3, text: "line 1 line 2" });
+
+    const literal = parseMarkdownDocument(markdown("---", "description: |", "  first", "  second", "---", "# Title"));
+    expect(literal.description).toEqual({ line: 2, text: "first second" });
+  });
+
+  test("returns undefined when frontmatter has no description or there is no frontmatter", () => {
+    const noFrontmatter = parseMarkdownDocument(markdown("# Title", "Content"));
+    expect(noFrontmatter.description).toBeUndefined();
+
+    const noDesc = parseMarkdownDocument(markdown("---", "name: test", "---", "# Title"));
+    expect(noDesc.description).toBeUndefined();
+  });
+});
+
 describe("parseMarkdownDocument links", () => {
   test("collects inline links with their line numbers, including titles and angle brackets", () => {
     const parsed = parseMarkdownDocument(

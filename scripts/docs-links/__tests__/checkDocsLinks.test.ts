@@ -311,3 +311,116 @@ describe("checkDocsLinks reachability", () => {
     ]);
   });
 });
+
+describe("checkDocsLinks installation methods frontmatter description", () => {
+  test("passes when all installation method reference docs are mentioned in description", () => {
+    const result = checkDocsLinks(
+      buildInput({
+        "SKILL.md": page(
+          "---",
+          "description: >-",
+          "  installation methods (cargo, curl-binary, apt, brew), other stuff",
+          "---",
+          "# Skill",
+          "[cargo](references/installation-methods/cargo.md)",
+          "[curl-binary](references/installation-methods/curl-binary.md)",
+          "[apt](references/installation-methods/apt.md)",
+          "[brew](references/installation-methods/brew.md)",
+          "[overview](references/installation-methods/overview.md)",
+        ),
+        "references/installation-methods/overview.md": page("# Overview"),
+        "references/installation-methods/cargo.md": page("# Cargo"),
+        "references/installation-methods/curl-binary.md": page("# Curl Binary"),
+        "references/installation-methods/apt.md": page("# Apt"),
+        "references/installation-methods/brew.md": page("# Brew"),
+      }),
+    );
+
+    expect(result.problems).toEqual([]);
+  });
+
+  test("reports missing installation methods with their source file path", () => {
+    const result = checkDocsLinks(
+      buildInput({
+        "SKILL.md": page(
+          "---",
+          "description: installation methods (cargo, brew)",
+          "---",
+          "# Skill",
+          "[cargo](references/installation-methods/cargo.md)",
+          "[apt](references/installation-methods/apt.md)",
+          "[brew](references/installation-methods/brew.md)",
+          "[pacman](references/installation-methods/pacman.md)",
+        ),
+        "references/installation-methods/cargo.md": page("# Cargo"),
+        "references/installation-methods/apt.md": page("# Apt"),
+        "references/installation-methods/brew.md": page("# Brew"),
+        "references/installation-methods/pacman.md": page("# Pacman"),
+      }),
+    );
+
+    expect(result.problems).toEqual([
+      {
+        file: "docs/SKILL.md",
+        line: 2,
+        message:
+          'frontmatter description does not mention installation method "apt" (documented in references/installation-methods/apt.md)',
+      },
+      {
+        file: "docs/SKILL.md",
+        line: 2,
+        message:
+          'frontmatter description does not mention installation method "pacman" (documented in references/installation-methods/pacman.md)',
+      },
+    ]);
+  });
+
+  test("rejects substring or hyphen-attached matches like chapter or apt-get", () => {
+    const result = checkDocsLinks(
+      buildInput({
+        "SKILL.md": page(
+          "---",
+          "description: chapter about apt-get and curl-binary-extra",
+          "---",
+          "# Skill",
+          "[apt](references/installation-methods/apt.md)",
+          "[curl-binary](references/installation-methods/curl-binary.md)",
+        ),
+        "references/installation-methods/apt.md": page("# Apt"),
+        "references/installation-methods/curl-binary.md": page("# Curl Binary"),
+      }),
+    );
+
+    expect(result.problems).toEqual([
+      {
+        file: "docs/SKILL.md",
+        line: 2,
+        message:
+          'frontmatter description does not mention installation method "apt" (documented in references/installation-methods/apt.md)',
+      },
+      {
+        file: "docs/SKILL.md",
+        line: 2,
+        message:
+          'frontmatter description does not mention installation method "curl-binary" (documented in references/installation-methods/curl-binary.md)',
+      },
+    ]);
+  });
+
+  test("reports when frontmatter description is missing and method docs exist", () => {
+    const result = checkDocsLinks(
+      buildInput({
+        "SKILL.md": page("# Skill", "[apt](references/installation-methods/apt.md)"),
+        "references/installation-methods/apt.md": page("# Apt"),
+      }),
+    );
+
+    expect(result.problems).toEqual([
+      {
+        file: "docs/SKILL.md",
+        line: 1,
+        message: "frontmatter description is missing from SKILL.md",
+      },
+    ]);
+  });
+});
