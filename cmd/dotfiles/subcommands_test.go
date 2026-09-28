@@ -3771,6 +3771,101 @@ func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
 	})
 }
 
+// TestCleanupCommand_InvokesRecordedInstaller verifies that orphaned tool cleanup invokes
+// the recorded installer's Uninstall method with the recorded method (#175).
+func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
+	t.Run("invokes recorded installer for orphaned tool", func(t *testing.T) {
+		p := newE2EProject(t, tsTools{"bat": `install("manual")`})
+		method := "brew"
+		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+			return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+				ToolName:      "orphan-brew",
+				Version:       "v1.0.0",
+				InstallPath:   filepath.Join(p.Root, "installed", "orphan-brew"),
+				InstallMethod: &method,
+				BinaryPaths:   "[]",
+			})
+		})
+
+		var invokedMethod string
+		var invokedTool *config.ToolConfig
+		mockInstallerUninstallHook = func(m string, tool *config.ToolConfig, installed installer.Installation) error {
+			invokedMethod = m
+			invokedTool = tool
+			return nil
+		}
+		defer func() { mockInstallerUninstallHook = nil }()
+
+		out, err := p.run("state", "cleanup")
+		if err != nil {
+			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		}
+		if invokedMethod != "brew" {
+			t.Fatalf("expected installer for 'brew' to be invoked, got %q", invokedMethod)
+		}
+		if invokedTool == nil || invokedTool.Name != "orphan-brew" {
+			t.Fatalf("expected tool 'orphan-brew' to be passed to installer, got %+v", invokedTool)
+		}
+		if invokedTool.InstallationMethod != "brew" {
+			t.Fatalf("expected tool.InstallationMethod 'brew', got %q", invokedTool.InstallationMethod)
+		}
+		if rec := p.installation(t, "orphan-brew"); rec != nil {
+			t.Fatalf("orphan-brew should be cleaned up after successful uninstall, got: %+v", rec)
+		}
+	})
+
+	t.Run("failing installer leaves orphan recorded", func(t *testing.T) {
+		p := newE2EProject(t, tsTools{"bat": `install("manual")`})
+		method := "brew"
+		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+			return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+				ToolName:      "orphan-brew",
+				Version:       "v1.0.0",
+				InstallPath:   filepath.Join(p.Root, "installed", "orphan-brew"),
+				InstallMethod: &method,
+				BinaryPaths:   "[]",
+			})
+		})
+
+		mockInstallerUninstallHook = func(m string, tool *config.ToolConfig, installed installer.Installation) error {
+			return errors.New("brew uninstall failed: formula has dependents")
+		}
+		defer func() { mockInstallerUninstallHook = nil }()
+
+		out, err := p.run("state", "cleanup")
+		if err != nil {
+			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[orphan-brew] Failed uninstalling orphaned tool: ", "brew uninstall failed: formula has dependents")
+		if rec := p.installation(t, "orphan-brew"); rec == nil {
+			t.Fatal("orphan-brew must remain recorded when uninstall fails")
+		}
+	})
+
+	t.Run("unknown recorded installer method fails and leaves orphan recorded", func(t *testing.T) {
+		p := newE2EProject(t, tsTools{"bat": `install("manual")`})
+		method := "nonexistent-pkg-mgr"
+		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+			return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+				ToolName:      "orphan-custom",
+				Version:       "v1.0.0",
+				InstallPath:   filepath.Join(p.Root, "installed", "orphan-custom"),
+				InstallMethod: &method,
+				BinaryPaths:   "[]",
+			})
+		})
+
+		out, err := p.run("state", "cleanup")
+		if err != nil {
+			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[orphan-custom] Failed uninstalling orphaned tool: ", "nonexistent-pkg-mgr")
+		if rec := p.installation(t, "orphan-custom"); rec == nil {
+			t.Fatal("orphan-custom must remain recorded when unknown installer fails")
+		}
+	})
+}
+
 // shellInstallFeature configures every shell's profile under the project HOME.
 const shellInstallFeature = `"features": {"shellInstall": {"zsh": "~/.zshrc", "bash": "~/.bashrc", "powershell": "~/.config/powershell/profile.ps1"}}`
 

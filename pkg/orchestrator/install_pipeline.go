@@ -523,14 +523,38 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 
 	o.logger.WithTag(tool.Name).Info(logger.Message("Uninstalling..."))
 
+	rec, err := o.recordedInstallation(ctx, tool.Name)
+	if err != nil {
+		return err
+	}
+
+	method := tool.InstallationMethod
+	var installed installer.Installation
+	if rec != nil {
+		if rec.AppBundlePath != nil {
+			installed.AppBundlePath = *rec.AppBundlePath
+		}
+		if method == "" && rec.InstallMethod != nil {
+			method = *rec.InstallMethod
+		}
+	}
+
 	// 1. Invoke the native installer plugin's Uninstall method if it exists
-	if tool.InstallationMethod != "" && o.instRegistry != nil {
-		if inst, err := o.instRegistry.Get(tool.InstallationMethod); err == nil && inst != nil {
-			installed, err := o.recordedInstallation(ctx, tool.Name)
-			if err != nil {
-				return err
-			}
-			_ = inst.Uninstall(ctx, tool, installed)
+	if method != "" {
+		if o.instRegistry == nil {
+			return fmt.Errorf("uninstalling %s with %s: installer registry is nil", tool.Name, method)
+		}
+		inst, err := o.instRegistry.Get(method)
+		if err != nil {
+			return fmt.Errorf("uninstalling %s with %s: %w", tool.Name, method, err)
+		}
+		if tool.InstallationMethod == "" {
+			toolCopy := *tool
+			toolCopy.InstallationMethod = method
+			tool = &toolCopy
+		}
+		if err := inst.Uninstall(ctx, tool, installed); err != nil {
+			return fmt.Errorf("uninstalling %s with %s: %w", tool.Name, method, err)
 		}
 	}
 
@@ -539,35 +563,46 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 }
 
 // recordedInstallation reads what the registry recorded about the tool's install, for
-// its installer's Uninstall. It is the zero Installation when there is no record.
-func (o *Orchestrator) recordedInstallation(ctx context.Context, toolName string) (installer.Installation, error) {
+// its installer's Uninstall. It returns nil when there is no registry or no record.
+func (o *Orchestrator) recordedInstallation(ctx context.Context, toolName string) (*registry.ToolInstallationRecord, error) {
+	if o.reg == nil {
+		return nil, nil
+	}
 	rec, err := o.reg.GetToolInstallation(ctx, toolName)
 	if err != nil {
-		return installer.Installation{}, fmt.Errorf("reading the installation record of %s: %w", toolName, err)
+		return nil, fmt.Errorf("reading the installation record of %s: %w", toolName, err)
 	}
-	var installed installer.Installation
-	if rec != nil && rec.AppBundlePath != nil {
-		installed.AppBundlePath = *rec.AppBundlePath
-	}
-	return installed, nil
+	return rec, nil
 }
 
 func (o *Orchestrator) purgeToolState(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
-	fileStates, err := o.reg.GetFileStatesForTool(ctx, toolName)
-	if err == nil {
+	var toolBinDir string
+	if projCfg != nil && projCfg.Paths.BinariesDir != "" {
+		toolBinDir = filepath.Join(projCfg.Paths.BinariesDir, toolName)
+		if err := o.fs.RemoveAll(toolBinDir); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing binaries directory %s: %w", toolBinDir, err)
+		}
+	}
+
+	if o.reg != nil {
+		fileStates, err := o.reg.GetFileStatesForTool(ctx, toolName)
+		if err != nil {
+			return fmt.Errorf("reading file states of %s: %w", toolName, err)
+		}
 		for _, fileState := range fileStates {
 			if fileState.LastOperation != "rm" {
-				exists, err := o.fs.Exists(fileState.FilePath)
-				if err == nil && exists {
-					_ = o.fs.Remove(fileState.FilePath)
+				if toolBinDir != "" && isWithin(toolBinDir, fileState.FilePath) {
+					continue
+				}
+				if err := o.fs.Remove(fileState.FilePath); err != nil && !os.IsNotExist(err) {
+					return fmt.Errorf("removing file %s: %w", fileState.FilePath, err)
 				}
 			}
 		}
 	}
 
-	if projCfg != nil && projCfg.Paths.BinariesDir != "" {
-		toolBinDir := filepath.Join(projCfg.Paths.BinariesDir, toolName)
-		_ = o.fs.RemoveAll(toolBinDir)
+	if o.reg == nil {
+		return nil
 	}
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {

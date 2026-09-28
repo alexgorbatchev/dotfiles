@@ -368,7 +368,12 @@ func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}, nil
 }
 
+var mockInstallerUninstallHook func(method string, tool *config.ToolConfig, installed installer.Installation) error
+
 func (m *mockInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
+	if mockInstallerUninstallHook != nil {
+		return mockInstallerUninstallHook(m.name, tool, installed)
+	}
 	return nil
 }
 

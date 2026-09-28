@@ -42,8 +42,13 @@ var stateCleanupCmd = &cobra.Command{
 			for _, instTool := range installedTools {
 				if !activeMap[instTool.ToolName] {
 					log.WithTag(instTool.ToolName).Info(logger.Message("Removing orphaned tool..."))
+					var method string
+					if instTool.InstallMethod != nil {
+						method = *instTool.InstallMethod
+					}
 					err := services.Orchestrator.UninstallTool(ctx, &config.ToolConfig{
-						Name: instTool.ToolName,
+						Name:               instTool.ToolName,
+						InstallationMethod: method,
 					}, services.ProjectConfig)
 					if err != nil {
 						log.WithTag(instTool.ToolName).Error(logger.Message(fmt.Sprintf("Failed uninstalling orphaned tool: %v", err)))
