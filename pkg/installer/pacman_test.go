@@ -77,7 +77,7 @@ func TestPacmanInstaller(t *testing.T) {
 			t.Fatal("expected command to run")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "sudo" || cmd.Args[0] != "pacman" || cmd.Args[1] != "-R" || cmd.Args[3] != "jq" {
+		if cmd.Name != "sudo" || cmd.Args[0] != "pacman" || cmd.Args[1] != "-R" || cmd.Args[3] != "--" || cmd.Args[4] != "jq" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -116,24 +116,107 @@ func TestPacmanInstaller(t *testing.T) {
 
 		hasPacmanQ := false
 		for _, cmd := range runner.History {
-			if cmd.Name == "pacman" && len(cmd.Args) >= 2 && cmd.Args[0] == "-Q" {
-				if cmd.Args[1] == "ripgrep" {
+			if cmd.Name == "pacman" && len(cmd.Args) >= 3 && cmd.Args[0] == "-Q" && cmd.Args[1] == "--" {
+				if cmd.Args[2] == "ripgrep" {
 					hasPacmanQ = true
 				} else {
-					t.Errorf("expected pacman -Q ripgrep, got pacman -Q %s", cmd.Args[1])
+					t.Errorf("expected pacman -Q -- ripgrep, got pacman -Q -- %s", cmd.Args[2])
 				}
 			}
 		}
 		if !hasPacmanQ {
-			t.Error("expected pacman -Q ripgrep to run")
+			t.Error("expected pacman -Q -- ripgrep to run")
 		}
 		if !slices.ContainsFunc(runner.History, func(cmd *exec.MockCmd) bool {
-			return cmd.Name == "pacman" && slices.Equal(cmd.Args, []string{"-S", "--needed", "--noconfirm", "extra/ripgrep=14.1.0-1"})
+			return cmd.Name == "pacman" && slices.Equal(cmd.Args, []string{"-S", "--needed", "--noconfirm", "--", "extra/ripgrep=14.1.0-1"})
 		}) {
-			t.Errorf("expected pacman -S --needed --noconfirm extra/ripgrep=14.1.0-1, the installParams version, got %v", runner.History)
+			t.Errorf("expected pacman -S --needed --noconfirm -- extra/ripgrep=14.1.0-1, the installParams version, got %v", runner.History)
 		}
 		if res.ShellEnv["PACMAN_INSTALLED_VERSION"] != "14.1.0-1" {
 			t.Errorf("unexpected version in env: %s", res.ShellEnv["PACMAN_INSTALLED_VERSION"])
+		}
+	})
+
+	t.Run("End of options marker is passed for commands", func(t *testing.T) {
+		// 1. Sudo install
+		runner.Clear()
+		runner.Register("pacman", []byte("jq 1.6-1"), nil)
+		toolSudo := &config.ToolConfig{
+			Name:          "jq",
+			Sudo:          true,
+			InstallParams: map[string]interface{}{"package": "jq"},
+		}
+		if _, err := inst.Install(context.Background(), toolSudo); err != nil {
+			t.Fatalf("Install failed: %v", err)
+		}
+		var installSudoCmd, queryCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "sudo" && len(cmd.Args) >= 5 && cmd.Args[0] == "pacman" && cmd.Args[1] == "-S" {
+				installSudoCmd = cmd
+			}
+			if cmd.Name == "pacman" && len(cmd.Args) >= 2 && cmd.Args[0] == "-Q" {
+				queryCmd = cmd
+			}
+		}
+		if installSudoCmd == nil || !slices.Equal(installSudoCmd.Args, []string{"pacman", "-S", "--needed", "--noconfirm", "--", "jq"}) {
+			t.Errorf("sudo install args = %v, want [pacman -S --needed --noconfirm -- jq]", installSudoCmd)
+		}
+		if queryCmd == nil || !slices.Equal(queryCmd.Args, []string{"-Q", "--", "jq"}) {
+			t.Errorf("pacman -Q args = %v, want [-Q -- jq]", queryCmd)
+		}
+
+		// 2. Non-sudo install with sysupgrade
+		runner.Clear()
+		runner.Register("pacman", []byte("jq 1.6-1"), nil)
+		toolNonSudo := &config.ToolConfig{
+			Name:          "jq",
+			InstallParams: map[string]interface{}{"package": "jq", "sysupgrade": true},
+		}
+		if _, err := inst.Install(context.Background(), toolNonSudo); err != nil {
+			t.Fatalf("Install failed: %v", err)
+		}
+		var installCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "pacman" && len(cmd.Args) >= 4 && cmd.Args[0] == "-Syu" {
+				installCmd = cmd
+			}
+		}
+		if installCmd == nil || !slices.Equal(installCmd.Args, []string{"-Syu", "--needed", "--noconfirm", "--", "jq"}) {
+			t.Errorf("non-sudo install args = %v, want [-Syu --needed --noconfirm -- jq]", installCmd)
+		}
+
+		// 3. Sudo uninstall
+		runner.Clear()
+		if err := inst.Uninstall(context.Background(), toolSudo, Installation{}); err != nil {
+			t.Fatalf("Uninstall failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"pacman", "-R", "--noconfirm", "--", "jq"}) {
+			t.Errorf("sudo uninstall args = %v, want [pacman -R --noconfirm -- jq]", runner.History[0].Args)
+		}
+
+		// 4. Non-sudo uninstall
+		runner.Clear()
+		if err := inst.Uninstall(context.Background(), toolNonSudo, Installation{}); err != nil {
+			t.Fatalf("Uninstall failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"-R", "--noconfirm", "--", "jq"}) {
+			t.Errorf("uninstall args = %v, want [-R --noconfirm -- jq]", runner.History)
+		}
+
+		// 5. CheckUpdate
+		runner.Clear()
+		registerQuery(runner, "pacman", "jq 1.6-1 -> 1.7-1\n", "", nil)
+		if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "jq"}); err != nil {
+			t.Fatalf("CheckUpdate failed: %v", err)
+		}
+		var quCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "pacman" && len(cmd.Args) >= 2 && cmd.Args[0] == "-Qu" {
+				quCmd = cmd
+			}
+		}
+		if quCmd == nil || !slices.Equal(quCmd.Args, []string{"-Qu", "--", "jq"}) {
+			t.Errorf("pacman -Qu args = %v, want [-Qu -- jq]", quCmd)
 		}
 	})
 }
@@ -178,26 +261,26 @@ func TestPacmanInstaller_CheckUpdate(t *testing.T) {
 			pkg:         "zsh",
 			stderr:      "error: package 'zsh' was not found\n",
 			err:         exitStatusError(1),
-			wantErrText: []string{"running pacman -Qu zsh", "exit status 1", "package 'zsh' was not found"},
+			wantErrText: []string{"running pacman -Qu -- zsh", "exit status 1", "package 'zsh' was not found"},
 		},
 		{
 			name:        "the sync database was never downloaded",
 			pkg:         "acl",
 			stderr:      "warning: database file for 'core' does not exist (use '-Sy' to download)\nwarning: database file for 'extra' does not exist (use '-Sy' to download)\n",
 			err:         exitStatusError(1),
-			wantErrText: []string{"running pacman -Qu acl", "database file for 'core' does not exist"},
+			wantErrText: []string{"running pacman -Qu -- acl", "database file for 'core' does not exist"},
 		},
 		{
 			name:        "pacman cannot be run",
 			pkg:         "acl",
 			err:         errors.New(`exec: "pacman": executable file not found in $PATH`),
-			wantErrText: []string{"running pacman -Qu acl", "executable file not found"},
+			wantErrText: []string{"running pacman -Qu -- acl", "executable file not found"},
 		},
 		{
 			name:        "the listing does not name the package",
 			pkg:         "acl",
 			stdout:      "bash 5.3.15-1 -> 5.3.20-1\n",
-			wantErrText: []string{"running pacman -Qu acl", "listed no upgrade for acl"},
+			wantErrText: []string{"running pacman -Qu -- acl", "listed no upgrade for acl"},
 		},
 	}
 	for _, tt := range tests {

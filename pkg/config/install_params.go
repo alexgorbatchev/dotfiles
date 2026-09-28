@@ -37,6 +37,13 @@ func InstallMethods() []string {
 	return slices.Clone(installMethods)
 }
 
+// ValidateInstallParams rejects install parameters that cannot be installed as
+// written, whatever the target: a combination that only fails once the installation
+// has already run a script is reported while the configuration loads instead.
+func (tc *ToolConfig) ValidateInstallParams() error {
+	return tc.validateInstallParams()
+}
+
 // validateInstallParams rejects install parameters that cannot be installed as
 // written, whatever the target: a combination that only fails once the installation
 // has already run a script is reported while the configuration loads instead. It is
@@ -47,6 +54,22 @@ func (tc *ToolConfig) validateInstallParams() error {
 		return err
 	}
 	switch tc.InstallationMethod {
+	case "apt", "dnf", "pacman", "npm":
+		return tc.validateNoLeadingDash("package")
+	case "brew":
+		if err := tc.validateNoLeadingDash("formula"); err != nil {
+			return err
+		}
+		if err := tc.validateNoLeadingDash("tap"); err != nil {
+			return err
+		}
+		return tc.validateNoLeadingDash("trust")
+	case "cargo":
+		if err := tc.validateNoLeadingDash("crateName"); err != nil {
+			return err
+		}
+		_, err := tc.CargoSources()
+		return err
 	case "curl-script":
 		if err := tc.validateCurlScriptBinaryPath(); err != nil {
 			return err
@@ -54,9 +77,39 @@ func (tc *ToolConfig) validateInstallParams() error {
 		return tc.validateBinaryPathPatterns()
 	case "manual":
 		return tc.validateBinaryPathPatterns()
-	case "cargo":
-		_, err := tc.CargoSources()
-		return err
+	case "zsh-plugin":
+		return tc.validateNoLeadingDash("url")
+	}
+	return nil
+}
+
+// validateNoLeadingDash rejects a parameter value starting with "-" so that package
+// managers and git do not parse it as an option.
+func (tc *ToolConfig) validateNoLeadingDash(param string) error {
+	if tc.InstallParams == nil {
+		return nil
+	}
+	val, ok := tc.InstallParams[param]
+	if !ok || val == nil {
+		return nil
+	}
+	switch v := val.(type) {
+	case string:
+		if strings.HasPrefix(v, "-") {
+			return fmt.Errorf("tool %q: %s %q cannot start with '-'", tc.Name, param, v)
+		}
+	case []string:
+		for _, s := range v {
+			if strings.HasPrefix(s, "-") {
+				return fmt.Errorf("tool %q: %s %q cannot start with '-'", tc.Name, param, s)
+			}
+		}
+	case []interface{}:
+		for _, item := range v {
+			if s, ok := item.(string); ok && strings.HasPrefix(s, "-") {
+				return fmt.Errorf("tool %q: %s %q cannot start with '-'", tc.Name, param, s)
+			}
+		}
 	}
 	return nil
 }

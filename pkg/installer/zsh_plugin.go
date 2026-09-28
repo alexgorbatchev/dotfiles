@@ -142,7 +142,7 @@ func (z *ZshPluginInstaller) Install(ctx context.Context, tool *config.ToolConfi
 			return nil, fmt.Errorf("creating parent directory: %w", err)
 		}
 		// git clone
-		cmd := z.runner.CommandContext(ctx, "git", "clone", "--depth", "1", gitURL, pluginPath)
+		cmd := z.runner.CommandContext(ctx, "git", "clone", "--depth", "1", "--", gitURL, pluginPath)
 		cmd.SetEnv(cleanEnv)
 		if err := cmd.Run(); err != nil {
 			return nil, fmt.Errorf("cloning plugin: %w", err)

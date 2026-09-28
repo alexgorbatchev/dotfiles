@@ -83,7 +83,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		if force {
 			args = append(args, "--force")
 		}
-		args = append(args, packageSpec)
+		args = append(args, "--", packageSpec)
 		if n.log != nil {
 			n.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ bun %s", strings.Join(args, " "))))
 		}
@@ -93,7 +93,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		if force {
 			args = append(args, "--force")
 		}
-		args = append(args, packageSpec)
+		args = append(args, "--", packageSpec)
 		if n.log != nil {
 			n.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ npm %s", strings.Join(args, " "))))
 		}
@@ -154,9 +154,9 @@ func (n *NpmInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, i
 
 	var cmd exec.Cmd
 	if pkgManager == "bun" {
-		cmd = n.runner.CommandContext(ctx, "bun", "remove", "-g", pkgName)
+		cmd = n.runner.CommandContext(ctx, "bun", "remove", "-g", "--", pkgName)
 	} else {
-		cmd = n.runner.CommandContext(ctx, "npm", "uninstall", "-g", pkgName)
+		cmd = n.runner.CommandContext(ctx, "npm", "uninstall", "-g", "--", pkgName)
 	}
 
 	return cmd.Run()
@@ -166,9 +166,9 @@ func (n *NpmInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
 	pkgManager := getStringParam(tool.InstallParams, "packageManager", "npm")
 
-	name, args := "npm", []string{"view", pkgName, "version"}
+	name, args := "npm", []string{"view", "--", pkgName, "version"}
 	if pkgManager == "bun" {
-		name, args = "bun", []string{"pm", "view", pkgName, "version"}
+		name, args = "bun", []string{"pm", "view", "--", pkgName, "version"}
 	}
 
 	// A registry that cannot be reached, a package that does not exist and an

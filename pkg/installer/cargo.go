@@ -752,7 +752,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	if version != "" {
 		args = append(args, "--version", version)
 	}
-	args = append(args, crateName)
+	args = append(args, "--", crateName)
 
 	var writer *logger.LineWriter
 	if c.log != nil {
@@ -791,7 +791,7 @@ func (c *CargoInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig,
 	if c.BinDir != "" {
 		args = append(args, "--root", c.BinDir)
 	}
-	args = append(args, crateName)
+	args = append(args, "--", crateName)
 
 	cmd := c.runner.CommandContext(ctx, "cargo", args...)
 	return cmd.Run()

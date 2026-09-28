@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -63,8 +64,44 @@ func TestZshPluginInstaller(t *testing.T) {
 			t.Fatal("expected git clone command to run")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "git" || cmd.Args[0] != "clone" || cmd.Args[3] != "https://github.com/zsh-users/zsh-autosuggestions.git" {
+		if cmd.Name != "git" || cmd.Args[0] != "clone" || cmd.Args[3] != "--" || cmd.Args[4] != "https://github.com/zsh-users/zsh-autosuggestions.git" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
+		}
+	})
+
+	t.Run("End of options marker is passed for git clone", func(t *testing.T) {
+		runner.Clear()
+		fsys := fs.NewMemFS()
+		inst := NewZshPluginInstaller(runner, fsys, nil)
+		inst.BinDir = "/test/plugins"
+
+		tool := &config.ToolConfig{
+			Name: "zsh-autosuggestions",
+			InstallParams: map[string]interface{}{
+				"url": "https://github.com/zsh-users/zsh-autosuggestions.git",
+			},
+		}
+
+		pluginPath := filepath.Join(inst.BinDir, "zsh-autosuggestions")
+		runner.RegisterFunc("git", func(c *exec.MockCmd) error {
+			if len(c.Args) > 0 && c.Args[0] == "clone" {
+				_ = fsys.MkdirAll(pluginPath, 0755)
+				_ = fsys.WriteFile(filepath.Join(pluginPath, "zsh-autosuggestions.plugin.zsh"), []byte("echo hello"), 0644)
+			}
+			return nil
+		})
+
+		if _, err := inst.Install(context.Background(), tool); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(runner.History) == 0 {
+			t.Fatal("expected git clone command to run")
+		}
+		cmd := runner.History[0]
+		wantArgs := []string{"clone", "--depth", "1", "--", "https://github.com/zsh-users/zsh-autosuggestions.git", pluginPath}
+		if cmd.Name != "git" || !slices.Equal(cmd.Args, wantArgs) {
+			t.Errorf("git clone args = %v, want %v", cmd.Args, wantArgs)
 		}
 	})
 

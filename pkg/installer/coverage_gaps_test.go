@@ -289,7 +289,7 @@ func TestAptInstall(t *testing.T) {
 			t.Errorf("APT_INSTALLED_VERSION = %q, want 14.1.0", got)
 		}
 		assertRan(t, runner, "sudo", []string{"apt-get", "update"})
-		assertRan(t, runner, "sudo", []string{"apt-get", "install", "-y", "ripgrep"})
+		assertRan(t, runner, "sudo", []string{"apt-get", "install", "-y", "--", "ripgrep"})
 	})
 
 	t.Run("unelevated install calls apt-get directly", func(t *testing.T) {
@@ -299,7 +299,7 @@ func TestAptInstall(t *testing.T) {
 		if _, err := a.Install(context.Background(), newTool(false, false)); err != nil {
 			t.Fatalf("Install returned error: %v", err)
 		}
-		assertRan(t, runner, "apt-get", []string{"install", "-y", "ripgrep"})
+		assertRan(t, runner, "apt-get", []string{"install", "-y", "--", "ripgrep"})
 		for _, cmd := range runner.History {
 			if cmd.Name == "sudo" {
 				t.Error("a tool that did not ask for sudo was installed with it")
@@ -316,7 +316,7 @@ func TestAptInstall(t *testing.T) {
 		if _, err := a.Install(context.Background(), tool); err != nil {
 			t.Fatalf("Install returned error: %v", err)
 		}
-		assertRan(t, runner, "apt-get", []string{"install", "-y", "ripgrep=13.0.0"})
+		assertRan(t, runner, "apt-get", []string{"install", "-y", "--", "ripgrep=13.0.0"})
 	})
 
 	t.Run("a failed index refresh stops the installation", func(t *testing.T) {

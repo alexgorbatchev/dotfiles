@@ -114,15 +114,15 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 	var installCmd exec.Cmd
 	if tool.Sudo {
-		args := []string{"apt-get", "install", "-y", packageSpec}
+		args := []string{"apt-get", "install", "-y", "--", packageSpec}
 		if a.log != nil {
-			a.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo apt-get install -y %s", packageSpec)))
+			a.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo apt-get install -y -- %s", packageSpec)))
 		}
 		installCmd = a.runner.CommandContext(ctx, "sudo", args...)
 	} else {
-		args := []string{"install", "-y", packageSpec}
+		args := []string{"install", "-y", "--", packageSpec}
 		if a.log != nil {
-			a.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ apt-get install -y %s", packageSpec)))
+			a.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ apt-get install -y -- %s", packageSpec)))
 		}
 		installCmd = a.runner.CommandContext(ctx, "apt-get", args...)
 	}
@@ -143,7 +143,7 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 
 	// Step 3: Fetch version via dpkg-query
 	var detectedVersion string
-	queryCmd := a.runner.CommandContext(ctx, "dpkg-query", "-W", "-f=${Version}", packageName)
+	queryCmd := a.runner.CommandContext(ctx, "dpkg-query", "-W", "-f=${Version}", "--", packageName)
 	out, err := queryCmd.Output()
 	if err == nil {
 		detectedVersion = strings.TrimSpace(string(out))
@@ -167,9 +167,9 @@ func (a *AptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, i
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
 	var cmd exec.Cmd
 	if tool.Sudo {
-		cmd = a.runner.CommandContext(ctx, "sudo", "apt-get", "remove", "-y", packageName)
+		cmd = a.runner.CommandContext(ctx, "sudo", "apt-get", "remove", "-y", "--", packageName)
 	} else {
-		cmd = a.runner.CommandContext(ctx, "apt-get", "remove", "-y", packageName)
+		cmd = a.runner.CommandContext(ctx, "apt-get", "remove", "-y", "--", packageName)
 	}
 	return cmd.Run()
 }
@@ -180,7 +180,7 @@ func (*AptInstaller) checksInstalledPackage() {}
 
 func (a *AptInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
-	args := []string{"policy", packageName}
+	args := []string{"policy", "--", packageName}
 	cmd := a.runner.CommandContext(ctx, "apt-cache", args...)
 	// apt translates the field labels (Installiert: under a German locale), and they are
 	// read below by their English names. LC_ALL=C outranks LANG and every LC_* variable,

@@ -2459,7 +2459,7 @@ func TestCheckUpdatesCommand_FailedQuery(t *testing.T) {
 		if err == nil {
 			t.Fatalf("tool update private-cli succeeded; want the failed check to fail it\n%s", out.Combined)
 		}
-		mustContain(t, "error", err.Error(), "running npm view @acme/private-cli version", "npm error code E401")
+		mustContain(t, "error", err.Error(), "running npm view -- @acme/private-cli version", "npm error code E401")
 		mustNotContain(t, "stderr", out.Stderr, "Already up to date")
 	})
 }

@@ -59,7 +59,7 @@ func TestBrewInstaller(t *testing.T) {
 		hasTap := false
 		hasInstall := false
 		for _, cmd := range runner.History {
-			if len(cmd.Args) > 1 && cmd.Args[0] == "tap" && cmd.Args[1] == "homebrew/core" {
+			if len(cmd.Args) > 2 && cmd.Args[0] == "tap" && cmd.Args[1] == "--" && cmd.Args[2] == "homebrew/core" {
 				hasTap = true
 			}
 			if len(cmd.Args) > 1 && cmd.Args[0] == "install" && cmd.Args[1] == "--force" {
@@ -77,11 +77,11 @@ func TestBrewInstaller(t *testing.T) {
 			t.Errorf("expected brew install result version to be '1.7', got %q", res.Version)
 		}
 		logStr := logBuf.String()
-		if !strings.Contains(logStr, "$ brew tap homebrew/core") {
-			t.Errorf("expected log to contain '$ brew tap homebrew/core', got: %s", logStr)
+		if !strings.Contains(logStr, "$ brew tap -- homebrew/core") {
+			t.Errorf("expected log to contain '$ brew tap -- homebrew/core', got: %s", logStr)
 		}
-		if !strings.Contains(logStr, "$ brew install --force jq") {
-			t.Errorf("expected log to contain '$ brew install --force jq', got: %s", logStr)
+		if !strings.Contains(logStr, "$ brew install --force -- jq") {
+			t.Errorf("expected log to contain '$ brew install --force -- jq', got: %s", logStr)
 		}
 		if strings.Contains(logStr, "Executing command:") {
 			t.Errorf("expected log NOT to contain redundant 'Executing command:', got: %s", logStr)
@@ -147,16 +147,16 @@ func TestBrewInstaller(t *testing.T) {
 		hasService := false
 
 		for _, cmd := range runner.History {
-			if len(cmd.Args) > 1 && cmd.Args[0] == "trust" && cmd.Args[1] == "redis/tap" {
+			if len(cmd.Args) > 2 && cmd.Args[0] == "trust" && cmd.Args[1] == "--" && cmd.Args[2] == "redis/tap" {
 				hasTrust = true
 			}
 			if len(cmd.Args) > 2 && cmd.Args[0] == "install" && cmd.Args[1] == "--build-from-source" {
 				hasInstallArgs = true
 			}
-			if len(cmd.Args) > 3 && cmd.Args[0] == "link" && cmd.Args[1] == "--overwrite" && cmd.Args[2] == "--force" {
+			if len(cmd.Args) > 4 && cmd.Args[0] == "link" && cmd.Args[1] == "--overwrite" && cmd.Args[2] == "--force" && cmd.Args[3] == "--" && cmd.Args[4] == "redis" {
 				hasLink = true
 			}
-			if len(cmd.Args) > 2 && cmd.Args[0] == "services" && cmd.Args[1] == "start" && cmd.Args[2] == "redis" {
+			if len(cmd.Args) > 3 && cmd.Args[0] == "services" && cmd.Args[1] == "start" && cmd.Args[2] == "--" && cmd.Args[3] == "redis" {
 				hasService = true
 			}
 		}
@@ -198,7 +198,7 @@ func TestBrewInstaller(t *testing.T) {
 
 		hasTrust := false
 		for _, cmd := range runner.History {
-			if len(cmd.Args) > 1 && cmd.Args[0] == "trust" && cmd.Args[1] == "FelixKratz/formulae" {
+			if len(cmd.Args) > 2 && cmd.Args[0] == "trust" && cmd.Args[1] == "--" && cmd.Args[2] == "FelixKratz/formulae" {
 				hasTrust = true
 			}
 		}
@@ -232,8 +232,8 @@ func TestBrewInstaller(t *testing.T) {
 
 		trustedTaps := map[string]bool{}
 		for _, cmd := range runner.History {
-			if len(cmd.Args) > 1 && cmd.Args[0] == "trust" {
-				trustedTaps[cmd.Args[1]] = true
+			if len(cmd.Args) > 2 && cmd.Args[0] == "trust" && cmd.Args[1] == "--" {
+				trustedTaps[cmd.Args[2]] = true
 			}
 		}
 
@@ -292,7 +292,7 @@ func TestBrewInstaller(t *testing.T) {
 
 		hasServiceStart := false
 		for _, cmd := range runner.History {
-			if len(cmd.Args) > 2 && cmd.Args[0] == "services" && cmd.Args[1] == "start" && cmd.Args[2] == "redis" {
+			if len(cmd.Args) > 3 && cmd.Args[0] == "services" && cmd.Args[1] == "start" && cmd.Args[2] == "--" && cmd.Args[3] == "redis" {
 				hasServiceStart = true
 			}
 		}
@@ -317,7 +317,7 @@ func TestBrewInstaller(t *testing.T) {
 			t.Fatal("expected command to be executed")
 		}
 		cmd := runner.History[0]
-		if filepath.Base(cmd.Name) != "brew" || cmd.Args[0] != "uninstall" || cmd.Args[1] != "jq" {
+		if filepath.Base(cmd.Name) != "brew" || cmd.Args[0] != "uninstall" || cmd.Args[1] != "--" || cmd.Args[2] != "jq" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -351,15 +351,15 @@ func TestBrewInstaller(t *testing.T) {
 				}
 
 				cmdStop := runner.History[0]
-				if filepath.Base(cmdStop.Name) != "brew" || len(cmdStop.Args) != 3 ||
-					cmdStop.Args[0] != "services" || cmdStop.Args[1] != "stop" || cmdStop.Args[2] != "redis" {
-					t.Errorf("expected brew services stop redis, got: %s %v", cmdStop.Name, cmdStop.Args)
+				if filepath.Base(cmdStop.Name) != "brew" || len(cmdStop.Args) != 4 ||
+					cmdStop.Args[0] != "services" || cmdStop.Args[1] != "stop" || cmdStop.Args[2] != "--" || cmdStop.Args[3] != "redis" {
+					t.Errorf("expected brew services stop -- redis, got: %s %v", cmdStop.Name, cmdStop.Args)
 				}
 
 				cmdUninstall := runner.History[1]
-				if filepath.Base(cmdUninstall.Name) != "brew" || len(cmdUninstall.Args) != 2 ||
-					cmdUninstall.Args[0] != "uninstall" || cmdUninstall.Args[1] != "redis" {
-					t.Errorf("expected brew uninstall redis, got: %s %v", cmdUninstall.Name, cmdUninstall.Args)
+				if filepath.Base(cmdUninstall.Name) != "brew" || len(cmdUninstall.Args) != 3 ||
+					cmdUninstall.Args[0] != "uninstall" || cmdUninstall.Args[1] != "--" || cmdUninstall.Args[2] != "redis" {
+					t.Errorf("expected brew uninstall -- redis, got: %s %v", cmdUninstall.Name, cmdUninstall.Args)
 				}
 			})
 		}
@@ -391,9 +391,9 @@ func TestBrewInstaller(t *testing.T) {
 		}
 
 		cmdUninstall := runner.History[1]
-		if filepath.Base(cmdUninstall.Name) != "brew" || len(cmdUninstall.Args) != 2 ||
-			cmdUninstall.Args[0] != "uninstall" || cmdUninstall.Args[1] != "redis" {
-			t.Errorf("expected brew uninstall redis, got: %s %v", cmdUninstall.Name, cmdUninstall.Args)
+		if filepath.Base(cmdUninstall.Name) != "brew" || len(cmdUninstall.Args) != 3 ||
+			cmdUninstall.Args[0] != "uninstall" || cmdUninstall.Args[1] != "--" || cmdUninstall.Args[2] != "redis" {
+			t.Errorf("expected brew uninstall -- redis, got: %s %v", cmdUninstall.Name, cmdUninstall.Args)
 		}
 	})
 
@@ -445,7 +445,7 @@ func TestBrewInstaller(t *testing.T) {
 		registerQuery(runner, "brew", "", "Error: No available formula with the name \"unknown-pkg\".\n", exitStatusError(1))
 
 		res, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "unknown-pkg"})
-		assertCheckFailed(t, res, err, "running brew info --json=v2 unknown-pkg", "exit status 1", `No available formula with the name "unknown-pkg"`)
+		assertCheckFailed(t, res, err, "running brew info --json=v2 -- unknown-pkg", "exit status 1", `No available formula with the name "unknown-pkg"`)
 	})
 
 	// A cask tool retries the query without --cask, and reports the cask query's
@@ -473,7 +473,7 @@ func TestBrewInstaller(t *testing.T) {
 			tool := &config.ToolConfig{Name: "signal", InstallParams: map[string]interface{}{"cask": true}}
 			res, err := inst.CheckUpdate(context.Background(), tool)
 			if !formulaWorks {
-				assertCheckFailed(t, res, err, "running brew info --json=v2 --cask signal", "Cask 'signal' is unavailable")
+				assertCheckFailed(t, res, err, "running brew info --json=v2 --cask -- signal", "Cask 'signal' is unavailable")
 				return
 			}
 			if err != nil {
@@ -520,7 +520,7 @@ func TestBrewInstaller(t *testing.T) {
 		registerQuery(brewRunner, brewPath, "", "Error: No available formula with the name \"jq\".\n", exitStatusError(1))
 
 		res, err := NewBrewInstaller(brewRunner, brewFS, nil).CheckUpdate(context.Background(), &config.ToolConfig{Name: "jq"})
-		assertCheckFailed(t, res, err, "running "+brewPath+" info --json=v2 jq")
+		assertCheckFailed(t, res, err, "running "+brewPath+" info --json=v2 -- jq")
 	})
 
 	t.Run("CheckUpdate fails when brew info names no version", func(t *testing.T) {
@@ -641,8 +641,8 @@ func TestBrewInstaller(t *testing.T) {
 		}
 
 		logStr := testLogBuf.String()
-		if !strings.Contains(logStr, "$ brew tap FelixKratz/formulae") {
-			t.Errorf("expected log to contain '$ brew tap FelixKratz/formulae', got:\n%s", logStr)
+		if !strings.Contains(logStr, "$ brew tap -- FelixKratz/formulae") {
+			t.Errorf("expected log to contain '$ brew tap -- FelixKratz/formulae', got:\n%s", logStr)
 		}
 		if !strings.Contains(logStr, "| exec: \"brew\": executable file not found in $PATH") {
 			t.Errorf("expected piped error '| exec: \"brew\": executable file not found in $PATH', got:\n%s", logStr)
@@ -662,7 +662,7 @@ func TestBrewInstallerLinkParameter(t *testing.T) {
 		{
 			name:         "link true runs brew link",
 			params:       map[string]interface{}{"formula": "jq", "link": true},
-			wantLinkArgs: []string{"link", "jq"},
+			wantLinkArgs: []string{"link", "--", "jq"},
 		},
 		{
 			name: "link object adds overwrite and force flags",
@@ -670,7 +670,7 @@ func TestBrewInstallerLinkParameter(t *testing.T) {
 				"formula": "jq",
 				"link":    map[string]interface{}{"overwrite": true, "force": true},
 			},
-			wantLinkArgs: []string{"link", "--overwrite", "--force", "jq"},
+			wantLinkArgs: []string{"link", "--overwrite", "--force", "--", "jq"},
 		},
 		{
 			name:         "link false does not run brew link",
@@ -706,5 +706,106 @@ func TestBrewInstallerLinkParameter(t *testing.T) {
 				t.Fatalf("brew link args = %v, want %v", gotLinkArgs, tt.wantLinkArgs)
 			}
 		})
+	}
+}
+
+func TestBrewInstaller_EndOfOptions(t *testing.T) {
+	runner := exec.NewMockRunner()
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		if len(c.Args) > 0 && c.Args[0] == "info" {
+			c.SetOutput([]byte(`{"formulae":[{"name":"mytool","versions":{"stable":"1.0"},"installed":[{"version":"1.0"}]}],"casks":[]}`))
+		}
+		if len(c.Args) > 0 && c.Args[0] == "--prefix" {
+			c.SetOutput([]byte("/usr/local/opt/mytool\n"))
+		}
+		return nil
+	})
+	inst := NewBrewInstaller(runner, fs.NewMemFS(), NewDefaultSystemContext())
+
+	// 1. Install with tap, trust, link, service, custom args, force, cask
+	tool := &config.ToolConfig{
+		Name: "mytool",
+		InstallParams: map[string]interface{}{
+			"formula": "mytool",
+			"tap":     "user/repo",
+			"trust":   "user/repo",
+			"args":    []interface{}{"--build-from-source"},
+			"force":   true,
+			"cask":    true,
+			"link":    true,
+			"service": "start",
+		},
+	}
+	if _, err := inst.Install(context.Background(), tool); err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+
+	var trustCmd, tapCmd, installCmd, linkCmd, svcCmd, prefixCmd, infoCmd *exec.MockCmd
+	for _, cmd := range runner.History {
+		if len(cmd.Args) > 0 {
+			switch cmd.Args[0] {
+			case "trust":
+				trustCmd = cmd
+			case "tap":
+				tapCmd = cmd
+			case "install":
+				installCmd = cmd
+			case "link":
+				linkCmd = cmd
+			case "services":
+				svcCmd = cmd
+			case "--prefix":
+				if len(cmd.Args) > 1 {
+					prefixCmd = cmd
+				}
+			case "info":
+				infoCmd = cmd
+			}
+		}
+	}
+
+	if trustCmd == nil || !slices.Equal(trustCmd.Args, []string{"trust", "--", "user/repo"}) {
+		t.Errorf("brew trust args = %v, want [trust -- user/repo]", trustCmd)
+	}
+	if tapCmd == nil || !slices.Equal(tapCmd.Args, []string{"tap", "--", "user/repo"}) {
+		t.Errorf("brew tap args = %v, want [tap -- user/repo]", tapCmd)
+	}
+	if installCmd == nil || !slices.Equal(installCmd.Args, []string{"install", "--cask", "--force", "--build-from-source", "--", "mytool"}) {
+		t.Errorf("brew install args = %v, want [install --cask --force --build-from-source -- mytool]", installCmd)
+	}
+	if linkCmd == nil || !slices.Equal(linkCmd.Args, []string{"link", "--", "mytool"}) {
+		t.Errorf("brew link args = %v, want [link -- mytool]", linkCmd)
+	}
+	if svcCmd == nil || !slices.Equal(svcCmd.Args, []string{"services", "start", "--", "mytool"}) {
+		t.Errorf("brew services args = %v, want [services start -- mytool]", svcCmd)
+	}
+	if prefixCmd == nil || !slices.Equal(prefixCmd.Args, []string{"--prefix", "--", "mytool"}) {
+		t.Errorf("brew --prefix args = %v, want [--prefix -- mytool]", prefixCmd)
+	}
+	if infoCmd == nil || !slices.Equal(infoCmd.Args, []string{"info", "--json=v2", "--cask", "--", "mytool"}) {
+		t.Errorf("brew info args = %v, want [info --json=v2 --cask -- mytool]", infoCmd)
+	}
+
+	// 2. Uninstall with service
+	runner.Clear()
+	if err := inst.Uninstall(context.Background(), tool, Installation{}); err != nil {
+		t.Fatalf("Uninstall failed: %v", err)
+	}
+	var svcStopCmd, uninstallCmd *exec.MockCmd
+	for _, cmd := range runner.History {
+		if len(cmd.Args) > 0 {
+			switch cmd.Args[0] {
+			case "services":
+				svcStopCmd = cmd
+			case "uninstall":
+				uninstallCmd = cmd
+			}
+		}
+	}
+	if svcStopCmd == nil || !slices.Equal(svcStopCmd.Args, []string{"services", "stop", "--", "mytool"}) {
+		t.Errorf("brew services stop args = %v, want [services stop -- mytool]", svcStopCmd)
+	}
+	if uninstallCmd == nil || !slices.Equal(uninstallCmd.Args, []string{"uninstall", "--", "mytool"}) {
+		t.Errorf("brew uninstall args = %v, want [uninstall -- mytool]", uninstallCmd)
 	}
 }

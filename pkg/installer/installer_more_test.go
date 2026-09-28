@@ -446,7 +446,7 @@ func TestInstallerEdgeCasesAndFallbacks(t *testing.T) {
 
 	// Brew getBrewPrefix fallbacks
 	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
-		if len(c.Args) > 1 && c.Args[0] == "--prefix" && c.Args[1] == "testformula" {
+		if len(c.Args) > 2 && c.Args[0] == "--prefix" && c.Args[1] == "--" && c.Args[2] == "testformula" {
 			return errors.New("formula not installed")
 		}
 		if len(c.Args) == 1 && c.Args[0] == "--prefix" {

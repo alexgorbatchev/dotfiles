@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -41,8 +42,8 @@ func TestNpmInstaller(t *testing.T) {
 		if len(runner.History) == 0 {
 			t.Fatal("expected command to run")
 		}
-		if cmd := runner.History[0]; cmd.Name != "npm" || len(cmd.Args) != 3 || cmd.Args[2] != "prettier@3.0.0" {
-			t.Errorf("command = %s %v, want npm install -g prettier@3.0.0", cmd.Name, cmd.Args)
+		if cmd := runner.History[0]; cmd.Name != "npm" || len(cmd.Args) != 4 || cmd.Args[2] != "--" || cmd.Args[3] != "prettier@3.0.0" {
+			t.Errorf("command = %s %v, want npm install -g -- prettier@3.0.0", cmd.Name, cmd.Args)
 		}
 	})
 
@@ -71,7 +72,7 @@ func TestNpmInstaller(t *testing.T) {
 			t.Fatal("expected command to run")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "npm" || cmd.Args[0] != "install" || cmd.Args[1] != "-g" || cmd.Args[2] != "--force" || cmd.Args[3] != "prettier@2.1.0" {
+		if cmd.Name != "npm" || cmd.Args[0] != "install" || cmd.Args[1] != "-g" || cmd.Args[2] != "--force" || cmd.Args[3] != "--" || cmd.Args[4] != "prettier@2.1.0" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -95,7 +96,7 @@ func TestNpmInstaller(t *testing.T) {
 			t.Fatal("expected command to run")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "bun" || cmd.Args[0] != "install" || cmd.Args[1] != "-g" || cmd.Args[2] != "prettier" {
+		if cmd.Name != "bun" || cmd.Args[0] != "install" || cmd.Args[1] != "-g" || cmd.Args[2] != "--" || cmd.Args[3] != "prettier" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -118,7 +119,7 @@ func TestNpmInstaller(t *testing.T) {
 			t.Fatal("expected command to run")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "bun" || cmd.Args[0] != "remove" || cmd.Args[1] != "-g" || cmd.Args[2] != "prettier" {
+		if cmd.Name != "bun" || cmd.Args[0] != "remove" || cmd.Args[1] != "-g" || cmd.Args[2] != "--" || cmd.Args[3] != "prettier" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -134,6 +135,107 @@ func TestNpmInstaller(t *testing.T) {
 		_, err := inst.Install(context.Background(), tool)
 		if err == nil {
 			t.Error("expected error but got nil")
+		}
+	})
+
+	t.Run("End of options marker is passed for npm and bun commands", func(t *testing.T) {
+		// 1. npm install -g -- <spec>
+		runner.Clear()
+		runner.Register("npm", []byte("/usr/local"), nil)
+		toolNpm := &config.ToolConfig{
+			Name:               "prettier",
+			InstallationMethod: "npm",
+			InstallParams:      map[string]interface{}{"package": "prettier", "version": "3.0.0"},
+		}
+		if _, err := inst.Install(context.Background(), toolNpm); err != nil {
+			t.Fatalf("Install failed: %v", err)
+		}
+		var npmInstallCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "npm" && len(cmd.Args) >= 2 && cmd.Args[0] == "install" {
+				npmInstallCmd = cmd
+			}
+		}
+		if npmInstallCmd == nil || !slices.Equal(npmInstallCmd.Args, []string{"install", "-g", "--", "prettier@3.0.0"}) {
+			t.Errorf("npm install args = %v, want [install -g -- prettier@3.0.0]", npmInstallCmd)
+		}
+
+		// 2. npm install -g --force -- <spec>
+		runner.Clear()
+		runner.Register("npm", []byte("/usr/local"), nil)
+		toolNpmForce := &config.ToolConfig{
+			Name:          "prettier",
+			InstallParams: map[string]interface{}{"package": "prettier", "force": true},
+		}
+		if _, err := inst.Install(context.Background(), toolNpmForce); err != nil {
+			t.Fatalf("Install failed: %v", err)
+		}
+		npmInstallCmd = nil
+		for _, cmd := range runner.History {
+			if cmd.Name == "npm" && len(cmd.Args) >= 2 && cmd.Args[0] == "install" {
+				npmInstallCmd = cmd
+			}
+		}
+		if npmInstallCmd == nil || !slices.Equal(npmInstallCmd.Args, []string{"install", "-g", "--force", "--", "prettier"}) {
+			t.Errorf("npm install force args = %v, want [install -g --force -- prettier]", npmInstallCmd)
+		}
+
+		// 3. bun install -g -- <spec>
+		runner.Clear()
+		runner.Register("bun", []byte("/usr/local/bin"), nil)
+		toolBun := &config.ToolConfig{
+			Name:          "prettier",
+			InstallParams: map[string]interface{}{"packageManager": "bun", "package": "prettier"},
+		}
+		if _, err := inst.Install(context.Background(), toolBun); err != nil {
+			t.Fatalf("Install failed: %v", err)
+		}
+		var bunInstallCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "bun" && len(cmd.Args) >= 2 && cmd.Args[0] == "install" {
+				bunInstallCmd = cmd
+			}
+		}
+		if bunInstallCmd == nil || !slices.Equal(bunInstallCmd.Args, []string{"install", "-g", "--", "prettier"}) {
+			t.Errorf("bun install args = %v, want [install -g -- prettier]", bunInstallCmd)
+		}
+
+		// 4. npm uninstall -g -- <name>
+		runner.Clear()
+		if err := inst.Uninstall(context.Background(), toolNpm, Installation{}); err != nil {
+			t.Fatalf("Uninstall failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"uninstall", "-g", "--", "prettier"}) {
+			t.Errorf("npm uninstall args = %v, want [uninstall -g -- prettier]", runner.History)
+		}
+
+		// 5. bun remove -g -- <name>
+		runner.Clear()
+		if err := inst.Uninstall(context.Background(), toolBun, Installation{}); err != nil {
+			t.Fatalf("Uninstall failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"remove", "-g", "--", "prettier"}) {
+			t.Errorf("bun remove args = %v, want [remove -g -- prettier]", runner.History)
+		}
+
+		// 6. npm view -- <name> version
+		runner.Clear()
+		registerQuery(runner, "npm", "3.0.0\n", "", nil)
+		if _, err := inst.CheckUpdate(context.Background(), toolNpm); err != nil {
+			t.Fatalf("CheckUpdate failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"view", "--", "prettier", "version"}) {
+			t.Errorf("npm view args = %v, want [view -- prettier version]", runner.History)
+		}
+
+		// 7. bun pm view -- <name> version
+		runner.Clear()
+		registerQuery(runner, "bun", "3.0.0\n", "", nil)
+		if _, err := inst.CheckUpdate(context.Background(), toolBun); err != nil {
+			t.Fatalf("CheckUpdate failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"pm", "view", "--", "prettier", "version"}) {
+			t.Errorf("bun pm view args = %v, want [pm view -- prettier version]", runner.History)
 		}
 	})
 }
@@ -161,7 +263,7 @@ func TestNpmInstaller_CheckUpdate(t *testing.T) {
 			stderr:  "npm error code E404\nnpm error 404 Not Found - GET https://registry.npmjs.org/prettier - Not found\n",
 			err:     exitStatusError(1),
 			wantErrText: []string{
-				"running npm view prettier version", "exit status 1", "npm error code E404",
+				"running npm view -- prettier version", "exit status 1", "npm error code E404",
 			},
 		},
 		{
@@ -170,13 +272,13 @@ func TestNpmInstaller_CheckUpdate(t *testing.T) {
 			command:     "bun",
 			stderr:      "404 Not Found: https://registry.npmjs.org/prettier\n",
 			err:         exitStatusError(1),
-			wantErrText: []string{"running bun pm view prettier version", "404 Not Found"},
+			wantErrText: []string{"running bun pm view -- prettier version", "404 Not Found"},
 		},
 		{
 			name:        "npm prints nothing",
 			command:     "npm",
 			stdout:      "\n",
-			wantErrText: []string{"running npm view prettier version", "printed no version"},
+			wantErrText: []string{"running npm view -- prettier version", "printed no version"},
 		},
 	}
 	for _, tt := range tests {

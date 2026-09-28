@@ -160,9 +160,9 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	// Trust targets if any
 	for _, trust := range trusts {
 		if b.log != nil {
-			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew trust %s", trust)))
+			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew trust -- %s", trust)))
 		}
-		cmd := b.brewCommand(ctx, "trust", trust)
+		cmd := b.brewCommand(ctx, "trust", "--", trust)
 		if writer != nil {
 			cmd.SetStdout(writer)
 			cmd.SetStderr(writer)
@@ -181,9 +181,9 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	// Tap custom repositories if any
 	for _, tap := range taps {
 		if b.log != nil {
-			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew tap %s", tap)))
+			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew tap -- %s", tap)))
 		}
-		cmd := b.brewCommand(ctx, "tap", tap)
+		cmd := b.brewCommand(ctx, "tap", "--", tap)
 		if writer != nil {
 			cmd.SetStdout(writer)
 			cmd.SetStderr(writer)
@@ -210,7 +210,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	if len(customArgs) > 0 {
 		args = append(args, customArgs...)
 	}
-	args = append(args, formula)
+	args = append(args, "--", formula)
 
 	if b.log != nil {
 		b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(args, " "))))
@@ -232,7 +232,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 
 	// Link formula if configured
 	if linkArgs := brewLinkArgs(tool.InstallParams["link"]); linkArgs != nil {
-		linkArgs = append(linkArgs, formula)
+		linkArgs = append(linkArgs, "--", formula)
 		if b.log != nil {
 			b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew %s", strings.Join(linkArgs, " "))))
 		}
@@ -265,9 +265,9 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		}
 		if action != "" {
 			if b.log != nil {
-				b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services %s %s", action, formula)))
+				b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services %s -- %s", action, formula)))
 			}
-			svcCmd := b.brewCommand(ctx, "services", action, formula)
+			svcCmd := b.brewCommand(ctx, "services", action, "--", formula)
 			if writer != nil {
 				svcCmd.SetStdout(writer)
 				svcCmd.SetStderr(writer)
@@ -361,18 +361,18 @@ func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, 
 		}
 		if hasService {
 			if b.log != nil {
-				b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services stop %s", formula)))
+				b.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ brew services stop -- %s", formula)))
 			}
-			svcCmd := b.brewCommand(ctx, "services", "stop", formula)
+			svcCmd := b.brewCommand(ctx, "services", "stop", "--", formula)
 			if err := svcCmd.Run(); err != nil {
 				if b.log != nil {
-					b.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("brew services stop %s: %v", formula, err)))
+					b.log.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf("brew services stop -- %s: %v", formula, err)))
 				}
 			}
 		}
 	}
 
-	cmd := b.brewCommand(ctx, "uninstall", formula)
+	cmd := b.brewCommand(ctx, "uninstall", "--", formula)
 	return cmd.Run()
 }
 
@@ -402,7 +402,7 @@ func (b *BrewInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig
 }
 
 func (b *BrewInstaller) getBrewPrefix(ctx context.Context, formula string) (string, error) {
-	cmd := b.brewCommand(ctx, "--prefix", formula)
+	cmd := b.brewCommand(ctx, "--prefix", "--", formula)
 	out, err := cmd.Output()
 	if err == nil {
 		return strings.TrimSpace(string(out)), nil
@@ -421,13 +421,13 @@ func (b *BrewInstaller) getBrewInfo(ctx context.Context, formula string, isCask 
 	if isCask {
 		args = append(args, "--cask")
 	}
-	args = append(args, formula)
+	args = append(args, "--", formula)
 
 	query := b.brewQuery(ctx, args...)
 	if query.err != nil && isCask {
 		// When the formula query fails as well, the cask query's failure is the one to
 		// report: the tool was configured as a cask.
-		if formulaQuery := b.brewQuery(ctx, "info", "--json=v2", formula); formulaQuery.err == nil {
+		if formulaQuery := b.brewQuery(ctx, "info", "--json=v2", "--", formula); formulaQuery.err == nil {
 			query = formulaQuery
 		}
 	}

@@ -185,7 +185,7 @@ func TestE2EAptInstall(t *testing.T) {
 	}
 	logStr := string(logBytes)
 
-	if !strings.Contains(logStr, "apt-get update") || !strings.Contains(logStr, "apt-get install -y ripgrep") {
+	if !strings.Contains(logStr, "apt-get update") || !strings.Contains(logStr, "apt-get install -y -- ripgrep") {
 		t.Fatalf("unexpected fake apt log content:\n%s", logStr)
 	}
 }

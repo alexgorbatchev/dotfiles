@@ -990,6 +990,113 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 				Binaries:           []interface{}{binPattern("uv", "*/bin/uv"), binPattern("uvx", "*/bin/uvx")},
 			},
 		},
+		{
+			name: "apt package starting with dash",
+			tool: ToolConfig{
+				Name:               "ripgrep",
+				InstallationMethod: "apt",
+				InstallParams:      map[string]interface{}{"package": "-ripgrep"},
+			},
+			wantErrs: []string{`tool "ripgrep"`, "package", `"-ripgrep"`},
+		},
+		{
+			name: "dnf package starting with dash",
+			tool: ToolConfig{
+				Name:               "ripgrep",
+				InstallationMethod: "dnf",
+				InstallParams:      map[string]interface{}{"package": "-ripgrep"},
+			},
+			wantErrs: []string{`tool "ripgrep"`, "package", `"-ripgrep"`},
+		},
+		{
+			name: "pacman package starting with dash",
+			tool: ToolConfig{
+				Name:               "ripgrep",
+				InstallationMethod: "pacman",
+				InstallParams:      map[string]interface{}{"package": "-ripgrep"},
+			},
+			wantErrs: []string{`tool "ripgrep"`, "package", `"-ripgrep"`},
+		},
+		{
+			name: "npm package starting with dash",
+			tool: ToolConfig{
+				Name:               "prettier",
+				InstallationMethod: "npm",
+				InstallParams:      map[string]interface{}{"package": "-prettier"},
+			},
+			wantErrs: []string{`tool "prettier"`, "package", `"-prettier"`},
+		},
+		{
+			name: "brew formula starting with dash",
+			tool: ToolConfig{
+				Name:               "ripgrep",
+				InstallationMethod: "brew",
+				InstallParams:      map[string]interface{}{"formula": "-ripgrep"},
+			},
+			wantErrs: []string{`tool "ripgrep"`, "formula", `"-ripgrep"`},
+		},
+		{
+			name: "brew tap string starting with dash",
+			tool: ToolConfig{
+				Name:               "borders",
+				InstallationMethod: "brew",
+				InstallParams:      map[string]interface{}{"tap": "-FelixKratz/formulae"},
+			},
+			wantErrs: []string{`tool "borders"`, "tap", `"-FelixKratz/formulae"`},
+		},
+		{
+			name: "brew tap slice starting with dash",
+			tool: ToolConfig{
+				Name:               "borders",
+				InstallationMethod: "brew",
+				InstallParams:      map[string]interface{}{"tap": []interface{}{"valid/tap", "-FelixKratz/formulae"}},
+			},
+			wantErrs: []string{`tool "borders"`, "tap", `"-FelixKratz/formulae"`},
+		},
+		{
+			name: "brew trust string starting with dash",
+			tool: ToolConfig{
+				Name:               "borders",
+				InstallationMethod: "brew",
+				InstallParams:      map[string]interface{}{"trust": "-FelixKratz/formulae"},
+			},
+			wantErrs: []string{`tool "borders"`, "trust", `"-FelixKratz/formulae"`},
+		},
+		{
+			name: "brew trust slice starting with dash",
+			tool: ToolConfig{
+				Name:               "borders",
+				InstallationMethod: "brew",
+				InstallParams:      map[string]interface{}{"trust": []string{"-FelixKratz/formulae"}},
+			},
+			wantErrs: []string{`tool "borders"`, "trust", `"-FelixKratz/formulae"`},
+		},
+		{
+			name: "cargo crateName starting with dash",
+			tool: ToolConfig{
+				Name:               "ripgrep",
+				InstallationMethod: "cargo",
+				InstallParams:      map[string]interface{}{"crateName": "-ripgrep"},
+			},
+			wantErrs: []string{`tool "ripgrep"`, "crateName", `"-ripgrep"`},
+		},
+		{
+			name: "zsh-plugin url starting with dash",
+			tool: ToolConfig{
+				Name:               "my-plugin",
+				InstallationMethod: "zsh-plugin",
+				InstallParams:      map[string]interface{}{"url": "-https://github.com/user/plugin.git"},
+			},
+			wantErrs: []string{`tool "my-plugin"`, "url", `"-https://github.com/user/plugin.git"`},
+		},
+		{
+			name: "brew valid tap and trust boolean",
+			tool: ToolConfig{
+				Name:               "borders",
+				InstallationMethod: "brew",
+				InstallParams:      map[string]interface{}{"tap": "FelixKratz/formulae", "trust": true},
+			},
+		},
 	}
 
 	for _, tt := range tests {

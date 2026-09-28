@@ -71,7 +71,7 @@ func TestCargoInstaller(t *testing.T) {
 		}
 
 		cmd := runner.History[0]
-		expectedArgs := []string{"install", "--root", "/test/bin", "--version", "0.10.1", "exa"}
+		expectedArgs := []string{"install", "--root", "/test/bin", "--version", "0.10.1", "--", "exa"}
 		if cmd.Name != "cargo" {
 			t.Errorf("expected cargo command, got %s", cmd.Name)
 		}
@@ -97,7 +97,7 @@ func TestCargoInstaller(t *testing.T) {
 			t.Fatal("expected command to run")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "cargo" || cmd.Args[0] != "uninstall" || cmd.Args[1] != "--root" || cmd.Args[3] != "exa" {
+		if cmd.Name != "cargo" || cmd.Args[0] != "uninstall" || cmd.Args[1] != "--root" || cmd.Args[3] != "--" || cmd.Args[4] != "exa" {
 			t.Errorf("unexpected uninstall command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -792,7 +792,7 @@ func TestCargoCompileFallbackInstallsResolvedVersion(t *testing.T) {
 			if len(runner.History) != 1 {
 				t.Fatalf("cargo runs = %v, want exactly one cargo install", runner.History)
 			}
-			wantArgs := []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, tt.crate}
+			wantArgs := []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, "--", tt.crate}
 			if got := runner.History[0]; got.Name != "cargo" || !slices.Equal(got.Args, wantArgs) {
 				t.Fatalf("ran %s %v, want cargo %v", got.Name, got.Args, wantArgs)
 			}
@@ -850,7 +850,7 @@ func TestCargoPinnedVersionIsBareOnEveryPath(t *testing.T) {
 			if len(runner.History) != 1 {
 				t.Fatalf("cargo runs = %d, want exactly one cargo install", len(runner.History))
 			}
-			wantArgs := []string{"install", "--root", "/test/bin", "--version", "1.2.3", "mycrate"}
+			wantArgs := []string{"install", "--root", "/test/bin", "--version", "1.2.3", "--", "mycrate"}
 			if got := runner.History[0]; got.Name != "cargo" || !slices.Equal(got.Args, wantArgs) {
 				t.Fatalf("ran %s %v, want cargo %v", got.Name, got.Args, wantArgs)
 			}
@@ -1006,9 +1006,9 @@ func TestCargoCompileFallbackTrustsOnlyCratesIO(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Install() error = %v", err)
 			}
-			wantArgs := []string{"install", "--root", "/test/bin", "mycrate"}
+			wantArgs := []string{"install", "--root", "/test/bin", "--", "mycrate"}
 			if tt.wantVersion != "" {
-				wantArgs = []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, "mycrate"}
+				wantArgs = []string{"install", "--root", "/test/bin", "--version", tt.wantVersion, "--", "mycrate"}
 			}
 			if len(runner.History) != 1 || !slices.Equal(runner.History[0].Args, wantArgs) {
 				t.Fatalf("cargo runs = %v, want exactly cargo %v", runner.History, wantArgs)
@@ -1046,7 +1046,7 @@ func TestCargoCompileFallbackWithoutCrateVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Install() error = %v", err)
 		}
-		wantArgs := []string{"install", "--root", "/test/bin", "mycrate"}
+		wantArgs := []string{"install", "--root", "/test/bin", "--", "mycrate"}
 		if len(runner.History) != 1 || !slices.Equal(runner.History[0].Args, wantArgs) {
 			t.Fatalf("cargo runs = %v, want exactly cargo %v", runner.History, wantArgs)
 		}
@@ -1804,4 +1804,45 @@ func createTarGzBytes(files map[string]string) ([]byte, error) {
 	_ = tw.Close()
 	_ = gw.Close()
 	return buf.Bytes(), nil
+}
+
+func TestCargoInstaller_EndOfOptions(t *testing.T) {
+	runner := exec.NewMockRunner()
+	runner.Register("cargo", nil, nil)
+	fsys := fs.NewMemFS()
+	inst := NewCargoInstaller(runner, fsys, nil, nil)
+	inst.BinDir = "/test/bin"
+
+	tool := &config.ToolConfig{
+		Name:    "ripgrep",
+		Version: new(string),
+		InstallParams: map[string]interface{}{
+			"crateName": "ripgrep",
+			"version":   "13.0.0",
+		},
+		Binaries: []interface{}{"rg"},
+	}
+	*tool.Version = "13.0.0"
+
+	// Mock binary in /test/bin/bin/ripgrep and /test/bin/bin/rg
+	_ = fsys.MkdirAll("/test/bin/bin", 0755)
+	_ = fsys.WriteFile("/test/bin/bin/ripgrep", []byte("#!/bin/sh"), 0755)
+	_ = fsys.WriteFile("/test/bin/bin/rg", []byte("#!/bin/sh"), 0755)
+
+	if _, err := inst.Install(context.Background(), tool); err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+
+	if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"install", "--root", "/test/bin", "--version", "13.0.0", "--", "ripgrep"}) {
+		t.Errorf("cargo install args = %v, want [install --root /test/bin --version 13.0.0 -- ripgrep]", runner.History[0].Args)
+	}
+
+	runner.Clear()
+	if err := inst.Uninstall(context.Background(), tool, Installation{}); err != nil {
+		t.Fatalf("Uninstall failed: %v", err)
+	}
+
+	if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"uninstall", "--root", "/test/bin", "--", "ripgrep"}) {
+		t.Errorf("cargo uninstall args = %v, want [uninstall --root /test/bin -- ripgrep]", runner.History[0].Args)
+	}
 }

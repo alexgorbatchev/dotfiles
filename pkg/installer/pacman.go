@@ -87,13 +87,13 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 	var cmd exec.Cmd
 	if tool.Sudo {
-		args := []string{"pacman", syncArgs, "--needed", "--noconfirm", packageSpec}
+		args := []string{"pacman", syncArgs, "--needed", "--noconfirm", "--", packageSpec}
 		if p.log != nil {
 			p.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ sudo %s", strings.Join(args, " "))))
 		}
 		cmd = p.runner.CommandContext(ctx, "sudo", args...)
 	} else {
-		args := []string{syncArgs, "--needed", "--noconfirm", packageSpec}
+		args := []string{syncArgs, "--needed", "--noconfirm", "--", packageSpec}
 		if p.log != nil {
 			p.log.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("$ pacman %s", strings.Join(args, " "))))
 		}
@@ -116,7 +116,7 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 	// Fetch version via pacman -Q
 	var detectedVersion string
-	queryCmd := p.runner.CommandContext(ctx, "pacman", "-Q", localPackageName)
+	queryCmd := p.runner.CommandContext(ctx, "pacman", "-Q", "--", localPackageName)
 	out, err := queryCmd.Output()
 	if err == nil {
 		output := strings.TrimSpace(string(out))
@@ -148,9 +148,9 @@ func (p *PacmanInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 	}
 	var cmd exec.Cmd
 	if tool.Sudo {
-		cmd = p.runner.CommandContext(ctx, "sudo", "pacman", "-R", "--noconfirm", localPackageName)
+		cmd = p.runner.CommandContext(ctx, "sudo", "pacman", "-R", "--noconfirm", "--", localPackageName)
 	} else {
-		cmd = p.runner.CommandContext(ctx, "pacman", "-R", "--noconfirm", localPackageName)
+		cmd = p.runner.CommandContext(ctx, "pacman", "-R", "--noconfirm", "--", localPackageName)
 	}
 	return cmd.Run()
 }
@@ -165,7 +165,7 @@ func (p *PacmanInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConf
 	if idx := strings.LastIndex(packageName, "/"); idx >= 0 {
 		localPackageName = packageName[idx+1:]
 	}
-	args := []string{"-Qu", localPackageName}
+	args := []string{"-Qu", "--", localPackageName}
 	query := runQuery(p.runner.CommandContext(ctx, "pacman", args...), "pacman", args...)
 	code, exited := query.exitCode()
 	switch {

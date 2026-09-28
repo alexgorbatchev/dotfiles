@@ -87,7 +87,7 @@ func TestAptInstaller(t *testing.T) {
 			t.Fatal("expected command to run")
 		}
 		cmd := runner.History[0]
-		if cmd.Name != "sudo" || cmd.Args[0] != "apt-get" || cmd.Args[1] != "remove" || cmd.Args[3] != "jq" {
+		if cmd.Name != "sudo" || cmd.Args[0] != "apt-get" || cmd.Args[1] != "remove" || cmd.Args[3] != "--" || cmd.Args[4] != "jq" {
 			t.Errorf("unexpected command: %s %v", cmd.Name, cmd.Args)
 		}
 	})
@@ -103,6 +103,89 @@ func TestAptInstaller(t *testing.T) {
 		_, err := inst.Install(context.Background(), tool)
 		if err == nil {
 			t.Error("expected error installing, got nil")
+		}
+	})
+
+	t.Run("End of options marker is passed for commands", func(t *testing.T) {
+		// 1. Sudo install
+		runner.Clear()
+		runner.Register("dpkg-query", []byte("1.6-1"), nil)
+		toolSudo := &config.ToolConfig{
+			Name:          "jq",
+			Sudo:          true,
+			InstallParams: map[string]interface{}{"package": "jq"},
+		}
+		if _, err := inst.Install(context.Background(), toolSudo); err != nil {
+			t.Fatalf("Install failed: %v", err)
+		}
+		var installSudoCmd, dpkgCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "sudo" && len(cmd.Args) >= 4 && cmd.Args[0] == "apt-get" && cmd.Args[1] == "install" {
+				installSudoCmd = cmd
+			}
+			if cmd.Name == "dpkg-query" {
+				dpkgCmd = cmd
+			}
+		}
+		if installSudoCmd == nil || !slices.Equal(installSudoCmd.Args, []string{"apt-get", "install", "-y", "--", "jq"}) {
+			t.Errorf("sudo install command args = %v, want [apt-get install -y -- jq]", installSudoCmd)
+		}
+		if dpkgCmd == nil || !slices.Equal(dpkgCmd.Args, []string{"-W", "-f=${Version}", "--", "jq"}) {
+			t.Errorf("dpkg-query command args = %v, want [-W -f=${Version} -- jq]", dpkgCmd)
+		}
+
+		// 2. Non-sudo install
+		runner.Clear()
+		runner.Register("dpkg-query", []byte("1.6-1"), nil)
+		toolNonSudo := &config.ToolConfig{
+			Name:          "jq",
+			InstallParams: map[string]interface{}{"package": "jq"},
+		}
+		if _, err := inst.Install(context.Background(), toolNonSudo); err != nil {
+			t.Fatalf("Install failed: %v", err)
+		}
+		var installCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "apt-get" && len(cmd.Args) >= 3 && cmd.Args[0] == "install" {
+				installCmd = cmd
+			}
+		}
+		if installCmd == nil || !slices.Equal(installCmd.Args, []string{"install", "-y", "--", "jq"}) {
+			t.Errorf("install command args = %v, want [install -y -- jq]", installCmd)
+		}
+
+		// 3. Sudo uninstall
+		runner.Clear()
+		if err := inst.Uninstall(context.Background(), toolSudo, Installation{}); err != nil {
+			t.Fatalf("Uninstall failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"apt-get", "remove", "-y", "--", "jq"}) {
+			t.Errorf("sudo uninstall args = %v, want [apt-get remove -y -- jq]", runner.History)
+		}
+
+		// 4. Non-sudo uninstall
+		runner.Clear()
+		if err := inst.Uninstall(context.Background(), toolNonSudo, Installation{}); err != nil {
+			t.Fatalf("Uninstall failed: %v", err)
+		}
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"remove", "-y", "--", "jq"}) {
+			t.Errorf("uninstall args = %v, want [remove -y -- jq]", runner.History)
+		}
+
+		// 5. CheckUpdate
+		runner.Clear()
+		registerQuery(runner, "apt-cache", aptPolicyCurrent, "", nil)
+		if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "bash", InstallParams: map[string]interface{}{"package": "bash"}}); err != nil {
+			t.Fatalf("CheckUpdate failed: %v", err)
+		}
+		var aptCacheCmd *exec.MockCmd
+		for _, cmd := range runner.History {
+			if cmd.Name == "apt-cache" {
+				aptCacheCmd = cmd
+			}
+		}
+		if aptCacheCmd == nil || !slices.Equal(aptCacheCmd.Args, []string{"policy", "--", "bash"}) {
+			t.Errorf("apt-cache args = %v, want [policy -- bash]", aptCacheCmd)
 		}
 	})
 }
@@ -280,20 +363,20 @@ func TestAptInstaller_CheckUpdate(t *testing.T) {
 			name:        "a foreign architecture qualifies the name",
 			pkg:         "jq:amd64",
 			stdout:      aptPolicyForeignArch,
-			wantErrText: []string{"apt-cache policy jq:amd64", "apt package jq:amd64 is not installed"},
+			wantErrText: []string{"apt-cache policy -- jq:amd64", "apt package jq:amd64 is not installed"},
 		},
 		{
 			name:        "an unknown name matches another installed package as a regular expression",
 			pkg:         "perl-bas.",
 			stdout:      aptPolicyRegexMatchedOther,
-			wantErrText: []string{"running apt-cache policy perl-bas.", "apt does not know package perl-bas.: apt-cache policy listed perl-base instead"},
+			wantErrText: []string{"running apt-cache policy -- perl-bas.", "apt does not know package perl-bas.: apt-cache policy listed perl-base instead"},
 		},
 		{
 			name:   "an unknown name matches many packages as a regular expression",
 			pkg:    "libstdc++",
 			stdout: aptPolicyRegexMatchedMany,
 			wantErrText: []string{
-				"running apt-cache policy libstdc++: ",
+				"running apt-cache policy -- libstdc++: ",
 				"apt does not know package libstdc++: apt-cache policy listed libstdc++-11-pic-mipsr6-cross, libstdc++-12-dev-arm64-cross, libstdc++6-12-dbg-riscv64-cross, libstdc++-dev-arc-dcv1, libstdc++6-ppc64-dcv1 and 2 more instead",
 			},
 		},
@@ -301,7 +384,7 @@ func TestAptInstaller_CheckUpdate(t *testing.T) {
 			name:        "the output has no package section",
 			pkg:         "bash",
 			stdout:      "  Installed: 5.2.15-2+b13\n",
-			wantErrText: []string{"apt-cache policy bash", "apt-cache policy printed no package section for bash: Installed: 5.2.15-2+b13"},
+			wantErrText: []string{"apt-cache policy -- bash", "apt-cache policy printed no package section for bash: Installed: 5.2.15-2+b13"},
 		},
 		{
 			name:       "a warning on stderr does not fail an answered query",
@@ -315,24 +398,24 @@ func TestAptInstaller_CheckUpdate(t *testing.T) {
 			name:        "the package is not installed",
 			pkg:         "jq",
 			stdout:      aptPolicyNotInstalled,
-			wantErrText: []string{"apt-cache policy jq", "apt package jq is not installed"},
+			wantErrText: []string{"apt-cache policy -- jq", "apt package jq is not installed"},
 		},
 		{
 			name:        "the package was removed and its configuration files kept",
 			pkg:         "logrotate",
 			stdout:      aptPolicyRemovedConfigKept,
-			wantErrText: []string{"apt-cache policy logrotate", "apt package logrotate is not installed"},
+			wantErrText: []string{"apt-cache policy -- logrotate", "apt package logrotate is not installed"},
 		},
 		{
 			name:        "a virtual package has nothing installed or to install",
 			pkg:         "awk",
 			stdout:      aptPolicyVirtual,
-			wantErrText: []string{"apt-cache policy awk", "apt package awk is not installed"},
+			wantErrText: []string{"apt-cache policy -- awk", "apt package awk is not installed"},
 		},
 		{
 			name:        "apt does not know the package",
 			pkg:         "nosuchpkgxyz",
-			wantErrText: []string{"running apt-cache policy nosuchpkgxyz", "apt does not know package nosuchpkgxyz: apt-cache policy printed nothing on standard output"},
+			wantErrText: []string{"running apt-cache policy -- nosuchpkgxyz", "apt does not know package nosuchpkgxyz: apt-cache policy printed nothing on standard output"},
 		},
 		{
 			// A warning on stderr alongside an unknown name is quoted, and the message
@@ -340,20 +423,20 @@ func TestAptInstaller_CheckUpdate(t *testing.T) {
 			name:        "apt does not know the package and warns on stderr",
 			pkg:         "nosuchpkgxyz",
 			stderr:      aptWarningConfiguredTwice,
-			wantErrText: []string{"running apt-cache policy nosuchpkgxyz", "apt does not know package nosuchpkgxyz: apt-cache policy printed nothing on standard output", "is configured multiple times"},
+			wantErrText: []string{"running apt-cache policy -- nosuchpkgxyz", "apt does not know package nosuchpkgxyz: apt-cache policy printed nothing on standard output", "is configured multiple times"},
 		},
 		{
 			// apt always prints the line; the check must not read its absence as current.
 			name:        "an installed package has no candidate line",
 			pkg:         "bash",
 			stdout:      "bash:\n  Installed: 5.2.15-2+b13\n  Version table:\n",
-			wantErrText: []string{"apt-cache policy bash", "apt-cache policy printed no Candidate: line for bash", "Installed: 5.2.15-2+b13"},
+			wantErrText: []string{"apt-cache policy -- bash", "apt-cache policy printed no Candidate: line for bash", "Installed: 5.2.15-2+b13"},
 		},
 		{
 			name:        "every version of an installed package is pinned below zero",
 			pkg:         "bash",
 			stdout:      aptPolicyPinnedAway,
-			wantErrText: []string{"apt-cache policy bash", "apt package bash has no candidate version", "Installed: 5.2.15-2+b13, Candidate: (none)"},
+			wantErrText: []string{"apt-cache policy -- bash", "apt package bash has no candidate version", "Installed: 5.2.15-2+b13, Candidate: (none)"},
 		},
 		{
 			// A package list truncated on disk.
@@ -361,13 +444,13 @@ func TestAptInstaller_CheckUpdate(t *testing.T) {
 			pkg:         "bash",
 			stderr:      "E: LZ4F: /var/lib/apt/lists/deb.debian.org_debian-security_dists_bookworm-security_main_binary-arm64_Packages.lz4 Read error (18446744073709551603: ERROR_frameType_unknown)\nE: The package lists or status file could not be parsed or opened.\n",
 			err:         exitStatusError(100),
-			wantErrText: []string{"running apt-cache policy bash", "exit status 100", "The package lists or status file could not be parsed or opened."},
+			wantErrText: []string{"running apt-cache policy -- bash", "exit status 100", "The package lists or status file could not be parsed or opened."},
 		},
 		{
 			name:        "apt-cache cannot be run",
 			pkg:         "bash",
 			err:         errors.New(`exec: "apt-cache": executable file not found in $PATH`),
-			wantErrText: []string{"running apt-cache policy bash", "executable file not found"},
+			wantErrText: []string{"running apt-cache policy -- bash", "executable file not found"},
 		},
 		{
 			// The labels are only ever read in the C locale; the check sets LC_ALL=C so
@@ -375,7 +458,7 @@ func TestAptInstaller_CheckUpdate(t *testing.T) {
 			name:        "the transcript is translated",
 			pkg:         "bash",
 			stdout:      aptPolicyGerman,
-			wantErrText: []string{"running apt-cache policy bash", "apt-cache policy printed no Installed: line for bash", "Installiert:           5.2.15-2+b13"},
+			wantErrText: []string{"running apt-cache policy -- bash", "apt-cache policy printed no Installed: line for bash", "Installiert:           5.2.15-2+b13"},
 		},
 		{
 			// The error quotes the transcript it could not read, not a warning beside it.
@@ -383,7 +466,7 @@ func TestAptInstaller_CheckUpdate(t *testing.T) {
 			pkg:         "bash",
 			stdout:      aptPolicyGerman,
 			stderr:      aptWarningConfiguredTwice,
-			wantErrText: []string{"running apt-cache policy bash", "apt-cache policy printed no Installed: line for bash", "Installiert:           5.2.15-2+b13"},
+			wantErrText: []string{"running apt-cache policy -- bash", "apt-cache policy printed no Installed: line for bash", "Installiert:           5.2.15-2+b13"},
 		},
 	}
 	for _, tt := range tests {
