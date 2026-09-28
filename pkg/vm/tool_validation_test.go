@@ -144,6 +144,36 @@ func TestLoaderRejectsInvalidToolDeclarations(t *testing.T) {
 			want:        []string{"invalid shell config", `got "every-time"`},
 		},
 		{
+			name:        "shell script of kind sourceFile",
+			declaration: `.zsh((shell) => shell.script("sourceFile", "init.zsh"))`,
+			want:        []string{"invalid shell config", `shell script kind must be "once" or "always"`, `got "sourceFile"`},
+		},
+		{
+			name:        "shell script of kind source",
+			declaration: `.zsh((shell) => shell.script("source", "echo hi"))`,
+			want:        []string{"invalid shell config", `shell script kind must be "once" or "always"`, `got "source"`},
+		},
+		{
+			name:        "shell script of kind sourceFunction",
+			declaration: `.zsh((shell) => shell.script("sourceFunction", "my_func"))`,
+			want:        []string{"invalid shell config", `shell script kind must be "once" or "always"`, `got "sourceFunction"`},
+		},
+		{
+			name:        "cross-shell script of kind sourceFile",
+			declaration: `.shell((shell) => shell.script("sourceFile", "init.sh"))`,
+			want:        []string{"invalid shell config", `shell script kind must be "once" or "always"`, `got "sourceFile"`},
+		},
+		{
+			name:        "cross-shell script of kind source",
+			declaration: `.shell((shell) => shell.script("source", "echo hi"))`,
+			want:        []string{"invalid shell config", `shell script kind must be "once" or "always"`, `got "source"`},
+		},
+		{
+			name:        "cross-shell script of kind sourceFunction",
+			declaration: `.shell((shell) => shell.script("sourceFunction", "my_func"))`,
+			want:        []string{"invalid shell config", `shell script kind must be "once" or "always"`, `got "sourceFunction"`},
+		},
+		{
 			name:        "shell script with an empty value",
 			declaration: `.zsh((shell) => shell.once(""))`,
 			want:        []string{"invalid shell config", "shell script value cannot be empty"},

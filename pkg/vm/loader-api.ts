@@ -1087,6 +1087,18 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
 
   const install = createInstall(builder);
 
+  function validateScriptKind(type: string, val: string | undefined) {
+    if (val !== undefined && type !== "once" && type !== "always") {
+      const toolName = (builder["name"] as string) || globalThis.currentToolName || "tool";
+      const toolFile =
+        globalThis.currentToolPath || globalThis.currentToolName || (builder["name"] as string) || "tool";
+      const kindStr = typeof type === "string" ? JSON.stringify(type) : String(type);
+      throw new Error(
+        `in tool file "${toolFile}", tool "${toolName}": invalid shell config: shell script kind must be "once" or "always", got ${kindStr}`,
+      );
+    }
+  }
+
   function createShellBuilder(shConfig: Record<string, unknown>, _shellType: string) {
     const shFunctions = (shConfig["functions"] || {}) as Record<string, string>;
     shConfig["functions"] = shFunctions;
@@ -1110,6 +1122,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         return this.alias(map);
       },
       script(type: string, val?: string) {
+        validateScriptKind(type, val);
         if (val === undefined) {
           shScripts.push({ kind: "always", value: type });
         } else {
@@ -1173,6 +1186,7 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         return this;
       },
       script(type: string, val?: string) {
+        validateScriptKind(type, val);
         for (const b of builders) b.script(type, val);
         return this;
       },
