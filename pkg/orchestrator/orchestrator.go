@@ -113,22 +113,7 @@ func (o *Orchestrator) getSymlinkEvaluator() *symlink.Evaluator {
 // object per call (`{name, pattern?, shim?}`), so an entry is a map; the typed forms are
 // what Go code builds directly.
 func getBinaryNames(toolBinaries []interface{}) []string {
-	names := make([]string, 0, len(toolBinaries))
-	for _, b := range toolBinaries {
-		switch val := b.(type) {
-		case map[string]interface{}:
-			if name, ok := val["name"].(string); ok {
-				names = append(names, name)
-			}
-		case config.BinaryConfig:
-			names = append(names, val.Name)
-		case *config.BinaryConfig:
-			if val != nil {
-				names = append(names, val.Name)
-			}
-		}
-	}
-	return names
+	return config.BinaryNames(toolBinaries)
 }
 
 // declaredBinaries returns the binaries a tool declares with .bin() that its shape can
@@ -218,26 +203,7 @@ func (o *Orchestrator) warnUnshimmedBinaries(tool *config.ToolConfig) {
 // the binary itself is still installed and reachable under the tool's current
 // directory.
 func wantsShim(toolBinaries []interface{}, binName string) bool {
-	for _, b := range toolBinaries {
-		switch val := b.(type) {
-		case map[string]interface{}:
-			if name, ok := val["name"].(string); ok && name == binName {
-				if shim, ok := val["shim"].(bool); ok {
-					return shim
-				}
-				return true
-			}
-		case config.BinaryConfig:
-			if val.Name == binName {
-				return val.WantsShim()
-			}
-		case *config.BinaryConfig:
-			if val != nil && val.Name == binName {
-				return val.WantsShim()
-			}
-		}
-	}
-	return true
+	return config.WantsShim(toolBinaries, binName)
 }
 
 func (o *Orchestrator) resolvePlaceholder(val string, tool *config.ToolConfig, projCfg *config.ProjectConfig) (string, error) {

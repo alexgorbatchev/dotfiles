@@ -2343,3 +2343,48 @@ func TestLoaderRejectsBinaryPatternWithBinaryPath(t *testing.T) {
 		})
 	}
 }
+
+func TestLoaderRejectsInvalidBinaryPatternAndShim(t *testing.T) {
+	tests := []struct {
+		name     string
+		call     string
+		wantErrs []string
+	}{
+		{
+			name:     "number pattern",
+			call:     `.bin("t", 42)`,
+			wantErrs: []string{"probe.tool.ts", `"t"`, "42"},
+		},
+		{
+			name:     "options number pattern",
+			call:     `.bin("t", { pattern: 42 })`,
+			wantErrs: []string{"probe.tool.ts", `"t"`, "42"},
+		},
+		{
+			name:     "empty string pattern",
+			call:     `.bin("t", "")`,
+			wantErrs: []string{"probe.tool.ts", `"t"`, `""`},
+		},
+		{
+			name:     "options string shim",
+			call:     `.bin("t", { shim: "false" })`,
+			wantErrs: []string{"probe.tool.ts", `"t"`, `"false"`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tool := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
+				"export default defineTool((install) => install(\"manual\")" + tt.call + ");"
+			_, err := loadToolSource(t, tool)
+			if err == nil {
+				t.Fatal("expected loading to fail, got nil")
+			}
+			for _, want := range tt.wantErrs {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("expected error to contain %q, got: %v", want, err)
+				}
+			}
+		})
+	}
+}

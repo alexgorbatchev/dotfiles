@@ -569,19 +569,7 @@ func hasKey(m map[string]interface{}, key string) bool {
 // records one object per call (`{name, pattern?, shim?}`), so an entry is a map; the
 // typed forms are what Go code builds directly.
 func getBinaryName(b interface{}) string {
-	switch val := b.(type) {
-	case map[string]interface{}:
-		if name, ok := val["name"].(string); ok {
-			return name
-		}
-	case BinaryConfig:
-		return val.Name
-	case *BinaryConfig:
-		if val != nil {
-			return val.Name
-		}
-	}
-	return ""
+	return GetBinaryName(b)
 }
 
 // Merge deep-merges ShellTypeConfig override into this ShellTypeConfig.

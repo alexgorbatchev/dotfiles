@@ -148,14 +148,7 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 		_ = json.Unmarshal([]byte(installRecord.BinaryPaths), &binPaths)
 	}
 
-	binNames := []string{}
-	for _, b := range targetTool.Binaries {
-		if val, ok := b.(map[string]any); ok {
-			if name, ok := val["name"].(string); ok {
-				binNames = append(binNames, name)
-			}
-		}
-	}
+	binNames := targetTool.BinaryNames()
 
 	binUsages := []map[string]any{}
 	totalUsage := 0

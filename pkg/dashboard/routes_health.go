@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 )
 
 // GET /api/health
@@ -37,17 +39,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		inst, _ := s.registry.GetToolInstallation(ctx, tc.Name)
 		if inst != nil {
 			toolCount++
-			binNames := []string{}
-			for _, b := range tc.Binaries {
-				if val, ok := b.(map[string]any); ok {
-					if name, ok := val["name"].(string); ok {
-						binNames = append(binNames, name)
-					}
-				}
-			}
-			if len(binNames) == 0 {
-				binNames = []string{tc.Name}
-			}
+			binNames := config.GetBinaryNames(tc.Name, tc.Binaries)
 
 			if binariesDir != "" {
 				currentDir := filepath.Join(binariesDir, tc.Name, "current")

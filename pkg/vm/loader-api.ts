@@ -675,21 +675,53 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         );
       }
 
+      const toolFile = globalThis.currentToolPath || globalThis.currentToolName || (this["name"] as string) || "tool";
+
+      const isValidPattern = (p: unknown): boolean => (typeof p === "string" && p !== "") || p instanceof RegExp;
+
+      const formatVal = (v: unknown): string => {
+        if (typeof v === "string") {
+          return JSON.stringify(v);
+        }
+        if (v === null) {
+          return "null";
+        }
+        if (v === undefined) {
+          return "undefined";
+        }
+        return String(v);
+      };
+
       const b = (this["binaries"] || []) as unknown[];
       // One recorded shape for both declared forms: { name, pattern?, shim? } carrying
       // only the members the call gave, so Go can tell "shim not mentioned" from
       // "shim: false" and "no pattern" from a pattern. A binary declared by name alone
       // carries neither and Go supplies the default glob.
       const entry: Record<string, unknown> = { name: name };
-      if (pattern !== null && typeof pattern === "object" && !(pattern instanceof RegExp)) {
+      if (pattern !== null && typeof pattern === "object" && !Array.isArray(pattern) && !(pattern instanceof RegExp)) {
         const options = pattern as Record<string, unknown>;
         if (options["pattern"] !== undefined) {
+          if (!isValidPattern(options["pattern"])) {
+            throw new TypeError(
+              `in tool file "${toolFile}", binary "${name}": invalid pattern ${formatVal(options["pattern"])}: expected a non-empty string or RegExp`,
+            );
+          }
           entry["pattern"] = options["pattern"];
         }
         if (options["shim"] !== undefined) {
+          if (typeof options["shim"] !== "boolean") {
+            throw new TypeError(
+              `in tool file "${toolFile}", binary "${name}": invalid shim option ${formatVal(options["shim"])}: expected a boolean`,
+            );
+          }
           entry["shim"] = options["shim"];
         }
       } else if (pattern !== undefined) {
+        if (!isValidPattern(pattern)) {
+          throw new TypeError(
+            `in tool file "${toolFile}", binary "${name}": invalid pattern ${formatVal(pattern)}: expected a non-empty string or RegExp`,
+          );
+        }
         entry["pattern"] = pattern;
       }
       b.push(entry);

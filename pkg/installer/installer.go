@@ -376,25 +376,7 @@ func ResolveBinaryPaths(ctx context.Context, fsys fs.FS, binNames []string, fall
 // `.bin()` records one object per call (`{name, pattern?, shim?}`), so an entry is a map;
 // the typed forms are what Go code builds directly.
 func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
-	names := make([]string, 0, len(toolBinaries))
-	for _, b := range toolBinaries {
-		switch val := b.(type) {
-		case map[string]interface{}:
-			if name, ok := val["name"].(string); ok {
-				names = append(names, name)
-			}
-		case config.BinaryConfig:
-			names = append(names, val.Name)
-		case *config.BinaryConfig:
-			if val != nil {
-				names = append(names, val.Name)
-			}
-		}
-	}
-	if len(names) == 0 {
-		names = []string{toolName}
-	}
-	return names
+	return config.GetBinaryNames(toolName, toolBinaries)
 }
 
 // installedPackageChecker is implemented by the installers whose update check asks
@@ -712,25 +694,7 @@ func formatDisplayPath(fsys fs.FS, path string) string {
 }
 
 func getPatternForBinary(toolBinaries []interface{}, binName string) string {
-	for _, b := range toolBinaries {
-		switch val := b.(type) {
-		case map[string]interface{}:
-			if name, ok := val["name"].(string); ok && name == binName {
-				if pattern, ok := val["pattern"].(string); ok {
-					return pattern
-				}
-			}
-		case config.BinaryConfig:
-			if val.Name == binName {
-				return val.Pattern
-			}
-		case *config.BinaryConfig:
-			if val != nil && val.Name == binName {
-				return val.Pattern
-			}
-		}
-	}
-	return ""
+	return config.GetPatternForBinary(toolBinaries, binName)
 }
 
 func compileRegex(pattern string) (*regexp.Regexp, error) {

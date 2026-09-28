@@ -958,25 +958,7 @@ func getCompletionFileName(tool *config.ToolConfig, sh string, stc *config.Shell
 }
 
 func getPatternForBinary(toolBinaries []interface{}, binName string) string {
-	for _, b := range toolBinaries {
-		switch val := b.(type) {
-		case map[string]interface{}:
-			if name, ok := val["name"].(string); ok && name == binName {
-				if pattern, ok := val["pattern"].(string); ok {
-					return pattern
-				}
-			}
-		case config.BinaryConfig:
-			if val.Name == binName {
-				return val.Pattern
-			}
-		case *config.BinaryConfig:
-			if val != nil && val.Name == binName {
-				return val.Pattern
-			}
-		}
-	}
-	return ""
+	return config.GetPatternForBinary(toolBinaries, binName)
 }
 
 func (o *Orchestrator) findSystemBinary(binName string, projCfg *config.ProjectConfig) (string, error) {

@@ -267,21 +267,8 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 					isProvider = true
 				} else {
 					for _, b := range provider.Binaries {
-						switch val := b.(type) {
-						case map[string]interface{}:
-							if bName, ok := val["name"].(string); ok && bName == dep {
-								isProvider = true
-							}
-						case config.BinaryConfig:
-							if val.Name == dep {
-								isProvider = true
-							}
-						case *config.BinaryConfig:
-							if val != nil && val.Name == dep {
-								isProvider = true
-							}
-						}
-						if isProvider {
+						if bc, ok := config.AsBinaryConfig(b); ok && bc.Name == dep {
+							isProvider = true
 							break
 						}
 					}
@@ -359,17 +346,7 @@ func (m *mockInstaller) SupportsSudo() bool {
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
-	var binaries []string
-	for _, b := range tool.Binaries {
-		if val, ok := b.(map[string]interface{}); ok {
-			if name, ok := val["name"].(string); ok {
-				binaries = append(binaries, name)
-			}
-		}
-	}
-	if len(binaries) == 0 {
-		binaries = []string{tool.Name}
-	}
+	binaries := config.GetBinaryNames(tool.Name, tool.Binaries)
 
 	// Write mock binaries to the active staging directory
 	if m.fsys != nil && m.projCfg != nil {

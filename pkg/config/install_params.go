@@ -218,18 +218,7 @@ func (tc *ToolConfig) binaryPatternRemedy() string {
 // The loader records a pattern only when .bin() was given one (a RegExp arrives as its
 // /source/flags text), so the default glob never counts as declared.
 func declaredBinaryPattern(b interface{}) (string, bool) {
-	switch val := b.(type) {
-	case map[string]interface{}:
-		pattern, _ := val["pattern"].(string)
-		return pattern, pattern != ""
-	case BinaryConfig:
-		return val.Pattern, val.Pattern != ""
-	case *BinaryConfig:
-		if val != nil {
-			return val.Pattern, val.Pattern != ""
-		}
-	}
-	return "", false
+	return DeclaredBinaryPattern(b)
 }
 
 // validateCurlScriptBinaryPath enforces that a curl-script binaryPath stands for one
