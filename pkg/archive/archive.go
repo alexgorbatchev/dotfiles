@@ -227,18 +227,20 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 		}
 
 		if f.FileInfo().IsDir() {
+			if err := e.checkPath(dest, cleanTarget, entryDir); err != nil {
+				return err
+			}
 			if err := e.fsys.MkdirAll(cleanTarget, f.Mode()); err != nil {
 				return fmt.Errorf("creating zip directory %q: %w", cleanTarget, err)
 			}
 			continue
 		}
 
-		if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
-			return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
-		}
-
 		// Handle symlinks inside zip files
 		if f.Mode()&os.ModeSymlink != 0 {
+			if err := e.checkPath(dest, cleanTarget, entrySymlink); err != nil {
+				return err
+			}
 			entryRc, err := f.Open()
 			if err != nil {
 				return fmt.Errorf("opening zip symlink entry %q: %w", f.Name, err)
@@ -252,11 +254,22 @@ func (e *Extractor) extractZip(ctx context.Context, src string, dest string) err
 			if err := validateSymlink(dest, cleanTarget, targetPath); err != nil {
 				return err
 			}
+			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
+				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
+			}
 			_ = e.fsys.Remove(cleanTarget)
 			if err := e.fsys.Symlink(targetPath, cleanTarget); err != nil {
 				return fmt.Errorf("creating zip symlink from %q to %q: %w", targetPath, cleanTarget, err)
 			}
 			continue
+		}
+
+		if err := e.checkPath(dest, cleanTarget, entryFile); err != nil {
+			return err
+		}
+
+		if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
+			return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 		}
 
 		entryRc, err := f.Open()
@@ -320,11 +333,17 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 
 		switch header.Typeflag {
 		case tar.TypeDir:
+			if err := e.checkPath(dest, cleanTarget, entryDir); err != nil {
+				return err
+			}
 			if err := e.fsys.MkdirAll(cleanTarget, header.FileInfo().Mode()); err != nil {
 				return fmt.Errorf("creating directory %q: %w", cleanTarget, err)
 			}
 
 		case tar.TypeReg:
+			if err := e.checkPath(dest, cleanTarget, entryFile); err != nil {
+				return err
+			}
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
 				return fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 			}
@@ -337,6 +356,9 @@ func (e *Extractor) extractTar(ctx context.Context, src string, dest string, for
 			}
 
 		case tar.TypeSymlink, tar.TypeLink:
+			if err := e.checkPath(dest, cleanTarget, entrySymlink); err != nil {
+				return err
+			}
 			if err := validateSymlink(dest, cleanTarget, header.Linkname); err != nil {
 				return err
 			}
@@ -425,12 +447,20 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 
 		switch header.Typeflag {
 		case tar.TypeDir:
+			if err := e.checkPath(dest, cleanTarget, entryDir); err != nil {
+				extractErr = err
+				return extractErr
+			}
 			if err := e.fsys.MkdirAll(cleanTarget, header.FileInfo().Mode()); err != nil {
 				extractErr = fmt.Errorf("creating directory %q: %w", cleanTarget, err)
 				return extractErr
 			}
 
 		case tar.TypeReg:
+			if err := e.checkPath(dest, cleanTarget, entryFile); err != nil {
+				extractErr = err
+				return extractErr
+			}
 			if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
 				extractErr = fmt.Errorf("creating parent directory for %q: %w", cleanTarget, err)
 				return extractErr
@@ -446,6 +476,10 @@ func (e *Extractor) extractTarXz(ctx context.Context, src string, dest string) e
 			}
 
 		case tar.TypeSymlink, tar.TypeLink:
+			if err := e.checkPath(dest, cleanTarget, entrySymlink); err != nil {
+				extractErr = err
+				return extractErr
+			}
 			if err := validateSymlink(dest, cleanTarget, header.Linkname); err != nil {
 				extractErr = err
 				return extractErr
@@ -484,6 +518,10 @@ func (e *Extractor) extractSingleGz(ctx context.Context, src string, dest string
 	cleanTarget, err := isSafeTargetPath(dest, outName)
 	if err != nil {
 		return fmt.Errorf("extracting gz %q: %w", outName, err)
+	}
+
+	if err := e.checkPath(dest, cleanTarget, entryFile); err != nil {
+		return err
 	}
 
 	if err := e.fsys.MkdirAll(filepath.Dir(cleanTarget), 0755); err != nil {
@@ -667,6 +705,74 @@ func validateSymlink(dest, cleanTarget, target string) error {
 	rel, err := filepath.Rel(cleanDest, filepath.Clean(resolvedTarget))
 	if err != nil || strings.HasPrefix(rel, "..") || rel == ".." {
 		return ErrSymlinkTraversalDetected
+	}
+
+	return nil
+}
+
+type entryKind int
+
+const (
+	entryDir entryKind = iota
+	entryFile
+	entrySymlink
+)
+
+// checkPath verifies that intermediate directory components between dest and cleanTarget
+// are genuine directories on disk and do not traverse symbolic links.
+func (e *Extractor) checkPath(dest, cleanTarget string, kind entryKind) error {
+	cleanDest := filepath.Clean(dest)
+	cleanTarget = filepath.Clean(cleanTarget)
+
+	rel, err := filepath.Rel(cleanDest, cleanTarget)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || strings.HasPrefix(rel, "../") || strings.HasPrefix(rel, "..\\") {
+		return ErrZipSlipDetected
+	}
+
+	if rel == "." {
+		if kind == entryDir {
+			return nil
+		}
+		return ErrZipSlipDetected
+	}
+
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	dirParts := parts
+	if kind != entryDir {
+		dirParts = parts[:len(parts)-1]
+	}
+
+	current := cleanDest
+	for _, part := range dirParts {
+		if part == "" || part == "." {
+			continue
+		}
+		current = filepath.Join(current, part)
+		info, err := e.fsys.Lstat(current)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) || os.IsNotExist(err) {
+				break
+			}
+			return fmt.Errorf("lstat %q: %w", current, err)
+		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			return ErrSymlinkTraversalDetected
+		}
+		if !info.IsDir() {
+			return ErrSymlinkTraversalDetected
+		}
+	}
+
+	if kind == entryFile {
+		info, err := e.fsys.Lstat(cleanTarget)
+		if err == nil {
+			if info.Mode()&os.ModeSymlink != 0 {
+				return ErrSymlinkTraversalDetected
+			}
+		} else if !errors.Is(err, os.ErrNotExist) && !os.IsNotExist(err) {
+			return fmt.Errorf("lstat %q: %w", cleanTarget, err)
+		}
 	}
 
 	return nil

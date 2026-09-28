@@ -15,6 +15,7 @@ Archive extraction utilities (.tar.gz, .zip, .dmg, .pkg, .tar.xz).
 ## Local gotchas
 
 - Path traversal vulnerabilities in archive headers (Zip Slip) -> sanitize extraction paths with `filepath.Clean`.
+- Path traversal via symlinked parent directories -> verify every directory component between `dest` and target entry is a genuine directory on disk and not a symbolic link before writing files, creating directories, or creating symlinks.
 
 ## Boundaries
 
@@ -22,6 +23,7 @@ Archive extraction utilities (.tar.gz, .zip, .dmg, .pkg, .tar.xz).
 - Always: write matching unit tests in `archive_test.go`.
 - Ask first: adding support for new archive formats.
 - Never: allow unsafe relative paths that break out of the target extraction directory, except the symlink targets a mounted `.dmg` volume holds (see Local conventions).
+- Never: write through intermediate symlinked parent directories during archive extraction.
 
 ## References
 

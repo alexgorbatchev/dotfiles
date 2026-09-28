@@ -820,6 +820,425 @@ func TestExtractorSymlinkTraversalPrevention(t *testing.T) {
 			t.Error("expected no file to be created at /escaped_backslash")
 		}
 	})
+
+	t.Run("Tar Symlink Parent Directory Traversal Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		_ = os.MkdirAll(dest, 0755)
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		// Symlink pointing to dest directory
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Name:     "parent",
+			Linkname: ".",
+			Mode:     0777,
+		})
+
+		// Symlink inside parent pointing to parent directory of dest (escaping dest)
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Name:     "parent/escape",
+			Linkname: "..",
+			Mode:     0777,
+		})
+
+		// Nested file under the symlink parent attempting to write outside dest
+		evilContent := "malicious payload"
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     "escape/evil.txt",
+			Mode:     0644,
+			Size:     int64(len(evilContent)),
+		})
+		_, _ = tw.Write([]byte(evilContent))
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		archivePath := filepath.Join(tempDir, "test.tar.gz")
+		if err := os.WriteFile(archivePath, buf.Bytes(), 0644); err != nil {
+			t.Fatalf("failed to write tar file: %v", err)
+		}
+
+		err := ext.Extract(context.Background(), archivePath, dest)
+		if err == nil {
+			t.Error("expected error for symlink parent directory traversal, got nil")
+		} else if !errors.Is(err, ErrSymlinkTraversalDetected) && !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected or ErrZipSlipDetected, got %v", err)
+		}
+
+		// Ensure nothing was written outside the destination directory
+		escapedFile := filepath.Join(tempDir, "evil.txt")
+		if _, err := os.Stat(escapedFile); err == nil {
+			t.Errorf("vulnerability reproduced: file was written outside destination at %s", escapedFile)
+		}
+	})
+
+	t.Run("Zip Symlink Parent Directory Traversal Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		_ = os.MkdirAll(dest, 0755)
+
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		// Symlink pointing to dest directory
+		h1 := &zip.FileHeader{Name: "parent"}
+		h1.SetMode(os.ModeSymlink | 0777)
+		f1, err := w.CreateHeader(h1)
+		if err != nil {
+			t.Fatalf("failed to create zip header: %v", err)
+		}
+		_, _ = f1.Write([]byte("."))
+
+		// Symlink inside parent pointing to parent directory of dest (escaping dest)
+		h2 := &zip.FileHeader{Name: "parent/escape"}
+		h2.SetMode(os.ModeSymlink | 0777)
+		f2, err := w.CreateHeader(h2)
+		if err != nil {
+			t.Fatalf("failed to create zip header: %v", err)
+		}
+		_, _ = f2.Write([]byte(".."))
+
+		// Nested file under the symlink parent attempting to write outside dest
+		evilContent := "malicious zip payload"
+		f3, err := w.Create("escape/evil.txt")
+		if err != nil {
+			t.Fatalf("failed to create zip file: %v", err)
+		}
+		_, _ = f3.Write([]byte(evilContent))
+
+		_ = w.Close()
+
+		archivePath := filepath.Join(tempDir, "test.zip")
+		if err := os.WriteFile(archivePath, buf.Bytes(), 0644); err != nil {
+			t.Fatalf("failed to write zip file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), archivePath, dest)
+		if err == nil {
+			t.Error("expected error for zip symlink parent directory traversal, got nil")
+		} else if !errors.Is(err, ErrSymlinkTraversalDetected) && !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected or ErrZipSlipDetected, got %v", err)
+		}
+
+		// Ensure nothing was written outside the destination directory
+		escapedFile := filepath.Join(tempDir, "evil.txt")
+		if _, err := os.Stat(escapedFile); err == nil {
+			t.Errorf("vulnerability reproduced: file was written outside destination at %s", escapedFile)
+		}
+	})
+
+	t.Run("Tar Existing Symlink Parent Directory Traversal Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		outside := filepath.Join(tempDir, "outside")
+		_ = os.MkdirAll(dest, 0755)
+		_ = os.MkdirAll(outside, 0755)
+
+		// Pre-existing symlink in dest pointing to outside
+		symlinkPath := filepath.Join(dest, "symlink_dir")
+		if err := os.Symlink(outside, symlinkPath); err != nil {
+			t.Fatalf("failed to create symlink: %v", err)
+		}
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		evilContent := "existing symlink payload"
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     "symlink_dir/evil.txt",
+			Mode:     0644,
+			Size:     int64(len(evilContent)),
+		})
+		_, _ = tw.Write([]byte(evilContent))
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		archivePath := filepath.Join(tempDir, "test.tar.gz")
+		if err := os.WriteFile(archivePath, buf.Bytes(), 0644); err != nil {
+			t.Fatalf("failed to write tar file: %v", err)
+		}
+
+		err := ext.Extract(context.Background(), archivePath, dest)
+		if err == nil {
+			t.Error("expected error for tar existing symlink parent traversal, got nil")
+		} else if !errors.Is(err, ErrSymlinkTraversalDetected) && !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected or ErrZipSlipDetected, got %v", err)
+		}
+
+		escapedFile := filepath.Join(outside, "evil.txt")
+		if _, err := os.Stat(escapedFile); err == nil {
+			t.Errorf("vulnerability reproduced: file was written outside destination at %s", escapedFile)
+		}
+	})
+
+	t.Run("Zip Existing Symlink Parent Directory Traversal Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		outside := filepath.Join(tempDir, "outside")
+		_ = os.MkdirAll(dest, 0755)
+		_ = os.MkdirAll(outside, 0755)
+
+		// Pre-existing symlink in dest pointing to outside
+		symlinkPath := filepath.Join(dest, "symlink_dir")
+		if err := os.Symlink(outside, symlinkPath); err != nil {
+			t.Fatalf("failed to create symlink: %v", err)
+		}
+
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		evilContent := "existing zip symlink payload"
+		f, err := w.Create("symlink_dir/evil.txt")
+		if err != nil {
+			t.Fatalf("failed to create zip file: %v", err)
+		}
+		_, _ = f.Write([]byte(evilContent))
+
+		_ = w.Close()
+
+		archivePath := filepath.Join(tempDir, "test.zip")
+		if err := os.WriteFile(archivePath, buf.Bytes(), 0644); err != nil {
+			t.Fatalf("failed to write zip file: %v", err)
+		}
+
+		err = ext.Extract(context.Background(), archivePath, dest)
+		if err == nil {
+			t.Error("expected error for zip existing symlink parent traversal, got nil")
+		} else if !errors.Is(err, ErrSymlinkTraversalDetected) && !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected or ErrZipSlipDetected, got %v", err)
+		}
+
+		escapedFile := filepath.Join(outside, "evil.txt")
+		if _, err := os.Stat(escapedFile); err == nil {
+			t.Errorf("vulnerability reproduced: file was written outside destination at %s", escapedFile)
+		}
+	})
+
+	t.Run("Tar Directory Under Symlink Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		outside := filepath.Join(tempDir, "outside")
+		_ = os.MkdirAll(dest, 0755)
+		_ = os.MkdirAll(outside, 0755)
+
+		_ = os.Symlink(outside, filepath.Join(dest, "symlink_dir"))
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeDir,
+			Name:     "symlink_dir/nested",
+			Mode:     0755,
+		})
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		archivePath := filepath.Join(tempDir, "test.tar.gz")
+		_ = os.WriteFile(archivePath, buf.Bytes(), 0644)
+
+		err := ext.Extract(context.Background(), archivePath, dest)
+		if !errors.Is(err, ErrSymlinkTraversalDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected, got %v", err)
+		}
+	})
+
+	t.Run("Tar Symlink Entry Under Symlink Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		outside := filepath.Join(tempDir, "outside")
+		_ = os.MkdirAll(dest, 0755)
+		_ = os.MkdirAll(outside, 0755)
+
+		_ = os.Symlink(outside, filepath.Join(dest, "symlink_dir"))
+
+		var buf bytes.Buffer
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
+
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeSymlink,
+			Name:     "symlink_dir/nested_link",
+			Linkname: "target",
+			Mode:     0777,
+		})
+
+		_ = tw.Close()
+		_ = gw.Close()
+
+		archivePath := filepath.Join(tempDir, "test.tar.gz")
+		_ = os.WriteFile(archivePath, buf.Bytes(), 0644)
+
+		err := ext.Extract(context.Background(), archivePath, dest)
+		if !errors.Is(err, ErrSymlinkTraversalDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected, got %v", err)
+		}
+	})
+
+	t.Run("Zip Directory Under Symlink Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		outside := filepath.Join(tempDir, "outside")
+		_ = os.MkdirAll(dest, 0755)
+		_ = os.MkdirAll(outside, 0755)
+
+		_ = os.Symlink(outside, filepath.Join(dest, "symlink_dir"))
+
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		h := &zip.FileHeader{Name: "symlink_dir/nested/"}
+		h.SetMode(os.ModeDir | 0755)
+		_, _ = w.CreateHeader(h)
+		_ = w.Close()
+
+		archivePath := filepath.Join(tempDir, "test.zip")
+		_ = os.WriteFile(archivePath, buf.Bytes(), 0644)
+
+		err := ext.Extract(context.Background(), archivePath, dest)
+		if !errors.Is(err, ErrSymlinkTraversalDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected, got %v", err)
+		}
+	})
+
+	t.Run("Zip Symlink Entry Under Symlink Detection", func(t *testing.T) {
+		osFS := fs.NewOSFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(osFS, runner)
+
+		tempDir := t.TempDir()
+		dest := filepath.Join(tempDir, "dest")
+		outside := filepath.Join(tempDir, "outside")
+		_ = os.MkdirAll(dest, 0755)
+		_ = os.MkdirAll(outside, 0755)
+
+		_ = os.Symlink(outside, filepath.Join(dest, "symlink_dir"))
+
+		var buf bytes.Buffer
+		w := zip.NewWriter(&buf)
+
+		h := &zip.FileHeader{Name: "symlink_dir/nested_link"}
+		h.SetMode(os.ModeSymlink | 0777)
+		f, _ := w.CreateHeader(h)
+		_, _ = f.Write([]byte("target"))
+		_ = w.Close()
+
+		archivePath := filepath.Join(tempDir, "test.zip")
+		_ = os.WriteFile(archivePath, buf.Bytes(), 0644)
+
+		err := ext.Extract(context.Background(), archivePath, dest)
+		if !errors.Is(err, ErrSymlinkTraversalDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected, got %v", err)
+		}
+	})
+
+	t.Run("TarXz Symlink Parent Directory Traversal Detection", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		runner := exec.NewMockRunner()
+		ext := NewExtractor(memFS, runner)
+
+		_ = memFS.MkdirAll("/dest", 0755)
+		_ = memFS.Symlink("/dest", "/dest/parent")
+
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+		evil := "malicious payload"
+		_ = tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     "parent/evil.txt",
+			Mode:     0644,
+			Size:     int64(len(evil)),
+		})
+		_, _ = tw.Write([]byte(evil))
+		_ = tw.Close()
+
+		tarData := buf.Bytes()
+		runner.RegisterFunc("xz", func(c *exec.MockCmd) error {
+			_, err := c.Stdout().Write(tarData)
+			return err
+		})
+
+		_ = memFS.WriteFile("/test.tar.xz", []byte("xz data"), 0644)
+
+		err := ext.Extract(context.Background(), "/test.tar.xz", "/dest")
+		if !errors.Is(err, ErrSymlinkTraversalDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected, got %v", err)
+		}
+	})
+
+	t.Run("CheckPath Edge Cases", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		ext := NewExtractor(memFS, exec.NewMockRunner())
+
+		_ = memFS.MkdirAll("/dest", 0755)
+
+		// rel == "." for dir returns nil
+		if err := ext.checkPath("/dest", "/dest", entryDir); err != nil {
+			t.Errorf("expected nil for entryDir at root, got %v", err)
+		}
+
+		// rel == "." for file returns ErrZipSlipDetected
+		if err := ext.checkPath("/dest", "/dest", entryFile); !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrZipSlipDetected for entryFile at root, got %v", err)
+		}
+
+		// Traversal outside dest returns ErrZipSlipDetected
+		if err := ext.checkPath("/dest", "/outside", entryFile); !errors.Is(err, ErrZipSlipDetected) {
+			t.Errorf("expected ErrZipSlipDetected for outside dest, got %v", err)
+		}
+
+		// Intermediate component is a regular file, not a directory
+		_ = memFS.MkdirAll("/dest/parent_dir", 0755)
+		_ = memFS.WriteFile("/dest/parent_dir/file", []byte("data"), 0644)
+		if err := ext.checkPath("/dest", "/dest/parent_dir/file/nested.txt", entryFile); !errors.Is(err, ErrSymlinkTraversalDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected when intermediate component is a regular file, got %v", err)
+		}
+
+		// Regular file target already exists as a symlink
+		_ = memFS.Symlink("/dest/parent_dir/file", "/dest/symlink_file")
+		if err := ext.checkPath("/dest", "/dest/symlink_file", entryFile); !errors.Is(err, ErrSymlinkTraversalDetected) {
+			t.Errorf("expected ErrSymlinkTraversalDetected when cleanTarget is an existing symlink, got %v", err)
+		}
+	})
 }
 
 func TestExtractTarXzPipeCleanupOnEarlyError(t *testing.T) {
