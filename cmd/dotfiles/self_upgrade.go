@@ -50,7 +50,7 @@ Use --check to inspect available updates without downloading or modifying the ex
 		}
 
 		cfg := updater.Config{BaseURL: baseURL}
-		devProxy, err := startDevProxy(GetLogger("proxy", cmd.ErrOrStderr()))
+		devProxy, err := startDevProxy(log.WithTag("proxy"))
 		if err != nil {
 			return err
 		}

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -429,4 +430,72 @@ func TestTabHandler_ColorSupport(t *testing.T) {
 			t.Errorf("expected isColorSupported = false when TERM=dumb")
 		}
 	})
+}
+
+func TestLogger_ConcurrentTaggedLoggers(t *testing.T) {
+	var buf bytes.Buffer
+	l := New(Config{
+		Level:  LogLevelDefault,
+		Writer: &buf,
+	})
+
+	const numWorkers = 10
+	const messagesPerWorker = 50
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		go func(workerID int) {
+			defer wg.Done()
+			tagged := l.WithTag(fmt.Sprintf("worker-%d", workerID))
+			for m := 0; m < messagesPerWorker; m++ {
+				tagged.Info(Message(fmt.Sprintf("message %d from worker %d", m, workerID)))
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	expectedLines := numWorkers * messagesPerWorker
+	if len(lines) != expectedLines {
+		t.Fatalf("expected %d log lines, got %d", expectedLines, len(lines))
+	}
+
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "INFO\t") {
+			t.Errorf("line %d does not start with INFO\\t: %q", i, line)
+		}
+		if !strings.Contains(line, "[worker-") {
+			t.Errorf("line %d missing worker tag: %q", i, line)
+		}
+	}
+}
+
+func TestTabHandler_MutexSharing(t *testing.T) {
+	var buf bytes.Buffer
+	l := New(Config{Writer: &buf})
+	th, ok := l.slog.Handler().(*TabHandler)
+	if !ok {
+		t.Fatalf("expected *TabHandler, got %T", l.slog.Handler())
+	}
+	if th.mu == nil {
+		t.Fatalf("expected th.mu to be initialized")
+	}
+
+	hAttrs, ok := th.WithAttrs(nil).(*TabHandler)
+	if !ok || hAttrs.mu != th.mu {
+		t.Errorf("WithAttrs did not preserve mu pointer")
+	}
+
+	hGroup, ok := th.WithGroup("group").(*TabHandler)
+	if !ok || hGroup.mu != th.mu {
+		t.Errorf("WithGroup did not preserve mu pointer")
+	}
+
+	sub := l.WithTag("child")
+	subHandler, ok := sub.slog.Handler().(*TabHandler)
+	if !ok || subHandler.mu != th.mu {
+		t.Errorf("WithTag did not preserve mu pointer")
+	}
 }

@@ -67,6 +67,24 @@ func runCommand(args ...string) (commandOutput, error) {
 	return runCommandContext(context.Background(), args...)
 }
 
+// safeBuffer is a thread-safe wrapper around bytes.Buffer for concurrent test streams.
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (s *safeBuffer) Write(p []byte) (n int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Write(p)
+}
+
+func (s *safeBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.String()
+}
+
 // runCommandContext executes rootCmd with ctx and args on a clean flag state and
 // captures each stream separately.
 func runCommandContext(ctx context.Context, args ...string) (commandOutput, error) {
@@ -90,7 +108,8 @@ func runCommandContext(ctx context.Context, args ...string) (commandOutput, erro
 	resetFlags(rootCmd)
 	defer resetContext(rootCmd)
 
-	var stdout, stderr, combined bytes.Buffer
+	var stdout, stderr bytes.Buffer
+	var combined safeBuffer
 	if rootCmd.InOrStdin() == os.Stdin {
 		rootCmd.SetIn(strings.NewReader(""))
 		defer rootCmd.SetIn(nil)

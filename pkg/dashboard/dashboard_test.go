@@ -2472,7 +2472,9 @@ func TestServerStart_ReportsFailedUsageImport(t *testing.T) {
 	if err := server.Start(); err != nil {
 		t.Fatalf("Start must succeed despite the failed import: %v", err)
 	}
-	defer server.Stop()
+	if err := server.Stop(); err != nil {
+		t.Fatalf("Stop failed: %v", err)
+	}
 
 	if !strings.Contains(logs.String(), "Failed to import shim usage log") || !strings.Contains(logs.String(), bogus) {
 		t.Fatalf("logs do not report the failed import naming %s:\n%s", bogus, logs.String())

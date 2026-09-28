@@ -67,6 +67,7 @@ type Logger struct {
 
 // TabHandler implements a custom, tab-delimited structured slog.Handler.
 type TabHandler struct {
+	mu     *sync.Mutex
 	writer io.Writer
 	trace  bool
 	level  slog.Level
@@ -77,6 +78,7 @@ func NewTabHandler(w io.Writer, trace bool, level slog.Level) *TabHandler {
 		w = os.Stderr
 	}
 	return &TabHandler{
+		mu:     &sync.Mutex{},
 		writer: w,
 		trace:  trace,
 		level:  level,
@@ -164,6 +166,8 @@ func (h *TabHandler) Handle(_ context.Context, r slog.Record) error {
 	})
 
 	sb.WriteString("\n")
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	_, err := h.writer.Write([]byte(sb.String()))
 	return err
 }

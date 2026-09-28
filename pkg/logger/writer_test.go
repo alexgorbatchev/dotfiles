@@ -77,6 +77,43 @@ func TestLineWriterPrintError(t *testing.T) {
 			t.Errorf("expected error NOT to be printed when output already streamed, got:\n%s", out)
 		}
 	})
+
+	t.Run("flushes non-empty partial buffer without duplicating error", func(t *testing.T) {
+		var buf bytes.Buffer
+		log := New(Config{
+			Level:  LogLevelDefault,
+			Writer: &buf,
+		})
+
+		lw := NewLineWriter(log, "|")
+		_, _ = lw.Write([]byte("partial output without newline"))
+		lw.PrintError(bytes.ErrTooLarge)
+
+		out := buf.String()
+		if !strings.Contains(out, "| partial output without newline") {
+			t.Errorf("expected partial output to be flushed, got:\n%s", out)
+		}
+		if strings.Contains(out, "bytes.Buffer: too large") {
+			t.Errorf("expected error NOT to be printed when partial output was flushed, got:\n%s", out)
+		}
+	})
+
+	t.Run("nil receiver and nil error do not panic", func(t *testing.T) {
+		var nilLw *LineWriter
+		nilLw.PrintError(bytes.ErrTooLarge)
+		if nilLw.HasWritten() {
+			t.Error("expected HasWritten false for nil LineWriter")
+		}
+		nilLw.Reset()
+
+		var buf bytes.Buffer
+		log := New(Config{
+			Level:  LogLevelDefault,
+			Writer: &buf,
+		})
+		lw := NewLineWriter(log, "|")
+		lw.PrintError(nil)
+	})
 }
 
 func TestLineWriterQuietMode(t *testing.T) {

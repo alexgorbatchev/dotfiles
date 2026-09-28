@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -158,7 +157,7 @@ func TestStartDevProxy(t *testing.T) {
 		enterTempDir(t)
 		port := freePort(t)
 		t.Setenv(devProxyEnv, strconv.Itoa(port))
-		var logBuf bytes.Buffer
+		var logBuf safeBuffer
 		srv, err := startDevProxy(logger.New(logger.Config{Writer: &logBuf}))
 		if err != nil {
 			t.Fatalf("startDevProxy: %v", err)
