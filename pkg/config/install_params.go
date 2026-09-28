@@ -76,7 +76,10 @@ func (tc *ToolConfig) validateInstallParams() error {
 		}
 		return tc.validateBinaryPathPatterns()
 	case "manual":
-		return tc.validateBinaryPathPatterns()
+		if err := tc.validateBinaryPathPatterns(); err != nil {
+			return err
+		}
+		return tc.validateManualBinaryPatterns()
 	case "zsh-plugin":
 		return tc.validateNoLeadingDash("url")
 	}
@@ -154,6 +157,49 @@ func (tc *ToolConfig) validateBinaryPathPatterns() error {
 			tc.Name, getBinaryName(b), pattern, tc.InstallationMethod, binaryPath, tc.binaryPatternRemedy())
 	}
 	return nil
+}
+
+// validateManualBinaryPatterns rejects a .bin() pattern on a manual tool that has
+// neither binaryPath nor a before-install hook, because nothing can ever stage files
+// for it to select.
+func (tc *ToolConfig) validateManualBinaryPatterns() error {
+	if tc.binaryPath() != "" || tc.HasHook("before-install") {
+		return nil
+	}
+	for _, b := range tc.Binaries {
+		pattern, declared := declaredBinaryPattern(b)
+		if !declared {
+			continue
+		}
+		return fmt.Errorf(
+			"tool %q: binary %q declares pattern %q, but manual tool has neither binaryPath nor a before-install hook, "+
+				"so nothing can ever stage files for it to select; drop the pattern from .bin()",
+			tc.Name, getBinaryName(b), pattern)
+	}
+	return nil
+}
+
+// HasHook reports whether a tool registered any handler for an event name,
+// stored under the "hooks" install parameter.
+func (tc *ToolConfig) HasHook(event string) bool {
+	if tc == nil || tc.InstallParams == nil {
+		return false
+	}
+	switch events := tc.InstallParams["hooks"].(type) {
+	case []any:
+		for _, e := range events {
+			if name, ok := e.(string); ok && name == event {
+				return true
+			}
+		}
+	case []string:
+		for _, name := range events {
+			if name == event {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // binaryPatternRemedy says how to fix a pattern declared alongside binaryPath. Only

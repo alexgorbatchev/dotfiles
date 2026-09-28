@@ -119,19 +119,7 @@ func nonNil(values []string) []string {
 // records the event names alongside the tool's install parameters, so this answers
 // without re-evaluating the tool file.
 func HasHook(tool *config.ToolConfig, event string) bool {
-	if tool == nil || tool.InstallParams == nil {
-		return false
-	}
-	events, ok := tool.InstallParams["hooks"].([]any)
-	if !ok {
-		return false
-	}
-	for _, e := range events {
-		if name, ok := e.(string); ok && name == event {
-			return true
-		}
-	}
-	return false
+	return tool.HasHook(event)
 }
 
 // RunHook invokes the handlers a tool registered for a lifecycle event.

@@ -254,11 +254,6 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			}
 		}
 
-		pattern := getPatternForBinary(tool.Binaries, binName)
-		if pattern != "" && (strings.Contains(pattern, "/") || strings.Contains(pattern, "\\")) && !strings.ContainsAny(pattern, "*?[") {
-			binaryPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", pattern)
-		}
-
 		if exists, _ := o.fs.Exists(binaryPath); !exists {
 			if recPath, ok := recordedBinaryPaths[binName]; ok {
 				if installer.IsRealBinaryPath(ctx, o.fs, recPath) {

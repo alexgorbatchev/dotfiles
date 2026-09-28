@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -375,4 +376,63 @@ func TestManualInstallerLeavesBinaryPathIntactWhenAHookLinkedItIntoTheStagingDir
 			t.Errorf("%s holds %q, want %q", path, data, payload)
 		}
 	}
+}
+
+func TestManualInstaller_Install_PromoteStagedBinaries(t *testing.T) {
+	t.Run("promotes binary matching pattern in staging", func(t *testing.T) {
+		fsys := fs.NewMemFS()
+		stagingDir := "/staging"
+		inst := NewManualInstaller(fsys, nil)
+		inst.BinDir = stagingDir
+
+		_ = fsys.MkdirAll(stagingDir+"/nested", 0755)
+		_ = fsys.WriteFile(stagingDir+"/nested/my-app", []byte("#!/bin/sh\necho hello"), 0755)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			Binaries: []interface{}{
+				map[string]interface{}{"name": "mytool", "pattern": "nested/my-app"},
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("Install() unexpected error = %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
+			t.Fatalf("Install() binaries = %v, want [\"mytool\"]", res.Binaries)
+		}
+
+		promotedPath := stagingDir + "/mytool"
+		exists, err := fsys.Exists(promotedPath)
+		if err != nil || !exists {
+			t.Fatalf("promoted binary not found at %s", promotedPath)
+		}
+	})
+
+	t.Run("fails when pattern matches nothing in staging", func(t *testing.T) {
+		fsys := fs.NewMemFS()
+		stagingDir := "/staging"
+		inst := NewManualInstaller(fsys, nil)
+		inst.BinDir = stagingDir
+
+		_ = fsys.MkdirAll(stagingDir+"/nested", 0755)
+		_ = fsys.WriteFile(stagingDir+"/nested/other-file", []byte("data"), 0644)
+
+		tool := &config.ToolConfig{
+			Name: "mytool",
+			Binaries: []interface{}{
+				map[string]interface{}{"name": "mytool", "pattern": "nested/missing-bin"},
+			},
+		}
+
+		_, err := inst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("expected Install() to fail when pattern matches nothing, got nil")
+		}
+		var notFound *BinaryNotFoundError
+		if !errors.As(err, &notFound) {
+			t.Fatalf("expected BinaryNotFoundError, got: %v", err)
+		}
+	})
 }

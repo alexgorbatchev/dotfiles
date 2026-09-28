@@ -974,10 +974,27 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 			},
 		},
 		{
-			name: "manual pattern without binaryPath",
+			name: "manual pattern without binaryPath and without hook",
 			tool: ToolConfig{
 				Name:               "my-tool",
 				InstallationMethod: "manual",
+				Binaries:           []interface{}{binPattern("my-tool", "*/bin/my-tool")},
+			},
+			wantErrs: []string{
+				`tool "my-tool"`,
+				`binary "my-tool"`,
+				`pattern "*/bin/my-tool"`,
+				"manual tool has neither binaryPath nor a before-install hook",
+				"nothing can ever stage files",
+				"drop the pattern from .bin()",
+			},
+		},
+		{
+			name: "manual pattern without binaryPath with before-install hook",
+			tool: ToolConfig{
+				Name:               "my-tool",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"hooks": []any{"before-install"}},
 				Binaries:           []interface{}{binPattern("my-tool", "*/bin/my-tool")},
 			},
 		},

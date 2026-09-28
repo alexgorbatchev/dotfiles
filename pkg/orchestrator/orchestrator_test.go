@@ -3932,3 +3932,96 @@ func TestOrchestrator_ApplyUpdate(t *testing.T) {
 		t.Errorf("ApplyUpdate error = %v, want the installer's %v", err, mockInst.err)
 	}
 }
+
+func TestManualTool_ShimTargetUnifiedBetweenInstallAndGenerate(t *testing.T) {
+	t.Parallel()
+	const toolName = "hooked-manual"
+
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(installer.NewManualInstaller(memFS, nil))
+
+	log := logger.New(logger.Config{Writer: io.Discard})
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			DotfilesDir:  "/home/user/dotfiles",
+			TargetDir:    "/home/user/.bin",
+			BinariesDir:  "/home/user/.generated/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	toolFile := filepath.Join(t.TempDir(), toolName+".tool.ts")
+	toolBody := `
+		import { defineTool } from "@alexgorbatchev/dotfiles";
+		export default defineTool((install) =>
+			install("manual")
+				.bin("mycmd", "bin/nested-cmd")
+				.hook("before-install", async ({ stagingDir, fileSystem }) => {
+					await fileSystem.mkdir(stagingDir + "/bin");
+					await fileSystem.writeFile(stagingDir + "/bin/nested-cmd", "#!/bin/sh\necho ok");
+				}),
+		);
+	`
+	if err := os.WriteFile(toolFile, []byte(toolBody), 0644); err != nil {
+		t.Fatalf("writing tool file: %v", err)
+	}
+
+	tool := &config.ToolConfig{
+		Name:               toolName,
+		ConfigFilePath:     toolFile,
+		InstallationMethod: "manual",
+		Binaries: []interface{}{
+			map[string]interface{}{"name": "mycmd", "pattern": "bin/nested-cmd"},
+		},
+		InstallParams: map[string]interface{}{"hooks": []any{"before-install"}},
+	}
+
+	// 1. InstallTool
+	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("InstallTool() error = %v", err)
+	}
+
+	// Check installed shim target
+	shimPath := "/home/user/.bin/mycmd"
+	shimBytes, err := memFS.ReadFile(shimPath)
+	if err != nil {
+		t.Fatalf("reading shim after install: %v", err)
+	}
+	expectedTarget := "/home/user/.generated/binaries/" + toolName + "/current/mycmd"
+	expectedExecutable := fmt.Sprintf("TOOL_EXECUTABLE=%q", expectedTarget)
+	if !strings.Contains(string(shimBytes), expectedExecutable) {
+		t.Fatalf("InstallTool shim target mismatch:\nwant to contain %s\ngot:\n%s", expectedExecutable, string(shimBytes))
+	}
+
+	// Verify the promoted binary exists at the target
+	exists, err := memFS.Exists(expectedTarget)
+	if err != nil || !exists {
+		t.Fatalf("promoted binary missing at %s", expectedTarget)
+	}
+
+	// 2. GenerateTool (state generate)
+	if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("GenerateTool() error = %v", err)
+	}
+
+	// Check generated shim target matches
+	genShimBytes, err := memFS.ReadFile(shimPath)
+	if err != nil {
+		t.Fatalf("reading shim after generate: %v", err)
+	}
+	if !strings.Contains(string(genShimBytes), expectedExecutable) {
+		t.Fatalf("GenerateTool shim target mismatch:\nwant to contain %s\ngot:\n%s", expectedExecutable, string(genShimBytes))
+	}
+}

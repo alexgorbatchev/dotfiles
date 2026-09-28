@@ -2305,8 +2305,14 @@ func TestLoaderRejectsBinaryPatternWithBinaryPath(t *testing.T) {
 			bins:    `.bin("tool", { shim: false })`,
 		},
 		{
-			name:    "manual pattern without binaryPath",
+			name:    "manual pattern without binaryPath and without hook",
 			install: `install("manual")`,
+			bins:    `.bin("tool", "*/bin/tool")`,
+			want:    []string{`binary "tool"`, `pattern "*/bin/tool"`, "neither binaryPath nor a before-install hook"},
+		},
+		{
+			name:    "manual pattern without binaryPath with before-install hook",
+			install: `install("manual").hook("before-install", () => {})`,
 			bins:    `.bin("tool", "*/bin/tool")`,
 		},
 	}

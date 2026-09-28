@@ -35,6 +35,7 @@ func TestLoaderRecordsBinaryOptions(t *testing.T) {
 	toolContent := `import { defineTool } from "@dotfiles/cli";
 export default defineTool((install) =>
   install("manual")
+    .hook("before-install", () => {})
     .bin("plain")
     .bin("located", "*/bin/located")
     .bin("matched", /bin\/matched$/)

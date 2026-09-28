@@ -110,6 +110,19 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}, nil
 	}
 
+	if m.BinDir != "" && len(tool.Binaries) > 0 {
+		entries, err := m.fsys.ReadDir(m.BinDir)
+		if err == nil && len(entries) > 0 {
+			promoted, err := PromoteBinaries(m.fsys, m.BinDir, tool.Name, tool.Binaries, KeepOutsideLinks)
+			if err != nil {
+				return nil, err
+			}
+			return &InstallResult{
+				Binaries: promoted,
+			}, nil
+		}
+	}
+
 	return &InstallResult{
 		Binaries: []string{},
 	}, nil

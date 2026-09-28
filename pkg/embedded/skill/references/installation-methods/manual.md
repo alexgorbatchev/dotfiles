@@ -94,6 +94,14 @@ says `curl-script binaryPath` and also offers the other fix, since a `curl-scrip
 `binaryPath` does search `stagingDir` with the pattern:
 `...; drop the pattern from .bin(), or drop binaryPath and point the script at {stagingDir} through args or env`.
 
+A `manual` tool without `binaryPath` requires a `before-install` hook to stage files into
+`stagingDir` for a pattern to select. A `.bin()` pattern on a `manual` tool that has neither
+`binaryPath` nor a `before-install` hook is rejected when the configuration loads:
+
+```
+invalid tool configuration in "<tool file>": tool "<tool>": binary "<binary>" declares pattern "<pattern>", but manual tool has neither binaryPath nor a before-install hook, so nothing can ever stage files for it to select; drop the pattern from .bin()
+```
+
 ## Examples
 
 ### Pre-built Binary
