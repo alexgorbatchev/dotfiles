@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -140,5 +142,94 @@ func TestGitHubHostReachesEveryReleaseInstaller(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestNewGitHubSettings pins how the github section of a project configuration
+// becomes the installer's settings: host, token and User-Agent as written, the
+// cache directory derived from Paths.GeneratedDir, and cache TTL converted from
+// milliseconds.
+func TestNewGitHubSettings(t *testing.T) {
+	disabled := false
+	tests := []struct {
+		name string
+		cfg  *config.ProjectConfig
+		want GitHubSettings
+	}{
+		{
+			name: "nil project configuration returns empty settings",
+			cfg:  nil,
+			want: GitHubSettings{},
+		},
+		{
+			name: "empty project configuration enables cache with empty dir and zero ttl",
+			cfg:  &config.ProjectConfig{},
+			want: GitHubSettings{CacheEnabled: true},
+		},
+		{
+			name: "generated dir derives the github-api cache directory",
+			cfg:  &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/gen"}},
+			want: GitHubSettings{
+				CacheEnabled: true,
+				CacheDir:     filepath.Join("/gen", "cache", "github-api"),
+			},
+		},
+		{
+			name: "every key is carried over as written",
+			cfg: &config.ProjectConfig{
+				Paths: config.PathsConfig{GeneratedDir: "/gen"},
+				Github: config.HostConfig{
+					Host:      "https://ghe.example/api/v3",
+					Token:     "gh-token",
+					UserAgent: "my-bot/1.0",
+					Cache: config.CacheConfig{
+						Enabled: &disabled,
+						TTL:     5000,
+					},
+				},
+			},
+			want: GitHubSettings{
+				Host:         "https://ghe.example/api/v3",
+				Token:        "gh-token",
+				UserAgent:    "my-bot/1.0",
+				CacheEnabled: false,
+				CacheDir:     filepath.Join("/gen", "cache", "github-api"),
+				CacheTTL:     5 * time.Second,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewGitHubSettings(tt.cfg); got != tt.want {
+				t.Fatalf("NewGitHubSettings() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGitHubInstaller_SetGitHubSettings_AppliesCache(t *testing.T) {
+	inst := NewGitHubInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, nil)
+	settings := GitHubSettings{
+		Host:         "https://ghe.example/api/v3",
+		Token:        "gh-token",
+		UserAgent:    "bot",
+		CacheEnabled: true,
+		CacheDir:     "/gen/cache/github-api",
+		CacheTTL:     15 * time.Minute,
+	}
+	inst.SetGitHubSettings(settings)
+
+	if inst.BaseURL != settings.Host {
+		t.Errorf("inst.BaseURL = %q, want %q", inst.BaseURL, settings.Host)
+	}
+	if inst.CacheDir != settings.CacheDir {
+		t.Errorf("inst.CacheDir = %q, want %q", inst.CacheDir, settings.CacheDir)
+	}
+	if inst.CacheTTL != settings.CacheTTL {
+		t.Errorf("inst.CacheTTL = %v, want %v", inst.CacheTTL, settings.CacheTTL)
+	}
+	if inst.GitHub != settings {
+		t.Errorf("inst.GitHub = %+v, want %+v", inst.GitHub, settings)
 	}
 }

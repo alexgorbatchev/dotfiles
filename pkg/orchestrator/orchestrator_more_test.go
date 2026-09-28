@@ -2199,6 +2199,59 @@ func TestInstallTool_AppliesCargoSettings(t *testing.T) {
 	}
 }
 
+type gitHubSettingsSpyInstaller struct {
+	cacheSpyInstaller
+	github []installer.GitHubSettings
+}
+
+func (g *gitHubSettingsSpyInstaller) SetGitHubSettings(settings installer.GitHubSettings) {
+	g.github = append(g.github, settings)
+}
+
+// TestInstallTool_AppliesGitHubSettings pins that the install pipeline hands every
+// installer the project's github section via NewGitHubSettings, including its cache
+// directory and TTL.
+func TestInstallTool_AppliesGitHubSettings(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+	defer database.Close()
+
+	instReg := installer.NewRegistry()
+	spy := &gitHubSettingsSpyInstaller{cacheSpyInstaller: cacheSpyInstaller{name: "github-spy-installer"}}
+	_ = instReg.Register(spy)
+	orch := NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), registry.NewRegistry(database), instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/test",
+			DotfilesDir:     "/home/test/dotfiles",
+			TargetDir:       "/home/test/.bin",
+			BinariesDir:     "/home/test/.binaries",
+			GeneratedDir:    "/home/test/.generated",
+			ShellScriptsDir: "/home/test/.generated/shell-scripts",
+		},
+		Github: config.HostConfig{
+			Host:  "https://ghe.example/api/v3",
+			Token: "github-secret",
+			Cache: config.CacheConfig{TTL: 3600000},
+		},
+	}
+	tool := &config.ToolConfig{Name: "spy-tool", InstallationMethod: spy.name, Binaries: testutil.DeclaredBinaries("spybin")}
+	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	want := installer.NewGitHubSettings(projCfg)
+	if len(spy.github) != 1 || spy.github[0] != want {
+		t.Fatalf("github settings applied = %+v, want exactly %+v", spy.github, want)
+	}
+}
+
 // TestDownloadSettingsFromProjectConfig pins how the `downloader` section of a
 // project configuration becomes the policy installers download under, including the
 // values a configuration that says nothing gets.

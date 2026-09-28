@@ -1513,6 +1513,9 @@ func TestConfigureInstallerForUpdate(t *testing.T) {
 		if gh.CacheTTL != 1500*time.Millisecond {
 			t.Errorf("CacheTTL = %v, want 1.5s", gh.CacheTTL)
 		}
+		if want := installer.NewGitHubSettings(projCfg); gh.GitHub != want {
+			t.Errorf("GitHub = %+v, want %+v", gh.GitHub, want)
+		}
 	})
 
 	t.Run("github installer keeps defaults when the project sets none", func(t *testing.T) {

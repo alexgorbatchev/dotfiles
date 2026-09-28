@@ -169,12 +169,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	installer.SetSystemContext(inst, installer.NewSystemContext(o.target))
 
 	installer.SetDownloadSettings(inst, downloadSettings(projCfg))
-	installer.SetGitHubSettings(inst, installer.GitHubSettings{
-		Host:         projCfg.Github.Host,
-		Token:        projCfg.Github.Token,
-		UserAgent:    projCfg.Github.UserAgent,
-		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
-	})
+	installer.SetGitHubSettings(inst, installer.NewGitHubSettings(projCfg))
 	installer.SetCargoSettings(inst, installer.NewCargoSettings(projCfg))
 
 	if !isExternal {
@@ -197,12 +192,6 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	switch installerInstance := inst.(type) {
 	case *installer.GitHubInstaller:
 		installerInstance.BinDir = installDir
-		if projCfg.Paths.GeneratedDir != "" {
-			installerInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
-		}
-		if projCfg.Github.Cache.TTL > 0 {
-			installerInstance.CacheTTL = time.Duration(projCfg.Github.Cache.TTL) * time.Millisecond
-		}
 	case *installer.GiteaInstaller:
 		installerInstance.BinDir = installDir
 		if projCfg.Paths.GeneratedDir != "" {

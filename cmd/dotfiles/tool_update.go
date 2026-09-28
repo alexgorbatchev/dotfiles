@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -14,23 +13,12 @@ import (
 )
 
 func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, projCfg *config.ProjectConfig) {
-	installer.SetGitHubSettings(inst, installer.GitHubSettings{
-		Host:         projCfg.Github.Host,
-		Token:        projCfg.Github.Token,
-		UserAgent:    projCfg.Github.UserAgent,
-		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
-	})
+	installer.SetGitHubSettings(inst, installer.NewGitHubSettings(projCfg))
 	installer.SetCargoSettings(inst, installer.NewCargoSettings(projCfg))
 
 	switch instInstance := inst.(type) {
 	case *installer.GitHubInstaller:
 		instInstance.BinDir = toolDestDir
-		if projCfg.Paths.GeneratedDir != "" {
-			instInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
-		}
-		if projCfg.Github.Cache.TTL > 0 {
-			instInstance.CacheTTL = time.Duration(projCfg.Github.Cache.TTL) * time.Millisecond
-		}
 	case *installer.GiteaInstaller:
 		instInstance.BinDir = toolDestDir
 		if projCfg.Paths.GeneratedDir != "" {

@@ -411,27 +411,6 @@ type DownloadSettingsSetter interface {
 	SetDownloadSettings(downloader.Settings)
 }
 
-// GitHubSettings is the credential and identity half of the project configuration's
-// `github` section, shared by every installation method that resolves releases
-// through the GitHub API.
-type GitHubSettings struct {
-	// Host is the API root every release lookup addresses, which is how a GitHub
-	// Enterprise instance is reached. Empty selects api.github.com.
-	Host string
-	// Token authenticates API requests and asset downloads for every tool that does
-	// not name a `token` install parameter of its own.
-	Token string
-	// UserAgent identifies the client to the API; empty selects the built-in value.
-	UserAgent string
-	// CacheEnabled reuses previously fetched release descriptions when true.
-	CacheEnabled bool
-}
-
-// GitHubSettingsSetter is implemented by installers that resolve GitHub releases.
-type GitHubSettingsSetter interface {
-	SetGitHubSettings(GitHubSettings)
-}
-
 // SystemContextSetter is implemented by every installer, because every installation
 // method is carried out for a particular platform, architecture and C library.
 type SystemContextSetter interface {
@@ -464,14 +443,6 @@ func SetLogger(inst Installer, log *logger.Logger) {
 func SetDownloadSettings(inst Installer, settings downloader.Settings) {
 	if s, ok := inst.(DownloadSettingsSetter); ok {
 		s.SetDownloadSettings(settings)
-	}
-}
-
-// SetGitHubSettings dynamically configures GitHub API access on installer plugins
-// prior to execution.
-func SetGitHubSettings(inst Installer, settings GitHubSettings) {
-	if s, ok := inst.(GitHubSettingsSetter); ok {
-		s.SetGitHubSettings(settings)
 	}
 }
 

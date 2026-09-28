@@ -73,6 +73,12 @@ func (g *GitHubInstaller) SetGitHubSettings(settings GitHubSettings) {
 	if settings.Host != "" {
 		g.BaseURL = settings.Host
 	}
+	if settings.CacheDir != "" {
+		g.CacheDir = settings.CacheDir
+	}
+	if settings.CacheTTL > 0 {
+		g.CacheTTL = settings.CacheTTL
+	}
 }
 
 func NewGitHubInstaller(runner exec.CommandRunner, fsys fs.FS, dl *downloader.Downloader, sysCtx *SystemContext) *GitHubInstaller {

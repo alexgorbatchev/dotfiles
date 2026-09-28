@@ -748,12 +748,7 @@ func (s *Server) configureInstallers() {
 	if s.projectConfig == nil || s.installers == nil {
 		return
 	}
-	github := installer.GitHubSettings{
-		Host:         s.projectConfig.Github.Host,
-		Token:        s.projectConfig.Github.Token,
-		UserAgent:    s.projectConfig.Github.UserAgent,
-		CacheEnabled: s.projectConfig.Github.Cache.IsEnabled(),
-	}
+	github := installer.NewGitHubSettings(s.projectConfig)
 	cargo := installer.NewCargoSettings(s.projectConfig)
 	for _, name := range s.installers.List() {
 		inst, err := s.installers.Get(name)
@@ -769,23 +764,12 @@ func configureInstallerForUpdate(inst installer.Installer, toolDestDir string, p
 	if projCfg == nil {
 		return
 	}
-	installer.SetGitHubSettings(inst, installer.GitHubSettings{
-		Host:         projCfg.Github.Host,
-		Token:        projCfg.Github.Token,
-		UserAgent:    projCfg.Github.UserAgent,
-		CacheEnabled: projCfg.Github.Cache.IsEnabled(),
-	})
+	installer.SetGitHubSettings(inst, installer.NewGitHubSettings(projCfg))
 	installer.SetCargoSettings(inst, installer.NewCargoSettings(projCfg))
 
 	switch instInstance := inst.(type) {
 	case *installer.GitHubInstaller:
 		instInstance.BinDir = toolDestDir
-		if projCfg.Paths.GeneratedDir != "" {
-			instInstance.CacheDir = filepath.Join(projCfg.Paths.GeneratedDir, "cache", "github-api")
-		}
-		if projCfg.Github.Cache.TTL > 0 {
-			instInstance.CacheTTL = time.Duration(projCfg.Github.Cache.TTL) * time.Millisecond
-		}
 	case *installer.GiteaInstaller:
 		instInstance.BinDir = toolDestDir
 		if projCfg.Paths.GeneratedDir != "" {
