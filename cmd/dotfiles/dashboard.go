@@ -37,10 +37,15 @@ func runDashboard(cmd *cobra.Command) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Dashboard available at: http://%s:%d\n", server.Host(), server.Port())
 	fmt.Fprintln(cmd.OutOrStdout(), "Press Ctrl+C to stop the dashboard server")
 
-	// Graceful shutdown on signal
+	// Graceful shutdown on signal or context cancellation
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
+	defer signal.Stop(sigChan)
+
+	select {
+	case <-sigChan:
+	case <-ctx.Done():
+	}
 
 	log.Info("Shutting down dashboard server")
 	return server.Stop()

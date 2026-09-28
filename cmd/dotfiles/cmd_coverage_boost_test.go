@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -128,12 +127,14 @@ func TestCmdCoverageBoost_Subcommands(t *testing.T) {
 		_, _ = executeCommand("shell", "audit")
 	})
 
-	// 7. dashboardCmd coverage (with signal shutdown)
-	t.Run("dashboardCmd start and signal shutdown", func(t *testing.T) {
+	// 7. dashboardCmd coverage (with context cancellation shutdown)
+	t.Run("dashboardCmd start and shutdown", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+			cancel()
 		}()
-		_, _ = executeCommand("dashboard", "--port", "0")
+		_, _ = executeCommandContext(ctx, "dashboard", "--port", "0")
 	})
 }

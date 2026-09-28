@@ -18,7 +18,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"testing"
 	"time"
 
@@ -34,7 +33,15 @@ import (
 	"github.com/spf13/pflag"
 )
 
+func resetContext(cmd *cobra.Command) {
+	cmd.SetContext(nil)
+	for _, sub := range cmd.Commands() {
+		resetContext(sub)
+	}
+}
+
 func resetFlags(cmd *cobra.Command) {
+	resetContext(cmd)
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		_ = f.Value.Set(f.DefValue)
 		f.Changed = false
@@ -57,6 +64,12 @@ type commandOutput struct {
 // runCommand executes rootCmd with args on a clean flag state and captures each
 // stream separately.
 func runCommand(args ...string) (commandOutput, error) {
+	return runCommandContext(context.Background(), args...)
+}
+
+// runCommandContext executes rootCmd with ctx and args on a clean flag state and
+// captures each stream separately.
+func runCommandContext(ctx context.Context, args ...string) (commandOutput, error) {
 	// Reset global persistent flags before each execution
 	cfgFile = ""
 	dryRun = false
@@ -75,6 +88,7 @@ func runCommand(args ...string) (commandOutput, error) {
 	skillDir = ""
 
 	resetFlags(rootCmd)
+	defer resetContext(rootCmd)
 
 	var stdout, stderr, combined bytes.Buffer
 	if rootCmd.InOrStdin() == os.Stdin {
@@ -85,7 +99,7 @@ func runCommand(args ...string) (commandOutput, error) {
 	rootCmd.SetErr(io.MultiWriter(&stderr, &combined))
 	rootCmd.SetArgs(args)
 
-	err := rootCmd.Execute()
+	err := rootCmd.ExecuteContext(ctx)
 	return commandOutput{
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
@@ -97,6 +111,12 @@ func runCommand(args ...string) (commandOutput, error) {
 // runCommand when a test must assert on one stream alone.
 func executeCommand(args ...string) (string, error) {
 	out, err := runCommand(args...)
+	return out.Combined, err
+}
+
+// executeCommandContext runs rootCmd with a context and returns stdout and stderr interleaved.
+func executeCommandContext(ctx context.Context, args ...string) (string, error) {
+	out, err := runCommandContext(ctx, args...)
 	return out.Combined, err
 }
 
@@ -4299,11 +4319,13 @@ func TestNewHierarchySubcommandsCoverage(t *testing.T) {
 	})
 
 	t.Run("dashboard start command with shutdown", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+			cancel()
 		}()
-		_, _ = executeCommand("-c", configPath, "dashboard", "start", "--port", "0")
+		_, _ = executeCommandContext(ctx, "-c", configPath, "dashboard", "start", "--port", "0")
 	})
 }
 
