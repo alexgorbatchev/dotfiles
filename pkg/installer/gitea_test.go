@@ -500,3 +500,159 @@ func TestGiteaInstaller_CheckUpdateHonoursPrerelease(t *testing.T) {
 		t.Errorf("requested %v, want the releases listing", server.requestedPaths())
 	}
 }
+
+func TestGiteaInstaller_AssetSizeIntegrity(t *testing.T) {
+	payload := []byte("gitea-binary-payload-for-size-integrity-test")
+
+	t.Run("matching size succeeds", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/v1/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   1,
+							"name":                 "tool-linux-amd64",
+							"size":                 len(payload),
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGiteaInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name: "tool",
+			InstallParams: map[string]interface{}{
+				"instanceUrl": server.URL,
+				"repo":        "owner/tool",
+			},
+		}
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("Install failed with matching size: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "tool" {
+			t.Errorf("expected [tool], got %v", res.Binaries)
+		}
+		data, err := fsys.ReadFile(filepath.Join(inst.BinDir, "tool"))
+		if err != nil || string(data) != string(payload) {
+			t.Errorf("expected binary content %q, got %q, err: %v", string(payload), string(data), err)
+		}
+	})
+
+	t.Run("mismatched size fails with error and removes file", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/v1/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   1,
+							"name":                 "tool-linux-amd64",
+							"size":                 len(payload) + 123,
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGiteaInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name: "tool",
+			InstallParams: map[string]interface{}{
+				"instanceUrl": server.URL,
+				"repo":        "owner/tool",
+			},
+		}
+		_, err := inst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("expected Install to fail with mismatched size, got nil")
+		}
+		if !strings.Contains(err.Error(), "size mismatch") {
+			t.Errorf("expected error to contain %q, got %q", "size mismatch", err.Error())
+		}
+		destPath := filepath.Join(inst.BinDir, "tool")
+		if exists, _ := fsys.Exists(destPath); exists {
+			t.Errorf("expected file at %s to be removed on size mismatch", destPath)
+		}
+	})
+
+	t.Run("zero size skips size check", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/v1/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   1,
+							"name":                 "tool-linux-amd64",
+							"size":                 0,
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGiteaInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name: "tool",
+			InstallParams: map[string]interface{}{
+				"instanceUrl": server.URL,
+				"repo":        "owner/tool",
+			},
+		}
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("Install failed with size 0: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "tool" {
+			t.Errorf("expected [tool], got %v", res.Binaries)
+		}
+	})
+}

@@ -3,6 +3,8 @@ package installer
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -1271,4 +1273,421 @@ func TestGitHubTokenHostScoping(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
+	payload := []byte("github-binary-payload-for-integrity-test")
+	hasher := sha256.New()
+	hasher.Write(payload)
+	validSHA256 := hex.EncodeToString(hasher.Sum(nil))
+	validDigest := "sha256:" + validSHA256
+	mismatchedDigest := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+	t.Run("mismatched asset digest fails with checksum mismatch error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   10,
+							"name":                 "tool-linux-amd64",
+							"size":                 len(payload),
+							"digest":               mismatchedDigest,
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BaseURL = server.URL
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name:          "tool",
+			InstallParams: map[string]interface{}{"repo": "owner/tool"},
+		}
+		_, err := inst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("expected Install to fail with mismatched digest, but got nil error")
+		}
+		if !strings.Contains(err.Error(), "checksum mismatch") {
+			t.Errorf("expected error to contain %q, got %q", "checksum mismatch", err.Error())
+		}
+		destPath := filepath.Join(inst.BinDir, "tool")
+		if exists, _ := fsys.Exists(destPath); exists {
+			t.Errorf("expected downloaded asset at %s to be removed on failure", destPath)
+		}
+	})
+
+	t.Run("valid asset digest succeeds", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   10,
+							"name":                 "tool-linux-amd64",
+							"size":                 len(payload),
+							"digest":               validDigest,
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BaseURL = server.URL
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name:          "tool",
+			InstallParams: map[string]interface{}{"repo": "owner/tool"},
+		}
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("Install failed with valid digest: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "tool" {
+			t.Errorf("expected [tool], got %v", res.Binaries)
+		}
+		data, err := fsys.ReadFile(filepath.Join(inst.BinDir, "tool"))
+		if err != nil || string(data) != string(payload) {
+			t.Errorf("expected binary payload %q, got %q, err: %v", string(payload), string(data), err)
+		}
+	})
+
+	t.Run("null digest verifies matching size", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   10,
+							"name":                 "tool-linux-amd64",
+							"size":                 len(payload),
+							"digest":               nil,
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BaseURL = server.URL
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name:          "tool",
+			InstallParams: map[string]interface{}{"repo": "owner/tool"},
+		}
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("Install failed with matching size: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "tool" {
+			t.Errorf("expected [tool], got %v", res.Binaries)
+		}
+	})
+
+	t.Run("null digest fails on mismatched size", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   10,
+							"name":                 "tool-linux-amd64",
+							"size":                 len(payload) + 50,
+							"digest":               nil,
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BaseURL = server.URL
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name:          "tool",
+			InstallParams: map[string]interface{}{"repo": "owner/tool"},
+		}
+		_, err := inst.Install(context.Background(), tool)
+		if err == nil {
+			t.Fatal("expected Install to fail with mismatched size, but got nil error")
+		}
+		if !strings.Contains(err.Error(), "size mismatch") {
+			t.Errorf("expected error to contain %q, got %q", "size mismatch", err.Error())
+		}
+		destPath := filepath.Join(inst.BinDir, "tool")
+		if exists, _ := fsys.Exists(destPath); exists {
+			t.Errorf("expected file at %s to be removed on size mismatch", destPath)
+		}
+	})
+
+	t.Run("zero size with null digest skips size verification", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/repos/owner/tool/releases/latest" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id":       1,
+					"tag_name": "v1.0.0",
+					"assets": []map[string]any{
+						{
+							"id":                   10,
+							"name":                 "tool-linux-amd64",
+							"size":                 0,
+							"digest":               nil,
+							"browser_download_url": "http://" + r.Host + "/download/tool",
+						},
+					},
+				})
+				return
+			}
+			if r.URL.Path == "/download/tool" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(payload)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		fsys := fs.NewMemFS()
+		inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+		inst.httpClient = server.Client()
+		inst.BaseURL = server.URL
+		inst.BinDir = "/test/bin"
+
+		tool := &config.ToolConfig{
+			Name:          "tool",
+			InstallParams: map[string]interface{}{"repo": "owner/tool"},
+		}
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("Install failed with size 0: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "tool" {
+			t.Errorf("expected [tool], got %v", res.Binaries)
+		}
+	})
+
+	t.Run("ghCli fallback verifies digest and size", func(t *testing.T) {
+		makeGhRunner := func(fsys fs.FS, releaseJSON []byte, downloadBytes []byte) exec.CommandRunner {
+			runner := exec.NewMockRunner()
+			runner.RegisterFunc("gh", func(c *exec.MockCmd) error {
+				if len(c.Args) > 0 && c.Args[0] == "api" {
+					c.SetOutput(releaseJSON)
+					return nil
+				}
+				var dir, pattern string
+				for i := 0; i+1 < len(c.Args); i++ {
+					switch c.Args[i] {
+					case "--dir":
+						dir = c.Args[i+1]
+					case "--pattern":
+						pattern = c.Args[i+1]
+					}
+				}
+				return fsys.WriteFile(filepath.Join(dir, pattern), downloadBytes, 0644)
+			})
+			return runner
+		}
+
+		t.Run("ghCli fails on mismatched digest", func(t *testing.T) {
+			fsys := fs.NewMemFS()
+			relJSON, _ := json.Marshal(map[string]any{
+				"id":       1,
+				"tag_name": "v1.0.0",
+				"assets": []map[string]any{
+					{
+						"id":     10,
+						"name":   "tool-linux-amd64",
+						"size":   len(payload),
+						"digest": mismatchedDigest,
+					},
+				},
+			})
+			runner := makeGhRunner(fsys, relJSON, payload)
+			inst := NewGitHubInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.BinDir = "/test/bin"
+
+			tool := &config.ToolConfig{
+				Name: "tool",
+				InstallParams: map[string]interface{}{
+					"repo":  "owner/tool",
+					"ghCli": true,
+				},
+			}
+			_, err := inst.Install(context.Background(), tool)
+			if err == nil {
+				t.Fatal("expected ghCli Install to fail with mismatched digest, got nil")
+			}
+			if !strings.Contains(err.Error(), "checksum mismatch") {
+				t.Errorf("expected error to contain %q, got %q", "checksum mismatch", err.Error())
+			}
+			destPath := filepath.Join(inst.BinDir, "tool")
+			if exists, _ := fsys.Exists(destPath); exists {
+				t.Errorf("expected file at %s to be removed on checksum mismatch", destPath)
+			}
+		})
+
+		t.Run("ghCli succeeds with valid digest", func(t *testing.T) {
+			fsys := fs.NewMemFS()
+			relJSON, _ := json.Marshal(map[string]any{
+				"id":       1,
+				"tag_name": "v1.0.0",
+				"assets": []map[string]any{
+					{
+						"id":     10,
+						"name":   "tool-linux-amd64",
+						"size":   len(payload),
+						"digest": validDigest,
+					},
+				},
+			})
+			runner := makeGhRunner(fsys, relJSON, payload)
+			inst := NewGitHubInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.BinDir = "/test/bin"
+
+			tool := &config.ToolConfig{
+				Name: "tool",
+				InstallParams: map[string]interface{}{
+					"repo":  "owner/tool",
+					"ghCli": true,
+				},
+			}
+			res, err := inst.Install(context.Background(), tool)
+			if err != nil {
+				t.Fatalf("expected ghCli Install to succeed with valid digest, got %v", err)
+			}
+			if len(res.Binaries) != 1 || res.Binaries[0] != "tool" {
+				t.Errorf("expected [tool], got %v", res.Binaries)
+			}
+		})
+
+		t.Run("ghCli fails on null digest with mismatched size", func(t *testing.T) {
+			fsys := fs.NewMemFS()
+			relJSON, _ := json.Marshal(map[string]any{
+				"id":       1,
+				"tag_name": "v1.0.0",
+				"assets": []map[string]any{
+					{
+						"id":     10,
+						"name":   "tool-linux-amd64",
+						"size":   len(payload) + 100,
+						"digest": nil,
+					},
+				},
+			})
+			runner := makeGhRunner(fsys, relJSON, payload)
+			inst := NewGitHubInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			inst.BinDir = "/test/bin"
+
+			tool := &config.ToolConfig{
+				Name: "tool",
+				InstallParams: map[string]interface{}{
+					"repo":  "owner/tool",
+					"ghCli": true,
+				},
+			}
+			_, err := inst.Install(context.Background(), tool)
+			if err == nil {
+				t.Fatal("expected ghCli Install to fail with mismatched size, got nil")
+			}
+			if !strings.Contains(err.Error(), "size mismatch") {
+				t.Errorf("expected error to contain %q, got %q", "size mismatch", err.Error())
+			}
+			destPath := filepath.Join(inst.BinDir, "tool")
+			if exists, _ := fsys.Exists(destPath); exists {
+				t.Errorf("expected file at %s to be removed on size mismatch", destPath)
+			}
+		})
+	})
+
+	t.Run("parseAssetDigest edge cases", func(t *testing.T) {
+		if got := parseAssetDigest(nil); got != "" {
+			t.Errorf("expected empty string for nil digest, got %q", got)
+		}
+		md5Digest := "md5:c3fcd3d76192e4007dfb496cca67e13b"
+		if got := parseAssetDigest(&md5Digest); got != "" {
+			t.Errorf("expected empty string for non-sha256 digest, got %q", got)
+		}
+		upperDigest := "SHA256:ABCDEF"
+		if got := parseAssetDigest(&upperDigest); got != "ABCDEF" {
+			t.Errorf("expected ABCDEF for uppercase prefix, got %q", got)
+		}
+		spacedDigest := "  sha256:123456  "
+		if got := parseAssetDigest(&spacedDigest); got != "123456" {
+			t.Errorf("expected 123456 for padded digest, got %q", got)
+		}
+	})
+
+	t.Run("file verifiers return error on non-existent file", func(t *testing.T) {
+		fsys := fs.NewMemFS()
+		if err := verifyFileSHA256(fsys, "/nonexistent", "abc"); err == nil {
+			t.Error("expected verifyFileSHA256 to fail on nonexistent file, got nil")
+		}
+		if err := verifyFileSize(fsys, "/nonexistent", 100); err == nil {
+			t.Error("expected verifyFileSize to fail on nonexistent file, got nil")
+		}
+	})
 }

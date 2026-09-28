@@ -326,19 +326,29 @@ func (ms *MockServer) serveGiteaRelease(w http.ResponseWriter, r *http.Request, 
 	uuidMac := fmt.Sprintf("%s-%s-1", strings.ReplaceAll(repo, "/", "-"), version)
 	uuidLinux := fmt.Sprintf("%s-%s-2", strings.ReplaceAll(repo, "/", "-"), version)
 
+	macFilename := fmt.Sprintf("%s-%s-macos_arm64.tar.gz", toolName, version)
+	linuxFilename := fmt.Sprintf("%s-%s-linux_amd64.tar.gz", toolName, version)
+
+	fileSize := func(name string) int64 {
+		if fi, err := os.Stat(filepath.Join(ms.FixtureDir, "tools", "gitea-release-tool", name)); err == nil {
+			return fi.Size()
+		}
+		return 0
+	}
+
 	assets := []map[string]any{
 		{
 			"id":                   1,
-			"name":                 fmt.Sprintf("%s-%s-macos_arm64.tar.gz", toolName, version),
-			"size":                 1024,
+			"name":                 macFilename,
+			"size":                 fileSize(macFilename),
 			"uuid":                 uuidMac,
 			"browser_download_url": fmt.Sprintf("%s/attachments/%s", ms.Server.URL, uuidMac),
 			"type":                 "application/gzip",
 		},
 		{
 			"id":                   2,
-			"name":                 fmt.Sprintf("%s-%s-linux_amd64.tar.gz", toolName, version),
-			"size":                 1024,
+			"name":                 linuxFilename,
+			"size":                 fileSize(linuxFilename),
 			"uuid":                 uuidLinux,
 			"browser_download_url": fmt.Sprintf("%s/attachments/%s", ms.Server.URL, uuidLinux),
 			"type":                 "application/gzip",

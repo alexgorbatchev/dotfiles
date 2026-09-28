@@ -20,6 +20,7 @@ import (
 type giteaAsset struct {
 	ID                 int64  `json:"id"`
 	Name               string `json:"name"`
+	Size               int64  `json:"size"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
@@ -227,6 +228,12 @@ func (g *GiteaInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	}
 	if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, ""); err != nil {
 		return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
+	}
+	if matched.Size > 0 {
+		if err := verifyFileSize(g.fsys, assetPath, matched.Size); err != nil {
+			_ = g.fsys.Remove(assetPath)
+			return nil, fmt.Errorf("verifying release asset %s: %w", matched.Name, err)
+		}
 	}
 
 	placer := releaseAssetInstaller{fsys: g.fsys, extractor: g.extractor, log: toolLog}

@@ -2,12 +2,15 @@ package installer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
@@ -19,9 +22,11 @@ import (
 )
 
 type githubAsset struct {
-	ID                 int64  `json:"id"`
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
+	ID                 int64   `json:"id"`
+	Name               string  `json:"name"`
+	Size               int64   `json:"size"`
+	Digest             *string `json:"digest"`
+	BrowserDownloadURL string  `json:"browser_download_url"`
 }
 
 type githubRelease struct {
@@ -286,9 +291,21 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	if toolLog != nil {
 		toolLog.Info(logger.Message(fmt.Sprintf("Downloading release asset %s...", matched.Name)))
 	}
+	expectedSHA256 := parseAssetDigest(matched.Digest)
 	if useGhCli {
 		if err := releaseClient.downloadAssetViaGhCli(ctx, repo, release.TagName, matched.Name, destDir); err != nil {
 			return nil, fmt.Errorf("downloading release asset via gh CLI: %w", err)
+		}
+		if expectedSHA256 != "" {
+			if err := verifyFileSHA256(g.fsys, assetPath, expectedSHA256); err != nil {
+				_ = g.fsys.Remove(assetPath)
+				return nil, fmt.Errorf("verifying release asset %s: %w", matched.Name, err)
+			}
+		} else if (matched.Digest == nil || expectedSHA256 == "") && matched.Size > 0 {
+			if err := verifyFileSize(g.fsys, assetPath, matched.Size); err != nil {
+				_ = g.fsys.Remove(assetPath)
+				return nil, fmt.Errorf("verifying release asset %s: %w", matched.Name, err)
+			}
 		}
 	} else {
 		// The asset download authenticates from the same sources as the API request
@@ -302,8 +319,14 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			}
 			opts.HostScopedHeaders = true
 		}
-		if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, "", opts); err != nil {
+		if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, expectedSHA256, opts); err != nil {
 			return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
+		}
+		if (matched.Digest == nil || expectedSHA256 == "") && matched.Size > 0 {
+			if err := verifyFileSize(g.fsys, assetPath, matched.Size); err != nil {
+				_ = g.fsys.Remove(assetPath)
+				return nil, fmt.Errorf("verifying release asset %s: %w", matched.Name, err)
+			}
 		}
 	}
 
@@ -383,6 +406,53 @@ func (g *GitHubInstaller) matchAsset(assets []githubAsset, assetPattern string) 
 		sysCtx = NewDefaultSystemContext()
 	}
 	return matchReleaseAsset(assets, githubAssetName, sysCtx.systemInfo(), assetPattern)
+}
+
+// parseAssetDigest extracts the hex SHA-256 digest from a GitHub asset's
+// digest string, which GitHub formats as "sha256:<hex>". It returns "" if the
+// digest is nil or does not start with "sha256:".
+func parseAssetDigest(digest *string) string {
+	if digest == nil {
+		return ""
+	}
+	const prefix = "sha256:"
+	d := strings.TrimSpace(*digest)
+	if strings.HasPrefix(strings.ToLower(d), prefix) {
+		return strings.TrimSpace(d[len(prefix):])
+	}
+	return ""
+}
+
+// verifyFileSHA256 computes the SHA-256 digest of the file at path and compares
+// it case-insensitively to expected.
+func verifyFileSHA256(fsys fs.FS, path, expected string) error {
+	f, err := fsys.Open(path)
+	if err != nil {
+		return fmt.Errorf("calculating sha256 checksum: %w", err)
+	}
+	defer f.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, f); err != nil {
+		return fmt.Errorf("calculating sha256 checksum: %w", err)
+	}
+	actual := hex.EncodeToString(hasher.Sum(nil))
+	if !strings.EqualFold(actual, strings.TrimSpace(expected)) {
+		return fmt.Errorf("checksum mismatch: expected SHA256 hash %q", expected)
+	}
+	return nil
+}
+
+// verifyFileSize checks that the file at path has the expected byte size.
+func verifyFileSize(fsys fs.FS, path string, expected int64) error {
+	info, err := fsys.Stat(path)
+	if err != nil {
+		return fmt.Errorf("checking asset size: %w", err)
+	}
+	if info.Size() != expected {
+		return fmt.Errorf("asset size mismatch: expected %d bytes, got %d bytes", expected, info.Size())
+	}
+	return nil
 }
 
 func init() {
