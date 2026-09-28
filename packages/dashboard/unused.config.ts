@@ -1,9 +1,8 @@
 import { defineConfig } from "ts-unused";
 
 export default defineConfig({
-  // src/index.ts is this workspace's public entry point, so anything re-exported
-  // through it is part of the package surface rather than dead code.
-  packageMode: true,
+  // Do not treat dashboard as a library package; audit internal shared types for dead code.
+  packageMode: false,
 
   ignoreFilePatterns: [
     // Generated from the Go structs by scripts/typegen; edit the Go types instead.
