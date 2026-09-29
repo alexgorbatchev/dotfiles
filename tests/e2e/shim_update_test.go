@@ -58,12 +58,15 @@ func TestE2EShimUpdate(t *testing.T) {
 			t.Fatalf("@update failed: %v\nexitCode: %d\nstdout: %s\nstderr: %s", err, exitCode, stdout, stderr)
 		}
 		for _, want := range []string{
-			"[update] [" + toolName + "] New version available: 1.0.0 -> 2.0.0",
-			"[update] [" + toolName + "] Successfully updated to version 2.0.0",
+			"[" + toolName + "] New version available: 1.0.0 -> 2.0.0",
+			"[" + toolName + "] Successfully updated to version 2.0.0",
 		} {
 			if !strings.Contains(stderr, want) {
 				t.Errorf("stderr does not contain %q:\n%s", want, stderr)
 			}
+		}
+		if strings.Contains(stderr, "[update]") {
+			t.Errorf("stderr contains unexpected [update] tag:\n%s", stderr)
 		}
 		if strings.Contains(stderr, "Fetching release info") || strings.Contains(stderr, "Checking for updates") {
 			t.Errorf("stderr reports the progress shim mode hides:\n%s", stderr)
@@ -94,10 +97,13 @@ export default defineTool((install) =>
 		if err != nil || exitCode != 0 {
 			t.Fatalf("@update failed: %v\nexitCode: %d\nstdout: %s\nstderr: %s", err, exitCode, stdout, stderr)
 		}
-		want := "[update] [" + toolName + "] Tool \"" + toolName + "\" is pinned to version `2.0.0` by its \"version\" install parameter. " +
+		want := "[" + toolName + "] Tool \"" + toolName + "\" is pinned to version `2.0.0` by its \"version\" install parameter. " +
 			"Set \"version\" to \"latest\" in the tool config to enable updates"
 		if !strings.Contains(stderr, want) {
 			t.Errorf("stderr does not contain the refusal %q:\n%s", want, stderr)
+		}
+		if strings.Contains(stderr, "[update]") {
+			t.Errorf("stderr contains unexpected [update] tag:\n%s", stderr)
 		}
 		if strings.Contains(stderr, "New version available") || strings.Contains(stderr, "Successfully updated") {
 			t.Errorf("stderr reports an update of a pinned tool:\n%s", stderr)

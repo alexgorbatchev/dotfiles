@@ -15,6 +15,17 @@ import (
 )
 
 func TestGetLoggerNilWriterAndFlags(t *testing.T) {
+	origLogLevel := logLevel
+	origQuiet := quiet
+	origVerbose := verbose
+	origTrace := trace
+	t.Cleanup(func() {
+		logLevel = origLogLevel
+		quiet = origQuiet
+		verbose = origVerbose
+		trace = origTrace
+	})
+
 	log := GetLogger("test", nil)
 	if log == nil {
 		t.Errorf("expected non-nil logger")
@@ -35,6 +46,44 @@ func TestGetLoggerNilWriterAndFlags(t *testing.T) {
 	log2 := GetLogger("test2", nil)
 	if log2 == nil || log2.Level() != logger.LogLevelVerbose {
 		t.Errorf("expected LogLevelVerbose when verbose flag is true")
+	}
+}
+
+func TestGetLoggerDoesNotTagCommandName(t *testing.T) {
+	origLogLevel := logLevel
+	origQuiet := quiet
+	origVerbose := verbose
+	origTrace := trace
+	t.Cleanup(func() {
+		logLevel = origLogLevel
+		quiet = origQuiet
+		verbose = origVerbose
+		trace = origTrace
+	})
+	trace = false
+	quiet = false
+	verbose = false
+	logLevel = ""
+
+	var buf bytes.Buffer
+	log := GetLogger("install", &buf)
+	log.Info(logger.Message("running"))
+	if strings.Contains(buf.String(), "[install]") {
+		t.Errorf("GetLogger should not add command name as tag, got: %q", buf.String())
+	}
+	if !strings.Contains(buf.String(), "INFO\trunning\n") {
+		t.Errorf("expected clean un-tagged line, got: %q", buf.String())
+	}
+
+	// Tool tag added afterwards should be a single tag
+	toolLog := log.WithTag("my-tool")
+	buf.Reset()
+	toolLog.Info(logger.Message("tool running"))
+	if strings.Contains(buf.String(), "[install]") {
+		t.Errorf("logger should not retain command name tag, got: %q", buf.String())
+	}
+	if !strings.Contains(buf.String(), "INFO\t[my-tool] tool running\n") {
+		t.Errorf("expected single tool tag, got: %q", buf.String())
 	}
 }
 

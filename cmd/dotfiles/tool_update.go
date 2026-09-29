@@ -62,7 +62,7 @@ func newUpdateLogs(log *logger.Logger, w io.Writer, shimMode bool) updateLogs {
 	if !shimMode {
 		return updateLogs{progress: log, report: log}
 	}
-	return updateLogs{progress: log, report: newLogger("update", w, logger.LogLevelDefault)}
+	return updateLogs{progress: log, report: newLogger(w, logger.LogLevelDefault)}
 }
 
 // withTag returns the loggers for messages about one tool.

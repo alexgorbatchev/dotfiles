@@ -163,7 +163,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	activeFS := o.getTrackedFS(ctx, nil, tool.Name, "binary")
 	installer.SetFS(inst, activeFS)
-	installer.SetLogger(inst, o.logger.WithTag(inst.Name()))
+	installer.SetLogger(inst, o.logger)
 
 	// The asset an installer downloads has to be the one the configuration was
 	// resolved for, so the run's target reaches it the same way its file system and

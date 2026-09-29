@@ -1711,9 +1711,12 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		}
 		lines := strings.Split(strings.TrimSpace(out.Stderr), "\n")
 		if len(lines) != 2 ||
-			!strings.Contains(lines[0], `[update] [manual-versioned] Update check not supported for installer "manual", performing regular install instead`) ||
-			!strings.Contains(lines[1], "[update] [manual-versioned] Successfully updated to version") {
+			!strings.Contains(lines[0], `[manual-versioned] Update check not supported for installer "manual", performing regular install instead`) ||
+			!strings.Contains(lines[1], "[manual-versioned] Successfully updated to version") {
 			t.Fatalf("stderr in shim mode = %q, want only the unsupported-check warning and the result", out.Stderr)
+		}
+		if strings.Contains(out.Stderr, "[update]") {
+			t.Errorf("stderr contains unexpected [update] tag: %q", out.Stderr)
 		}
 	})
 
@@ -1722,8 +1725,11 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		if err != nil {
 			t.Fatalf("tool update --shim-mode same: %v\n%s", err, out.Combined)
 		}
-		if got := strings.TrimSpace(out.Stderr); !strings.Contains(got, "[update] [same] Already up to date (v0.1.0") || strings.Contains(got, "\n") {
+		if got := strings.TrimSpace(out.Stderr); !strings.Contains(got, "[same] Already up to date (v0.1.0") || strings.Contains(got, "\n") {
 			t.Fatalf("stderr in shim mode = %q, want only the up to date report", out.Stderr)
+		}
+		if strings.Contains(out.Stderr, "[update]") {
+			t.Errorf("stderr contains unexpected [update] tag: %q", out.Stderr)
 		}
 	})
 
@@ -1783,7 +1789,7 @@ func TestCheckResultOutput_UnknownStatus(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	printCheckResult(&stdout, tool, r)
-	logCheckResult(newLogger("check", &stderr, logger.LogLevelDefault).WithTag("t"), tool, r)
+	logCheckResult(newLogger(&stderr, logger.LogLevelDefault).WithTag("t"), tool, r)
 
 	if stdout.String() != "t: failed\n" {
 		t.Errorf("stdout = %q, want %q", stdout.String(), "t: failed\n")

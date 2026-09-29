@@ -146,13 +146,16 @@ func TestLoggerContextAndSubLoggers(t *testing.T) {
 		t.Errorf("Expected context prefix, got: %q", output)
 	}
 
-	// Chaining WithTag
+	// Chaining WithTag replaces existing tag (enforcing single-tag rule)
 	sub2 := sub.WithTag("sub-tag")
 	buf.Reset()
 	sub2.Info("running sub-tagged")
 	output = buf.String()
-	if !strings.Contains(output, "INFO\t[tool-abc] [sub-tag] running sub-tagged\n") {
-		t.Errorf("Expected chained context prefix, got: %q", output)
+	if !strings.Contains(output, "INFO\t[sub-tag] running sub-tagged\n") {
+		t.Errorf("Expected single replaced context prefix, got: %q", output)
+	}
+	if strings.Contains(output, "[tool-abc]") {
+		t.Errorf("Expected [tool-abc] to be replaced, got: %q", output)
 	}
 
 	// Overwrite/SetPrefix
@@ -375,8 +378,13 @@ func TestLoggerGettersAndWithTag(t *testing.T) {
 	}
 
 	tagged := l.WithTag("child")
-	if len(tagged.contexts) != 1 || tagged.contexts[0] != "child" {
-		t.Errorf("WithTag contexts = %v, want [child]", tagged.contexts)
+	if len(tagged.tags) != 1 || tagged.tags[0] != "child" {
+		t.Errorf("WithTag tags = %v, want [child]", tagged.tags)
+	}
+
+	replaced := tagged.WithTag("replacement")
+	if len(replaced.tags) != 1 || replaced.tags[0] != "replacement" {
+		t.Errorf("WithTag replaced tags = %v, want [replacement]", replaced.tags)
 	}
 
 	// Nil receiver checks

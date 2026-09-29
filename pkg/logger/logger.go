@@ -56,13 +56,13 @@ type Config struct {
 // cause the user must see is folded into the message with %v instead of passed as an
 // argument; TestProductionLogCallsCarryTheCauseInTheMessage enforces this.
 type Logger struct {
-	mu       sync.RWMutex
-	level    LogLevel
-	trace    bool
-	writer   io.Writer
-	contexts []string
-	slog     *slog.Logger
-	onFatal  func()
+	mu      sync.RWMutex
+	level   LogLevel
+	trace   bool
+	writer  io.Writer
+	tags    []string
+	slog    *slog.Logger
+	onFatal func()
 }
 
 // TabHandler implements a custom, tab-delimited structured slog.Handler.
@@ -235,7 +235,8 @@ func GetLogLevelFromFlags(log string, quiet bool, verbose bool) (LogLevel, error
 	return ParseLogLevel(log)
 }
 
-// WithTag returns a sublogger with the given bracketed context tag ([<tag>]) appended to contexts.
+// WithTag returns a sublogger with the given bracketed context tag ([<tag>]).
+// It replaces any existing tag to enforce the single-tag rule.
 func (l *Logger) WithTag(tag string) *Logger {
 	if l == nil {
 		return nil
@@ -243,21 +244,18 @@ func (l *Logger) WithTag(tag string) *Logger {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
-	var subContexts []string
-	if len(l.contexts) > 0 {
-		subContexts = append([]string{}, l.contexts...)
-	}
+	var tags []string
 	if tag != "" {
-		subContexts = append(subContexts, tag)
+		tags = []string{tag}
 	}
 
 	return &Logger{
-		level:    l.level,
-		trace:    l.trace,
-		writer:   l.writer,
-		contexts: subContexts,
-		slog:     l.slog,
-		onFatal:  l.onFatal,
+		level:   l.level,
+		trace:   l.trace,
+		writer:  l.writer,
+		tags:    tags,
+		slog:    l.slog,
+		onFatal: l.onFatal,
 	}
 }
 
@@ -302,9 +300,9 @@ func (l *Logger) SetPrefix(context string) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if context == "" {
-		l.contexts = nil
+		l.tags = nil
 	} else {
-		l.contexts = []string{context}
+		l.tags = []string{context}
 	}
 	return l
 }
@@ -343,9 +341,9 @@ func (l *Logger) log(ctx context.Context, level slog.Level, msg Message, args []
 	defer l.mu.RUnlock()
 
 	var prefix string
-	if len(l.contexts) > 0 {
+	if len(l.tags) > 0 {
 		var sb strings.Builder
-		for i, c := range l.contexts {
+		for i, c := range l.tags {
 			if i > 0 {
 				sb.WriteString(" ")
 			}

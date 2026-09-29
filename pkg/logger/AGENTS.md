@@ -9,7 +9,7 @@ Type-safe structured logger and tab-delimited handler for dotfiles CLI output.
 ## Local conventions
 
 - Tab-align level columns (`INFO   \t`, `WARN   \t`).
-- Use single context tags (`[system]` for global/orchestrator actions, `[toolName]` for tool actions, e.g. `[tmux-sessionx]`). Never output redundant double tags like `[system] [toolName]`.
+- Use single context tags: each line carries at most one tag (`[<tool>]` for tool actions e.g. `[tmux-sessionx]`, `[system]` for global/orchestrator actions, or named long-running component like `[DashboardServer]`). Never output redundant double or stacked tags like `[system] [toolName]`, `[install] [tool]`, or `[generate] [system]`. Command names and installer method names are not context tags. `WithTag` replaces any existing tag to enforce this rule.
 - Copy formatting patterns from `pkg/logger/logger.go`.
 
 ## Local gotchas

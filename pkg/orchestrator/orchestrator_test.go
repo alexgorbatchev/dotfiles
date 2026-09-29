@@ -5156,3 +5156,69 @@ func TestConcurrentInstallTool_CurlBinary(t *testing.T) {
 		t.Errorf("toolB binary was incorrectly placed in toolA directory: %s", misplacedB)
 	}
 }
+
+type spyLoggerInstaller struct {
+	mockInstaller
+	receivedLogger *logger.Logger
+}
+
+func (s *spyLoggerInstaller) SetLogger(l *logger.Logger) {
+	s.receivedLogger = l
+}
+
+func TestInstallTool_DoesNotTagInstallerName(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Writer: &logBuf})
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	instReg := installer.NewRegistry()
+	spy := &spyLoggerInstaller{
+		mockInstaller: mockInstaller{name: "my-installer", binaries: []string{"my-bin"}},
+	}
+	if err := instReg.Register(spy); err != nil {
+		t.Fatalf("registering spy installer: %v", err)
+	}
+
+	sqlDB, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
+	if err != nil {
+		t.Fatalf("connecting to db: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+	tool := &config.ToolConfig{
+		Name:               "my-tool",
+		InstallationMethod: "my-installer",
+		Binaries:           testutil.DeclaredBinaries("my-bin"),
+	}
+
+	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	if spy.receivedLogger == nil {
+		t.Fatalf("installer did not receive a logger via SetLogger")
+	}
+
+	logBuf.Reset()
+	spy.receivedLogger.WithTag(tool.Name).Info(logger.Message("from installer"))
+	got := logBuf.String()
+	if strings.Contains(got, "[my-installer]") {
+		t.Errorf("logger passed to installer should not have installer name tag, got: %q", got)
+	}
+	if !strings.Contains(got, "INFO\t[my-tool] from installer\n") {
+		t.Errorf("expected clean single tool tag, got: %q", got)
+	}
+}
