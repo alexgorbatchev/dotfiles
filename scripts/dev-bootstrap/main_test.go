@@ -583,6 +583,23 @@ func TestDevBootstrapErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("includes cli error output when resolving binaries directory fails", func(t *testing.T) {
+		mockBin := writeMockCLI(t, "echo 'simulated config failure' >&2; exit 1\n")
+		opts := Options{
+			RepoRoot:   repoRoot,
+			TargetDir:  newConfiguredTarget(t, minimalConfig),
+			DevBin:     mockBin,
+			SkipAssets: true,
+		}
+		err := Run(opts)
+		if err == nil {
+			t.Fatal("expected error when resolving binaries directory fails")
+		}
+		if !strings.Contains(err.Error(), "simulated config failure") {
+			t.Errorf("expected error to contain CLI error output %q, got: %v", "simulated config failure", err)
+		}
+	})
+
 	t.Run("fails when state generate fails in verbose and non-verbose mode", func(t *testing.T) {
 		// The path reaches the mock through the environment so the shell never parses it.
 		t.Setenv("MOCK_BINARIES_DIR", filepath.Join(t.TempDir(), "binaries"))

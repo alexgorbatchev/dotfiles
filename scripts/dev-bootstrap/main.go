@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -178,12 +179,21 @@ func Run(opts Options) error {
 		}
 	}
 
+	var stdoutBuf, stderrBuf bytes.Buffer
 	pathCmd := exec.Command(devBin, "--config", configPath, "path", "get", "binaries")
-	binariesOut, err := pathCmd.Output()
-	if err != nil {
+	pathCmd.Stdout = &stdoutBuf
+	pathCmd.Stderr = &stderrBuf
+	if err := pathCmd.Run(); err != nil {
+		errMsg := strings.TrimSpace(stderrBuf.String())
+		if errMsg == "" {
+			errMsg = strings.TrimSpace(stdoutBuf.String())
+		}
+		if errMsg != "" {
+			return fmt.Errorf("resolving binaries directory: %w\n%s", err, errMsg)
+		}
 		return fmt.Errorf("resolving binaries directory: %w", err)
 	}
-	binariesDir := strings.TrimSpace(string(binariesOut))
+	binariesDir := strings.TrimSpace(stdoutBuf.String())
 	if binariesDir == "" {
 		binariesDir = filepath.Join(absTarget, ".generated", "binaries")
 	}
