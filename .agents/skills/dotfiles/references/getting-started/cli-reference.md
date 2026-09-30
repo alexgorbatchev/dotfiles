@@ -186,7 +186,7 @@ Displays a tree view of files in the tool installation directory or lists all ma
 
 #### `dotfiles tool scaffold [name]`
 
-Writes starter `.tool.ts` configuration files into the primary tool configs directory, creating that directory if it does not exist. Loading a configuration never creates tool files; this command is the only thing that does. When a name is provided, generates a single starter `<name>.tool.ts` file.
+Writes starter `.tool.ts` configuration files into the primary tool configs directory, creating that directory if it does not exist. Loading a configuration never creates tool files. When a name is provided, generates a single starter `<name>.tool.ts` file.
 
 An existing file is left untouched, so running it again adds what is missing without discarding local edits.
 
