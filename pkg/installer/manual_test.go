@@ -26,7 +26,7 @@ func TestManualInstaller(t *testing.T) {
 		t.Error("expected SupportsSudo() to be true")
 	}
 
-	t.Run("Install success with binaryPath", func(t *testing.T) {
+	t.Run("Install success with binaryPath defaults to symlink", func(t *testing.T) {
 		srcPath := "/src/mybinary"
 		_ = fsys.MkdirAll("/src", 0755)
 		_ = fsys.WriteFile(srcPath, []byte("manual-payload"), 0755)
@@ -48,14 +48,152 @@ func TestManualInstaller(t *testing.T) {
 		}
 
 		destPath := filepath.Join(inst.BinDir, "mytool")
-		exists, err := fsys.Exists(destPath)
-		if err != nil || !exists {
-			t.Errorf("expected file to be copied to %s", destPath)
+		target, err := fsys.Readlink(destPath)
+		if err != nil {
+			t.Fatalf("expected destPath to be a symlink: %v", err)
+		}
+		if target != srcPath {
+			t.Errorf("expected symlink target %s, got %s", srcPath, target)
+		}
+	})
+
+	t.Run("Install success with explicit copy true produces regular file", func(t *testing.T) {
+		srcPath := "/src/copied-binary"
+		_ = fsys.MkdirAll("/src", 0755)
+		_ = fsys.WriteFile(srcPath, []byte("copied-payload"), 0644)
+
+		tool := &config.ToolConfig{
+			Name: "copytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+				"copy":       true,
+			},
 		}
 
-		data, err := fsys.ReadFile(destPath)
-		if err != nil || string(data) != "manual-payload" {
-			t.Errorf("unexpected content: %s", string(data))
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(res.Binaries) != 1 || res.Binaries[0] != "copytool" {
+			t.Errorf("expected copytool, got %v", res.Binaries)
+		}
+
+		destPath := filepath.Join(inst.BinDir, "copytool")
+		info, err := fsys.Lstat(destPath)
+		if err != nil {
+			t.Fatalf("lstat %s: %v", destPath, err)
+		}
+		if !info.Mode().IsRegular() {
+			t.Errorf("expected regular file at %s, mode is %v", destPath, info.Mode())
+		}
+		if info.Mode().Perm() != 0755 {
+			t.Errorf("expected mode 0755, got %v", info.Mode().Perm())
+		}
+	})
+
+	t.Run("Install success with explicit symlink false produces regular file", func(t *testing.T) {
+		srcPath := "/src/symlink-false-binary"
+		_ = fsys.MkdirAll("/src", 0755)
+		_ = fsys.WriteFile(srcPath, []byte("payload"), 0644)
+
+		tool := &config.ToolConfig{
+			Name: "symfalse-tool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+				"symlink":    false,
+			},
+		}
+
+		res, err := inst.Install(context.Background(), tool)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(res.Binaries) != 1 || res.Binaries[0] != "symfalse-tool" {
+			t.Errorf("expected symfalse-tool, got %v", res.Binaries)
+		}
+
+		destPath := filepath.Join(inst.BinDir, "symfalse-tool")
+		info, err := fsys.Lstat(destPath)
+		if err != nil {
+			t.Fatalf("lstat %s: %v", destPath, err)
+		}
+		if !info.Mode().IsRegular() {
+			t.Errorf("expected regular file at %s, mode is %v", destPath, info.Mode())
+		}
+	})
+
+	t.Run("Install replaces existing copy with symlink on next install", func(t *testing.T) {
+		srcPath := "/src/switch-to-link"
+		_ = fsys.MkdirAll("/src", 0755)
+		_ = fsys.WriteFile(srcPath, []byte("switch-payload"), 0755)
+
+		toolCopy := &config.ToolConfig{
+			Name: "switchtool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+				"copy":       true,
+			},
+		}
+		if _, err := inst.Install(context.Background(), toolCopy); err != nil {
+			t.Fatalf("first install (copy) failed: %v", err)
+		}
+		destPath := filepath.Join(inst.BinDir, "switchtool")
+		info, err := fsys.Lstat(destPath)
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("expected regular file after first install, mode=%v err=%v", info.Mode(), err)
+		}
+
+		toolLink := &config.ToolConfig{
+			Name: "switchtool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+			},
+		}
+		if _, err := inst.Install(context.Background(), toolLink); err != nil {
+			t.Fatalf("second install (link) failed: %v", err)
+		}
+		target, err := fsys.Readlink(destPath)
+		if err != nil {
+			t.Fatalf("expected destPath to be a symlink after second install: %v", err)
+		}
+		if target != srcPath {
+			t.Errorf("expected symlink target %s, got %s", srcPath, target)
+		}
+	})
+
+	t.Run("Install replaces existing symlink with copy on next install", func(t *testing.T) {
+		srcPath := "/src/switch-to-copy"
+		_ = fsys.MkdirAll("/src", 0755)
+		_ = fsys.WriteFile(srcPath, []byte("switch-payload"), 0755)
+
+		toolLink := &config.ToolConfig{
+			Name: "linktocopytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+			},
+		}
+		if _, err := inst.Install(context.Background(), toolLink); err != nil {
+			t.Fatalf("first install (link) failed: %v", err)
+		}
+		destPath := filepath.Join(inst.BinDir, "linktocopytool")
+		if _, err := fsys.Readlink(destPath); err != nil {
+			t.Fatalf("expected symlink after first install: %v", err)
+		}
+
+		toolCopy := &config.ToolConfig{
+			Name: "linktocopytool",
+			InstallParams: map[string]interface{}{
+				"binaryPath": srcPath,
+				"copy":       true,
+			},
+		}
+		if _, err := inst.Install(context.Background(), toolCopy); err != nil {
+			t.Fatalf("second install (copy) failed: %v", err)
+		}
+		info, err := fsys.Lstat(destPath)
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("expected regular file after second install, mode=%v err=%v", info.Mode(), err)
 		}
 	})
 
@@ -391,7 +529,7 @@ func newManualCopyFixture(t *testing.T) (*fs.MemFS, *config.ToolConfig) {
 	tool := &config.ToolConfig{
 		Name:          "copytool",
 		Binaries:      []interface{}{map[string]interface{}{"name": "copytool"}, map[string]interface{}{"name": "copytool-alias"}},
-		InstallParams: map[string]interface{}{"binaryPath": "/src/payload"},
+		InstallParams: map[string]interface{}{"binaryPath": "/src/payload", "copy": true},
 	}
 	return fsys, tool
 }
@@ -488,7 +626,7 @@ func TestManualInstallerLeavesBinaryPathIntactWhenAHookLinkedItIntoTheStagingDir
 	}
 	inst := NewManualInstaller(fsys, nil)
 	inst.BinDir = binDir
-	tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"binaryPath": binaryPath}}
+	tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"binaryPath": binaryPath, "copy": true}}
 
 	if _, err := inst.Install(context.Background(), tool); err != nil {
 		t.Fatalf("Install() error = %v", err)

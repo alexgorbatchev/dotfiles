@@ -87,14 +87,13 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 
 		binNames := GetBinaryNames(tool.Name, tool.Binaries)
 
-		symlink := getBoolParam(tool.InstallParams, "symlink", false)
-		if symlink {
+		if !shouldCopyBinary(tool.InstallParams) {
 			for _, binName := range binNames {
 				destPath := filepath.Join(destDir, binName)
 				if filepath.Clean(binaryPath) == filepath.Clean(destPath) {
 					continue
 				}
-				if err := m.fsys.Remove(destPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+				if err := m.fsys.Remove(destPath); err != nil && !errors.Is(err, os.ErrNotExist) && !os.IsNotExist(err) {
 					return nil, fmt.Errorf("%s: clearing %s for symlink: %w", tool.Name, destPath, err)
 				}
 				symlinkTarget := binaryPath
@@ -111,10 +110,14 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}
 
 		// CopyFile streams the binary and keeps the source's mode, which may not be
-		// executable, so each copy is made executable explicitly.
+		// executable, so each copy is made executable explicitly. Existing entries
+		// are cleared first so a prior symlink is replaced rather than written through.
 		for _, binName := range binNames {
 			destPath := filepath.Join(destDir, binName)
 			if filepath.Clean(binaryPath) != filepath.Clean(destPath) {
+				if err := m.fsys.Remove(destPath); err != nil && !errors.Is(err, os.ErrNotExist) && !os.IsNotExist(err) {
+					return nil, fmt.Errorf("%s: clearing %s for copy: %w", tool.Name, destPath, err)
+				}
 				if err := m.fsys.CopyFile(binaryPath, destPath); err != nil {
 					return nil, fmt.Errorf("copying binary %s from %s: %w", binName, binaryPath, err)
 				}
@@ -159,6 +162,19 @@ func (m *ManualInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig
 // CheckUpdate reports ErrUpdateCheckUnsupported. A manually installed binary has no upstream to ask for a newer version.
 func (m *ManualInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {
 	return nil, ErrUpdateCheckUnsupported
+}
+
+// shouldCopyBinary decides whether manual installation copies binaryPath or
+// symlinks it. It links by default, copying only on explicit request (copy: true or
+// symlink: false).
+func shouldCopyBinary(params map[string]interface{}) bool {
+	if getBoolParam(params, "copy", false) {
+		return true
+	}
+	if _, ok := params["symlink"]; ok && !getBoolParam(params, "symlink", true) {
+		return true
+	}
+	return false
 }
 
 func init() {

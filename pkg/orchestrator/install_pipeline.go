@@ -328,54 +328,20 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	}
 
 	// 3. Generate Shims
+	if tool.InstallationMethod == "manual" {
+		if _, err := installer.ResolveBinaryPath(o.fs, tool, projCfg); err != nil {
+			return err
+		}
+	}
+
 	shimGen := shim.NewGenerator(o.fs)
 	shimDir := projCfg.Paths.TargetDir
 
 	var recordedBinaryPaths []string
 
 	for _, binName := range binaryNames {
-		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
-		locatedByInstaller := false
-
-		if reported, ok := reportedPaths[binName]; ok {
-			absReported := reported
-			if o.fs.IsAbs(reported) {
-				if abs, err := o.fs.Abs(reported); err == nil {
-					absReported = abs
-				}
-			}
-			if filepath.IsAbs(absReported) && installer.IsRealBinaryPath(ctx, o.fs, absReported) {
-				binaryPath = absReported
-				locatedByInstaller = true
-			}
-		}
-
-		if !locatedByInstaller && isExternal {
-			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil {
-				binaryPath = sysBin
-			}
-		}
-
-		if tool.InstallationMethod == "manual" {
-			manualPath, err := installer.ResolveBinaryPath(o.fs, tool, projCfg)
-			if err != nil {
-				return err
-			}
-			if manualPath != "" {
-				binaryPath = manualPath
-			}
-		}
-
+		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, reportedPaths[binName])
 		shimPath := filepath.Join(shimDir, binName)
-
-		// An externally-managed binary the installer could not locate keeps the
-		// current entrypoint as its target rather than a guessed system path; the
-		// entrypoint symlink created above is what the shim re-checks after installing.
-		if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
-			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
-				binaryPath = sysBin
-			}
-		}
 
 		recordedBinaryPaths = append(recordedBinaryPaths, binaryPath)
 

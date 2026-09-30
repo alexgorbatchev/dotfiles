@@ -33,6 +33,20 @@ defineTool((install) =>
   }),
 );
 
+defineTool((install) =>
+  install("manual", {
+    binaryPath: "bin/tool",
+    copy: true,
+  }),
+);
+
+defineTool((install) =>
+  install("manual", {
+    binaryPath: "bin/tool",
+    symlink: false,
+  }),
+);
+
 expectError(() =>
   defineTool((install) =>
     install("manual", {

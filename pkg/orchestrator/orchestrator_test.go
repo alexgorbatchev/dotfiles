@@ -2353,12 +2353,28 @@ func TestManualBinaryPathResolvesLikeTheInstaller(t *testing.T) {
 			if err != nil {
 				t.Fatalf("expected the shim to exist: %v", err)
 			}
-			if want := `TOOL_EXECUTABLE="` + tt.want + `"`; !strings.Contains(string(shim), want) {
-				t.Errorf("generated shim lacks %s:\n%s", want, shim)
+			wantExecutable := `TOOL_EXECUTABLE="/home/user/.generated/binaries/probe/current/probe-bin-4f1d"`
+			if !strings.Contains(string(shim), wantExecutable) {
+				t.Errorf("generated shim lacks %s:\n%s", wantExecutable, shim)
 			}
 
 			if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
 				t.Fatalf("InstallTool failed: %v", err)
+			}
+			shimInstalled, err := memFS.ReadFile("/home/user/bin/probe-bin-4f1d")
+			if err != nil {
+				t.Fatalf("expected the shim to exist after install: %v", err)
+			}
+			if !strings.Contains(string(shimInstalled), wantExecutable) {
+				t.Errorf("installed shim lacks %s:\n%s", wantExecutable, shimInstalled)
+			}
+			destLink := "/home/user/.generated/binaries/probe/current/probe-bin-4f1d"
+			linkTarget, err := memFS.Readlink(destLink)
+			if err != nil {
+				t.Fatalf("expected binary symlink at %s: %v", destLink, err)
+			}
+			if linkTarget != tt.want {
+				t.Errorf("expected symlink target %s, got %s", tt.want, linkTarget)
 			}
 		})
 	}
@@ -2423,14 +2439,23 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 	if strings.Contains(string(shimContent), "/current/~/.local/bin/claude") {
 		t.Errorf("shim contains unexpanded tilde path: %s", string(shimContent))
 	}
-	if !strings.Contains(string(shimContent), "TOOL_EXECUTABLE=\"/home/user/.local/bin/claude\"") {
-		t.Errorf("expected TOOL_EXECUTABLE to be /home/user/.local/bin/claude, got: %s", string(shimContent))
+	wantExecutable := "TOOL_EXECUTABLE=\"/home/user/.generated/binaries/claude-code/current/claude\""
+	if !strings.Contains(string(shimContent), wantExecutable) {
+		t.Errorf("expected TOOL_EXECUTABLE to be %s, got: %s", wantExecutable, string(shimContent))
 	}
 
 	// Now run InstallTool
 	err = orch.InstallTool(ctx, toolClaude, projCfg)
 	if err != nil {
 		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	shimContentAfterInstall, err := rfs.ReadFile("/home/user/bin/claude")
+	if err != nil {
+		t.Fatalf("expected shim to exist after install: %v", err)
+	}
+	if !strings.Contains(string(shimContentAfterInstall), wantExecutable) {
+		t.Errorf("expected TOOL_EXECUTABLE to be %s after install, got: %s", wantExecutable, string(shimContentAfterInstall))
 	}
 
 	// Verify symlink was created under binariesDir
@@ -2441,6 +2466,88 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 	}
 	if linkTarget != "/home/user/.local/bin/claude" {
 		t.Errorf("expected symlink target /home/user/.local/bin/claude, got %s", linkTarget)
+	}
+}
+
+func TestManualToolMultiCallBinary_ShimsTargetPerNameFiles(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed creating DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	manualInst := installer.NewManualInstaller(memFS, nil)
+	manualInst.BinDir = "/home/user/.generated/binaries/rust/current"
+	instReg := installer.NewRegistry()
+	instReg.Register(manualInst)
+
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: io.Discard})
+	orch := NewOrchestrator(log, memFS, runner, registry.NewRegistry(sqlDB), instReg)
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:         "/home/user",
+			DotfilesDir:     "/home/user/dotfiles",
+			TargetDir:       "/home/user/bin",
+			BinariesDir:     "/home/user/.generated/binaries",
+			ShellScriptsDir: "/home/user/.generated/shell-scripts",
+			GeneratedDir:    "/home/user/.generated",
+		},
+	}
+
+	rustupPath := "/home/user/.cargo/bin/rustup"
+	_ = memFS.MkdirAll(filepath.Dir(rustupPath), 0755)
+	_ = memFS.WriteFile(rustupPath, []byte("#!/bin/sh\necho rustup"), 0755)
+
+	tool := &config.ToolConfig{
+		Name:               "rust",
+		Binaries:           testutil.DeclaredBinaries("rustup", "cargo"),
+		ConfigFilePath:     "/home/user/dotfiles/tools/rust.tool.ts",
+		InstallationMethod: "manual",
+		InstallParams:      map[string]interface{}{"binaryPath": "~/.cargo/bin/rustup"},
+	}
+
+	if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("GenerateTool failed: %v", err)
+	}
+
+	for _, name := range []string{"rustup", "cargo"} {
+		shim, err := memFS.ReadFile("/home/user/bin/" + name)
+		if err != nil {
+			t.Fatalf("expected shim for %s to exist: %v", name, err)
+		}
+		want := `TOOL_EXECUTABLE="/home/user/.generated/binaries/rust/current/` + name + `"`
+		if !strings.Contains(string(shim), want) {
+			t.Errorf("generated shim for %s lacks %s:\n%s", name, want, shim)
+		}
+	}
+
+	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+
+	for _, name := range []string{"rustup", "cargo"} {
+		shim, err := memFS.ReadFile("/home/user/bin/" + name)
+		if err != nil {
+			t.Fatalf("expected shim for %s to exist after install: %v", name, err)
+		}
+		want := `TOOL_EXECUTABLE="/home/user/.generated/binaries/rust/current/` + name + `"`
+		if !strings.Contains(string(shim), want) {
+			t.Errorf("installed shim for %s lacks %s:\n%s", name, want, shim)
+		}
+
+		destLink := "/home/user/.generated/binaries/rust/current/" + name
+		target, err := memFS.Readlink(destLink)
+		if err != nil {
+			t.Fatalf("expected symlink at %s: %v", destLink, err)
+		}
+		if target != rustupPath {
+			t.Errorf("expected symlink target %s, got %s", rustupPath, target)
+		}
 	}
 }
 

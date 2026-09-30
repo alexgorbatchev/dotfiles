@@ -236,46 +236,18 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	}
 
 	// 2. Generate Shims
+	if tool.InstallationMethod == "manual" {
+		if _, err := installer.ResolveBinaryPath(o.fs, tool, projCfg); err != nil {
+			return err
+		}
+	}
+
 	shimGen := shim.NewGenerator(o.fs)
 	shimDir := projCfg.Paths.TargetDir
 
 	for _, binName := range binaryNames {
 		shimPath := filepath.Join(shimDir, binName)
-		binaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
-
-		if tool.InstallationMethod == "manual" {
-			manualPath, err := installer.ResolveBinaryPath(o.fs, tool, projCfg)
-			if err != nil {
-				return err
-			}
-			if manualPath != "" {
-				binaryPath = manualPath
-			}
-		}
-
-		if exists, _ := o.fs.Exists(binaryPath); !exists {
-			if recPath, ok := recordedBinaryPaths[binName]; ok {
-				if installer.IsRealBinaryPath(ctx, o.fs, recPath) {
-					binaryPath = recPath
-				}
-			}
-		}
-
-		if exists, _ := o.fs.Exists(binaryPath); !exists {
-			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil {
-				binaryPath = sysBin
-			}
-		}
-
-		// When nothing real is found the shim keeps targeting the dotfiles-managed
-		// current entrypoint: for externally-managed tools the install pipeline links
-		// it to wherever the package manager put the binary, so the bootstrap shim's
-		// post-install re-check succeeds without guessing a system path.
-		if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
-			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
-				binaryPath = sysBin
-			}
-		}
+		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, recordedBinaryPaths[binName])
 
 		shimCfg := shim.Config{
 			ToolName:       tool.Name,
@@ -1049,6 +1021,41 @@ func getCompletionFileName(tool *config.ToolConfig, sh string, stc *config.Shell
 
 func getPatternForBinary(toolBinaries []interface{}, binName string) string {
 	return config.GetPatternForBinary(toolBinaries, binName)
+}
+
+// resolveShimBinaryPath determines the target executable path for a generated shim.
+// Both state generate and tool install resolve shim targets through this helper so
+// their target selection cannot drift.
+func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.ToolConfig, binName string, projCfg *config.ProjectConfig, knownPath string) string {
+	shimPath := filepath.Join(projCfg.Paths.TargetDir, binName)
+	defaultBinaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
+	binaryPath := defaultBinaryPath
+
+	if knownPath != "" {
+		absPath := knownPath
+		if o.fs.IsAbs(knownPath) {
+			if abs, err := o.fs.Abs(knownPath); err == nil {
+				absPath = abs
+			}
+		}
+		if filepath.IsAbs(absPath) && installer.IsRealBinaryPath(ctx, o.fs, absPath) {
+			binaryPath = absPath
+		}
+	}
+
+	// When nothing real is found the shim keeps targeting the dotfiles-managed
+	// current entrypoint: for externally-managed tools the install pipeline links
+	// it to wherever the package manager put the binary, so the bootstrap shim's
+	// post-install re-check succeeds without guessing a system path.
+	if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
+		if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
+			binaryPath = sysBin
+		} else {
+			binaryPath = defaultBinaryPath
+		}
+	}
+
+	return binaryPath
 }
 
 func (o *Orchestrator) findSystemBinary(binName string, projCfg *config.ProjectConfig) (string, error) {

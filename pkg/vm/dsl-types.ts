@@ -607,8 +607,15 @@ export interface IManualInstallParams extends ICommonInstallParams {
   binaryPath?: string;
   /**
    * If true, creates a symlink to binaryPath instead of copying it.
+   * Defaults to true when binaryPath is set.
    */
   symlink?: boolean;
+  /**
+   * If true, copies binaryPath instead of creating a symlink.
+   * Defaults to false. When true, the copied binary is static and will not reflect
+   * upstream changes until reinstalled.
+   */
+  copy?: boolean;
 }
 
 /**

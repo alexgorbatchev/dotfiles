@@ -57,10 +57,11 @@ runs the script itself and links the binary to where the script put it; see
 
 ## Parameters
 
-| Parameter    | Type      | Required | Description                                                             |
-| ------------ | --------- | -------- | ----------------------------------------------------------------------- |
-| `binaryPath` | `string`  | No       | Path to the binary; see [binaryPath Resolution](#binarypath-resolution) |
-| `symlink`    | `boolean` | No       | If `true`, symlinks to `binaryPath` instead of copying files            |
+| Parameter    | Type      | Required | Description                                                                                                                                               |
+| ------------ | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `binaryPath` | `string`  | No       | Path to the binary; see [binaryPath Resolution](#binarypath-resolution)                                                                                   |
+| `symlink`    | `boolean` | No       | If `false`, copies `binaryPath` instead of symlinking files (default: `true`)                                                                             |
+| `copy`       | `boolean` | No       | If `true`, copies `binaryPath` instead of symlinking files (default: `false`); copied binaries are static and do not track upstream updates or file edits |
 
 ### binaryPath Resolution
 
@@ -72,17 +73,21 @@ runs the script itself and links the binary to where the script put it; see
 3. A path that is still relative is taken relative to the `.tool.ts` file, or to
    `paths.dotfilesDir` for a configuration that has no tool file.
 
-Symlinks are not followed: the result is the path as written. The generated shim runs
-the same resolved path, so the installer and the shim cannot disagree about it.
+Symlinks are not followed: the result is the path as written. Each declared `.bin()`
+name is linked to that path in the tool's `current` directory (or copied when `copy: true`),
+and the generated shim runs that per-name file so multi-call binaries receive the
+declared name in `argv[0]`.
 
 ### binaryPath and Binary Patterns
 
-`binaryPath` names the one file that is installed under every declared `.bin()` name, so
-nothing is searched for and a [binary pattern](../api-reference/core-api.md#binary-patterns)
-has nothing to select. A tool that sets `binaryPath` and gives any `.bin()` a pattern,
-whether as `.bin(name, pattern)` or `.bin(name, { pattern })`, is rejected when the
-configuration loads, with an error naming the tool file, the tool, the binary, the pattern
-and `binaryPath`:
+`binaryPath` names the one file that is installed under every declared `.bin()` name. Each
+declared `.bin()` name is what the program receives as `argv[0]`, which multi-call binaries
+rely on to dispatch the requested sub-command or persona. Because `binaryPath` directly
+names the file to install for each `.bin()`, nothing is searched for and a
+[binary pattern](../api-reference/core-api.md#binary-patterns) has nothing to select. A tool
+that sets `binaryPath` and gives any `.bin()` a pattern, whether as `.bin(name, pattern)` or
+`.bin(name, { pattern })`, is rejected when the configuration loads, with an error naming
+the tool file, the tool, the binary, the pattern and `binaryPath`:
 
 ```
 invalid tool configuration in "<tool file>": tool "<tool>": binary "<binary>" declares pattern "<pattern>", but manual binaryPath "<binaryPath>" already names the file to install, so the pattern would never be used; drop the pattern from .bin()
@@ -103,6 +108,21 @@ invalid tool configuration in "<tool file>": tool "<tool>": binary "<binary>" de
 ```
 
 ## Examples
+
+### Multi-Call Binary (e.g. rustup)
+
+Multi-call binaries inspect `argv[0]` to select behavior depending on the name used to execute them. Declare multiple `.bin()` calls pointing to the single dispatcher binary:
+
+```typescript
+export default defineTool((install) =>
+  install("manual", {
+    binaryPath: "~/.cargo/bin/rustup",
+  })
+    .bin("rustup")
+    .bin("cargo")
+    .bin("rustc"),
+);
+```
 
 ### Pre-built Binary
 
@@ -147,7 +167,8 @@ export default defineTool((install) =>
 **Notes:**
 
 - Binary paths are relative to the tool configuration file location
-- Files are copied to the managed installation directory with executable permissions
+- Binaries are symlinked to `binaryPath` by default, keeping tools updated when the target changes; use `copy: true` (or `symlink: false`) to copy the file instead
+- A script located through `$0` runs as `binaries/<tool>/current/<name>`, so `$(dirname "$0")/lib.sh` no longer finds siblings next to the source unless the script resolves symlinks (or `copy: true` is configured)
 - `.sudo()` acquires sudo credentials interactively before Dotfiles registers the manual binary
 - A `before-install` hook can stage files into `stagingDir` in place of `binaryPath`; if it leaves the staging directory empty the installation fails rather than producing an empty payload (see [lifecycle-hooks.md](../api-reference/lifecycle-hooks.md))
 - Configuration-only tools use `install()` with no arguments and must not define `.bin()`
