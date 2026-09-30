@@ -11,7 +11,7 @@ Go-to-TypeScript type generator that translates `pkg/config` Go structs into Typ
 ## Local conventions
 
 - Uses `typescriptify-golang-structs` to convert `pkg/config` structs into TypeScript interfaces.
-- Default output target is `packages/dashboard/src/shared/types.gen.ts`.
+- Default output target is `packages/dashboard/src/shared/types.gen.ts` relative to the repository root.
 - Post-processes generated code to refine types to TypeScript unions where needed (e.g. `toolConfigsDir: string | string[]`).
 - Automatically formats generated TypeScript output with `bun --bun oxfmt`.
 

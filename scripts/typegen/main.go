@@ -64,6 +64,25 @@ func generateTypes(outputPath string) error {
 	return nil
 }
 
+func getRepoRoot() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	dir := cwd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return cwd, nil
+}
+
 func runMain(args []string) error {
 	fs := flag.NewFlagSet("typegen", flag.ContinueOnError)
 	outFlag := fs.String("out", "", "Output file path")
@@ -84,7 +103,11 @@ func runMain(args []string) error {
 		return nil
 	}
 
-	dashboardPath := "packages/dashboard/src/shared/types.gen.ts"
+	repoRoot, err := getRepoRoot()
+	if err != nil {
+		return fmt.Errorf("error finding repository root: %w", err)
+	}
+	dashboardPath := filepath.Join(repoRoot, "packages/dashboard/src/shared/types.gen.ts")
 	if err := generateTypes(dashboardPath); err != nil {
 		return fmt.Errorf("error generating %s: %w", dashboardPath, err)
 	}
