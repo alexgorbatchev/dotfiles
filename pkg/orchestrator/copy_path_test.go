@@ -75,8 +75,8 @@ func TestApplyCopies_HonoursConflictPolicy(t *testing.T) {
 		{name: "keep-local keeps an edited copy whose source did not change", policy: "keep-local", base: base, local: local, want: local},
 		{name: "the default keeps an edited copy whose source did not change", base: base, local: local, want: local},
 		{name: "prompt keeps the copy when the run cannot ask", policy: "prompt", base: base, local: local, upstream: upstream, want: local},
-		{name: "merge combines non-overlapping edits", policy: "merge", base: base, local: local, upstream: upstream, want: "A\nb\nC\n"},
-		{name: "the default merges non-overlapping edits", base: base, local: local, upstream: upstream, want: "A\nb\nC\n"},
+		{name: "merge produces conflict markers when both sides diverge without recorded ancestor", policy: "merge", base: base, local: local, upstream: upstream, want: "<<<<<<< local\nA\nb\nc\n=======\na\nb\nC\n>>>>>>> dotfiles\n"},
+		{name: "the default produces conflict markers when both sides diverge without recorded ancestor", base: base, local: local, upstream: upstream, want: "<<<<<<< local\nA\nb\nc\n=======\na\nb\nC\n>>>>>>> dotfiles\n"},
 		{name: "overwrite replaces the copy and keeps the edit as a backup", policy: "overwrite", base: base, local: local, upstream: upstream, want: upstream, wantBackup: local},
 		{name: "an untouched copy takes the source's update without a backup", policy: "keep-local", base: base, upstream: upstream, want: upstream},
 	}
@@ -652,12 +652,16 @@ func TestSettleWholeFile_MergedFileSurvivesTheNextRun(t *testing.T) {
 			}
 			writeMemFile(t, memFS, copyToolTarget, local)
 			writeMemFile(t, memFS, copyToolDir+"/config.toml", upstream)
+			expected := merged
+			if strings.HasPrefix(tt.name, "copy") {
+				expected = "<<<<<<< local\nL1\nl2\nl3\nl4\nl5\n=======\nl1\nl2\nl3\nl4\nL5\n>>>>>>> dotfiles\n"
+			}
 			for run := 2; run <= 3; run++ {
 				if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
 					t.Fatalf("GenerateTool run %d: %v", run, err)
 				}
-				if got, _ := memFS.ReadFile(copyToolTarget); string(got) != merged {
-					t.Fatalf("after run %d = %q, want the merge %q", run, got, merged)
+				if got, _ := memFS.ReadFile(copyToolTarget); string(got) != expected {
+					t.Fatalf("after run %d = %q, want %q", run, got, expected)
 				}
 			}
 			if tt.mode != 0 {
@@ -697,7 +701,7 @@ func TestSettleWholeFile_MergedFileSurvivesTheNextRun(t *testing.T) {
 			if err := orch.CleanupStaleCopies(ctx, []*config.ToolConfig{newCopyTool()}, projCfg); err != nil {
 				t.Fatalf("CleanupStaleCopies: %v", err)
 			}
-			if got, err := memFS.ReadFile(copyToolTarget + ".bak"); err != nil || string(got) != merged {
+			if got, err := memFS.ReadFile(copyToolTarget + ".bak"); err != nil || string(got) != expected {
 				t.Errorf("after removing the declaration, backup = %q, %v; want the merged file kept", got, err)
 			}
 		})

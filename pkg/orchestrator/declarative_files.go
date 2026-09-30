@@ -205,7 +205,8 @@ func (o *Orchestrator) settleWholeFile(ctx context.Context, req wholeFileRequest
 	}
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		tracked := o.getTrackedFS(ctx, tx, req.toolName, req.fileType)
+		storeMetadata := req.fileType == "template"
+		tracked := o.getTrackedFS(ctx, tx, req.toolName, req.fileType).WithStoreMetadata(storeMetadata)
 		if req.source != "" {
 			tracked = tracked.WithSourcePath(req.source)
 		}
@@ -281,6 +282,10 @@ func (o *Orchestrator) settleWholeFile(ctx context.Context, req wholeFileRequest
 // against on the next run, and then applies the declared mode.
 func (o *Orchestrator) recordBase(ctx context.Context, tx *sql.Tx, tracked *fs.TrackedFileSystem, req wholeFileRequest, size int64, perm os.FileMode) error {
 	permissions := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
+	var metadata *string
+	if req.fileType == "template" {
+		metadata = ptrTo(req.desired)
+	}
 	record := &registry.FileOperationRecord{
 		ToolName:      req.toolName,
 		OperationType: "writeFile",
@@ -289,7 +294,7 @@ func (o *Orchestrator) recordBase(ctx context.Context, tx *sql.Tx, tracked *fs.T
 		CreatedAt:     tracked.CreatedAt(),
 		OperationID:   tracked.OperationID(),
 		ContentHash:   ptrTo(fs.HashContent([]byte(req.desired))),
-		Metadata:      ptrTo(req.desired),
+		Metadata:      metadata,
 		SizeBytes:     &size,
 		Permissions:   &permissions,
 	}
@@ -398,10 +403,12 @@ func (o *Orchestrator) contract(path string) string {
 // recordedContent returns the version dotfiles last wrote, for a merge to use as the
 // common ancestor.
 //
-// The registry stores a hash rather than the content itself, so the ancestor is only
-// available when the file on disk still matches it. When it does not, the empty
-// string is the honest answer: a merge against it reports the whole file as a
-// conflict rather than inventing an ancestor that never existed.
+// Templates and managed blocks store their written content in metadata so three-way
+// merges can reconstruct the common ancestor even after local modifications. For
+// operations that do not store metadata (such as copies), or where metadata is missing,
+// the ancestor is available only when the file on disk still matches the recorded base
+// hash. When it does not, the empty string is returned so a merge reports the conflict
+// rather than inventing an ancestor that never existed.
 func (o *Orchestrator) recordedContent(ctx context.Context, state *registry.FileState, base string) string {
 	if state == nil {
 		return ""

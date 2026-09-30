@@ -38,6 +38,10 @@ type TrackedFileSystem struct {
 	// sourcePath names the file a written file was produced from (the source of a
 	// copy), recorded as the target path of every write that does not carry one.
 	sourcePath string
+	// storeMetadata controls whether file writes store the written content as metadata.
+	storeMetadata bool
+	// suppressLogging controls whether per-entry operation logging is demoted from INFO to DEBUG.
+	suppressLogging bool
 }
 
 // NewTrackedFileSystem instantiates a new TrackedFileSystem wrapper.
@@ -83,6 +87,22 @@ func (t *TrackedFileSystem) WithToolName(toolName string) *TrackedFileSystem {
 	return next
 }
 
+// WithStoreMetadata yields a copy of the TrackedFileSystem configured to store or omit
+// file contents in metadata for file operations.
+func (t *TrackedFileSystem) WithStoreMetadata(store bool) *TrackedFileSystem {
+	next := t.clone()
+	next.storeMetadata = store
+	return next
+}
+
+// WithSuppressLogging yields a copy of the TrackedFileSystem configured to demote
+// per-entry operation logging from INFO to DEBUG (e.g. during bulk copies).
+func (t *TrackedFileSystem) WithSuppressLogging(suppress bool) *TrackedFileSystem {
+	next := t.clone()
+	next.suppressLogging = suppress
+	return next
+}
+
 // WithBlock yields a copy whose operations are recorded as owning one managed block
 // of the file they write, rather than the whole file.
 func (t *TrackedFileSystem) WithBlock(blockID string) *TrackedFileSystem {
@@ -123,6 +143,9 @@ func (t *TrackedFileSystem) RecordExistingSymlink(target string, linkPath string
 // The hash is read back off the disk rather than assumed, because this is the path a
 // repeated generate takes and the file still has to carry a base version.
 func (t *TrackedFileSystem) RecordExistingFile(path string) error {
+	if t.tx == nil || t.reg == nil {
+		return nil
+	}
 	details := operationDetails{opType: "writeFile", path: path}
 	if info, err := t.fs.Lstat(path); err == nil {
 		size := info.Size()
@@ -132,7 +155,6 @@ func (t *TrackedFileSystem) RecordExistingFile(path string) error {
 	}
 	if data, err := t.fs.ReadFile(path); err == nil {
 		details.contentHash = ptrTo(HashContent(data))
-		details.metadata = ptrTo(string(data))
 	}
 	return t.recordOperation(details)
 }
@@ -222,14 +244,22 @@ func (t *TrackedFileSystem) WriteFile(path string, data []byte, perm os.FileMode
 	}
 	l := t.getLogger()
 	if l != nil {
-		l.Info(logger.Message(fmt.Sprintf("write %s", t.ContractHomePath(path))))
+		if t.suppressLogging {
+			l.Debug(logger.Message(fmt.Sprintf("write %s", t.ContractHomePath(path))))
+		} else {
+			l.Info(logger.Message(fmt.Sprintf("write %s", t.ContractHomePath(path))))
+		}
 	}
 	sizeBytes := int64(len(data))
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
+	var metadata *string
+	if t.storeMetadata {
+		metadata = ptrTo(string(data))
+	}
 	return t.recordOperation(operationDetails{
 		opType:      "writeFile",
 		path:        path,
-		metadata:    ptrTo(string(data)),
+		metadata:    metadata,
 		sizeBytes:   &sizeBytes,
 		permissions: &permVal,
 		contentHash: ptrTo(HashContent(data)),
@@ -307,7 +337,11 @@ func (t *TrackedFileSystem) Remove(path string) error {
 	if existed {
 		l := t.getLogger()
 		if l != nil {
-			l.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
+			if t.suppressLogging {
+				l.Debug(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
+			} else {
+				l.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
+			}
 		}
 		return t.recordOperation(operationDetails{opType: "rm", path: path})
 	}
@@ -388,7 +422,11 @@ func (t *TrackedFileSystem) Chmod(path string, perm os.FileMode) error {
 	l := t.getLogger()
 	if l != nil {
 		permStr := strings.TrimPrefix((perm & os.ModePerm).String(), "-")
-		l.Info(logger.Message(fmt.Sprintf("chmod %s %s", permStr, t.ContractHomePath(path))))
+		if t.suppressLogging {
+			l.Debug(logger.Message(fmt.Sprintf("chmod %s %s", permStr, t.ContractHomePath(path))))
+		} else {
+			l.Info(logger.Message(fmt.Sprintf("chmod %s %s", permStr, t.ContractHomePath(path))))
+		}
 	}
 	permVal := registry.Permission(fmt.Sprintf("0%o", perm&os.ModePerm))
 	return t.recordOperation(operationDetails{opType: "chmod", path: path, permissions: &permVal})
@@ -412,7 +450,11 @@ func (t *TrackedFileSystem) Link(oldname, newname string) error {
 	}
 	l := t.getLogger()
 	if l != nil {
-		l.Info(logger.Message(fmt.Sprintf("ln %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+		if t.suppressLogging {
+			l.Debug(logger.Message(fmt.Sprintf("ln %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+		} else {
+			l.Info(logger.Message(fmt.Sprintf("ln %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+		}
 	}
 	return t.recordOperation(operationDetails{opType: "link", path: newname, targetPath: &oldname})
 }
@@ -424,7 +466,11 @@ func (t *TrackedFileSystem) Symlink(oldname, newname string) error {
 	}
 	l := t.getLogger()
 	if l != nil {
-		l.Info(logger.Message(fmt.Sprintf("ln -s %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+		if t.suppressLogging {
+			l.Debug(logger.Message(fmt.Sprintf("ln -s %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+		} else {
+			l.Info(logger.Message(fmt.Sprintf("ln -s %s %s", t.ContractHomePath(oldname), t.ContractHomePath(newname))))
+		}
 	}
 	return t.recordOperation(operationDetails{opType: "symlink", path: newname, targetPath: &oldname})
 }
@@ -449,30 +495,34 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 		existed = false
 	}
 
+	needsWalk := (t.tx != nil && t.reg != nil) || (t.log != nil && t.log.IsDebug())
+
 	if existed {
 		toDelete = append(toDelete, path)
 
-		info, err := t.fs.Lstat(path)
-		if err == nil && info.IsDir() {
-			var walk func(string) error
-			walk = func(dir string) error {
-				names, err := t.fs.ReadDir(dir)
-				if err != nil {
-					return err
-				}
-				for _, name := range names {
-					subPath := filepath.Join(dir, name)
-					toDelete = append(toDelete, subPath)
-					subInfo, err := t.fs.Lstat(subPath)
-					if err == nil && subInfo.IsDir() {
-						if err := walk(subPath); err != nil {
-							return err
+		if needsWalk {
+			info, err := t.fs.Lstat(path)
+			if err == nil && info.IsDir() {
+				var walk func(string) error
+				walk = func(dir string) error {
+					names, err := t.fs.ReadDir(dir)
+					if err != nil {
+						return err
+					}
+					for _, name := range names {
+						subPath := filepath.Join(dir, name)
+						toDelete = append(toDelete, subPath)
+						subInfo, err := t.fs.Lstat(subPath)
+						if err == nil && subInfo.IsDir() {
+							if err := walk(subPath); err != nil {
+								return err
+							}
 						}
 					}
+					return nil
 				}
-				return nil
+				_ = walk(path)
 			}
-			_ = walk(path)
 		}
 	}
 
@@ -482,9 +532,17 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 	}
 
 	if existed {
+		l := t.getLogger()
+		if l != nil {
+			if t.suppressLogging {
+				l.Debug(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
+			} else {
+				l.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(path))))
+			}
+		}
 		for _, p := range toDelete {
-			if t.log != nil {
-				t.log.Info(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(p))))
+			if l != nil && p != path {
+				l.Debug(logger.Message(fmt.Sprintf("rm %s", t.ContractHomePath(p))))
 			}
 			if err := t.recordOperation(operationDetails{opType: "rm", path: p}); err != nil {
 				return err
@@ -508,6 +566,17 @@ func (t *TrackedFileSystem) CopyFile(src, dest string) error {
 	if err != nil {
 		return err
 	}
+	l := t.getLogger()
+	if l != nil {
+		if t.suppressLogging {
+			l.Debug(logger.Message(fmt.Sprintf("cp %s %s", t.ContractHomePath(src), t.ContractHomePath(dest))))
+		} else {
+			l.Info(logger.Message(fmt.Sprintf("cp %s %s", t.ContractHomePath(src), t.ContractHomePath(dest))))
+		}
+	}
+	if t.tx == nil || t.reg == nil {
+		return nil
+	}
 	var sizeBytes *int64
 	var permVal *registry.Permission
 	info, err := t.fs.Lstat(dest)
@@ -520,16 +589,13 @@ func (t *TrackedFileSystem) CopyFile(src, dest string) error {
 	// Hashed from what actually landed at the destination rather than from the
 	// source, so the recorded base is the bytes a later run will be comparing.
 	var contentHash *string
-	var metadata *string
 	if data, err := t.fs.ReadFile(dest); err == nil {
 		contentHash = ptrTo(HashContent(data))
-		metadata = ptrTo(string(data))
 	}
 	return t.recordOperation(operationDetails{
 		opType:      "writeFile",
 		path:        dest,
 		targetPath:  &src,
-		metadata:    metadata,
 		sizeBytes:   sizeBytes,
 		permissions: permVal,
 		contentHash: contentHash,

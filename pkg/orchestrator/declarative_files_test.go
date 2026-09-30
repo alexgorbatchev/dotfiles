@@ -904,3 +904,154 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 		t.Errorf("contentForAction Prompt = (%q, %v, %v), want (current, false, nil)", content, write, err)
 	}
 }
+
+func TestRepeatedGenerateOverUnchangedCopyDoesNotDuplicateRowsOrStoreContent(t *testing.T) {
+	orch, memFS := declFixture(t)
+	ctx := context.Background()
+
+	sourcePath := filepath.Join(declToolDir, "secret.conf")
+	targetPath := "/home/user/.config/secret.conf"
+	secretContent := "DATABASE_PASSWORD=supersecretpassword\n"
+
+	writeDecl(t, memFS, sourcePath, secretContent)
+
+	tool := newDeclTool()
+	tool.Copies = []config.CopyConfig{
+		{
+			Source: "secret.conf",
+			Target: targetPath,
+		},
+	}
+	projCfg := declProjectConfig()
+
+	// First run (generate / applyCopies)
+	if err := orch.applyCopies(ctx, tool, projCfg); err != nil {
+		t.Fatalf("first applyCopies failed: %v", err)
+	}
+
+	ops, err := orch.reg.GetFileOperations(ctx, registry.FileOperationFilter{
+		ToolName: tool.Name,
+		FilePath: targetPath,
+	})
+	if err != nil {
+		t.Fatalf("reading file operations: %v", err)
+	}
+	if len(ops) != 1 {
+		t.Fatalf("expected 1 operation after first run, got %d", len(ops))
+	}
+	if ops[0].Metadata != nil && *ops[0].Metadata != "" {
+		t.Errorf("expected no content stored in metadata for copy, got: %q", *ops[0].Metadata)
+	}
+	if ops[0].ContentHash == nil || *ops[0].ContentHash != fs.HashContent([]byte(secretContent)) {
+		t.Errorf("expected content hash %q, got: %v", fs.HashContent([]byte(secretContent)), ops[0].ContentHash)
+	}
+
+	// Second run (repeated generate with unchanged copy)
+	if err := orch.applyCopies(ctx, tool, projCfg); err != nil {
+		t.Fatalf("second applyCopies failed: %v", err)
+	}
+
+	opsAfter, err := orch.reg.GetFileOperations(ctx, registry.FileOperationFilter{
+		ToolName: tool.Name,
+		FilePath: targetPath,
+	})
+	if err != nil {
+		t.Fatalf("reading file operations: %v", err)
+	}
+	if len(opsAfter) != 1 {
+		t.Errorf("expected still 1 operation after second run, got %d", len(opsAfter))
+	}
+
+	// Pre-existing file case: file already on disk before dotfiles copies it
+	preexistingTarget := "/home/user/.config/preexisting.conf"
+	sourcePre := filepath.Join(declToolDir, "preexisting.conf")
+	preContent := "EXISTING_KEY=secretval\n"
+	writeDecl(t, memFS, sourcePre, preContent)
+	writeDecl(t, memFS, preexistingTarget, preContent)
+
+	toolPre := newDeclTool()
+	toolPre.Name = "pre-tool"
+	toolPre.Copies = []config.CopyConfig{
+		{
+			Source: "preexisting.conf",
+			Target: preexistingTarget,
+		},
+	}
+
+	// Run 1 for preexisting: file on disk already matches source, so RecordExistingFile is used
+	if err := orch.applyCopies(ctx, toolPre, projCfg); err != nil {
+		t.Fatalf("first applyCopies with preexisting target failed: %v", err)
+	}
+
+	preOps, err := orch.reg.GetFileOperations(ctx, registry.FileOperationFilter{
+		ToolName: "pre-tool",
+		FilePath: preexistingTarget,
+	})
+	if err != nil {
+		t.Fatalf("reading file operations: %v", err)
+	}
+	if len(preOps) != 1 {
+		t.Fatalf("expected 1 operation after first run for preexisting file, got %d", len(preOps))
+	}
+	if preOps[0].Metadata != nil && *preOps[0].Metadata != "" {
+		t.Errorf("expected no content stored in metadata for preexisting copy, got: %q", *preOps[0].Metadata)
+	}
+
+	// Run 2 for preexisting: unchanged, should not duplicate
+	if err := orch.applyCopies(ctx, toolPre, projCfg); err != nil {
+		t.Fatalf("second applyCopies with preexisting target failed: %v", err)
+	}
+
+	preOpsAfter, err := orch.reg.GetFileOperations(ctx, registry.FileOperationFilter{
+		ToolName: "pre-tool",
+		FilePath: preexistingTarget,
+	})
+	if err != nil {
+		t.Fatalf("reading file operations: %v", err)
+	}
+	if len(preOpsAfter) != 1 {
+		t.Errorf("expected still 1 operation after second run for preexisting copy, got %d", len(preOpsAfter))
+	}
+}
+
+func TestTemplateRetainsMetadataForAncestorMerge(t *testing.T) {
+	orch, memFS := declFixture(t)
+	ctx := context.Background()
+
+	sourcePath := filepath.Join(declToolDir, "template.conf")
+	targetPath := "/home/user/.config/template.conf"
+	tmplContent := "port = {port}\n"
+
+	writeDecl(t, memFS, sourcePath, tmplContent)
+
+	tool := newDeclTool()
+	tool.Templates = []config.TemplateConfig{
+		{
+			Source: "template.conf",
+			Target: targetPath,
+			Variables: map[string]interface{}{
+				"port": 8080,
+			},
+		},
+	}
+	projCfg := declProjectConfig()
+
+	if err := orch.applyTemplates(ctx, tool, projCfg); err != nil {
+		t.Fatalf("applyTemplates failed: %v", err)
+	}
+
+	ops, err := orch.reg.GetFileOperations(ctx, registry.FileOperationFilter{
+		ToolName: tool.Name,
+		FilePath: targetPath,
+	})
+	if err != nil {
+		t.Fatalf("reading file operations: %v", err)
+	}
+	if len(ops) != 1 {
+		t.Fatalf("expected 1 operation, got %d", len(ops))
+	}
+	expectedRendered := "port = 8080\n"
+	if ops[0].Metadata == nil || *ops[0].Metadata != expectedRendered {
+		t.Errorf("template should retain metadata for merge ancestor, got: %v", ops[0].Metadata)
+	}
+}

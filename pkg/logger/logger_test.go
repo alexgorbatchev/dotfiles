@@ -373,6 +373,13 @@ func TestLoggerGettersAndWithTag(t *testing.T) {
 	if l.TraceMode() != true {
 		t.Errorf("TraceMode() = false, want true")
 	}
+	if !l.IsDebug() {
+		t.Errorf("IsDebug() = false, want true for verbose logger")
+	}
+	defaultLogger := New(Config{Level: LogLevelDefault, Writer: &buf})
+	if defaultLogger.IsDebug() {
+		t.Errorf("IsDebug() = true, want false for default logger")
+	}
 	if l.Writer() != &buf {
 		t.Errorf("Writer() mismatch")
 	}
@@ -397,6 +404,9 @@ func TestLoggerGettersAndWithTag(t *testing.T) {
 	}
 	if nilLogger.TraceMode() != false {
 		t.Errorf("nilLogger.TraceMode() should return false")
+	}
+	if nilLogger.IsDebug() != false {
+		t.Errorf("nilLogger.IsDebug() should return false")
 	}
 	if nilLogger.Writer() == nil {
 		t.Errorf("nilLogger.Writer() should default to os.Stderr, got nil")

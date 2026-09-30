@@ -279,6 +279,16 @@ func (l *Logger) TraceMode() bool {
 	return l.trace
 }
 
+// IsDebug reports whether the logger emits debug-level output.
+func (l *Logger) IsDebug() bool {
+	if l == nil {
+		return false
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.level == LogLevelVerbose || l.trace
+}
+
 // Writer returns the logger's underlying writer.
 func (l *Logger) Writer() io.Writer {
 	if l == nil {

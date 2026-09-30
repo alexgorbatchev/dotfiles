@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
 // errUnsupportedFileType reports a tree entry that is neither a directory, a regular
@@ -28,6 +30,18 @@ func CopyTree(fsys FS, src, dest string) error {
 	info, err := fsys.Lstat(src)
 	if err != nil {
 		return err
+	}
+
+	if tfs, ok := fsys.(*TrackedFileSystem); ok && !tfs.suppressLogging {
+		l := tfs.getLogger()
+		if l != nil {
+			op := "cp -R"
+			if !info.IsDir() {
+				op = "cp"
+			}
+			l.Info(logger.Message(fmt.Sprintf("%s %s %s", op, tfs.ContractHomePath(src), tfs.ContractHomePath(dest))))
+		}
+		fsys = tfs.WithSuppressLogging(true)
 	}
 
 	mode := info.Mode()

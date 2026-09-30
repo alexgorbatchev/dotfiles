@@ -522,3 +522,343 @@ func TestTrackedFileSystemRecordExistingFile(t *testing.T) {
 		t.Errorf("RecordExistingFile rewrote the file: %q", string(got))
 	}
 }
+
+type spyReadFileFS struct {
+	FS
+	readFileCalls map[string]int
+}
+
+func (s *spyReadFileFS) ReadFile(path string) ([]byte, error) {
+	if s.readFileCalls == nil {
+		s.readFileCalls = make(map[string]int)
+	}
+	s.readFileCalls[path]++
+	return s.FS.ReadFile(path)
+}
+
+func TestCopyFileWithoutTxDoesNotReadBackDestination(t *testing.T) {
+	mem := NewMemFS()
+	spy := &spyReadFileFS{FS: mem}
+	reg := registry.NewRegistry(nil)
+	tfs := NewTrackedFileSystem(spy, reg, nil, "test-tool")
+
+	if err := mem.WriteFile("/src.txt", []byte("file content to copy"), 0644); err != nil {
+		t.Fatalf("writing source file: %v", err)
+	}
+
+	if err := tfs.CopyFile("/src.txt", "/dest.txt"); err != nil {
+		t.Fatalf("CopyFile failed: %v", err)
+	}
+
+	if calls := spy.readFileCalls["/dest.txt"]; calls != 0 {
+		t.Errorf("expected 0 ReadFile calls on destination without transaction, got %d", calls)
+	}
+}
+
+func TestCopyFileAndRecordExistingFileDoNotStoreMetadataForCopies(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	database, err := db.NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to initialize test DB: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	mem := NewMemFS()
+	tfs := NewTrackedFileSystem(mem, reg, nil, "copy-tool").WithFileType("copy")
+
+	const src = "/source.txt"
+	const destCopy = "/dest_copied.txt"
+	const existing = "/existing.txt"
+	content := "sensitive secret configuration content\n"
+
+	if err := mem.WriteFile(src, []byte(content), 0600); err != nil {
+		t.Fatalf("writing source: %v", err)
+	}
+	if err := mem.WriteFile(existing, []byte(content), 0600); err != nil {
+		t.Fatalf("writing existing: %v", err)
+	}
+
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		txTfs := tfs.WithTx(ctx, tx)
+		if err := txTfs.CopyFile(src, destCopy); err != nil {
+			return err
+		}
+		return txTfs.RecordExistingFile(existing)
+	})
+	if err != nil {
+		t.Fatalf("transaction failed: %v", err)
+	}
+
+	// Verify CopyFile operation
+	copyOps, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{FilePath: destCopy})
+	if err != nil || len(copyOps) == 0 {
+		t.Fatalf("fetching copy op failed: %v", err)
+	}
+	if copyOps[0].Metadata != nil && *copyOps[0].Metadata != "" {
+		t.Errorf("CopyFile stored file content in metadata: %q, want nil", *copyOps[0].Metadata)
+	}
+	if copyOps[0].ContentHash == nil || *copyOps[0].ContentHash != HashContent([]byte(content)) {
+		t.Errorf("CopyFile content hash = %v, want %q", copyOps[0].ContentHash, HashContent([]byte(content)))
+	}
+	if copyOps[0].SizeBytes == nil || *copyOps[0].SizeBytes != int64(len(content)) {
+		t.Errorf("CopyFile size = %v, want %d", copyOps[0].SizeBytes, len(content))
+	}
+
+	// Verify RecordExistingFile operation for copy
+	existingOps, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{FilePath: existing})
+	if err != nil || len(existingOps) == 0 {
+		t.Fatalf("fetching existing op failed: %v", err)
+	}
+	if existingOps[0].Metadata != nil && *existingOps[0].Metadata != "" {
+		t.Errorf("RecordExistingFile for copy stored file content in metadata: %q, want nil", *existingOps[0].Metadata)
+	}
+	if existingOps[0].ContentHash == nil || *existingOps[0].ContentHash != HashContent([]byte(content)) {
+		t.Errorf("RecordExistingFile content hash = %v, want %q", existingOps[0].ContentHash, HashContent([]byte(content)))
+	}
+}
+
+func TestWithStoreMetadataControlsWriteFileMetadata(t *testing.T) {
+	ctx := context.Background()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	database, err := db.NewConnection(ctx, dsn)
+	if err != nil {
+		t.Fatalf("Failed to initialize test DB: %v", err)
+	}
+	defer database.Close()
+
+	reg := registry.NewRegistry(database)
+	mem := NewMemFS()
+	tfs := NewTrackedFileSystem(mem, reg, nil, "template-tool").WithFileType("template").WithStoreMetadata(true)
+
+	const tmplPath = "/template.txt"
+	content := "template content"
+
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return tfs.WithTx(ctx, tx).WriteFile(tmplPath, []byte(content), 0644)
+	})
+	if err != nil {
+		t.Fatalf("transaction failed: %v", err)
+	}
+
+	ops, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{FilePath: tmplPath})
+	if err != nil || len(ops) == 0 {
+		t.Fatalf("fetching op failed: %v", err)
+	}
+	if ops[0].Metadata == nil || *ops[0].Metadata != content {
+		t.Errorf("expected metadata %q, got %v", content, ops[0].Metadata)
+	}
+
+	// Now with WithStoreMetadata(false)
+	const noMetaPath = "/nometa.txt"
+	tfsNoMeta := tfs.WithStoreMetadata(false)
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return tfsNoMeta.WithTx(ctx, tx).WriteFile(noMetaPath, []byte(content), 0644)
+	})
+	if err != nil {
+		t.Fatalf("transaction failed: %v", err)
+	}
+	opsNoMeta, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{FilePath: noMetaPath})
+	if err != nil || len(opsNoMeta) == 0 {
+		t.Fatalf("fetching op failed: %v", err)
+	}
+	if opsNoMeta[0].Metadata != nil {
+		t.Errorf("expected nil metadata with WithStoreMetadata(false), got %v", *opsNoMeta[0].Metadata)
+	}
+}
+
+func TestRemoveAllLogsSingleINFOLineForTree(t *testing.T) {
+	mem := NewMemFS()
+	reg := registry.NewRegistry(nil)
+	var logBuf bytes.Buffer
+	testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+	tfs := NewTrackedFileSystem(mem, reg, testLog, "test-tool")
+
+	if err := mem.MkdirAll("/dir/sub/nested", 0755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := mem.WriteFile("/dir/sub/nested/file1.txt", []byte("a"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := mem.WriteFile("/dir/sub/file2.txt", []byte("b"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := mem.WriteFile("/dir/file3.txt", []byte("c"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := tfs.RemoveAll("/dir"); err != nil {
+		t.Fatalf("RemoveAll: %v", err)
+	}
+
+	output := logBuf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	infoLines := 0
+	for _, l := range lines {
+		if strings.Contains(l, "INFO") && strings.Contains(l, "rm") {
+			infoLines++
+		}
+	}
+	if infoLines != 1 {
+		t.Errorf("expected exactly 1 INFO line for rm tree, got %d. Log output:\n%s", infoLines, output)
+	}
+}
+
+func TestCopyTreeLogsSingleINFOLineForTree(t *testing.T) {
+	mem := NewMemFS()
+	reg := registry.NewRegistry(nil)
+	var logBuf bytes.Buffer
+	testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+	tfs := NewTrackedFileSystem(mem, reg, testLog, "test-tool")
+
+	if err := mem.MkdirAll("/src/sub/nested", 0755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := mem.WriteFile("/src/sub/nested/file1.txt", []byte("a"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := mem.WriteFile("/src/sub/file2.txt", []byte("b"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := mem.Symlink("/src/sub/file2.txt", "/src/sub/link.txt"); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+
+	if err := CopyTree(tfs, "/src", "/dest"); err != nil {
+		t.Fatalf("CopyTree failed: %v", err)
+	}
+
+	output := logBuf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	infoLines := 0
+	for _, l := range lines {
+		if strings.Contains(l, "INFO") {
+			infoLines++
+			if !strings.Contains(l, "cp -R /src /dest") {
+				t.Errorf("unexpected INFO line during CopyTree: %s", l)
+			}
+		}
+	}
+	if infoLines != 1 {
+		t.Errorf("expected exactly 1 INFO line for CopyTree, got %d. Log output:\n%s", infoLines, output)
+	}
+
+	// Verify entries exist in dest
+	exists, err := mem.Exists("/dest/sub/nested/file1.txt")
+	if err != nil || !exists {
+		t.Errorf("dest file does not exist")
+	}
+	linkTarget, err := mem.Readlink("/dest/sub/link.txt")
+	if err != nil || linkTarget != "/src/sub/file2.txt" {
+		t.Errorf("dest symlink target = %q, want /src/sub/file2.txt", linkTarget)
+	}
+}
+
+func TestCopyTreeVerboseLogsPerEntryAtDebug(t *testing.T) {
+	mem := NewMemFS()
+	reg := registry.NewRegistry(nil)
+	var logBuf bytes.Buffer
+	testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelVerbose})
+	tfs := NewTrackedFileSystem(mem, reg, testLog, "test-tool")
+
+	if err := mem.MkdirAll("/src/sub", 0755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := mem.WriteFile("/src/sub/file.txt", []byte("data"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := mem.Symlink("/src/sub/file.txt", "/src/sub/link.txt"); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+
+	if err := CopyTree(tfs, "/src", "/dest"); err != nil {
+		t.Fatalf("CopyTree failed: %v", err)
+	}
+
+	output := logBuf.String()
+	if !strings.Contains(output, "INFO") || !strings.Contains(output, "cp -R /src /dest") {
+		t.Errorf("expected tree INFO log line in output:\n%s", output)
+	}
+	if !strings.Contains(output, "DEBUG") {
+		t.Errorf("expected per-entry DEBUG lines in verbose output:\n%s", output)
+	}
+	if !strings.Contains(output, "ln -s") {
+		t.Errorf("expected symlink debug line in output:\n%s", output)
+	}
+}
+
+func TestWithSuppressLoggingDirectOperations(t *testing.T) {
+	mem := NewMemFS()
+	var logBuf bytes.Buffer
+	testLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelDefault})
+	tfs := NewTrackedFileSystem(mem, nil, testLog, "test-tool").WithSuppressLogging(true)
+
+	if err := tfs.WriteFile("/suppressed.txt", []byte("test"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := tfs.Chmod("/suppressed.txt", 0600); err != nil {
+		t.Fatalf("Chmod: %v", err)
+	}
+	if err := tfs.Symlink("/suppressed.txt", "/link.txt"); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+	if err := tfs.Remove("/link.txt"); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+
+	// At LogLevelDefault, suppressed logs (which go to Debug) should produce 0 output lines
+	if logBuf.Len() != 0 {
+		t.Errorf("expected 0 log output for suppressed operations at default log level, got: %q", logBuf.String())
+	}
+}
+
+type spyReadDirFS struct {
+	FS
+	readDirCalls int
+}
+
+func (s *spyReadDirFS) ReadDir(path string) ([]string, error) {
+	s.readDirCalls++
+	return s.FS.ReadDir(path)
+}
+
+func TestRemoveAllWithoutTxOrDebugDoesNotWalkTree(t *testing.T) {
+	mem := NewMemFS()
+	spy := &spyReadDirFS{FS: mem}
+	tfs := NewTrackedFileSystem(spy, nil, nil, "test-tool")
+
+	if err := mem.MkdirAll("/dir/sub/nested", 0755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := mem.WriteFile("/dir/sub/nested/file.txt", []byte("a"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := tfs.RemoveAll("/dir"); err != nil {
+		t.Fatalf("RemoveAll failed: %v", err)
+	}
+
+	if spy.readDirCalls != 0 {
+		t.Errorf("expected 0 ReadDir calls when removing without tx or debug log, got %d", spy.readDirCalls)
+	}
+
+	// Now with debug/verbose logging enabled, it should walk the tree to log per-entry
+	if err := mem.MkdirAll("/dir2/sub/nested", 0755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := mem.WriteFile("/dir2/sub/nested/file.txt", []byte("a"), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	var logBuf bytes.Buffer
+	debugLog := logger.New(logger.Config{Writer: &logBuf, Level: logger.LogLevelVerbose})
+	tfsDebug := NewTrackedFileSystem(spy, nil, debugLog, "test-tool")
+
+	if err := tfsDebug.RemoveAll("/dir2"); err != nil {
+		t.Fatalf("RemoveAll failed: %v", err)
+	}
+
+	if spy.readDirCalls == 0 {
+		t.Errorf("expected > 0 ReadDir calls when removing with debug log enabled, got %d", spy.readDirCalls)
+	}
+}
