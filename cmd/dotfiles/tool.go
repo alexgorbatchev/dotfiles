@@ -18,5 +18,6 @@ func init() {
 	toolCmd.AddCommand(toolValidateCmd)
 	toolCmd.AddCommand(toolFilesCmd)
 	toolCmd.AddCommand(toolScaffoldCmd)
+	toolCmd.AddCommand(toolAddCmd)
 	rootCmd.AddCommand(toolCmd)
 }

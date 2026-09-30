@@ -7,6 +7,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - Dev CLI run: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts state generate`
 - Dev which run: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts tool which <tool-or-binary>`
 - Dev upgrade run: `go run ./cmd/dotfiles self upgrade --check`
+- Dev add tool run: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts tool add sharkdp/bat`
 - Dev dashboard run: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard --port 8080 --host 0.0.0.0`
 - Test subcommands: `go test ./cmd/dotfiles/...`
 
@@ -17,6 +18,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - Command structure follows subject-first noun-verb hierarchy (`tool`, `path`, `shell`, `venv`, `state`, `dashboard`, `skill`, `self`).
 - Root-level aliases in `root_aliases.go` (`generate`, `install`, `update`, `version`) delegate directly to their domain subcommands (`state generate`, `tool install`, `tool update`, `self version`) and are kept hidden from `--help` to preserve the clean domain hierarchy.
 - Command files must strictly follow domain naming: `cmd/dotfiles/<subject>.go` for domain parents and `cmd/dotfiles/<subject>_<verb>.go` for child subcommands. File names must strictly match what is inside.
+- `tool add <owner/repo>` fetches `<name>.tool.ts` from the specified GitHub repository into the primary tool configs directory (`tools/<name>.tool.ts`), requiring `--force` / `-f` to overwrite existing configurations. Positional repository argument completion suppresses file completion via `completeNoFileComp`.
 - Every runnable subcommand must declare its positional contract with a cobra `Args` validator (`cobra.NoArgs`, `cobra.MaximumNArgs(1)`, `cobra.ExactArgs(1)`, `cobra.ArbitraryArgs`, or `cobra.MatchAll(...)` with `ValidArgs` for a fixed word list) instead of checking `len(args)` inside `RunE`. Cobra validates before `RunE`, so a bad command line fails without bootstrapping services, and extra words are rejected instead of silently ignored.
 - Every subcommand with a positional tool argument must set `ValidArgsFunction` to one of the helpers in `completion.go` (`completeToolName` for a single tool, `completeToolNames` for a repeatable list, `completeBinaryOrToolName` where a binary name is also accepted). Without it cobra answers `__complete` with directive 0 and every shell falls back to file-name completion.
 - In tests, `executeCommand` returns stdout and stderr interleaved; use `runCommand` and its `Stdout` / `Stderr` fields when the assertion is about which stream output landed on. For commands that run until cancelled (e.g. dashboard), use `executeCommandContext` or `runCommandContext` with a cancellable context.
@@ -55,4 +57,5 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - `cmd/dotfiles/root.go`
 - `cmd/dotfiles/tool.go`
 - `cmd/dotfiles/tool_which.go`
+- `cmd/dotfiles/tool_add.go`
 - `cmd/dotfiles/subcommands_test.go`

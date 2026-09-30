@@ -119,3 +119,9 @@ func completeBinaryOrToolName(cmd *cobra.Command, args []string, toComplete stri
 	}
 	return filterByPrefix(candidates, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
+
+// completeNoFileComp suppresses shell file completion for commands whose arguments
+// are not local file paths (e.g. remote repository names).
+func completeNoFileComp(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
+}

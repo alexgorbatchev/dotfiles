@@ -13,6 +13,7 @@ Shared GitHub API token resolution and authentication utilities.
   2. For `github.com` (including `api.github.com`), `*.ghe.com`, or empty host (default): `GH_TOKEN`, then `GITHUB_TOKEN` environment variables.
   3. For any other host (such as GitHub Enterprise Server): `GH_ENTERPRISE_TOKEN`, then `GITHUB_ENTERPRISE_TOKEN` environment variables.
 - Context isolation: callers pass their target host and only the configuration they own (e.g. self-updater targets the public GitHub API and passes no configured token because project `github.token` belongs to `github.host`).
+- Remote contents fetching (`FetchContent`): queries GitHub repository contents API, decodes base64 file contents handling newlines, and falls back to `gh api` on 403 or network errors.
 
 ## Local gotchas
 
@@ -29,3 +30,5 @@ Shared GitHub API token resolution and authentication utilities.
 
 - `pkg/github/token.go`
 - `pkg/github/token_test.go`
+- `pkg/github/content.go`
+- `pkg/github/content_test.go`
