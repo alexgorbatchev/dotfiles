@@ -1,3 +1,12 @@
+import fs from "node:fs";
+
+/** Removes a temporary directory if it was created. */
+export function cleanupDir(dir?: string): void {
+  if (dir) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 /** Collects the `href` of every element matched by `selector`, in document order. */
 export async function collectHrefs(html: string, selector: string): Promise<string[]> {
   const hrefs: string[] = [];

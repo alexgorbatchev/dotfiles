@@ -11,6 +11,7 @@ Go `embed.FS` wrappers for shipped TypeScript declarations and default dotfiles 
 - `TypesFS` (`embed.FS`): embeds compiled TypeScript declaration files (`index.d.ts`, `globals.d.ts`) and `package.json` under `dist/`.
 - `SkillFS` (`embed.FS`): embeds the default dotfiles AI skill files and documentation under `skill/`.
 - Declaration files invariant: `TypesFS` contains only `globals.d.ts` and `index.d.ts`; `tool-types.d.ts` is generated per project and must never be embedded.
+- Skill parity invariant (`embedded_test.go`): `TestSkillFSMirrorsCanonicalSkill` asserts that `SkillFS` embeds every file from `.agents/skills/dotfiles/` with identical content and no orphaned files. Run `just prepare` to synchronize when editing skill files.
 - Skill snippet type-checking (`skill_snippets_test.go`): all ` ```typescript ` and ` ```ts ` code blocks in embedded skill documentation are extracted, completed with appropriate preludes/wrappers based on their form tag (`builder`, `shell`, `body`, `config`, `no-typecheck`, or bare module), and type-checked against `TypesFS` declarations with the repository's native TypeScript compiler.
 
 ## Local gotchas

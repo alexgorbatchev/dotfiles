@@ -15,6 +15,7 @@ dotfiles tool check --json
 dotfiles tool validate fzf --json
 dotfiles tool files fzf
 dotfiles tool scaffold
+dotfiles tool add sharkdp/bat
 
 # System, binary, and storage path queries
 dotfiles path
@@ -185,11 +186,19 @@ Displays a tree view of files in the tool installation directory or lists all ma
 
 #### `dotfiles tool scaffold [name]`
 
-Writes starter `.tool.ts` configuration files into the primary tool configs directory, creating that directory if it does not exist. Loading a configuration never creates tool files; this command is the only thing that does. When a name is provided, generates a single starter `<name>.tool.ts` file.
+Writes starter `.tool.ts` configuration files into the primary tool configs directory, creating that directory if it does not exist. Loading a configuration never creates tool files. When a name is provided, generates a single starter `<name>.tool.ts` file.
 
 An existing file is left untouched, so running it again adds what is missing without discarding local edits.
 
 - `-f, --force`: Overwrite tool configurations that already exist.
+
+#### `dotfiles tool add <owner/repo>`
+
+Fetches a remote `<name>.tool.ts` configuration file from the specified GitHub repository and writes it into the primary tool configs directory.
+
+The tool name is derived from the repository name (e.g. `sharkdp/bat` -> `bat.tool.ts`). Fails with an error if the tool definition does not exist in the remote repository or if the file already exists locally without `--force`.
+
+- `-f, --force`: Overwrite existing tool configuration.
 
 ---
 

@@ -2,13 +2,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { $ } from "bun";
 
-// Publish the same copy the binary embeds, so the website and `dotfiles skill` can
-// never drift. `.agents/skills/dotfiles` is the source; scripts/build/main.go copies it
-// here, so this directory is always the built output of that source.
-const sourceDir = path.resolve(import.meta.dir, "../../pkg/embedded/skill");
-const destDir = path.resolve(import.meta.dir, "src/content/docs");
+// Read directly from the canonical skill definition in `.agents/skills/dotfiles`
+// (the documented source of truth per root AGENTS.md), avoiding drift from
+// intermediate or stale embedded asset builds.
+const sourceDir = path.resolve(import.meta.dir, "../../.agents/skills/dotfiles");
+const destDir = process.env.DOCS_DEST_DIR
+  ? path.resolve(process.env.DOCS_DEST_DIR)
+  : path.resolve(import.meta.dir, "src/content/docs");
 const installerSourcePath = path.resolve(import.meta.dir, "../../scripts/managed-installer/install.sh");
-const installerDestPath = path.resolve(import.meta.dir, "public/install.sh");
+const installerDestPath = process.env.DOCS_DEST_DIR
+  ? path.join(destDir, "install.sh")
+  : path.resolve(import.meta.dir, "public/install.sh");
 
 // Clean and recreate destination
 await $`rm -rf ${destDir} || true`.quiet();
