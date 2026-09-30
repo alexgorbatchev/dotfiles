@@ -1689,6 +1689,228 @@ func TestOrchestrator_CleanupStaleSymlinks(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_SymlinkModeEnforcementRetainsSourceFile(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+	orch.SetSymlinkFS(fsys)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			DotfilesDir:  "/home/user/.dotfiles",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/.dotfiles/tools/ssh", 0755)
+	_ = fsys.MkdirAll("/home/user/.ssh", 0755)
+	_ = fsys.MkdirAll("/home/user/.generated/usage", 0755)
+
+	sourcePath := "/home/user/.dotfiles/tools/ssh/key_file"
+	writeMemFile(t, fsys, sourcePath, "secret-key-content")
+	// Verify initial mode is 0644
+	info, err := fsys.Lstat(sourcePath)
+	if err != nil {
+		t.Fatalf("stat source file: %v", err)
+	}
+	if info.Mode().Perm() != 0644 {
+		t.Fatalf("initial mode: got %o, want 0644", info.Mode().Perm())
+	}
+
+	tool := &config.ToolConfig{
+		Name:           "ssh",
+		ConfigFilePath: "/home/user/.dotfiles/tools/ssh/ssh.tool.ts",
+		Symlinks: []config.SymlinkConfig{
+			{Source: "key_file", Target: "~/.ssh/key_file", Mode: "0600"},
+		},
+	}
+
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("initial GenerateTools failed: %v", err)
+	}
+
+	// 1. Source file must still exist!
+	exists, err := fsys.Exists(sourcePath)
+	if err != nil {
+		t.Fatalf("checking source file exists: %v", err)
+	}
+	if !exists {
+		t.Fatalf("source file %s was deleted by initial GenerateTools!", sourcePath)
+	}
+
+	// Calling CleanupStaleSymlinks must NOT delete the repository source file
+	if err := orch.CleanupStaleSymlinks(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("CleanupStaleSymlinks failed: %v", err)
+	}
+	exists, err = fsys.Exists(sourcePath)
+	if err != nil {
+		t.Fatalf("checking source file exists after CleanupStaleSymlinks: %v", err)
+	}
+	if !exists {
+		t.Fatalf("source file %s was deleted by CleanupStaleSymlinks!", sourcePath)
+	}
+
+	// 2. Source file mode must be updated to 0600
+	info, err = fsys.Lstat(sourcePath)
+	if err != nil {
+		t.Fatalf("stat source file after generate: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Errorf("source file mode: got %o, want 0600", info.Mode().Perm())
+	}
+
+	// 3. Symlink target must exist
+	targetPath := "/home/user/.ssh/key_file"
+	exists, err = fsys.Exists(targetPath)
+	if err != nil {
+		t.Fatalf("checking target symlink exists: %v", err)
+	}
+	if !exists {
+		t.Fatalf("target symlink %s does not exist", targetPath)
+	}
+
+	// 4. Repeated generation must also succeed and retain the source file
+	if err := orch.GenerateTools(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("second GenerateTools failed: %v", err)
+	}
+	if exists, _ := fsys.Exists(sourcePath); !exists {
+		t.Fatalf("source file %s was deleted on second GenerateTools!", sourcePath)
+	}
+}
+
+func TestOrchestrator_CleanupStaleSymlinks_Guardrails(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	fsys := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	reg := registry.NewRegistry(sqlDB)
+	instReg := installer.NewRegistry()
+	orch := NewOrchestrator(nil, fsys, runner, reg, instReg)
+	orch.SetSymlinkFS(fsys)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:        "/home/user",
+			DotfilesDir:    "/home/user/.dotfiles",
+			ToolConfigsDir: "/home/user/.dotfiles/tools",
+			TargetDir:      "/home/user/bin",
+			BinariesDir:    "/home/user/binaries",
+			GeneratedDir:   "/home/user/.generated",
+		},
+	}
+
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	_ = fsys.MkdirAll("/home/user/.dotfiles/tools/custom", 0755)
+	_ = fsys.MkdirAll("/home/user/.config", 0755)
+
+	// File 1: Regular file in DotfilesDir recorded with FileType "symlink" and LastOperation "symlink"
+	repoFile := "/home/user/.dotfiles/tools/custom/repo_file"
+	writeMemFile(t, fsys, repoFile, "repo content")
+
+	// File 2: Regular file outside DotfilesDir recorded with FileType "symlink" and LastOperation "chmod"
+	outsideChmod := "/home/user/.config/chmod_file"
+	writeMemFile(t, fsys, outsideChmod, "outside chmod content")
+
+	// File 3: Regular file outside DotfilesDir recorded with FileType "symlink" and LastOperation "symlink" (not a symlink on disk)
+	outsideRegular := "/home/user/.config/regular_file"
+	writeMemFile(t, fsys, outsideRegular, "outside regular content")
+
+	// File 4: Real symlink outside DotfilesDir that IS stale
+	outsideStaleLink := "/home/user/.config/stale_link"
+	if err := fsys.Symlink(repoFile, outsideStaleLink); err != nil {
+		t.Fatalf("creating symlink: %v", err)
+	}
+
+	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+		// Record 1: repoFile
+		if err := reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "custom",
+			FilePath:      repoFile,
+			FileType:      "symlink",
+			OperationType: "symlink",
+		}); err != nil {
+			return err
+		}
+		// Record 2: outsideChmod with LastOperation "chmod"
+		if err := reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "custom",
+			FilePath:      outsideChmod,
+			FileType:      "symlink",
+			OperationType: "chmod",
+		}); err != nil {
+			return err
+		}
+		// Record 3: outsideRegular with LastOperation "symlink"
+		if err := reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "custom",
+			FilePath:      outsideRegular,
+			FileType:      "symlink",
+			OperationType: "symlink",
+		}); err != nil {
+			return err
+		}
+		// Record 4: outsideStaleLink with LastOperation "symlink"
+		return reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName:      "custom",
+			FilePath:      outsideStaleLink,
+			FileType:      "symlink",
+			OperationType: "symlink",
+		})
+	})
+	if err != nil {
+		t.Fatalf("failed recording file operations: %v", err)
+	}
+
+	tool := &config.ToolConfig{
+		Name: "custom",
+		// No symlinks declared -> all 4 recorded paths are undeclared
+	}
+
+	if err := orch.CleanupStaleSymlinks(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+		t.Fatalf("CleanupStaleSymlinks failed: %v", err)
+	}
+
+	// Guardrail checks:
+	// 1. repoFile must still exist (inside DotfilesDir / ToolConfigsDir, plus not a symlink)
+	if exists, _ := fsys.Exists(repoFile); !exists {
+		t.Errorf("repoFile in DotfilesDir was deleted!")
+	}
+	// 2. outsideChmod must still exist (LastOperation != "symlink", plus not a symlink)
+	if exists, _ := fsys.Exists(outsideChmod); !exists {
+		t.Errorf("outsideChmod was deleted!")
+	}
+	// 3. outsideRegular must still exist (regular file, not a symlink)
+	if exists, _ := fsys.Exists(outsideRegular); !exists {
+		t.Errorf("outsideRegular was deleted!")
+	}
+	// 4. outsideStaleLink MUST be removed (real symlink outside repo and not expected)
+	if exists, _ := fsys.Exists(outsideStaleLink); exists {
+		t.Errorf("outsideStaleLink was NOT removed!")
+	}
+}
+
 func TestOrchestrator_CleanupStaleCopies(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

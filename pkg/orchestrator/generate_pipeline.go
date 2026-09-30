@@ -365,11 +365,7 @@ func (o *Orchestrator) createSymlinks(ctx context.Context, tool *config.ToolConf
 			return fmt.Errorf("creating symlink from %q to %q: %w", sym.Source, target, err)
 		}
 		if sym.Mode != "" {
-			err = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-				tracked := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-				return o.enforceMode(tracked, src, sym.Mode)
-			})
-			if err != nil {
+			if err := o.enforceSymlinkSourceMode(tool.Name, projCfg, src, mode); err != nil {
 				return fmt.Errorf("enforcing mode on symlink source %q: %w", src, err)
 			}
 		}
@@ -404,6 +400,72 @@ func isWithin(dir, path string) bool {
 		return false
 	}
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// enforceSymlinkSourceMode brings a symlink's source file in the repository to the
+// declared permission. Unlike managed deployment artifacts, repository source files
+// are inputs, so the change is applied to the filesystem directly without recording
+// a file operation in the registry.
+func (o *Orchestrator) enforceSymlinkSourceMode(toolName string, projCfg *config.ProjectConfig, path string, mode os.FileMode) error {
+	info, err := o.fs.Lstat(path)
+	if err != nil {
+		return fmt.Errorf("checking the permission of %s: %w", path, err)
+	}
+	if info.Mode().Perm() == mode {
+		return nil
+	}
+	if err := o.fs.Chmod(path, mode); err != nil {
+		return fmt.Errorf("setting the permission of %s: %w", path, err)
+	}
+	if o.logger != nil {
+		permStr := strings.TrimPrefix((mode & os.ModePerm).String(), "-")
+		o.logger.WithTag(toolName).Info(logger.Message(fmt.Sprintf("chmod %s %s", permStr, o.formatPath(projCfg, path))))
+	}
+	return nil
+}
+
+// isProtectedRepoPath reports whether path lies within the dotfiles repository
+// directory, any configured tool configuration directories, or the tool's own directory.
+func (o *Orchestrator) isProtectedRepoPath(projCfg *config.ProjectConfig, tool *config.ToolConfig, path string) bool {
+	if projCfg == nil || path == "" {
+		return false
+	}
+	expanded := path
+	if projCfg.Paths.HomeDir != "" && strings.HasPrefix(expanded, "~") {
+		expanded = utils.ExpandHomePath(projCfg.Paths.HomeDir, expanded)
+	}
+	absPath, err := o.fs.Abs(expanded)
+	if err != nil {
+		absPath = filepath.Clean(expanded)
+	}
+	checkDir := func(dir string) bool {
+		if dir == "" {
+			return false
+		}
+		expDir := dir
+		if projCfg.Paths.HomeDir != "" && strings.HasPrefix(expDir, "~") {
+			expDir = utils.ExpandHomePath(projCfg.Paths.HomeDir, expDir)
+		}
+		absDir, err := o.fs.Abs(expDir)
+		if err != nil {
+			absDir = filepath.Clean(expDir)
+		}
+		return isWithin(absDir, absPath)
+	}
+	if checkDir(projCfg.Paths.DotfilesDir) {
+		return true
+	}
+	for _, toolDir := range projCfg.Paths.GetToolConfigsDirs() {
+		if checkDir(toolDir) {
+			return true
+		}
+	}
+	if tool != nil && tool.ConfigFilePath != "" {
+		if checkDir(filepath.Dir(tool.ConfigFilePath)) {
+			return true
+		}
+	}
+	return false
 }
 
 func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
@@ -515,7 +577,7 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 		}
 
 		for _, state := range fileStates {
-			if state.FileType != "symlink" || state.LastOperation == "rm" {
+			if state.FileType != "symlink" || state.LastOperation != "symlink" {
 				continue
 			}
 
@@ -528,23 +590,52 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 			if err != nil {
 				return fmt.Errorf("%s: recorded %s %q: %w", tool.Name, state.FileType, state.FilePath, err)
 			}
-			absFilePath, err := o.fs.Abs(resolvedFilePath)
+			expandedFilePath := resolvedFilePath
+			if projCfg != nil && strings.HasPrefix(expandedFilePath, "~") {
+				expandedFilePath = utils.ExpandHomePath(projCfg.Paths.HomeDir, expandedFilePath)
+			}
+			absFilePath, err := o.fs.Abs(expandedFilePath)
 			if err != nil {
-				absFilePath = resolvedFilePath
+				absFilePath = expandedFilePath
 			}
 
-			if !expectedSymlinks[absFilePath] && !expectedSymlinks[resolvedFilePath] && !expectedSymlinks[state.FilePath] {
+			// Skip paths that fall within DotfilesDir, toolConfigsDir, or tool directory
+			if o.isProtectedRepoPath(projCfg, tool, absFilePath) ||
+				o.isProtectedRepoPath(projCfg, tool, expandedFilePath) ||
+				o.isProtectedRepoPath(projCfg, tool, resolvedFilePath) ||
+				o.isProtectedRepoPath(projCfg, tool, state.FilePath) {
+				continue
+			}
+
+			if !expectedSymlinks[absFilePath] && !expectedSymlinks[expandedFilePath] && !expectedSymlinks[resolvedFilePath] && !expectedSymlinks[state.FilePath] {
+				// Verify via Lstat that the candidate path is actually a symbolic link before removing
+				info, err := o.fs.Lstat(expandedFilePath)
+				if err != nil {
+					info, err = o.fs.Lstat(resolvedFilePath)
+				}
+				if err != nil {
+					info, err = o.fs.Lstat(absFilePath)
+				}
+				if err != nil {
+					info, err = o.fs.Lstat(state.FilePath)
+				}
+				if err == nil && info.Mode()&os.ModeSymlink == 0 {
+					continue
+				}
+
 				o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, resolvedFilePath))))
 
 				_, _ = symEvaluator.RemoveSymlink(state.FilePath, "")
 				_ = o.fs.Remove(state.FilePath)
 				_ = o.fs.Remove(resolvedFilePath)
+				_ = o.fs.Remove(expandedFilePath)
 				_ = o.fs.Remove(absFilePath)
 
 				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
 					_ = activeFS.RecordRemoved(state.FilePath)
 					_ = activeFS.RecordRemoved(resolvedFilePath)
+					_ = activeFS.RecordRemoved(expandedFilePath)
 					_ = activeFS.RecordRemoved(absFilePath)
 					return nil
 				})
