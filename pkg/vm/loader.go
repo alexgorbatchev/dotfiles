@@ -115,12 +115,12 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	configFileDir := filepath.Dir(absConfigPath)
 
 	// Step 1: Pre-evaluate config.ts to discover Paths.ToolConfigsDir
-	configJS, err := compileFile(absConfigPath)
+	configScript, err := compileFileWithSourceMap(absConfigPath)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("compiling project config %q: %w", absConfigPath, err)
 	}
 
-	projCfg, err := evaluateProjectConfig(log, fsys, configJS, absConfigPath, target)
+	projCfg, err := evaluateProjectConfig(log, fsys, configScript.code, absConfigPath, target, configScript.sourceMap)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("evaluating project config: %w", err)
 	}
@@ -175,7 +175,7 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// Step 4: Run the unified bundle in Goja and marshal the result
 	fullConfig, eval, err := evaluateUnifiedBundle(log, fsys, script, absConfigPath, projCfg, target)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("evaluating unified config bundle: %w", err)
+		return nil, nil, nil, err
 	}
 
 	// The configuration is only complete here: placeholders are resolved, defaults are
@@ -311,7 +311,7 @@ func compileFileWithSourceMap(entryPath string) (compiledScript, error) {
 	return script, nil
 }
 
-func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configPath string, target Target) (*config.ProjectConfig, error) {
+func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, configPath string, target Target, sourceMap ...[]byte) (*config.ProjectConfig, error) {
 	configFileDir := filepath.Dir(configPath)
 
 	vm := goja.New()
@@ -348,7 +348,14 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("exports", exportsObj)
 
 	if _, err := vm.RunString(jsContent); err != nil {
-		return nil, fmt.Errorf("executing script in Goja VM: %w", err)
+		var sm []byte
+		if len(sourceMap) > 0 {
+			sm = sourceMap[0]
+		}
+		if diag := FormatVMFailure(vm, jsContent, sm, fsys, configFileDir, configPath, err); diag != nil {
+			return nil, diag
+		}
+		return nil, err
 	}
 
 	configExport, err := exportedProjectConfig(vm, configPath)
@@ -358,6 +365,13 @@ func evaluateProjectConfig(log *logger.Logger, fsys fs.FS, jsContent string, con
 	_ = vm.Set("__configExport", configExport)
 
 	if err := resolveConfigExport(vm, "globalThis.__configExport", configPath); err != nil {
+		var sm []byte
+		if len(sourceMap) > 0 {
+			sm = sourceMap[0]
+		}
+		if diag := FormatVMFailure(vm, jsContent, sm, fsys, configFileDir, configPath, err); diag != nil {
+			return nil, diag
+		}
 		return nil, err
 	}
 
@@ -541,14 +555,14 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, script compiledScript
 	_ = vm.Set("exports", exportsObj)
 
 	if _, err := vm.RunString(script.code); err != nil {
-		return nil, nil, describeBundleFailure(vm, script.code, err)
+		return nil, nil, describeBundleFailure(vm, script.code, script.sourceMap, fsys, configFileDir, "", err)
 	}
 
-	if err := settleToolFactories(vm); err != nil {
+	if err := settleToolFactories(vm, script.sourceMap, fsys, configFileDir); err != nil {
 		return nil, nil, err
 	}
 
-	if err := settleDeclarationResolutions(vm); err != nil {
+	if err := settleDeclarationResolutions(vm, script.sourceMap, fsys, configFileDir); err != nil {
 		return nil, nil, err
 	}
 
@@ -589,10 +603,29 @@ func evaluateUnifiedBundle(log *logger.Logger, fsys fs.FS, script compiledScript
 // first await, with nothing logged and a successful exit -- the same failure the
 // synchronous path reports by name. The promises are settled here, where the tool file
 // each one came from is still known, so that both paths fail alike.
-func settleToolFactories(vm *goja.Runtime) error {
+func settleToolFactories(vm *goja.Runtime, extra ...any) error {
 	registry := vm.Get("__toolFactories")
 	if registry == nil || goja.IsUndefined(registry) || goja.IsNull(registry) {
 		return nil
+	}
+
+	var sourceMap []byte
+	var fsys fs.FS
+	var baseDir string
+	if len(extra) > 0 {
+		if sm, ok := extra[0].([]byte); ok {
+			sourceMap = sm
+		}
+	}
+	if len(extra) > 1 {
+		if f, ok := extra[1].(fs.FS); ok {
+			fsys = f
+		}
+	}
+	if len(extra) > 2 {
+		if bd, ok := extra[2].(string); ok {
+			baseDir = bd
+		}
 	}
 
 	factories := registry.ToObject(vm)
@@ -601,6 +634,18 @@ func settleToolFactories(vm *goja.Runtime) error {
 		toolPath := factories.Get(strconv.FormatInt(i, 10)).ToObject(vm).Get("path").String()
 		what := fmt.Sprintf("executing tool file %q", toolPath)
 		if _, err := settleInVM(vm, fmt.Sprintf("__toolFactories[%d].promise", i), what); err != nil {
+			if len(sourceMap) > 0 {
+				outcomeVal := vm.Get("__vmOutcome")
+				if outcomeVal != nil && !goja.IsUndefined(outcomeVal) && !goja.IsNull(outcomeVal) {
+					outcome := outcomeVal.ToObject(vm)
+					if errVal := outcome.Get("error"); errVal != nil && !goja.IsNull(errVal) && !goja.IsUndefined(errVal) {
+						diag := FormatVMFailure(vm, "", sourceMap, fsys, baseDir, toolPath, errors.New(errVal.String()))
+						if diag != nil && diag.Location.File != "" && diag.Location.Line > 0 {
+							return diag
+						}
+					}
+				}
+			}
 			return err
 		}
 	}
@@ -615,10 +660,29 @@ func settleToolFactories(vm *goja.Runtime) error {
 // tool would reach Go with a block whose content is nothing at all and no error to
 // say so. They are settled after the tool factories, because a factory that awaits
 // before declaring a block has not declared it yet when its own promise settles.
-func settleDeclarationResolutions(vm *goja.Runtime) error {
+func settleDeclarationResolutions(vm *goja.Runtime, extra ...any) error {
 	registry := vm.Get("__pendingResolutions")
 	if registry == nil || goja.IsUndefined(registry) || goja.IsNull(registry) {
 		return nil
+	}
+
+	var sourceMap []byte
+	var fsys fs.FS
+	var baseDir string
+	if len(extra) > 0 {
+		if sm, ok := extra[0].([]byte); ok {
+			sourceMap = sm
+		}
+	}
+	if len(extra) > 1 {
+		if f, ok := extra[1].(fs.FS); ok {
+			fsys = f
+		}
+	}
+	if len(extra) > 2 {
+		if bd, ok := extra[2].(string); ok {
+			baseDir = bd
+		}
 	}
 
 	pending := registry.ToObject(vm)
@@ -627,6 +691,18 @@ func settleDeclarationResolutions(vm *goja.Runtime) error {
 		entry := pending.Get(strconv.FormatInt(i, 10)).ToObject(vm)
 		what := fmt.Sprintf("resolving %s", entry.Get("describe").String())
 		if _, err := settleInVM(vm, fmt.Sprintf("__pendingResolutions[%d].promise", i), what); err != nil {
+			if len(sourceMap) > 0 {
+				outcomeVal := vm.Get("__vmOutcome")
+				if outcomeVal != nil && !goja.IsUndefined(outcomeVal) && !goja.IsNull(outcomeVal) {
+					outcome := outcomeVal.ToObject(vm)
+					if errVal := outcome.Get("error"); errVal != nil && !goja.IsNull(errVal) && !goja.IsUndefined(errVal) {
+						diag := FormatVMFailure(vm, "", sourceMap, fsys, baseDir, "", errors.New(errVal.String()))
+						if diag != nil && diag.Location.File != "" && diag.Location.Line > 0 {
+							return diag
+						}
+					}
+				}
+			}
 			return err
 		}
 	}
@@ -638,18 +714,9 @@ func settleDeclarationResolutions(vm *goja.Runtime) error {
 var memberCallCallee = regexp.MustCompile(`\.([\p{L}_$][\p{L}\p{N}_$]*)\s*$`)
 
 // describeBundleFailure turns a failure of the generated bundle into a message the
-// author of a tool file can act on. Goja reports a line and column into that bundle,
-// which exists on no disk, so the tool file being evaluated is read back from the VM
-// and the call that failed is recovered from the bundle source instead.
-func describeBundleFailure(vm *goja.Runtime, bundledJS string, err error) error {
-	toolPath := stringGlobal(vm, "currentToolPath")
-	if toolPath == "" {
-		return fmt.Errorf("executing script in Goja VM: %w", err)
-	}
-	if method := failingCallee(bundledJS, err); method != "" {
-		return fmt.Errorf("executing tool file %q at .%s(): %w", toolPath, method, err)
-	}
-	return fmt.Errorf("executing tool file %q: %w", toolPath, err)
+// author of a tool file can act on.
+func describeBundleFailure(vm *goja.Runtime, bundledJS string, sourceMap []byte, fsys fs.FS, baseDir, defaultFile string, err error) error {
+	return FormatVMFailure(vm, bundledJS, sourceMap, fsys, baseDir, defaultFile, err)
 }
 
 // stringGlobal reads a global the bundle set, or returns "" when it holds no string.
@@ -733,6 +800,9 @@ for (const [path, entry] of Object.entries(toolModules)) {
   globalThis.currentToolPath = entry.absPath;
 
   const mod = entry.load();
+  globalThis.currentToolName = undefined;
+  globalThis.currentToolPath = undefined;
+
   const t = mod.default || mod;
   if (t) {
     if (!t.name) {

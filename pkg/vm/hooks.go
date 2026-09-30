@@ -445,7 +445,8 @@ func evaluateToolFile(ctx context.Context, req toolFileVM) (*evaluatedToolFile, 
 
 	// Evaluating the tool file registers its handlers and resolvers.
 	if _, err := vm.RunString(script.code); err != nil {
-		return nil, fmt.Errorf("evaluating %q for its %s: %w", tool.ConfigFilePath, req.purpose, err)
+		diag := FormatVMFailure(vm, script.code, script.sourceMap, req.fsys, configFileDir, tool.ConfigFilePath, err)
+		return nil, fmt.Errorf("evaluating %q for its %s: %w", tool.ConfigFilePath, req.purpose, diag)
 	}
 	// An asynchronous factory hands the builder back rather than its promise, so nothing
 	// in the VM observes how it ended. A rejection here means the file registered only
@@ -453,7 +454,7 @@ func evaluateToolFile(ctx context.Context, req toolFileVM) (*evaluatedToolFile, 
 	// the resolver would not answer, and the installation would carry on as if the work
 	// had been done. The load settles these promises for the same reason, so a factory
 	// that fails fails alike whichever evaluation reaches it.
-	if err := settleToolFactories(vm); err != nil {
+	if err := settleToolFactories(vm, script.sourceMap, req.fsys, configFileDir); err != nil {
 		return nil, err
 	}
 	return &evaluatedToolFile{
