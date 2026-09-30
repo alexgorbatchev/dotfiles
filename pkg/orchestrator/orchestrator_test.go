@@ -5444,3 +5444,152 @@ func TestInstallTool_DoesNotTagInstallerName(t *testing.T) {
 		t.Errorf("expected clean single tool tag, got: %q", got)
 	}
 }
+
+type loggingMockInstaller struct {
+	mockInstaller
+	fsys        fs.FS
+	binariesDir string
+}
+
+func (m *loggingMockInstaller) SetFS(f fs.FS) { m.fsys = f }
+
+func (m *loggingMockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
+	if m.fsys != nil && m.binariesDir != "" {
+		stagingDir := filepath.Join(m.binariesDir, tool.Name, ".staging")
+		for _, b := range m.binaries {
+			_ = m.fsys.WriteFile(filepath.Join(stagingDir, b), []byte("#!/bin/sh\n"), 0755)
+		}
+	}
+	return m.mockInstaller.Install(ctx, tool)
+}
+
+func TestInstallTool_TargetedVsBatchLogging(t *testing.T) {
+	ctx := context.Background()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{
+		Writer: &logBuf,
+		Level:  logger.LogLevelDefault,
+	})
+
+	memFS := fs.NewMemFS()
+	runner := exec.NewMockRunner()
+
+	instReg := installer.NewRegistry()
+	_ = instReg.Register(&loggingMockInstaller{
+		mockInstaller: mockInstaller{
+			name:     "mock-test1",
+			binaries: []string{"tool1-bin"},
+		},
+		binariesDir: "/home/user/binaries",
+	})
+	_ = instReg.Register(&loggingMockInstaller{
+		mockInstaller: mockInstaller{
+			name:     "mock-test2",
+			binaries: []string{"tool2-bin"},
+		},
+		binariesDir: "/home/user/binaries",
+	})
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("NewConnection failed: %v", err)
+	}
+	defer sqlDB.Close()
+	reg := registry.NewRegistry(sqlDB)
+
+	orch := NewOrchestrator(log, memFS, runner, reg, instReg)
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	tool1 := &config.ToolConfig{
+		Name:               "tool1",
+		InstallationMethod: "mock-test1",
+		Binaries:           testutil.DeclaredBinaries("tool1-bin"),
+	}
+
+	tool2 := &config.ToolConfig{
+		Name:               "tool2",
+		InstallationMethod: "mock-test2",
+		Binaries:           testutil.DeclaredBinaries("tool2-bin"),
+	}
+
+	t.Run("targeted install on uninstalled tool logs Installing at INFO", func(t *testing.T) {
+		logBuf.Reset()
+		if err := orch.InstallTool(config.WithTargeted(ctx, true), tool1, projCfg); err != nil {
+			t.Fatalf("targeted InstallTool tool1 failed: %v", err)
+		}
+		out := logBuf.String()
+		if !strings.Contains(out, "[tool1] Installing...") {
+			t.Errorf("expected targeted install on uninstalled tool to log 'Installing...', got:\n%s", out)
+		}
+		if strings.Contains(out, "Already installed") {
+			t.Errorf("expected targeted install on uninstalled tool NOT to log 'Already installed', got:\n%s", out)
+		}
+	})
+
+	t.Run("targeted install on already-installed tool logs Already installed at INFO", func(t *testing.T) {
+		logBuf.Reset()
+		if err := orch.InstallTool(config.WithTargeted(ctx, true), tool1, projCfg); err != nil {
+			t.Fatalf("targeted InstallTool tool1 (second run) failed: %v", err)
+		}
+		out := logBuf.String()
+		if !strings.Contains(out, "[tool1] Already installed") {
+			t.Errorf("expected targeted install on already-installed tool to log 'Already installed', got:\n%s", out)
+		}
+		if strings.Contains(out, "[tool1] Installing...") {
+			t.Errorf("expected targeted install on already-installed tool NOT to log 'Installing...', got:\n%s", out)
+		}
+	})
+
+	t.Run("batch install where tool is already installed does not log Already installed or Installing at INFO", func(t *testing.T) {
+		logBuf.Reset()
+		if err := orch.InstallTools(ctx, []*config.ToolConfig{tool1}, projCfg); err != nil {
+			t.Fatalf("batch InstallTools failed: %v", err)
+		}
+		out := logBuf.String()
+		if strings.Contains(out, "Already installed") {
+			t.Errorf("expected batch install of already-installed tool NOT to log 'Already installed' at info level, got:\n%s", out)
+		}
+		if strings.Contains(out, "[tool1] Installing...") {
+			t.Errorf("expected batch install of already-installed tool NOT to log 'Installing...', got:\n%s", out)
+		}
+	})
+
+	t.Run("batch install with an uninstalled tool logs Installing for uninstalled tool only", func(t *testing.T) {
+		logBuf.Reset()
+		if err := orch.InstallTools(ctx, []*config.ToolConfig{tool1, tool2}, projCfg); err != nil {
+			t.Fatalf("batch InstallTools (mixed) failed: %v", err)
+		}
+		out := logBuf.String()
+		if !strings.Contains(out, "[tool2] Installing...") {
+			t.Errorf("expected batch install of uninstalled tool2 to log 'Installing...', got:\n%s", out)
+		}
+		if strings.Contains(out, "[tool1] Installing...") {
+			t.Errorf("expected batch install of already-installed tool1 NOT to log 'Installing...', got:\n%s", out)
+		}
+		if strings.Contains(out, "Already installed") {
+			t.Errorf("expected batch install NOT to log 'Already installed' at info level, got:\n%s", out)
+		}
+	})
+
+	t.Run("targeted install with force on already-installed tool logs Installing", func(t *testing.T) {
+		logBuf.Reset()
+		if err := orch.InstallTool(config.WithForce(config.WithTargeted(ctx, true), true), tool1, projCfg); err != nil {
+			t.Fatalf("forced targeted InstallTool tool1 failed: %v", err)
+		}
+		out := logBuf.String()
+		if !strings.Contains(out, "[tool1] Installing...") {
+			t.Errorf("expected forced targeted install to log 'Installing...', got:\n%s", out)
+		}
+		if strings.Contains(out, "Already installed") {
+			t.Errorf("expected forced targeted install NOT to log 'Already installed', got:\n%s", out)
+		}
+	})
+}

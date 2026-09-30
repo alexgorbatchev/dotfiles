@@ -648,7 +648,7 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 		return
 	}
 
-	ctx := context.Background()
+	ctx := config.WithTargeted(context.Background(), true)
 	if req.Force {
 		ctx = config.WithForce(ctx, true)
 		ctx = config.WithOverwrite(ctx, true)

@@ -142,7 +142,6 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 				return err
 			}
 			if !skip {
-				o.logger.WithTag(tool.Name).Info(logger.Message("Installing..."))
 				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
 					failedAutoInstalls[tool.Name] = true
 					o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: %v", err)))

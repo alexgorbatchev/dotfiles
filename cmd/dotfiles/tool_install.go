@@ -36,6 +36,7 @@ var toolInstallCmd = &cobra.Command{
 		services.Orchestrator.SetLogger(log)
 
 		if len(args) > 0 {
+			ctx = config.WithTargeted(ctx, true)
 			for _, toolName := range args {
 				if strings.Contains(toolName, "=") {
 					continue
@@ -45,11 +46,9 @@ var toolInstallCmd = &cobra.Command{
 					return fmt.Errorf("tool %q not found in configuration", toolName)
 				}
 
-				toolLog := log.WithTag(targetTool.Name)
-				toolLog.Info(logger.Message("Installing..."))
-
 				err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 				if err != nil {
+					toolLog := log.WithTag(targetTool.Name)
 					toolLog.Error(logger.Message(err.Error()))
 					return ErrSilent
 				}

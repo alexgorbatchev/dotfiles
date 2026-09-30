@@ -54,6 +54,7 @@ func downloadSettings(projCfg *config.ProjectConfig) downloader.Settings {
 
 // InstallTools executes the installation pipeline for all provided tools sequentially in topological order.
 func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	ctx = config.WithTargeted(ctx, false)
 	active, skipped := partitionTools(tools)
 	sorted, err := o.sortActiveTools(active, skipped)
 	if err != nil {
@@ -133,6 +134,8 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		// For shell-only tools (which have no installation method), proceed directly to generate shims, copies, and symlinks.
 		return o.GenerateTool(ctx, tool, projCfg)
 	}
+
+	o.logger.WithTag(tool.Name).Info(logger.Message("Installing..."))
 
 	// A loaded configuration never names a method no installer handles
 	// (config.ToolConfig.Validate), so this fails only for a caller that builds a

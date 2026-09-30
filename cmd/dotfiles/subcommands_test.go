@@ -3821,6 +3821,47 @@ func TestInstallCommand_ArgumentHandling(t *testing.T) {
 	})
 }
 
+func TestInstallCommand_TargetedVsBatchAlreadyInstalled(t *testing.T) {
+	p := newE2EProject(t, tsTools{"bat": `install("manual")`})
+
+	t.Run("first install logs Installing...", func(t *testing.T) {
+		out, err := p.run("tool", "install", "bat")
+		if err != nil {
+			t.Fatalf("tool install bat: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[bat] Installing...")
+		mustNotContain(t, "stderr", out.Stderr, "Already installed")
+	})
+
+	t.Run("targeted install on already installed tool logs Already installed at info level without Installing...", func(t *testing.T) {
+		out, err := p.run("tool", "install", "bat")
+		if err != nil {
+			t.Fatalf("tool install bat: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[bat] Already installed")
+		mustNotContain(t, "stderr", out.Stderr, "[bat] Installing...")
+	})
+
+	t.Run("batch install does not spam Already installed lines at info level", func(t *testing.T) {
+		out, err := p.run("tool", "install")
+		if err != nil {
+			t.Fatalf("tool install: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Installing all configured tools")
+		mustNotContain(t, "stderr", out.Stderr, "Already installed")
+		mustNotContain(t, "stderr", out.Stderr, "[bat] Installing...")
+	})
+
+	t.Run("targeted install with --force reinstalls and logs Installing...", func(t *testing.T) {
+		out, err := p.run("tool", "install", "--force", "bat")
+		if err != nil {
+			t.Fatalf("tool install --force bat: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "[bat] Installing...")
+		mustNotContain(t, "stderr", out.Stderr, "Already installed")
+	})
+}
+
 func TestUninstallCommand_Errors(t *testing.T) {
 	t.Run("unknown tool", func(t *testing.T) {
 		p := newE2EProject(t, tsTools{"bat": `install("manual")`})

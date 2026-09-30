@@ -45,4 +45,27 @@ func TestContextHelpers(t *testing.T) {
 	if IsOverwriteEnabled(ctxNoOverwrite) {
 		t.Errorf("IsOverwriteEnabled(ctx false) = true, want false")
 	}
+
+	// 5. IsTargeted with nil context and env
+	t.Setenv("DOTFILES_TARGETED", "")
+	if IsTargeted(nil) {
+		t.Errorf("IsTargeted(nil) = true, want false")
+	}
+
+	t.Setenv("DOTFILES_TARGETED", "true")
+	if !IsTargeted(nil) {
+		t.Errorf("IsTargeted(nil) with env true = false, want true")
+	}
+
+	// 6. WithTargeted and IsTargeted
+	ctxTargeted := WithTargeted(context.Background(), true)
+	if !IsTargeted(ctxTargeted) {
+		t.Errorf("IsTargeted(ctx) = false, want true")
+	}
+
+	ctxNoTargeted := WithTargeted(context.Background(), false)
+	t.Setenv("DOTFILES_TARGETED", "true") // Context value overrides env!
+	if IsTargeted(ctxNoTargeted) {
+		t.Errorf("IsTargeted(ctx false) = true, want false")
+	}
 }

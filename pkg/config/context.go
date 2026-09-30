@@ -12,6 +12,7 @@ const (
 	forceKey         contextKey = "DOTFILES_FORCE"
 	overwriteKey     contextKey = "DOTFILES_OVERWRITE"
 	projectConfigKey contextKey = "DOTFILES_PROJECT_CONFIG"
+	targetedKey      contextKey = "DOTFILES_TARGETED"
 )
 
 // WithProjectConfig returns a new context with the project config set.
@@ -72,4 +73,19 @@ func IsOverwriteEnabled(ctx context.Context) bool {
 		}
 	}
 	return os.Getenv("DOTFILES_OVERWRITE") == "true"
+}
+
+// WithTargeted returns a new context with the targeted flag set.
+func WithTargeted(ctx context.Context, targeted bool) context.Context {
+	return context.WithValue(ctx, targetedKey, targeted)
+}
+
+// IsTargeted checks if targeted mode is enabled in the context or fallback environment variable.
+func IsTargeted(ctx context.Context) bool {
+	if ctx != nil {
+		if val, ok := ctx.Value(targetedKey).(bool); ok {
+			return val
+		}
+	}
+	return os.Getenv("DOTFILES_TARGETED") == "true"
 }
