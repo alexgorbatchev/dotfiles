@@ -17,11 +17,32 @@ var toolAddCmd = &cobra.Command{
 	Use:   "add <owner/repo>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Add a remote tool configuration from a GitHub repository",
-	Long: `Fetches <name>.tool.ts from the specified GitHub repository and writes it
-into the primary tool configs directory.
+	Long: `Fetches <repo-name>.tool.ts from a GitHub repository into the primary
+tool configs directory. The file must be at the root of the default branch;
+the command does not search tools/ or .dotfiles/ directories or copy other files.
 
-The tool name is derived from the repository name (e.g. sharkdp/bat -> bat.tool.ts).
-If the configuration already exists locally, --force is required to overwrite it.`,
+Accepted repository forms:
+  owner/repo
+  https://github.com/owner/repo
+  http://github.com/owner/repo
+  github.com/owner/repo
+  owner/repo.git
+  owner/repo/
+  owner/repo.tool.ts
+
+The same suffix forms work with the GitHub URL prefixes above.
+Do not combine .git with a trailing slash: owner/repo.git/ retains .git
+in the repository name. File browser URLs with /blob/ or /tree/ paths
+are not accepted. Use --force to overwrite an existing local configuration.
+
+This command only downloads the configuration; it does not install the tool binary
+or generate shims and shell integration. Review the downloaded file, then run:
+  dotfiles generate
+  dotfiles install <tool>
+
+Use the repository name for <tool>. For a tool that declares a shim, running
+its binary instead of dotfiles install triggers installation on first use.
+Load the generated shell configuration if you have not already set it up.`,
 	ValidArgsFunction: completeNoFileComp,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		rawArg := strings.TrimSpace(args[0])

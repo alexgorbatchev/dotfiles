@@ -72,6 +72,12 @@ tools/
 
 Files must be named `{tool-name}.tool.ts` and export a default using `defineTool`.
 
+## Obtain Tool Configurations
+
+Use [`dotfiles tool scaffold`](../getting-started/cli-reference.md#dotfiles-tool-scaffold-name) to provision starter configurations, or [`dotfiles tool add`](../getting-started/cli-reference.md#dotfiles-tool-add-ownerrepo) to download one published by a GitHub repository. The command reference describes accepted repository URLs and the required remote layout.
+
+After adding a configuration, review it and run `dotfiles generate` to generate its shims and shell integration. Run `dotfiles install <tool>` to install it immediately, or use one of its generated shims to install on first use. See the [post-addition workflow](../getting-started/cli-reference.md#dotfiles-tool-add-ownerrepo) and [load the generated shell configuration](#load-generated-config).
+
 ## Minimal Configuration
 
 ```typescript

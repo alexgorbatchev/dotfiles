@@ -15,7 +15,7 @@ dotfiles tool check --json
 dotfiles tool validate fzf --json
 dotfiles tool files fzf
 dotfiles tool scaffold
-dotfiles tool add sharkdp/bat
+dotfiles tool add owner/my-tool # example: a repository publishing my-tool.tool.ts
 
 # System, binary, and storage path queries
 dotfiles path
@@ -194,11 +194,44 @@ An existing file is left untouched, so running it again adds what is missing wit
 
 #### `dotfiles tool add <owner/repo>`
 
-Fetches a remote `<name>.tool.ts` configuration file from the specified GitHub repository and writes it into the primary tool configs directory.
+Downloads a remote tool configuration into the first configured `toolConfigsDir` directory (normally `tools/` in your dotfiles project). The tool name is the repository name: a repository named `my-tool` must publish `my-tool.tool.ts`.
 
-The tool name is derived from the repository name (e.g. `sharkdp/bat` -> `bat.tool.ts`). Fails with an error if the tool definition does not exist in the remote repository or if the file already exists locally without `--force`.
+Accepted argument forms, using an example repository `owner/my-tool`:
+
+```bash
+dotfiles tool add owner/my-tool
+dotfiles tool add https://github.com/owner/my-tool
+dotfiles tool add http://github.com/owner/my-tool
+dotfiles tool add github.com/owner/my-tool
+dotfiles tool add owner/my-tool.git
+dotfiles tool add owner/my-tool/
+dotfiles tool add owner/my-tool.tool.ts
+```
+
+The `.git`, trailing `/`, and `.tool.ts` forms also work with the GitHub URL prefixes above. Do not combine `.git` with a trailing `/`: `.git` is stripped before `/`, so `owner/my-tool.git/` retains `.git` in the repository name and requests `my-tool.git.tool.ts` from `owner/my-tool.git`. A `.tool.ts` suffix selects the repository `owner/my-tool`, not a path inside it. File browser URLs containing `/blob/` or `/tree/` and subdirectory paths are not accepted. There is no option for selecting a branch.
+
+**Remote repository layout:** Place `<repo-name>.tool.ts` at the root of the repository's default branch, exporting a default `defineTool` configuration. For the example above:
+
+```text
+my-tool/                 # repository, on its default branch
+└── my-tool.tool.ts
+```
+
+The command requests only this root file. It does not search `tools/` or `.dotfiles/`, select another branch, or copy companion files used by imports, symlinks, templates, or shell configuration. Provide any required companion files separately. An upstream binary repository is usable only if it also publishes the required tool configuration at this location.
+
+Fails with an error if the remote configuration is missing or the local file already exists without `--force`.
 
 - `-f, --force`: Overwrite existing tool configuration.
+
+**After adding:** `tool add` only downloads the configuration. It does not generate shims or completions, load shell configuration, or install the tool binary. Review the downloaded configuration before generating or installing it, then run:
+
+```bash
+# Continue the owner/my-tool example from your dotfiles project
+dotfiles generate           # generate shims, completions, and shell integration
+dotfiles install my-tool    # install the configured tool immediately
+```
+
+`dotfiles generate` and `dotfiles install` are shortcuts for [`state generate`](#dotfiles-state-generate) and [`tool install`](#dotfiles-tool-install-tool). Alternatively, run a binary declared with a shim to trigger installation on first use; its name can differ from `my-tool`. Ensure your generated shell configuration is [loaded](../configuration/getting-started.md#load-generated-config) when using shell aliases, functions, or completions.
 
 ---
 

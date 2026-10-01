@@ -142,6 +142,8 @@ $ dotfiles skill .agents/skills/
 
 ### Making First `.tool.ts` file
 
+Use [`dotfiles tool scaffold`](.agents/skills/dotfiles/references/getting-started/cli-reference.md#dotfiles-tool-scaffold-name) for starter configurations, or [`dotfiles tool add`](.agents/skills/dotfiles/references/getting-started/cli-reference.md#dotfiles-tool-add-ownerrepo) to download a configuration published by a GitHub repository. The command reference covers accepted URLs, the required repository layout, and the follow-up generation and installation steps.
+
 The fastest way to make `.tool.ts` files is to ask an agent. For example:
 
 > /skills:dotfiles https://github.com/junegunn/fzf

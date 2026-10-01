@@ -4463,6 +4463,34 @@ func TestRootShortcutsAndDomainAliases(t *testing.T) {
 	})
 }
 
+func TestToolAddHelp(t *testing.T) {
+	for _, mode := range []string{"0", "1"} {
+		t.Run("AGENT="+mode, func(t *testing.T) {
+			t.Setenv("AGENT", mode)
+			out, err := runCommand("tool", "add", "--help")
+			if err != nil {
+				t.Fatalf("tool add --help: %v", err)
+			}
+			help := strings.Join(strings.Fields(out.Stdout), " ")
+			for _, want := range []string{
+				"owner/repo", "https://github.com/owner/repo", "http://github.com/owner/repo", "github.com/owner/repo",
+				"owner/repo.git", "owner/repo/", "owner/repo.tool.ts",
+				"Do not combine .git with a trailing slash",
+				"<repo-name>.tool.ts", "root of the default branch", "tools/ or .dotfiles/",
+				"only downloads the configuration", "does not install the tool binary",
+				"dotfiles generate", "shims and shell integration", "dotfiles install <tool>", "first use",
+			} {
+				if !strings.Contains(help, want) {
+					t.Errorf("tool add --help is missing %q", want)
+				}
+			}
+			if out.Stderr != "" {
+				t.Errorf("tool add --help wrote stderr: %s", out.Stderr)
+			}
+		})
+	}
+}
+
 func TestToolAdd(t *testing.T) {
 	t.Setenv("DOTFILES_E2E_TEST", "true")
 
