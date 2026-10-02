@@ -99,6 +99,9 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 
 ## Shared boundaries
 
+- Always: fetch GitHub application data through non-API transports by default. Reuse existing fetching and downloader infrastructure through verified non-API paths; inspect a helper's implementation before reusing it.
+- Only with explicit opt-in: use the `gh` CLI for enterprise GitHub access, including API requests made by `gh api` or other `gh` commands. Scope the opt-in to the configured operation and target. An enterprise hostname, credentials, installed `gh`, or a failed non-API request does not enable this mode automatically.
+- Never: call GitHub REST or GraphQL APIs directly from application HTTP clients, SDKs, or proxies, or automatically fall back to API requests or the `gh` CLI. This applies to both public GitHub and GitHub Enterprise. Authentication and caching do not authorize API access outside the explicit enterprise `gh` CLI opt-in.
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).
 - Always: maintain a minimum of 90% statement/line coverage across all packages.
 - Always: run `bun check` before declaring work complete.

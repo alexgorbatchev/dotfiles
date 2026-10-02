@@ -13,7 +13,7 @@ Shared GitHub API token resolution and authentication utilities.
   2. For `github.com` (including `api.github.com`), `*.ghe.com`, or empty host (default): `GH_TOKEN`, then `GITHUB_TOKEN` environment variables.
   3. For any other host (such as GitHub Enterprise Server): `GH_ENTERPRISE_TOKEN`, then `GITHUB_ENTERPRISE_TOKEN` environment variables.
 - Context isolation: callers pass their target host and only the configuration they own (e.g. self-updater targets the public GitHub API and passes no configured token because project `github.token` belongs to `github.host`).
-- Remote contents fetching (`FetchContent`): queries GitHub repository contents API, decodes base64 file contents handling newlines, and falls back to `gh api` on 403 or network errors.
+- Current remote contents fetching (`FetchContent`) still queries the GitHub repository contents API and falls back to `gh api`. Its direct API requests and automatic CLI fallback conflict with the root GitHub fetching policy. Replace its default transport before reuse, use the shared `pkg/downloader` infrastructure for non-API file downloads, and require explicit enterprise opt-in before using the `gh` CLI.
 
 ## Local gotchas
 
@@ -21,6 +21,7 @@ Shared GitHub API token resolution and authentication utilities.
 
 ## Boundaries
 
+- Always: follow the root [GitHub fetching policy](../../AGENTS.md#shared-boundaries): non-API access by default, explicit enterprise `gh` CLI opt-in, and no direct API requests or automatic CLI/API fallbacks. Existing helpers must satisfy these transport boundaries before reuse.
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).
 - Always: write matching unit tests in `token_test.go` for any changes to token resolution.
 - Ask first: changing token evaluation precedence or adding new credential sources.
