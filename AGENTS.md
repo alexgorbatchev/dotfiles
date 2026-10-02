@@ -88,6 +88,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 
 ## Shared conventions
 
+- Before implementing a feature in any language, inspect existing dependencies and maintained third-party libraries. Prefer a suitable library, or native/standard-library functionality when it meets the requirements. Write custom functionality only when suitable existing solutions cannot meet them.
 - Implement Go code in `pkg/` organized by responsibility (domain-oriented, e.g. `pkg/config/`, `pkg/installer/`, `pkg/logger/`).
 - Accept interfaces, return concrete structs in Go functions. Wrap errors with context using `%w` (`fmt.Errorf("action: %w", err)`).
 - Write platform-independent tests: never branch on `runtime.GOOS` to select a different expected value. Assert on identity and intent (that a specific tool config is present) rather than on aggregate counts that platform-specific behavior can change, and inject the target OS as a parameter (as `scaffold.Options.TargetOS` does) when the subject genuinely is platform-specific behavior.
