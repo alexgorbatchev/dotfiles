@@ -6,6 +6,11 @@ description: >-
   declarative file management (blocks, templates, ensureDir, symlinks, copies), shell integration (aliases, functions, completions, env, sourceFile),
   hooks (before-install, after-download, after-extract, after-install),
   platform overrides, virtual environments, shim generation, dotfiles management.
+author: alexgorbatchev
+metadata:
+  created_on: 2026-03-04 19:29
+  last_modified: 2026-10-02 21:15
+  status: current
 ---
 
 # Dotfiles Tool Installer

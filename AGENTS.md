@@ -103,6 +103,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Only with explicit opt-in: use the `gh` CLI for enterprise GitHub access, including API requests made by `gh api` or other `gh` commands. Scope the opt-in to the configured operation and target. An enterprise hostname, credentials, installed `gh`, or a failed non-API request does not enable this mode automatically.
 - Never: call GitHub REST or GraphQL APIs directly from application HTTP clients, SDKs, or proxies, or automatically fall back to API requests or the `gh` CLI. This applies to both public GitHub and GitHub Enterprise. Authentication and caching do not authorize API access outside the explicit enterprise `gh` CLI opt-in.
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).
+- Always: keep the dotfiles skill frontmatter's `author: alexgorbatchev` and `metadata` block with `created_on`, `last_modified` (`YYYY-MM-DD HH:MM`), and `status: current`. Preserve `created_on` and update `last_modified` when revising the skill.
 - Always: maintain a minimum of 90% statement/line coverage across all packages.
 - Always: run `bun check` before declaring work complete.
 - Always: verify that every release actually produces and uploads all compiled release binary assets via `gh release view vX.Y.Z --json assets`.
