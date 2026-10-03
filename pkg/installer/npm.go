@@ -174,7 +174,9 @@ func (n *NpmInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig)
 
 	name, args := "npm", []string{"view", "--", pkgName, "version"}
 	if pkgManager == "bun" {
-		name, args = "bun", []string{"pm", "view", "--", pkgName, "version"}
+		// Bun initializes the package manager before querying the registry; global
+		// mode lets it check a global tool from a directory without package.json.
+		name, args = "bun", []string{"pm", "view", "-g", "--", pkgName, "version"}
 	}
 
 	// A registry that cannot be reached, a package that does not exist and an

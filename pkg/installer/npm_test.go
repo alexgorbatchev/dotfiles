@@ -228,14 +228,14 @@ func TestNpmInstaller(t *testing.T) {
 			t.Errorf("npm view args = %v, want [view -- prettier version]", runner.History)
 		}
 
-		// 7. bun pm view -- <name> version
+		// 7. bun pm view -g -- <name> version
 		runner.Clear()
 		registerQuery(runner, "bun", "3.0.0\n", "", nil)
 		if _, err := inst.CheckUpdate(context.Background(), toolBun); err != nil {
 			t.Fatalf("CheckUpdate failed: %v", err)
 		}
-		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"pm", "view", "--", "prettier", "version"}) {
-			t.Errorf("bun pm view args = %v, want [pm view -- prettier version]", runner.History)
+		if len(runner.History) == 0 || !slices.Equal(runner.History[0].Args, []string{"pm", "view", "-g", "--", "prettier", "version"}) {
+			t.Errorf("bun pm view args = %v, want [pm view -g -- prettier version]", runner.History)
 		}
 	})
 }
@@ -272,13 +272,20 @@ func TestNpmInstaller_CheckUpdate(t *testing.T) {
 			command:     "bun",
 			stderr:      "404 Not Found: https://registry.npmjs.org/prettier\n",
 			err:         exitStatusError(1),
-			wantErrText: []string{"running bun pm view -- prettier version", "404 Not Found"},
+			wantErrText: []string{"running bun pm view -g -- prettier version", "404 Not Found"},
 		},
 		{
 			name:        "npm prints nothing",
 			command:     "npm",
 			stdout:      "\n",
 			wantErrText: []string{"running npm view -- prettier version", "printed no version"},
+		},
+		{
+			name:        "bun prints nothing",
+			params:      bun,
+			command:     "bun",
+			stdout:      "\n",
+			wantErrText: []string{"running bun pm view -g -- prettier version", "printed no version"},
 		},
 	}
 	for _, tt := range tests {
@@ -297,6 +304,45 @@ func TestNpmInstaller_CheckUpdate(t *testing.T) {
 			}
 			if res.LatestVersion != tt.wantLatest || res.Outdated != nil {
 				t.Errorf("CheckUpdate() = %+v, want LatestVersion %q and no verdict", res, tt.wantLatest)
+			}
+		})
+	}
+}
+
+func TestNpmInstaller_CheckUpdateConfiguredPackage(t *testing.T) {
+	tests := []struct {
+		manager string
+		args    []string
+	}{
+		{manager: "npm", args: []string{"view", "--", "@openai/codex", "version"}},
+		{manager: "bun", args: []string{"pm", "view", "-g", "--", "@openai/codex", "version"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.manager, func(t *testing.T) {
+			runner := exec.NewMockRunner()
+			registerQuery(runner, tt.manager, "1.2.3\n", "", nil)
+			inst := NewNpmInstaller(runner, fs.NewMemFS(), nil)
+			tool := &config.ToolConfig{
+				Name: "codex",
+				InstallParams: map[string]interface{}{
+					"packageManager": tt.manager,
+					"package":        "@openai/codex",
+				},
+			}
+
+			res, err := inst.CheckUpdate(context.Background(), tool)
+			if err != nil {
+				t.Fatalf("CheckUpdate() error = %v", err)
+			}
+			if res.LatestVersion != "1.2.3" {
+				t.Errorf("LatestVersion = %q, want 1.2.3", res.LatestVersion)
+			}
+			if len(runner.History) != 1 {
+				t.Fatalf("ran %d commands, want one registry query", len(runner.History))
+			}
+			cmd := runner.History[0]
+			if cmd.Name != tt.manager || !slices.Equal(cmd.Args, tt.args) {
+				t.Errorf("query = %s %v, want %s %v", cmd.Name, cmd.Args, tt.manager, tt.args)
 			}
 		})
 	}
