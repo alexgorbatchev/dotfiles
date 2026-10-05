@@ -545,18 +545,10 @@ func copyAssetsAndSkill(rootDir string) error {
 		}
 	}
 
-	skillSrc := filepath.Join(rootDir, ".agents", "skills", "dotfiles")
+	skillSrc := filepath.Join(rootDir, "pkg", "embedded", "skill")
 	skillDst := filepath.Join(distDir, "skill")
-	embeddedSkillDst := filepath.Join(rootDir, "pkg", "embedded", "skill")
-
-	_ = os.RemoveAll(embeddedSkillDst)
-	if _, err := os.Stat(skillSrc); err == nil {
-		if err := copyDirectoryRecursive(skillSrc, skillDst); err != nil {
-			return fmt.Errorf("failed to copy skill directory: %w", err)
-		}
-		if err := copyDirectoryRecursive(skillSrc, embeddedSkillDst); err != nil {
-			return fmt.Errorf("failed to copy skill directory to embedded: %w", err)
-		}
+	if err := copyDirectoryRecursive(skillSrc, skillDst); err != nil {
+		return fmt.Errorf("failed to copy skill directory: %w", err)
 	}
 	return nil
 }

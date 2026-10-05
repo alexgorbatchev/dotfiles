@@ -8,7 +8,7 @@ The documentation site is served at `https://alexgorbatchev.github.io/dotfiles/`
 
 ## Source of Truth & Content Synchronization
 
-The canonical source of truth for all documentation is `.agents/skills/dotfiles/`.
+The canonical source of truth for all documentation is `pkg/embedded/skill/`. `.agents/skills/dotfiles` is a relative symlink to that directory.
 
 - `packages/docs/sync.ts` copies skill references from `.agents/skills/dotfiles/` into `src/content/docs/`.
 - It rewrites relative markdown links (`.md`) to clean Starlight web routes at build time.

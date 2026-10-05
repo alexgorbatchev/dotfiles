@@ -377,8 +377,8 @@ func TestBuildHelpers(t *testing.T) {
 	// 6. copyAssetsAndSkill
 	_ = os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Readme"), 0644)
 	_ = os.WriteFile(filepath.Join(tmpDir, "LICENSE"), []byte("MIT"), 0644)
-	_ = os.MkdirAll(filepath.Join(tmpDir, ".agents", "skills", "dotfiles"), 0755)
-	_ = os.WriteFile(filepath.Join(tmpDir, ".agents", "skills", "dotfiles", "SKILL.md"), []byte("skill"), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "pkg", "embedded", "skill"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "pkg", "embedded", "skill", "SKILL.md"), []byte("skill"), 0644)
 
 	err = copyAssetsAndSkill(tmpDir)
 	if err != nil {
@@ -387,6 +387,45 @@ func TestBuildHelpers(t *testing.T) {
 
 	// 7. printBuildSummary
 	printBuildSummary(tmpDir)
+}
+
+func TestCopyAssetsAndSkillPreservesCanonicalSkill(t *testing.T) {
+	root := t.TempDir()
+	skillDir := filepath.Join(root, "pkg", "embedded", "skill")
+	if err := os.MkdirAll(filepath.Join(skillDir, "references"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"SKILL.md":           "# Skill\n",
+		"references/tool.md": "# Tool reference\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(skillDir, name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	agentDir := filepath.Join(root, ".agents", "skills")
+	if err := os.MkdirAll(agentDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("..", "..", "pkg", "embedded", "skill"), filepath.Join(agentDir, "dotfiles")); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := copyAssetsAndSkill(root); err != nil {
+			t.Fatalf("copyAssetsAndSkill: %v", err)
+		}
+		for name, want := range files {
+			for _, dir := range []string{skillDir, filepath.Join(agentDir, "dotfiles"), filepath.Join(root, ".dist", "skill")} {
+				got, err := os.ReadFile(filepath.Join(dir, name))
+				if err != nil {
+					t.Errorf("reading %s in %s: %v", name, dir, err)
+				} else if string(got) != want {
+					t.Errorf("%s in %s = %q, want %q", name, dir, got, want)
+				}
+			}
+		}
+	}
 }
 
 func TestBuildTarget(t *testing.T) {

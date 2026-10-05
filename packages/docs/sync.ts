@@ -2,9 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { $ } from "bun";
 
-// Read directly from the canonical skill definition in `.agents/skills/dotfiles`
-// (the documented source of truth per root AGENTS.md), avoiding drift from
-// intermediate or stale embedded asset builds.
+// The agent skill path links to the maintained source in pkg/embedded/skill.
 const sourceDir = path.resolve(import.meta.dir, "../../.agents/skills/dotfiles");
 const destDir = process.env.DOCS_DEST_DIR
   ? path.resolve(process.env.DOCS_DEST_DIR)

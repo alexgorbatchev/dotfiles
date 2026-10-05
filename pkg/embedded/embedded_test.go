@@ -55,15 +55,13 @@ func TestTypesFSDeclarationsAreEmittedOnce(t *testing.T) {
 }
 
 // TestSkillFSMirrorsCanonicalSkill asserts that SkillFS embeds every file from the
-// canonical skill directory (.agents/skills/dotfiles) with identical content.
-// A failure here indicates that pkg/embedded/skill is out of date; run 'just prepare'
-// (or 'go run scripts/build/main.go --assets-only') to synchronize it.
+// canonical skill directory (pkg/embedded/skill) with identical content.
 func TestSkillFSMirrorsCanonicalSkill(t *testing.T) {
 	repoRoot, err := testutil.RepoRoot()
 	if err != nil {
 		t.Fatalf("locating repository root: %v", err)
 	}
-	canonicalSkillDir := filepath.Join(repoRoot, ".agents", "skills", "dotfiles")
+	canonicalSkillDir := filepath.Join(repoRoot, "pkg", "embedded", "skill")
 
 	if _, err := os.Stat(canonicalSkillDir); err != nil {
 		t.Fatalf("canonical skill directory not found at %s: %v", canonicalSkillDir, err)
@@ -97,12 +95,12 @@ func TestSkillFSMirrorsCanonicalSkill(t *testing.T) {
 
 		embeddedContent, err := fs.ReadFile(SkillFS, embeddedPath)
 		if err != nil {
-			t.Errorf("SkillFS is missing %q (present in canonical %s): %v\nRun 'just prepare' to regenerate embedded assets.", embeddedPath, path, err)
+			t.Errorf("SkillFS is missing %q (present in canonical %s): %v", embeddedPath, path, err)
 			return nil
 		}
 
 		if !bytes.Equal(canonicalContent, embeddedContent) {
-			t.Errorf("SkillFS file %q does not match canonical %s\nRun 'just prepare' to regenerate embedded assets.", embeddedPath, path)
+			t.Errorf("SkillFS file %q does not match canonical %s", embeddedPath, path)
 		}
 
 		return nil
@@ -135,5 +133,51 @@ func TestSkillFSMirrorsCanonicalSkill(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("failed to walk SkillFS: %v", err)
+	}
+}
+
+func TestAgentSkillSymlinkReadsEmbeddedSkill(t *testing.T) {
+	repoRoot, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentSkillDir := filepath.Join(repoRoot, ".agents", "skills", "dotfiles")
+	info, err := os.Lstat(agentSkillDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("agent skill must be a symlink to the canonical embedded skill")
+	}
+	resolved, err := filepath.EvalSymlinks(agentSkillDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonicalSkillDir := filepath.Join(repoRoot, "pkg", "embedded", "skill")
+	if resolved != canonicalSkillDir {
+		t.Fatalf("agent skill resolves to %q, want %q", resolved, canonicalSkillDir)
+	}
+	err = fs.WalkDir(SkillFS, "skill", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		got, err := os.ReadFile(filepath.Join(agentSkillDir, filepath.FromSlash(strings.TrimPrefix(path, "skill/"))))
+		if err != nil {
+			return err
+		}
+		want, err := fs.ReadFile(SkillFS, path)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("agent skill %s differs from embedded content", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
