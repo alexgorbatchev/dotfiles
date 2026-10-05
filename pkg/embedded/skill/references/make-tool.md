@@ -19,7 +19,7 @@ You will receive:
 ## Required Analysis Steps
 
 > [!TIP]
-> Always start with the smallest possible configuration. Provide only the minimum `install()` method and `.bin()` declaration necessary to get the tool working. **Do not overbuild**. Only add `assetPattern`, `assetSelector`, `version`, `dependsOn`, or hooks if the minimal configuration fails to install correctly or lacks necessary context. If GitHub release auto-selection downloads the wrong file, try the smallest `assetPattern` that fixes it before reaching for `assetSelector`.
+> Provide only the minimum `install()` method and `.bin()` declaration necessary to get the tool working. **Do not overbuild**. Only add `assetPattern`, `assetSelector`, `version`, `dependsOn`, or hooks if the minimal configuration fails to install correctly or lacks necessary context. If GitHub release auto-selection downloads the wrong file, try the smallest `assetPattern` that fixes it before reaching for `assetSelector`.
 
 ### 1) Tool Investigation
 
