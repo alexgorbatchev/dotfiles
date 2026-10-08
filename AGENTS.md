@@ -13,7 +13,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Typecheck: `just typecheck` (or `bun typecheck`)
 - Check skill documentation links, anchors and page reachability: `just docs-links` (runs `scripts/check-docs-links.ts`)
 - Go unit tests: `just test-unit` (or `go test ./pkg/... ./cmd/... ./scripts/...`)
-- Go E2E tests: `just test-e2e` (or `go test -count=1 -p 1 ./tests/e2e/...`)
+- Go E2E tests: `just test-e2e` (or `go test -p 1 ./tests/e2e/...`)
 - TypeScript tests: `just test-ts` (or `bun test`)
 - Full release build, end to end: `just test-build` (runs `TestRunBuild` behind the `buildtest` tag)
 - All tests: `just test` (Go unit, Go E2E and TypeScript)
@@ -99,6 +99,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 
 ## Shared boundaries
 
+- Test-only exception to the project-local `.tmp` policy: Go tests may use the OS temporary directory through `t.TempDir()` and `os.MkdirTemp("", ...)` for isolated sandboxes and shared test binaries. Keep these artifacts outside the module so randomized names and directory metadata do not invalidate Go's test cache. Use automatic test cleanup or a `TestMain` in an `_test.go` file; remove only artifacts owned by that test process. Do not override `TMPDIR` or `GOTMPDIR` to point inside the repository for these tests. Temporary agent scripts and manual verification artifacts still belong in the project's `.tmp`.
 - Always: fetch GitHub application data through non-API transports by default. Reuse existing fetching and downloader infrastructure through verified non-API paths; inspect a helper's implementation before reusing it.
 - Only with explicit opt-in: use the `gh` CLI for enterprise GitHub access, including API requests made by `gh api` or other `gh` commands. Scope the opt-in to the configured operation and target. An enterprise hostname, credentials, installed `gh`, or a failed non-API request does not enable this mode automatically.
 - Never: call GitHub REST or GraphQL APIs directly from application HTTP clients, SDKs, or proxies, or automatically fall back to API requests or the `gh` CLI. This applies to both public GitHub and GitHub Enterprise. Authentication and caching do not authorize API access outside the explicit enterprise `gh` CLI opt-in.

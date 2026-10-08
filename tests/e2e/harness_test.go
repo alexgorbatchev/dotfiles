@@ -1,9 +1,12 @@
 package e2e
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,6 +14,79 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if sharedBinDir != "" {
+		if err := os.RemoveAll(sharedBinDir); err != nil {
+			fmt.Fprintf(os.Stderr, "removing shared test binary: %v\n", err)
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
+
+func TestSharedBinaryCleanup(t *testing.T) {
+	const childEnv = "DOTFILES_TEST_BINARY_CLEANUP_CHILD"
+	if os.Getenv(childEnv) == "1" {
+		h := &TestHarness{T: t}
+		bin, err := getSharedBinary(h.findProjectRoot())
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println("shared binary: " + bin)
+		return
+	}
+
+	// A sibling test's workspace must survive another test process exiting.
+	sibling := t.TempDir()
+	marker := filepath.Join(sibling, "still-running")
+	if err := os.WriteFile(marker, []byte("owned by parent"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestSharedBinaryCleanup$")
+	cmd.Env = append(os.Environ(), childEnv+"=1")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("child test: %v\n%s", err, output)
+	}
+	var bin string
+	for line := range strings.SplitSeq(string(output), "\n") {
+		if path, ok := strings.CutPrefix(line, "shared binary: "); ok {
+			bin = path
+		}
+	}
+	if bin == "" {
+		t.Fatalf("child did not report its binary: %s", output)
+	}
+	// Remove only the child-owned directory if the regression leaves it behind.
+	t.Cleanup(func() {
+		if err := os.RemoveAll(filepath.Dir(bin)); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := os.Stat(filepath.Dir(bin)); !os.IsNotExist(err) {
+		t.Errorf("child left shared binary directory %s: %v", filepath.Dir(bin), err)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("child removed sibling workspace: %v", err)
+	}
+}
+
+func TestHarnessTempIsolation(t *testing.T) {
+	h := NewTestHarness(t, HarnessOptions{})
+	for _, path := range []string{h.TempDir, h.BinPath} {
+		rel, err := filepath.Rel(h.ProjectRoot, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			t.Errorf("test artifact %s is inside the module and can invalidate its cache", path)
+		}
+	}
+}
 
 func TestHarnessAssertionsAndMethods(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -327,9 +403,6 @@ func TestCopyDirAndFileErrors(t *testing.T) {
 	if err == nil {
 		t.Error("expected error copying non-existent file")
 	}
-
-	// 3. cleanTestTmp
-	cleanTestTmp()
 }
 
 func TestNewMockServerDirect(t *testing.T) {

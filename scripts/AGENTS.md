@@ -24,7 +24,7 @@ Repository automation, build orchestration, code generation, release management,
 
 - TypeScript scripts use Bun runtime (`bun <script>.ts`).
 - Go scripts are standalone packages executed with `go run ./scripts/<name>`.
-- Use `.tmp/` inside the repository root for temporary build artifacts; never write to global `/tmp`.
+- Use `.tmp/` inside the repository root for temporary build artifacts. Go test sandboxes and shared test binaries may use the OS temporary directory under the test-only exception in the root `AGENTS.md`.
 - Scripts in `scripts/` are excluded from the 90% test coverage requirement enforced on `pkg/` and `cmd/`.
 
 ## Local gotchas
@@ -36,7 +36,7 @@ Repository automation, build orchestration, code generation, release management,
 
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict).
 - Never: publish releases, bump versions, push tags, or run `scripts/release.ts` automatically without explicit user authorization.
-- Never: hardcode absolute host paths or use global `/tmp`.
+- Never: hardcode absolute host paths or use global `/tmp` outside the root policy's Go test exception.
 - Ask first: adding new top-level scripts or altering the release pipeline sequence.
 
 ## References

@@ -13,7 +13,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 
 ## Local conventions
 
-- Use `.tmp/` inside the project folder for temporary scripts and sandboxing. Never use global `/tmp`.
+- Use `.tmp/` inside the project folder for temporary scripts and manual sandboxing. Go test sandboxes may use the OS temporary directory under the test-only exception in the root `AGENTS.md`; keep automatic cleanup scoped to the owning test.
 - Set strict execution timeouts on subprocesses (max 1m for CLI generation runs).
 - Command structure follows subject-first noun-verb hierarchy (`tool`, `path`, `shell`, `venv`, `state`, `dashboard`, `skill`, `self`).
 - Root-level aliases in `root_aliases.go` (`generate`, `install`, `update`, `version`) delegate directly to their domain subcommands (`state generate`, `tool install`, `tool update`, `self version`) and are kept hidden from `--help` to preserve the clean domain hierarchy.
@@ -49,7 +49,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict)
 - Always: write matching unit tests in `subcommands_test.go` for any subcommand modifications.
 - Ask first: adding new CLI subcommands or changing CLI flag names.
-- Never: use global `/tmp` or modify `~/.dotfiles` directly without sandbox overrides.
+- Never: use global `/tmp` outside the root policy's Go test exception, or modify `~/.dotfiles` directly without sandbox overrides.
 
 ## References
 

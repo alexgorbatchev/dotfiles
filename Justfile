@@ -27,7 +27,7 @@ test-unit:
 
 # Run Go E2E tests only
 test-e2e:
-    go test -count=1 -p 1 ./tests/e2e/...
+    go test -p 1 ./tests/e2e/...
 
 # Run TypeScript tests only
 test-ts:

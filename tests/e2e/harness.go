@@ -15,23 +15,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func init() {
-	// Set TMPDIR to .tmp in the project root to satisfy local sandbox guidelines
-	// and ensure Bun can resolve node_modules up the directory tree from the temp dir.
-	dir, err := os.Getwd()
-	if err == nil {
-		for dir != "/" && dir != "." {
-			if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-				tmpDir := filepath.Join(dir, ".tmp")
-				_ = os.MkdirAll(tmpDir, 0755)
-				_ = os.Setenv("TMPDIR", tmpDir)
-				break
-			}
-			dir = filepath.Dir(dir)
-		}
-	}
-}
-
 var (
 	sharedBinDir  string
 	sharedBinPath string
@@ -41,9 +24,12 @@ var (
 
 func getSharedBinary(projectRoot string) (string, error) {
 	buildOnce.Do(func() {
-		tmpRoot := filepath.Join(projectRoot, ".tmp")
-		_ = os.MkdirAll(tmpRoot, 0755)
-		dir, err := os.MkdirTemp(tmpRoot, "e2e-bin-*")
+		if err := recordBuildInputs(projectRoot); err != nil {
+			sharedBinErr = err
+			return
+		}
+		// Keep generated inputs outside the module so Go can cache test results.
+		dir, err := os.MkdirTemp("", "e2e-bin-*")
 		if err != nil {
 			sharedBinErr = fmt.Errorf("creating temp dir for shared binary: %w", err)
 			return
@@ -58,41 +44,6 @@ func getSharedBinary(projectRoot string) (string, error) {
 		sharedBinPath = binPath
 	})
 	return sharedBinPath, sharedBinErr
-}
-
-func TestMain(m *testing.M) {
-	code := m.Run()
-	if sharedBinDir != "" {
-		_ = os.RemoveAll(sharedBinDir)
-	}
-	cleanTestTmp()
-	os.Exit(code)
-}
-
-func cleanTestTmp() {
-	dir, err := os.Getwd()
-	if err != nil {
-		return
-	}
-	for dir != "/" && dir != "." {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			tmpDir := filepath.Join(dir, ".tmp")
-			entries, err := os.ReadDir(tmpDir)
-			if err == nil {
-				for _, entry := range entries {
-					name := entry.Name()
-					if name == "sandbox" {
-						continue
-					}
-					if strings.HasPrefix(name, "Test") || name == "e2e-test" || name == "test-load" || name == "debug-config" {
-						_ = os.RemoveAll(filepath.Join(tmpDir, name))
-					}
-				}
-			}
-			break
-		}
-		dir = filepath.Dir(dir)
-	}
 }
 
 type TestHarness struct {
