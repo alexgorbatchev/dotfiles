@@ -43,7 +43,7 @@ dotfiles dashboard
 dotfiles dashboard start --port 8080
 
 # AI Agent skill definitions
-dotfiles skill .agents/skills/
+dotfiles skill
 dotfiles skill copy .agents/skills/
 
 # Self-management
@@ -346,16 +346,19 @@ Starts the local HTTP dashboard server and prints its URL.
 
 ---
 
-### `dotfiles skill [path]`
+### `dotfiles skill`
 
-Lists installed AI skills or extracts the embedded `dotfiles` skill folder into the target directory.
-
-- `--dir <path>`: Custom skills search directory path.
-- `--json`: Output skill list in JSON format.
+Prints the embedded `dotfiles` skill's complete `SKILL.md`, including frontmatter,
+to stdout. Output is identical in human and agent modes. It works offline without
+configuration files or credentials. Output-write failures return an error.
+The command takes no positional arguments or command-specific flags.
 
 #### `dotfiles skill copy <path>`
 
-Extracts the embedded `dotfiles` skill directory into `<path>/dotfiles`.
+Extracts the single bundled `dotfiles` skill and its references into `<path>/dotfiles`.
+It includes tool-creation instructions for `~/.dotfiles`, preferring GitHub release
+binaries and Bun for npm packages. Existing bundled files are overwritten with
+the embedded contents.
 
 ---
 

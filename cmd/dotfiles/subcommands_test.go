@@ -24,6 +24,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/embedded"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -33,6 +34,30 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
+
+func TestSkillPrintsEmbeddedInstructions(t *testing.T) {
+	want, err := embedded.SkillFS.ReadFile("skill/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"0", "1", "true", "yes"} {
+		t.Run("agent="+mode, func(t *testing.T) {
+			t.Setenv("AGENT", mode)
+			t.Setenv("HOME", t.TempDir())
+			enterTempDir(t)
+			out, err := runCommand("skill")
+			if err != nil {
+				t.Fatalf("printing skill: %v\n%s", err, out.Combined)
+			}
+			if out.Stdout != string(want) {
+				t.Fatal("skill output differs from embedded instructions")
+			}
+			if out.Stderr != "" {
+				t.Fatalf("printing skill emitted diagnostics: %q", out.Stderr)
+			}
+		})
+	}
+}
 
 func resetContext(cmd *cobra.Command) {
 	cmd.SetContext(nil)
@@ -104,7 +129,6 @@ func runCommandContext(ctx context.Context, args ...string) (commandOutput, erro
 	dashboardHost = "127.0.0.1"
 	dashboardPort = 8080
 	logTailLines = 50
-	skillDir = ""
 
 	resetFlags(rootCmd)
 	defer resetContext(rootCmd)
@@ -271,8 +295,8 @@ func TestSubcommands(t *testing.T) {
 		},
 		{
 			name:           "skill command",
-			args:           []string{"skill", "--dir", filepath.Join(tmpDir, "empty-skills")},
-			expectedOutput: []string{"No AI skills found."},
+			args:           []string{"skill"},
+			expectedOutput: []string{"---\nname:"},
 			expectedErr:    false,
 		},
 		{
@@ -711,7 +735,7 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 		{name: "env", args: []string{"-c", absConfig, "shell", "init"}, contains: []string{"export PATH="}},
 		{name: "cleanup", args: []string{"-c", absConfig, "state", "cleanup"}},
 		{name: "validate", args: []string{"-c", absConfig, "tool", "validate"}},
-		{name: "skill", args: []string{"-c", absConfig, "skill", "--dir", filepath.Join(repoRoot, ".agents/skills")}, contains: []string{"dotfiles"}},
+		{name: "skill", args: []string{"-c", absConfig, "skill"}, contains: []string{"---\nname:"}},
 		{name: "dashboard help", args: []string{"dashboard", "--help"}, contains: []string{"Usage:"}},
 	}
 
@@ -956,28 +980,6 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 		outAgent, err := executeCommand("-c", absConfig, "path", "list", "--json")
 		if err != nil {
 			t.Fatalf("path list --json in agent mode failed: %v", err)
-		}
-		jsonAgent := extractJSONPayload(outAgent)
-		if strings.Contains(jsonAgent, "  ") {
-			t.Errorf("expected minified JSON in agent mode, got:\n%s", jsonAgent)
-		}
-	})
-
-	t.Run("skill --json in human vs agent mode", func(t *testing.T) {
-		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "skill", "--json")
-		if err != nil {
-			t.Fatalf("skill --json failed: %v", err)
-		}
-		jsonHuman := extractJSONPayload(outHuman)
-		if !strings.Contains(jsonHuman, "  \"name\":") && !strings.Contains(jsonHuman, "[]") {
-			t.Errorf("expected pretty JSON in human mode, got:\n%s", jsonHuman)
-		}
-
-		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "skill", "--json")
-		if err != nil {
-			t.Fatalf("skill --json in agent mode failed: %v", err)
 		}
 		jsonAgent := extractJSONPayload(outAgent)
 		if strings.Contains(jsonAgent, "  ") {

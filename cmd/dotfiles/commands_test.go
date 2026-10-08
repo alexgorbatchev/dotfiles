@@ -24,7 +24,7 @@ func TestCommandsExecution(t *testing.T) {
 		{"--config", cfgPath, "shell", "audit"},
 		{"--config", cfgPath, "state", "cleanup"},
 		{"--config", cfgPath, "state", "generate"},
-		{"--config", cfgPath, "skill", targetSkill},
+		{"--config", cfgPath, "skill", "copy", targetSkill},
 		{"--config", cfgPath, "tool", "check"},
 		{"--config", cfgPath, "tool", "list"},
 		{"--config", cfgPath, "path"},

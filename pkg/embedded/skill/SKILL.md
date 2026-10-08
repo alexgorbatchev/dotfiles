@@ -9,13 +9,46 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-03-04 19:29
-  last_modified: 2026-10-03 16:30
+  last_modified: 2026-10-08 13:50
   status: current
 ---
 
-# Dotfiles Tool Installer
+## Creating Tool Files
 
-Declarative, versioned dotfiles management. Define CLI tools in TypeScript `.tool.ts` files — the system handles installation, shim generation, shell integration, and cross-platform support.
+1. Work in `$HOME/.dotfiles` when creating a tool for the user's dotfiles. Read its
+   `AGENTS.md`, applicable nested instructions, `dotfiles.config.ts`, and package
+   scripts. Inspect existing definitions and the working diff; preserve unrelated
+   changes. Clarify an ambiguous tool name or source before editing.
+2. Follow [make-tool.md](references/make-tool.md) and read the canonical reference
+   for the selected installer before using its parameters. Verify the tool's official
+   installation docs, release assets, executable names, archive layout, target
+   platform support, and runtime requirements.
+3. Prefer official GitHub release binaries using
+   [github-release](references/installation-methods/github-release.md) when they
+   support the target. Start with automatic asset selection; add a pattern, selector,
+   platform override, or hook only when verified requirements justify it. Investigate
+   release pages and download URLs; this preference does not enable `ghCli` or API access.
+4. For npm packages, prefer Bun using the documented
+   [npm installer](references/installation-methods/npm.md) with `packageManager: 'bun'`
+   and `.dependsOn('bun')`. Verify that a managed tool declares the `bun` binary.
+   Use npm only when official requirements or a reproduced failure show that Bun
+   cannot install or run the package, and report that evidence. Do not invent a
+   `bun` installation method or substitute a function that runs `bun x` on every invocation.
+5. Create the definition inside a configured `paths.toolConfigsDir`, following the
+   project's placement rules. Default-export a `defineTool` definition, declare each
+   executable with `.bin()`, and use verified binary names for dependencies. Include
+   the tool description and official URL required by the make-tool guide.
+6. Add shell integration when requested or required. Generate static initialization
+   and completion files rather than executing the tool on every shell startup.
+7. Run generation after tool-file changes, then the formatting, lint, and typecheck
+   commands verified against local instructions and package scripts. Inspect the
+   resulting diff and generated artifacts; edit maintained sources rather than
+   generated output or vendored documentation. Install the tool when installation
+   was requested. Report the file path, installer, binaries, and actual validation
+   results; distinguish generation from a verified installation.
+
+Print this skill with `dotfiles skill`. To access the bundled reference files locally,
+use [`dotfiles skill copy`](references/getting-started/cli-reference.md#dotfiles-skill-copy-path).
 
 ## Quick Reference
 

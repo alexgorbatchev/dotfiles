@@ -130,14 +130,14 @@ $ dotfiles state diff --json
 
 ### Manual Install
 
-Run the provided install script directly, or extract embedded AI skills with the `dotfiles` CLI binary:
+Run the provided install script directly, or extract the embedded `dotfiles` skill with the CLI binary:
 
 ```bash
 # Run the provided install script
 $ ./scripts/managed-installer/install.sh
 
-# Extract embedded AI skills to your project
-$ dotfiles skill .agents/skills/
+# Extract the embedded dotfiles skill to your project
+$ dotfiles skill copy .agents/skills/
 ```
 
 ### Making First `.tool.ts` file

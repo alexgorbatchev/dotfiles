@@ -26,6 +26,16 @@ func TestTypesFS(t *testing.T) {
 	}
 }
 
+func TestSkillFSContainsOneSkill(t *testing.T) {
+	entries, err := SkillFS.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "skill" {
+		t.Fatalf("embedded skill directories = %v, want only the canonical skill", entries)
+	}
+}
+
 // The authoring declarations ship under exactly one name, plus globals.d.ts, which is
 // genuinely different content. A second copy under another name is what package.json's
 // "types" does not point at and nothing imports, so it goes stale unnoticed; and

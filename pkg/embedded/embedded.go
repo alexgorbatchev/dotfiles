@@ -7,7 +7,7 @@ import "embed"
 //go:embed all:dist
 var TypesFS embed.FS
 
-// SkillFS embeds the default dotfiles AI skill files.
+// SkillFS embeds the dotfiles skill and its reference documentation.
 //
 //go:embed all:skill
 var SkillFS embed.FS
