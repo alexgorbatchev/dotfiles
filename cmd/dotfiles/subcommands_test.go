@@ -3931,6 +3931,68 @@ func TestInstallCommand_ArgumentHandling(t *testing.T) {
 	})
 }
 
+func TestInstallCommand_DisabledTool(t *testing.T) {
+	definitions := []struct {
+		name string
+		body string
+	}{
+		{"explicitly disabled", `install("manual").bin("disabled").disable()`},
+		{"macOS only", `install().platform(Platform.MacOS, install => install("manual").bin("disabled"))`},
+	}
+	modes := []struct {
+		name        string
+		args        []string
+		wantMessage bool
+		wantActive  bool
+	}{
+		{"targeted", []string{"tool", "install", "disabled"}, true, false},
+		{"root shortcut", []string{"install", "disabled"}, true, false},
+		{"forced", []string{"tool", "install", "disabled", "--force"}, true, false},
+		{"agent", []string{"tool", "install", "disabled"}, true, false},
+		{"shim", []string{"tool", "install", "disabled", "--shim-mode"}, false, false},
+		{"quiet", []string{"tool", "install", "disabled", "--quiet"}, false, false},
+		{"batch", []string{"tool", "install"}, false, true},
+		{"multiple tools", []string{"tool", "install", "disabled", "active"}, true, true},
+	}
+	for _, definition := range definitions {
+		for _, mode := range modes {
+			t.Run(definition.name+"/"+mode.name, func(t *testing.T) {
+				t.Setenv("AGENT", "0")
+				if mode.name == "agent" {
+					t.Setenv("AGENT", "1")
+				}
+				p := newE2EProject(t, tsTools{"disabled": definition.body, "active": `install("manual")`})
+				source := "import { defineTool, Platform } from \"@alexgorbatchev/dotfiles\";\n" +
+					"export default defineTool((install, ctx) => " + definition.body + ");\n"
+				if err := os.WriteFile(filepath.Join(p.Root, "tools", "disabled.tool.ts"), []byte(source), 0644); err != nil {
+					t.Fatal(err)
+				}
+				args := append([]string{"--platform", "linux"}, mode.args...)
+				out, err := p.run(args...)
+				if err != nil {
+					t.Fatalf("install disabled tool: %v\n%s", err, out.Combined)
+				}
+				message := "[disabled] Skipping installation: tool is disabled for this configuration"
+				if strings.Contains(out.Stderr, message) != mode.wantMessage {
+					t.Fatalf("skip message present = %t, want %t; stderr:\n%s", strings.Contains(out.Stderr, message), mode.wantMessage, out.Stderr)
+				}
+				if out.Stdout != "" {
+					t.Fatalf("diagnostics on stdout: %q", out.Stdout)
+				}
+				if p.installation(t, "disabled") != nil {
+					t.Fatal("disabled tool was installed")
+				}
+				if _, err := os.Lstat(filepath.Join(p.TargetDir, "disabled")); !os.IsNotExist(err) {
+					t.Fatalf("disabled tool has a generated shim: %v", err)
+				}
+				if (p.installation(t, "active") != nil) != mode.wantActive {
+					t.Fatalf("active tool installed, want %t", mode.wantActive)
+				}
+			})
+		}
+	}
+}
+
 func TestInstallCommand_TargetedVsBatchAlreadyInstalled(t *testing.T) {
 	p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 

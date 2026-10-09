@@ -143,6 +143,8 @@ _(Alias: `i`, Root shortcuts: `dotfiles install`, `dotfiles i`)_
 
 Installs the named tools, by tool name or by binary name. With no argument, installs every configured tool, in dependency order.
 
+Named disabled tools, including tools disabled by a non-matching platform block, are skipped with `[<tool>] Skipping installation: tool is disabled for this configuration` at INFO level on stderr. Skipping leaves the exit status at 0 and continues to the next named tool without installation or artifact generation. `--force` does not override a disabled tool. Batch installation skips disabled tools silently; quiet and shim modes suppress the INFO message.
+
 - `-f, --force`: Force reinstallation even if already installed.
 - `--shim-mode`: Quiet output, used by generated shims when they install on first use.
 

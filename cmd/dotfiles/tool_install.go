@@ -45,6 +45,10 @@ var toolInstallCmd = &cobra.Command{
 				if targetTool == nil {
 					return fmt.Errorf("tool %q not found in configuration", toolName)
 				}
+				if targetTool.Disabled {
+					log.WithTag(targetTool.Name).Info(logger.Message("Skipping installation: tool is disabled for this configuration"))
+					continue
+				}
 
 				err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
 				if err != nil {
