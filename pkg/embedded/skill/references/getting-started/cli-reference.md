@@ -100,11 +100,15 @@ Manual clearing bypasses the automatic policy and also works when
 or trigger pruning. Cleanup errors after an installation are warnings; errors
 during manual clearing fail the command.
 
-Preserve entries without installed-version ownership, including downloads cached
-by older releases or outside an installation, and entries with unreadable or invalid
-records. Their URLs alone do not establish which installed version needs them.
+Match downloads cached before ownership tracking against recorded download URLs
+and configured sources for installed versions. Scan both the current layout and
+the older separate `metadata/` and `binaries/` layout. Remove entries without an
+installed match and unusable current records. Keep shared legacy blobs whenever
+any installed URL references them. If an older installation records only `latest`,
+keep downloads from its configured release repository until a successful install
+records a concrete version. Protect downloads used by an installation in progress.
 The manual command reports the number of removed downloads and bytes reclaimed,
-and warns about preserved entries without ownership, on stderr in both output
+and warns about skipped unsafe or unrecognized entries, on stderr in both output
 modes. It leaves other caches, installed binaries, and the installation registry
 untouched. With `--dry-run`, report that cleanup was skipped and remove nothing.
 

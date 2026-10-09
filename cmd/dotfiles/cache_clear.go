@@ -29,7 +29,7 @@ var cacheClearCmd = &cobra.Command{
 		}
 		log.Info(logger.Message(fmt.Sprintf("Removed %d old cached downloads (%d bytes)", result.Entries, result.Bytes)))
 		if result.Untracked > 0 {
-			log.Warn(logger.Message(fmt.Sprintf("Preserved %d cached downloads without installed-version ownership", result.Untracked)))
+			log.Warn(logger.Message(fmt.Sprintf("Skipped %d unsafe or unrecognized cache entries", result.Untracked)))
 		}
 		return nil
 	},

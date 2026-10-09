@@ -42,7 +42,14 @@ type Orchestrator struct {
 	target vm.Target
 	// evaluator is the retained load-time VM evaluator handle for lifecycle hooks
 	// and parameter resolvers.
-	evaluator *vm.Evaluator
+	evaluator  *vm.Evaluator
+	cacheTools []*config.ToolConfig
+}
+
+// SetCacheTools supplies the complete configuration inventory for recognizing
+// installed downloads cached before ownership metadata was introduced.
+func (o *Orchestrator) SetCacheTools(tools []*config.ToolConfig) {
+	o.cacheTools = tools
 }
 
 // NewOrchestrator creates a new Orchestrator instance.

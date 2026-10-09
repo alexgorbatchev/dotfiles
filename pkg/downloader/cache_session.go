@@ -18,7 +18,11 @@ import (
 type CacheSession struct {
 	mu      sync.Mutex
 	entries map[string]struct{}
+	leases  map[string]struct{}
 }
+
+// cacheLeases, protected by cacheMu, prevent cleanup during an installation.
+var cacheLeases = make(map[string]int)
 
 type cacheSessionKey struct{}
 
@@ -38,7 +42,7 @@ func PruningEnabled(ctx context.Context) bool {
 
 // TrackCache returns a context recording cache hits and successful cache stores.
 func TrackCache(ctx context.Context) (context.Context, *CacheSession) {
-	s := &CacheSession{entries: make(map[string]struct{})}
+	s := &CacheSession{entries: make(map[string]struct{}), leases: make(map[string]struct{})}
 	return context.WithValue(ctx, cacheSessionKey{}, s), s
 }
 
@@ -50,6 +54,41 @@ func recordCacheUse(ctx context.Context, path string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.entries[path] = struct{}{}
+}
+
+func protectCacheUse(ctx context.Context, path string) {
+	s, ok := ctx.Value(cacheSessionKey{}).(*CacheSession)
+	if !ok {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if _, ok := s.leases[path]; !ok {
+		s.leases[path] = struct{}{}
+		cacheLeases[path]++
+	}
+}
+
+// Close releases protection for downloads from a failed or abandoned install.
+// Commit releases it after successfully recording installed ownership.
+func (s *CacheSession) Close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	s.releaseLeases()
+}
+
+func (s *CacheSession) releaseLeases() {
+	for path := range s.leases {
+		cacheLeases[path]--
+		if cacheLeases[path] == 0 {
+			delete(cacheLeases, path)
+		}
+	}
+	clear(s.leases)
 }
 
 // Commit associates the session's downloads with the successfully installed
@@ -86,6 +125,7 @@ func (s *CacheSession) Commit(fsys fs.FS, tool, version string) error {
 			return fmt.Errorf("writing cache ownership: %w", err)
 		}
 	}
+	s.releaseLeases()
 	return nil
 }
 

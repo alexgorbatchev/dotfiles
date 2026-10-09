@@ -258,6 +258,169 @@ func TestDownloader(t *testing.T) {
 	})
 }
 
+func TestPruneUnownedInstalledURL(t *testing.T) {
+	mem := fs.NewMemFS()
+	d := NewDownloader(mem, nil)
+	d.CacheDir = "/cache"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "installed archive") }))
+	defer server.Close()
+	if err := d.Download(context.Background(), server.URL, "/download", ""); err != nil {
+		t.Fatal(err)
+	}
+	result, err := d.Prune(context.Background(), nil, func(url string) bool { return url == server.URL })
+	if err != nil || result.Entries != 0 {
+		t.Fatalf("installed URL removed: %+v, %v", result, err)
+	}
+	// A tool installed before ownership tracking may share an archive with a
+	// removed tool whose ownership was recorded later.
+	ctx, session := TrackCache(context.Background())
+	defer session.Close()
+	if err := d.Download(ctx, server.URL, "/shared", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := session.Commit(mem, "removed-tool", "v1"); err != nil {
+		t.Fatal(err)
+	}
+	result, err = d.Prune(context.Background(), nil, func(url string) bool { return url == server.URL })
+	if err != nil || result.Entries != 0 {
+		t.Fatalf("shared installed URL removed: %+v, %v", result, err)
+	}
+	server.Close()
+	if err := d.Download(context.Background(), server.URL, "/cached", ""); err != nil {
+		t.Fatalf("installed archive unusable: %v", err)
+	}
+	result, err = d.Prune(context.Background(), nil, nil)
+	if err != nil || result.Entries != 1 {
+		t.Fatalf("uninstalled URL retained: %+v, %v", result, err)
+	}
+}
+
+func TestPruneLegacyCacheRejectsOutsidePaths(t *testing.T) {
+	for _, directory := range []string{"binaries", "metadata"} {
+		t.Run("symlink "+directory, func(t *testing.T) {
+			root := t.TempDir()
+			cache := filepath.Join(root, "cache")
+			outside := filepath.Join(root, "outside")
+			for _, dir := range []string{cache, outside} {
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(outside, "sentinel"), []byte("preserve"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(outside, filepath.Join(cache, directory)); err != nil {
+				t.Fatal(err)
+			}
+			d := NewDownloader(fs.NewOSFS(), nil)
+			d.CacheDir = cache
+			if _, err := d.Prune(context.Background(), nil, nil); err == nil {
+				t.Fatal("cleanup followed a directory symlink")
+			}
+			if data, err := os.ReadFile(filepath.Join(outside, "sentinel")); err != nil || string(data) != "preserve" {
+				t.Fatalf("outside file changed: %q, %v", data, err)
+			}
+		})
+	}
+	t.Run("metadata traversal", func(t *testing.T) {
+		mem := fs.NewMemFS()
+		if err := mem.MkdirAll("/cache/metadata", 0755); err != nil {
+			t.Fatal(err)
+		}
+		mustWrite(t, mem, "/outside", "preserve")
+		mustWrite(t, mem, "/cache/metadata/00000000000000000000000000000000.json", `{"type":"binary","binaryFileName":"../../outside","url":"old"}`)
+		d := NewDownloader(mem, nil)
+		d.CacheDir = "/cache"
+		result, err := d.Prune(context.Background(), nil, nil)
+		if err != nil || result.Entries != 0 || result.Untracked != 1 {
+			t.Fatalf("traversal handling: %+v, %v", result, err)
+		}
+		if data, err := mem.ReadFile("/outside"); err != nil || string(data) != "preserve" {
+			t.Fatalf("outside file changed: %q, %v", data, err)
+		}
+	})
+}
+
+func TestPruneLegacyCache(t *testing.T) {
+	for _, shared := range []bool{false, true} {
+		t.Run(fmt.Sprintf("shared blob %t", shared), func(t *testing.T) {
+			mem := fs.NewMemFS()
+			d := NewDownloader(mem, nil)
+			d.CacheDir = "/cache"
+			content := "old archive"
+			for _, dir := range []string{"binaries", "metadata"} {
+				if err := mem.MkdirAll(filepath.Join(d.CacheDir, dir), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			hash := fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
+			blob := filepath.Join(d.CacheDir, "binaries", hash+".bin")
+			mustWrite(t, mem, blob, content)
+			for i, url := range []string{"https://example.org/old", "https://example.org/current"} {
+				if i == 1 && !shared {
+					continue
+				}
+				metadata, err := json.Marshal(legacyCacheRecord{Type: "binary", BinaryFileName: hash + ".bin", ContentHash: hash, URL: url})
+				if err != nil {
+					t.Fatal(err)
+				}
+				mustWrite(t, mem, filepath.Join(d.CacheDir, "metadata", fmt.Sprintf("%032x.json", i)), string(metadata))
+			}
+			orphanHash := fmt.Sprintf("%x", sha256.Sum256([]byte("orphan")))
+			orphan := filepath.Join(d.CacheDir, "binaries", orphanHash+".bin")
+			mustWrite(t, mem, orphan, "orphan")
+			mustWrite(t, mem, filepath.Join(d.CacheDir, "metadata", "notes.txt"), "unrelated")
+			mustWrite(t, mem, filepath.Join(d.CacheDir, "binaries", "notes.txt"), "unrelated")
+			result, err := d.Prune(context.Background(), nil, func(url string) bool { return url == "https://example.org/current" })
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantEntries, wantBytes := 2, int64(len(content)+len("orphan"))
+			if shared {
+				wantEntries, wantBytes = 1, int64(len("orphan"))
+			}
+			if result.Entries != wantEntries || result.Bytes != wantBytes {
+				t.Fatalf("pruned = %+v, want %d entries, %d bytes", result, wantEntries, wantBytes)
+			}
+			if exists, err := mem.Exists(blob); err != nil || exists != shared {
+				t.Fatalf("shared blob exists = %t, %v", exists, err)
+			}
+			if exists, err := mem.Exists(orphan); err != nil || exists {
+				t.Fatalf("orphan exists = %t, %v", exists, err)
+			}
+			if exists, err := mem.Exists(filepath.Join(d.CacheDir, "metadata", fmt.Sprintf("%032x.json", 0))); err != nil || exists {
+				t.Fatalf("obsolete metadata exists = %t, %v", exists, err)
+			}
+			result, err = d.Prune(context.Background(), nil, func(url string) bool { return url == "https://example.org/current" })
+			if err != nil || result.Entries != 0 {
+				t.Fatalf("second cleanup = %+v, %v", result, err)
+			}
+		})
+	}
+}
+
+func TestPrunePreservesPendingInstallation(t *testing.T) {
+	mem := fs.NewMemFS()
+	d := NewDownloader(mem, nil)
+	d.CacheDir = "/pending-cache"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "pending archive") }))
+	defer server.Close()
+	ctx, session := TrackCache(context.Background())
+	defer session.Close()
+	if err := d.Download(ctx, server.URL, "/download", ""); err != nil {
+		t.Fatal(err)
+	}
+	result, err := d.Prune(context.Background(), nil, nil)
+	if err != nil || result.Entries != 0 {
+		t.Fatalf("pruned active installation: %+v, %v", result, err)
+	}
+	session.Close()
+	result, err = d.Prune(context.Background(), nil, nil)
+	if err != nil || result.Entries != 1 {
+		t.Fatalf("abandoned download retained: %+v, %v", result, err)
+	}
+}
+
 func TestDownloadCacheRetainsInstalledVersions(t *testing.T) {
 	for _, cached := range []bool{false, true} {
 		t.Run(fmt.Sprintf("cache hit %t", cached), func(t *testing.T) {
@@ -283,7 +446,7 @@ func TestDownloadCacheRetainsInstalledVersions(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			result, err := d.Prune(context.Background(), map[string]string{"tool": "v2"})
+			result, err := d.Prune(context.Background(), map[string]string{"tool": "v2"}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -323,12 +486,12 @@ func TestDownloadCacheSharedAndUntrackedEntries(t *testing.T) {
 	if err := d.Download(context.Background(), server.URL+"/legacy", "/download", ""); err != nil {
 		t.Fatal(err)
 	}
-	result, err := d.Prune(context.Background(), map[string]string{"first": "v2", "second": "v1"})
-	if err != nil || result.Entries != 0 || result.Untracked != 1 {
+	result, err := d.Prune(context.Background(), map[string]string{"first": "v2", "second": "v1"}, nil)
+	if err != nil || result.Entries != 1 || result.Untracked != 0 {
 		t.Fatalf("prune shared = %+v, %v", result, err)
 	}
-	result, err = d.Prune(context.Background(), map[string]string{"first": "v2"})
-	if err != nil || result.Entries != 1 || result.Untracked != 1 {
+	result, err = d.Prune(context.Background(), map[string]string{"first": "v2"}, nil)
+	if err != nil || result.Entries != 1 || result.Untracked != 0 {
 		t.Fatalf("prune uninstalled owner = %+v, %v", result, err)
 	}
 }
@@ -394,7 +557,7 @@ func TestCachePruneRemovalFailureKeepsOwnershipForRetry(t *testing.T) {
 		}
 		return nil
 	}})
-	result, err := d.Prune(ctx, map[string]string{"tool": "v2"})
+	result, err := d.Prune(ctx, map[string]string{"tool": "v2"}, nil)
 	if !errors.Is(err, fault) || result.Entries != 0 {
 		t.Fatalf("prune failure = %+v, %v", result, err)
 	}
@@ -402,7 +565,7 @@ func TestCachePruneRemovalFailureKeepsOwnershipForRetry(t *testing.T) {
 		t.Fatalf("failed removal lost ownership: exists %t, %v", exists, err)
 	}
 	d.SetFS(mem)
-	result, err = d.Prune(ctx, map[string]string{"tool": "v2"})
+	result, err = d.Prune(ctx, map[string]string{"tool": "v2"}, nil)
 	if err != nil || result.Entries != 1 {
 		t.Fatalf("cleanup retry = %+v, %v", result, err)
 	}
@@ -432,11 +595,11 @@ func TestCacheRefreshPreservesVerifiedOwnership(t *testing.T) {
 			if err := d.Download(config.WithOverwrite(context.Background(), true), server.URL, "/refresh", ""); err != nil {
 				t.Fatal(err)
 			}
-			result, err := d.Prune(context.Background(), nil)
+			result, err := d.Prune(context.Background(), nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if corrupt && (result.Entries != 0 || result.Untracked != 1) {
+			if corrupt && (result.Entries != 1 || result.Untracked != 0) {
 				t.Fatalf("refresh retained invalid ownership: %+v", result)
 			}
 			if !corrupt && (result.Entries != 1 || result.Untracked != 0) {

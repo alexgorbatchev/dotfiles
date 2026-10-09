@@ -245,6 +245,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		})
 	})
 	ctx, cacheSession := downloader.TrackCache(ctx)
+	defer cacheSession.Close()
 	res, err := inst.Install(ctx, tool)
 	if err != nil {
 		if !isExternal {

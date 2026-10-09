@@ -218,6 +218,8 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 	}
 
 	cachePath := filepath.Join(cacheDir, getCacheKey(url, activeOpts[0].Headers))
+	// Protect the entry before a cache read or store can race with pruning.
+	protectCacheUse(ctx, cachePath)
 
 	if d.CacheEnabled && !skipCache {
 		ttl := d.CacheTTL

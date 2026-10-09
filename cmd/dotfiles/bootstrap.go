@@ -235,6 +235,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 	orch.SetConfigFilePath(absConfigPath)
 	orch.SetTarget(target)
 	orch.SetEvaluator(eval)
+	orch.SetCacheTools(toolConfigs)
 	if inMemory {
 		orch.SetSymlinkFS(fsys)
 	}

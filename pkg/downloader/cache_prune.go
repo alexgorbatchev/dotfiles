@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-// PruneResult reports removed archives and entries preserved without ownership.
+// PruneResult reports removed archives and unsafe or unrecognized entries skipped.
 type PruneResult struct {
 	Entries   int
 	Bytes     int64
@@ -18,9 +18,10 @@ type PruneResult struct {
 }
 
 // Prune removes downloads owned exclusively by versions absent from installed.
-// Untracked entries are preserved: their URL alone does not establish which
-// installed version, if any, needs them. CacheEnabled does not affect pruning.
-func (d *Downloader) Prune(ctx context.Context, installed map[string]string) (PruneResult, error) {
+// keepURL recognizes installed downloads written before ownership was recorded.
+// Entries with neither an installed owner nor an installed URL are removed.
+// CacheEnabled does not affect pruning.
+func (d *Downloader) Prune(ctx context.Context, installed map[string]string, keepURL func(string) bool) (PruneResult, error) {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	var result PruneResult
@@ -40,6 +41,9 @@ func (d *Downloader) Prune(ctx context.Context, installed map[string]string) (Pr
 			continue
 		}
 		path := filepath.Join(d.CacheDir, name)
+		if cacheLeases[path] > 0 {
+			continue
+		}
 		info, err := d.fsys.Lstat(path)
 		if err != nil {
 			return result, fmt.Errorf("inspecting cached download %s: %w", name, err)
@@ -49,11 +53,7 @@ func (d *Downloader) Prune(ctx context.Context, installed map[string]string) (Pr
 			continue
 		}
 		record, err := d.readCacheRecord(cacheRecordPath(path))
-		if err != nil || len(record.Owners) == 0 {
-			result.Untracked++
-			continue
-		}
-		if hasInstalledOwner(record.Owners, installed) {
+		if err == nil && (hasInstalledOwner(record.Owners, installed) || (keepURL != nil && keepURL(record.URL))) {
 			continue
 		}
 		if err := d.removePrunedEntry(path); err != nil {
@@ -61,6 +61,9 @@ func (d *Downloader) Prune(ctx context.Context, installed map[string]string) (Pr
 		}
 		result.Entries++
 		result.Bytes += info.Size()
+	}
+	if err := d.pruneLegacyCache(ctx, keepURL, &result); err != nil {
+		return result, err
 	}
 	return result, nil
 }

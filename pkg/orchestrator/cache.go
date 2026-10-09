@@ -28,7 +28,8 @@ func (o *Orchestrator) ClearDownloadCache(ctx context.Context, project *config.P
 	}
 	d := downloader.NewDownloader(o.fs, nil)
 	d.CacheDir = downloadSettings(project).CacheDir
-	return d.Prune(ctx, installed)
+	retention := installedCacheURLs(project, o.cacheTools, records)
+	return d.Prune(ctx, installed, retention.keep)
 }
 
 func (o *Orchestrator) finishDownloadCache(ctx context.Context, tool string, session *downloader.CacheSession, project *config.ProjectConfig) {
