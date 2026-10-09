@@ -10,6 +10,7 @@ import (
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree"
 	hostarch "github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
@@ -142,7 +143,12 @@ var rootCmd = &cobra.Command{
 	// The pipelines read dry-run from the context, the same way they read force and
 	// overwrite, so the flag is put there once for whichever subcommand is running.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		cmd.SetContext(config.WithDryRun(cmd.Context(), dryRun))
+		prune, err := cmd.Flags().GetBool("prune-cache")
+		if err != nil {
+			return err
+		}
+		ctx := config.WithDryRun(cmd.Context(), dryRun)
+		cmd.SetContext(downloader.WithPruning(ctx, prune))
 		return nil
 	},
 }
@@ -152,6 +158,7 @@ func init() {
 	cobrahelptree.Setup(rootCmd)
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to configuration file")
 	rootCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Simulate operations without committing disk changes")
+	rootCmd.PersistentFlags().Bool("prune-cache", true, "Remove old cached downloads after successful installs")
 	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "Enable source location tracing in logs")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log", "default", "Log level (verbose, default, quiet)")
 	rootCmd.PersistentFlags().Var(platformValue{&platform}, "platform", "Target platform (macos, linux, windows; darwin is accepted for macos)")

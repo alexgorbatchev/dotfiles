@@ -28,6 +28,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - Shell CLI wrapper function `dotfiles()` uses `getCliCommand()` (via `formatCliCommandForShell`) to resolve the executing binary/command (including dev `go run` or `DOTFILES_CLI_COMMAND`) unquoted rather than hardcoding `targetDir/dotfiles`.
 - Inspect directory trees before recursive removals (`discardStaging`, stale-staging cleanup, `purgeToolState`, target promotion) for attached mount points (`isMountPoint`, checking device ID differences from parent or `.dmg-mount`/`-mount` directory markers). Safely detach them via `archive.DetachDmg` before removal; if detaching fails, refuse removal with an error naming the mount point and instructing the user to run `hdiutil detach -force <mountPoint>` rather than allowing `RemoveAll` to descend into a mounted volume.
 - Clone registered installers via `installer.Clone` during `InstallTool` and `UninstallTool` to isolate per-tool install state (`BinDir`, `fsys`, `log`, `sysCtx`) across concurrent executions while preserving shared project-level settings.
+- Commit download-cache ownership only after recording a successful installation. Automatic pruning retains every recorded installed version; manual `ClearDownloadCache` bypasses the automatic policy, and dry runs remove nothing. A failed ownership update must skip automatic pruning.
 
 ## Local gotchas
 

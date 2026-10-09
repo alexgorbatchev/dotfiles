@@ -229,6 +229,7 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			return err
 		}
 		if ok {
+			recordCacheUse(ctx, cachePath)
 			if activeOpts[0].OnProgress != nil {
 				activeOpts[0].OnProgress(0, size)
 				activeOpts[0].OnProgress(size, size)
@@ -294,6 +295,8 @@ func (d *Downloader) Download(ctx context.Context, url string, destPath string, 
 			if d.CacheEnabled && !activeOpts[0].SkipCache {
 				if err := d.storeInCache(cacheDir, cachePath, url, destPath); err != nil {
 					d.warn(logger.Message(fmt.Sprintf("Could not cache download of %s: %v", url, err)))
+				} else {
+					recordCacheUse(ctx, cachePath)
 				}
 			}
 			return lifecycle.Emit(ctx, lifecycle.AfterDownload, lifecycle.Details{DownloadPath: destPath})

@@ -258,6 +258,194 @@ func TestDownloader(t *testing.T) {
 	})
 }
 
+func TestDownloadCacheRetainsInstalledVersions(t *testing.T) {
+	for _, cached := range []bool{false, true} {
+		t.Run(fmt.Sprintf("cache hit %t", cached), func(t *testing.T) {
+			mem := fs.NewMemFS()
+			d := NewDownloader(mem, nil)
+			d.CacheDir = "/cache"
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, r.URL.Path)
+			}))
+			defer server.Close()
+			for _, version := range []string{"v1", "v2"} {
+				url := server.URL + "/" + version
+				if cached {
+					if err := d.Download(context.Background(), url, "/warm", ""); err != nil {
+						t.Fatal(err)
+					}
+				}
+				ctx, session := TrackCache(context.Background())
+				if err := d.Download(ctx, url, "/download", ""); err != nil {
+					t.Fatal(err)
+				}
+				if err := session.Commit(mem, "tool", version); err != nil {
+					t.Fatal(err)
+				}
+			}
+			result, err := d.Prune(context.Background(), map[string]string{"tool": "v2"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Entries != 1 || result.Bytes != int64(len("/v1")) {
+				t.Fatalf("prune = %+v, want one removed v1 archive", result)
+			}
+			for _, version := range []string{"v1", "v2"} {
+				entry := filepath.Join(d.CacheDir, getCacheKey(server.URL+"/"+version, nil))
+				for _, path := range []string{entry, cacheRecordPath(entry)} {
+					exists, err := mem.Exists(path)
+					if err != nil || exists != (version == "v2") {
+						t.Fatalf("%s exists = %t, %v", path, exists, err)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestDownloadCacheSharedAndUntrackedEntries(t *testing.T) {
+	mem := fs.NewMemFS()
+	d := NewDownloader(mem, nil)
+	d.CacheDir = "/cache"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "archive")
+	}))
+	defer server.Close()
+	for _, tool := range []string{"first", "second"} {
+		ctx, session := TrackCache(context.Background())
+		if err := d.Download(ctx, server.URL, "/download", ""); err != nil {
+			t.Fatal(err)
+		}
+		if err := session.Commit(mem, tool, "v1"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := d.Download(context.Background(), server.URL+"/legacy", "/download", ""); err != nil {
+		t.Fatal(err)
+	}
+	result, err := d.Prune(context.Background(), map[string]string{"first": "v2", "second": "v1"})
+	if err != nil || result.Entries != 0 || result.Untracked != 1 {
+		t.Fatalf("prune shared = %+v, %v", result, err)
+	}
+	result, err = d.Prune(context.Background(), map[string]string{"first": "v2"})
+	if err != nil || result.Entries != 1 || result.Untracked != 1 {
+		t.Fatalf("prune uninstalled owner = %+v, %v", result, err)
+	}
+}
+
+func TestCacheOwnershipReplacesRecordWithoutFollowingSymlink(t *testing.T) {
+	dir := t.TempDir()
+	f := fs.NewOSFS()
+	d := NewDownloader(f, nil)
+	d.CacheDir = filepath.Join(dir, "cache")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "archive")
+	}))
+	defer server.Close()
+	ctx, session := TrackCache(context.Background())
+	if err := d.Download(ctx, server.URL, filepath.Join(dir, "download"), ""); err != nil {
+		t.Fatal(err)
+	}
+	recordPath := cacheRecordPath(filepath.Join(d.CacheDir, getCacheKey(server.URL, nil)))
+	external := filepath.Join(dir, "external.json")
+	if err := f.Rename(recordPath, external); err != nil {
+		t.Fatal(err)
+	}
+	original, err := f.ReadFile(external)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Symlink(external, recordPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := session.Commit(f, "tool", "v1"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.ReadFile(external)
+	if err != nil || !bytes.Equal(got, original) {
+		t.Fatalf("ownership followed a symlink and changed external content: %v", err)
+	}
+	info, err := f.Lstat(recordPath)
+	if err != nil || !info.Mode().IsRegular() {
+		t.Fatalf("cache record was not replaced by a regular file: %v", err)
+	}
+}
+
+func TestCachePruneRemovalFailureKeepsOwnershipForRetry(t *testing.T) {
+	mem := fs.NewMemFS()
+	d := NewDownloader(mem, nil)
+	d.CacheDir = "/cache"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "archive")
+	}))
+	defer server.Close()
+	ctx, session := TrackCache(context.Background())
+	if err := d.Download(ctx, server.URL, "/download", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := session.Commit(mem, "tool", "v1"); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(d.CacheDir, getCacheKey(server.URL, nil))
+	fault := errors.New("archive removal denied")
+	d.SetFS(&cacheFaultFS{FS: mem, fail: func(op, path string) error {
+		if op == "remove" && path == entry {
+			return fault
+		}
+		return nil
+	}})
+	result, err := d.Prune(ctx, map[string]string{"tool": "v2"})
+	if !errors.Is(err, fault) || result.Entries != 0 {
+		t.Fatalf("prune failure = %+v, %v", result, err)
+	}
+	if exists, err := mem.Exists(cacheRecordPath(entry)); err != nil || !exists {
+		t.Fatalf("failed removal lost ownership: exists %t, %v", exists, err)
+	}
+	d.SetFS(mem)
+	result, err = d.Prune(ctx, map[string]string{"tool": "v2"})
+	if err != nil || result.Entries != 1 {
+		t.Fatalf("cleanup retry = %+v, %v", result, err)
+	}
+}
+
+func TestCacheRefreshPreservesVerifiedOwnership(t *testing.T) {
+	for _, corrupt := range []bool{false, true} {
+		t.Run(fmt.Sprintf("corrupt record %t", corrupt), func(t *testing.T) {
+			mem := fs.NewMemFS()
+			d := NewDownloader(mem, nil)
+			d.CacheDir = "/cache"
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "archive")
+			}))
+			defer server.Close()
+			ctx, session := TrackCache(context.Background())
+			if err := d.Download(ctx, server.URL, "/first", ""); err != nil {
+				t.Fatal(err)
+			}
+			if err := session.Commit(mem, "tool", "v1"); err != nil {
+				t.Fatal(err)
+			}
+			if corrupt {
+				recordPath := cacheRecordPath(filepath.Join(d.CacheDir, getCacheKey(server.URL, nil)))
+				mustWrite(t, mem, recordPath, `{"sha256":"invalid","size":7,"owners":{"tool":"v1"}}`)
+			}
+			if err := d.Download(config.WithOverwrite(context.Background(), true), server.URL, "/refresh", ""); err != nil {
+				t.Fatal(err)
+			}
+			result, err := d.Prune(context.Background(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if corrupt && (result.Entries != 0 || result.Untracked != 1) {
+				t.Fatalf("refresh retained invalid ownership: %+v", result)
+			}
+			if !corrupt && (result.Entries != 1 || result.Untracked != 0) {
+				t.Fatalf("refresh lost valid ownership: %+v", result)
+			}
+		})
+	}
+}
+
 // errorFS wraps a real file system and fails the one operation a test names.
 type errorFS struct {
 	fs.FS

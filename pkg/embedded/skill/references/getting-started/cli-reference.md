@@ -38,6 +38,9 @@ dotfiles state diff
 dotfiles state cleanup
 dotfiles state log fzf --tail 50
 
+# Download cache cleanup
+dotfiles cache clear
+
 # Web dashboard UI
 dotfiles dashboard
 dotfiles dashboard start --port 8080
@@ -76,6 +79,40 @@ Inside their respective domains, the same single-letter aliases are supported:
 - `dotfiles tool u` -> `dotfiles tool update`
 
 ## Command Details
+
+### `dotfiles cache`
+
+Manage cached upstream archives and binaries under `paths.generatedDir/cache/downloads`.
+
+#### `dotfiles cache clear`
+
+Remove cached downloads for versions no longer installed. Keep downloads belonging
+to a currently installed version of any tool, including downloads shared by tools.
+Use the recorded installed versions, including pinned versions, rather than the
+latest version available upstream. Accept no positional arguments or command-specific flags.
+
+Successful installations record download ownership, including cache hits, and run
+this cleanup automatically by default. Set the global `--prune-cache=false` flag
+to retain older downloads during installation or updates. Ownership is still
+recorded with that flag, so a later manual clear can prune those versions.
+Manual clearing bypasses the automatic policy and also works when
+`downloader.cache.enabled` is false. Failed installations do not change ownership
+or trigger pruning. Cleanup errors after an installation are warnings; errors
+during manual clearing fail the command.
+
+Preserve entries without installed-version ownership, including downloads cached
+by older releases or outside an installation, and entries with unreadable or invalid
+records. Their URLs alone do not establish which installed version needs them.
+The manual command reports the number of removed downloads and bytes reclaimed,
+and warns about preserved entries without ownership, on stderr in both output
+modes. It leaves other caches, installed binaries, and the installation registry
+untouched. With `--dry-run`, report that cleanup was skipped and remove nothing.
+
+```bash
+dotfiles tool update --prune-cache=false
+dotfiles cache clear --prune-cache=false # manual cleanup still runs
+dotfiles cache clear --dry-run
+```
 
 ### `dotfiles tool`
 
@@ -386,6 +423,7 @@ The following flags are available on all commands:
 
 - `-c, --config <path>`: Path to configuration file (default: `dotfiles.config.ts`).
 - `-d, --dry-run`: Simulate operations without modifying the filesystem.
+- `--prune-cache <bool>`: Automatically remove old downloaded versions after successful installs (default: `true`). See [cache cleanup](#dotfiles-cache-clear) for retention and manual clearing.
 - `--trace`: Enable source location tracing in logs.
 - `--log <level>`: Set log level (`verbose`, `default`, `quiet`).
 - `--platform <os>`: Override target platform (`macos`, `linux`, `windows`; `darwin` is accepted as a spelling of `macos`). Any other value is rejected.

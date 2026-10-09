@@ -31,7 +31,92 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
-// mockInstaller implements installer.Installer for testing
+func TestOrchestratorPrunesDownloadCache(t *testing.T) {
+	for _, automatic := range []bool{true, false} {
+		t.Run(fmt.Sprintf("automatic %t", automatic), func(t *testing.T) {
+			ctx := context.Background()
+			mem := fs.NewMemFS()
+			database, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer database.Close()
+			reg := registry.NewRegistry(database)
+			runner := exec.NewMockRunner()
+			installers := installer.NewRegistry()
+			if err := installers.Register(installer.NewCurlBinaryInstaller(runner, mem, nil, nil)); err != nil {
+				t.Fatal(err)
+			}
+			orch := NewOrchestrator(nil, mem, runner, reg, installers)
+			orch.SetSymlinkFS(mem)
+			project := &config.ProjectConfig{Paths: config.PathsConfig{
+				HomeDir: "/home", TargetDir: "/bin", BinariesDir: "/binaries", GeneratedDir: "/generated",
+			}}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/failed" {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				fmt.Fprint(w, r.URL.Path)
+			}))
+			defer server.Close()
+			tool := &config.ToolConfig{Name: "tool", InstallationMethod: "curl-binary", Binaries: testutil.DeclaredBinaries("tool")}
+			ctx = downloader.WithPruning(config.WithForce(ctx, true), automatic)
+			for _, version := range []string{"v1", "v2"} {
+				tool.Version = &version
+				tool.InstallParams = map[string]any{"url": server.URL + "/" + version}
+				if err := orch.InstallTool(ctx, tool, project); err != nil {
+					t.Fatal(err)
+				}
+			}
+			assertCached := func(url string, want bool) {
+				t.Helper()
+				names, err := mem.ReadDir("/generated/cache/downloads")
+				if err != nil {
+					t.Fatal(err)
+				}
+				found := false
+				for _, name := range names {
+					if !strings.HasSuffix(name, ".json") {
+						continue
+					}
+					data, err := mem.ReadFile(filepath.Join("/generated/cache/downloads", name))
+					if err != nil {
+						t.Fatal(err)
+					}
+					var record struct {
+						URL string `json:"url"`
+					}
+					if err := json.Unmarshal(data, &record); err != nil {
+						t.Fatal(err)
+					}
+					if record.URL == url {
+						found = true
+					}
+				}
+				if found != want {
+					t.Fatalf("cached %s = %t, want %t", url, found, want)
+				}
+			}
+			assertCached(server.URL+"/v1", !automatic)
+			assertCached(server.URL+"/v2", true)
+			failedVersion := "v3"
+			tool.Version = &failedVersion
+			tool.InstallParams["url"] = server.URL + "/failed"
+			if err := orch.InstallTool(ctx, tool, project); err == nil {
+				t.Fatal("expected failed update")
+			}
+			assertCached(server.URL+"/v2", true)
+			if _, err := orch.ClearDownloadCache(ctx, project); err != nil {
+				t.Fatal(err)
+			}
+			assertCached(server.URL+"/v1", false)
+			assertCached(server.URL+"/v2", true)
+		})
+	}
+}
+
+// mockInstaller implements installer.Installer for testing.
 type mockInstaller struct {
 	name         string
 	supportsSudo bool

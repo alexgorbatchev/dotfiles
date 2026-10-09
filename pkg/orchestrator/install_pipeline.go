@@ -244,6 +244,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			Env:            o.buildHookEnv(tool, projCfg, nil),
 		})
 	})
+	ctx, cacheSession := downloader.TrackCache(ctx)
 	res, err := inst.Install(ctx, tool)
 	if err != nil {
 		if !isExternal {
@@ -429,6 +430,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		if err != nil {
 			return fmt.Errorf("recording tool installation: %w", err)
 		}
+		o.finishDownloadCache(ctx, tool.Name, cacheSession, projCfg)
 	}
 
 	// 6. Generate completions (matches TS reconcileToolArtifacts)

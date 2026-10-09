@@ -15,7 +15,8 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 
 - Use `.tmp/` inside the project folder for temporary scripts and manual sandboxing. Go test sandboxes may use the OS temporary directory under the test-only exception in the root `AGENTS.md`; keep automatic cleanup scoped to the owning test.
 - Set strict execution timeouts on subprocesses (max 1m for CLI generation runs).
-- Command structure follows subject-first noun-verb hierarchy (`tool`, `path`, `shell`, `venv`, `state`, `dashboard`, `skill`, `self`).
+- Command structure follows subject-first noun-verb hierarchy (`tool`, `path`, `shell`, `venv`, `state`, `cache`, `dashboard`, `skill`, `self`).
+- `cache clear` retains downloads for recorded installed versions and bypasses `--prune-cache=false`; `--dry-run` skips cleanup. Keep command and flag documentation synchronized in the embedded skill's CLI reference.
 - Root-level aliases in `root_aliases.go` (`generate`, `install`, `update`, `version`) delegate directly to their domain subcommands (`state generate`, `tool install`, `tool update`, `self version`) and are kept hidden from `--help` to preserve the clean domain hierarchy.
 - Command files must strictly follow domain naming: `cmd/dotfiles/<subject>.go` for domain parents and `cmd/dotfiles/<subject>_<verb>.go` for child subcommands. File names must strictly match what is inside.
 - `tool add <owner/repo>` fetches `<name>.tool.ts` from the specified GitHub repository into the primary tool configs directory (`tools/<name>.tool.ts`), requiring `--force` / `-f` to overwrite existing configurations. Positional repository argument completion suppresses file completion via `completeNoFileComp`.

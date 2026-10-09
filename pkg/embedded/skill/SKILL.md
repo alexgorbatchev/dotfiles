@@ -9,7 +9,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-03-04 19:29
-  last_modified: 2026-10-08 13:50
+  last_modified: 2026-10-08 15:15
   status: current
 ---
 
@@ -49,6 +49,8 @@ metadata:
 
 Print this skill with `dotfiles skill`. To access the bundled reference files locally,
 use [`dotfiles skill copy`](references/getting-started/cli-reference.md#dotfiles-skill-copy-path).
+
+Manage downloaded archives with [`dotfiles cache clear`](references/getting-started/cli-reference.md#dotfiles-cache-clear).
 
 ## Quick Reference
 

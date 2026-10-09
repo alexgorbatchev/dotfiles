@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
@@ -25,11 +26,16 @@ import (
 // cacheRecordSuffix names the record kept beside each cache entry.
 const cacheRecordSuffix = ".json"
 
+// Cache reads, stores, ownership changes and pruning must not interleave within
+// this process, including across the downloader clones used by installers.
+var cacheMu sync.Mutex
+
 // cacheRecord describes the content of a cache entry as it was stored.
 type cacheRecord struct {
-	SHA256 string `json:"sha256"`
-	Size   int64  `json:"size"`
-	URL    string `json:"url"`
+	SHA256 string            `json:"sha256"`
+	Size   int64             `json:"size"`
+	URL    string            `json:"url"`
+	Owners map[string]string `json:"owners,omitempty"`
 }
 
 // cacheRecordPath is where the record of the cache entry at entryPath is kept.
@@ -46,6 +52,8 @@ func cacheRecordPath(entryPath string) string {
 // removed; the error is a copy that could not be removed, which a download would
 // otherwise resume onto.
 func (d *Downloader) serveFromCache(entryPath, url, destPath, expectedSHA256 string, ttl time.Duration) (int64, bool, error) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
 	info, err := d.fsys.Stat(entryPath)
 	if err != nil || time.Since(info.ModTime()) >= ttl {
 		return 0, false, nil
@@ -144,14 +152,22 @@ func (d *Downloader) removeCacheEntry(entryPath string) error {
 // entry is never paired with a record of other content: whichever step fails, what
 // is left has no record and is never served. A failed store removes what it wrote.
 func (d *Downloader) storeInCache(cacheDir, entryPath, url, srcPath string) error {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
 	if err := d.fsys.MkdirAll(cacheDir, 0o755); err != nil {
 		return fmt.Errorf("creating the cache directory: %w", err)
 	}
 	recordPath := cacheRecordPath(entryPath)
+	// Refreshing an archive must retain its installed owners even if the install
+	// that fetched the replacement later fails.
+	var owners map[string]string
+	if previous, err := d.readCacheRecord(recordPath); err == nil {
+		owners = previous.Owners
+	}
 	if err := d.fsys.Remove(recordPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("removing the previous record: %w", err)
 	}
-	if err := d.writeCacheEntry(entryPath, recordPath, url, srcPath); err != nil {
+	if err := d.writeCacheEntry(entryPath, url, srcPath, owners); err != nil {
 		if errRemove := d.removeCacheEntry(entryPath); errRemove != nil {
 			return errors.Join(err, fmt.Errorf("removing the incomplete entry: %w", errRemove))
 		}
@@ -162,7 +178,7 @@ func (d *Downloader) storeInCache(cacheDir, entryPath, url, srcPath string) erro
 
 // writeCacheEntry copies srcPath to entryPath and then records the SHA-256 and size
 // of the copy, so the record describes the bytes the cache holds.
-func (d *Downloader) writeCacheEntry(entryPath, recordPath, url, srcPath string) error {
+func (d *Downloader) writeCacheEntry(entryPath, url, srcPath string, owners map[string]string) error {
 	if err := d.fsys.CopyFile(srcPath, entryPath); err != nil {
 		return fmt.Errorf("copying the download: %w", err)
 	}
@@ -170,11 +186,11 @@ func (d *Downloader) writeCacheEntry(entryPath, recordPath, url, srcPath string)
 	if err != nil {
 		return fmt.Errorf("hashing the entry: %w", err)
 	}
-	data, err := json.Marshal(cacheRecord{SHA256: sum, Size: size, URL: url})
+	data, err := json.Marshal(cacheRecord{SHA256: sum, Size: size, URL: url, Owners: owners})
 	if err != nil {
 		return fmt.Errorf("encoding the record: %w", err)
 	}
-	if err := d.fsys.WriteFile(recordPath, data, 0o644); err != nil {
+	if err := d.fsys.WriteFile(cacheRecordPath(entryPath), data, 0o644); err != nil {
 		return fmt.Errorf("writing the record: %w", err)
 	}
 	return nil

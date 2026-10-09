@@ -24,6 +24,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/embedded"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -54,6 +55,112 @@ func TestSkillPrintsEmbeddedInstructions(t *testing.T) {
 			}
 			if out.Stderr != "" {
 				t.Fatalf("printing skill emitted diagnostics: %q", out.Stderr)
+			}
+		})
+	}
+}
+
+func TestCacheClearCommand(t *testing.T) {
+	for _, dry := range []bool{false, true} {
+		t.Run(fmt.Sprintf("dry run %t", dry), func(t *testing.T) {
+			p := newE2EProject(t, nil)
+			p.writeConfig(t, nil, "", `downloader: {cache: {enabled: false}}`)
+			p.seedInstallation(t, "tool", "v2", filepath.Join(p.Root, "installed"))
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, r.URL.Path)
+			}))
+			defer server.Close()
+			d := downloader.NewDownloader(fs.NewOSFS(), nil)
+			d.CacheDir = filepath.Join(p.GeneratedDir, "cache", "downloads")
+			for _, version := range []string{"v1", "v2", "legacy"} {
+				ctx, session := downloader.TrackCache(context.Background())
+				if err := d.Download(ctx, server.URL+"/"+version, filepath.Join(p.Root, "download"), ""); err != nil {
+					t.Fatal(err)
+				}
+				if version != "legacy" {
+					if err := session.Commit(fs.NewOSFS(), "tool", version); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			out, err := p.run("cache", "clear", "--prune-cache=false", fmt.Sprintf("--dry-run=%t", dry))
+			if err != nil {
+				t.Fatalf("clear: %v\n%s", err, out.Combined)
+			}
+			if out.Stdout != "" {
+				t.Fatalf("cache diagnostics on stdout: %q", out.Stdout)
+			}
+			if !dry && (!strings.Contains(out.Stderr, "Removed 1 old cached downloads") || !strings.Contains(out.Stderr, "Preserved 1 cached downloads without installed-version ownership")) {
+				t.Fatalf("missing cleanup summary: %s", out.Stderr)
+			}
+			entries, err := os.ReadDir(d.CacheDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			urls := make(map[string]bool)
+			for _, entry := range entries {
+				if !strings.HasSuffix(entry.Name(), ".json") {
+					continue
+				}
+				data, err := os.ReadFile(filepath.Join(d.CacheDir, entry.Name()))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var record struct {
+					URL string `json:"url"`
+				}
+				if err := json.Unmarshal(data, &record); err != nil {
+					t.Fatal(err)
+				}
+				urls[record.URL] = true
+			}
+			if urls[server.URL+"/v1"] != dry || !urls[server.URL+"/v2"] || !urls[server.URL+"/legacy"] {
+				t.Fatalf("retained URLs = %v", urls)
+			}
+		})
+	}
+	if _, err := runCommand("cache", "clear", "unexpected"); err == nil {
+		t.Fatal("cache clear accepted a positional argument")
+	}
+}
+
+func TestInstallPruneCacheFlag(t *testing.T) {
+	for _, automatic := range []bool{true, false} {
+		t.Run(fmt.Sprintf("automatic %t", automatic), func(t *testing.T) {
+			p := newE2EProject(t, nil)
+			t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, r.URL.Path)
+			}))
+			defer server.Close()
+			for _, version := range []string{"v1", "v2"} {
+				p.writeConfig(t, tsTools{"tool": fmt.Sprintf(`install("curl-binary", {url: %q}).version(%q).bin("tool")`, server.URL+"/"+version, version)}, "", "")
+				args := []string{"tool", "install", "tool", "--force"}
+				if !automatic {
+					args = append(args, "--prune-cache=false")
+				}
+				out, err := p.run(args...)
+				if err != nil {
+					t.Fatalf("install: %v\n%s", err, out.Combined)
+				}
+			}
+			d := downloader.NewDownloader(fs.NewOSFS(), nil)
+			d.CacheDir = filepath.Join(p.GeneratedDir, "cache", "downloads")
+			result, err := d.Prune(context.Background(), map[string]string{"tool": "v2"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if !automatic {
+				want = 1
+			}
+			if result.Entries != want {
+				t.Fatalf("remaining obsolete archives = %d, want %d", result.Entries, want)
+			}
+			// The installed version remains usable from cache after the server stops.
+			server.Close()
+			if err := d.Download(context.Background(), server.URL+"/v2", filepath.Join(p.Root, "from-cache"), ""); err != nil {
+				t.Fatalf("installed archive was pruned: %v", err)
 			}
 		})
 	}
