@@ -195,7 +195,7 @@ func (o *Orchestrator) warnUndeclaredBinaries(tool *config.ToolConfig, reported 
 	}
 
 	sort.Strings(undeclared)
-	o.logger.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf(
+	o.logger.WithTag(tool.Name).Debug(logger.Message(fmt.Sprintf(
 		"Installer reported binaries the tool does not declare with .bin(): %s (no shim generated; add .bin() for each one that should be on PATH)",
 		strings.Join(undeclared, ", "),
 	)))

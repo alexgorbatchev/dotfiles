@@ -3582,6 +3582,28 @@ func TestSymlinkTargetIsBackedUpNotDeleted(t *testing.T) {
 // .bin() set is that set: an installer-reported binary the tool never declared used to
 // get a shim on install and lose it to the next generate's stale-shim cleanup, which
 // an install would then put back.
+func TestOrchestrator_UndeclaredBinariesLogLevel(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name        string
+		level       logger.LogLevel
+		wantMessage bool
+	}{
+		{"default", logger.LogLevelDefault, false},
+		{"verbose", logger.LogLevelVerbose, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var output bytes.Buffer
+			orch := &Orchestrator{logger: logger.New(logger.Config{Level: tt.level, Writer: &output})}
+			orch.warnUndeclaredBinaries(&config.ToolConfig{Name: "reporting-tool"}, []string{"extra-bin"})
+			message := "Installer reported binaries the tool does not declare with .bin(): extra-bin"
+			if got := strings.Contains(output.String(), message); got != tt.wantMessage {
+				t.Errorf("message present = %v, want %v; output: %s", got, tt.wantMessage, output.String())
+			}
+		})
+	}
+}
+
 func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

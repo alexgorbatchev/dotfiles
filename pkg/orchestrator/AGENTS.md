@@ -9,6 +9,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 
 ## Local conventions
 
+- Installer-reported binaries without a `.bin()` declaration are debug diagnostics, not warnings; omitting a declaration can be intentional.
 - Check binary existence ONLY in `targetDir` or `binariesDir` before executing completion commands (do NOT check or execute system `PATH` binaries).
 - Always use the injected `fs.FS` (`ResolvedFS.IsAbs()` / `ResolvedFS.Abs()`) for resolving user/tool paths (such as `binaryPath`, symlinks, completion sources) instead of raw stdlib `filepath.IsAbs`.
 - Resolve a manual tool's `binaryPath` (shadow-check delegation target) only through `installer.ResolveBinaryPath`, the helper the installers use, so shadow checking checks where the installer looked.
