@@ -38,6 +38,7 @@ export interface CargoConfig {
   userAgent: string;
 }
 export interface DownloaderConfig {
+  pruneCache?: boolean;
   timeout: number;
   retryCount: number;
   retryDelay: number;

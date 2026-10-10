@@ -72,7 +72,7 @@ var (
 	cargoSubHosts        = []string{"cratesIo", "githubRaw", "githubRelease"}
 	cargoHostKeys        = []string{"host", "cache", "token"}
 	cargoReleaseHostKeys = []string{"host", "token"}
-	downloaderKeys       = []string{"timeout", "retryCount", "retryDelay", "cache"}
+	downloaderKeys       = []string{"timeout", "retryCount", "retryDelay", "cache", "pruneCache"}
 	featuresKeys         = []string{"catalog", "shellInstall"}
 	catalogKeys          = []string{"generate", "filePath"}
 	shellInstallKeys     = []string{"zsh", "bash", "powershell"}

@@ -109,6 +109,9 @@ type CargoConfig struct {
 
 // DownloaderConfig defines general downloader configurations.
 type DownloaderConfig struct {
+	// PruneCache controls automatic removal of downloads for versions no longer
+	// installed. Nil selects the default, which is on; explicit CLI flags win.
+	PruneCache *bool `json:"pruneCache,omitempty" yaml:"pruneCache,omitempty"`
 	// Timeout bounds a single download attempt, in milliseconds. Zero leaves the
 	// attempt unbounded.
 	Timeout int64 `json:"timeout" yaml:"timeout"`
@@ -119,6 +122,11 @@ type DownloaderConfig struct {
 	// the attempt number for linear backoff.
 	RetryDelay int64       `json:"retryDelay" yaml:"retryDelay"`
 	Cache      CacheConfig `json:"cache" yaml:"cache"`
+}
+
+// IsPruningEnabled reports the configured automatic download-cache policy.
+func (c DownloaderConfig) IsPruningEnabled() bool {
+	return c.PruneCache == nil || *c.PruneCache
 }
 
 // CatalogConfig defines CATALOG.md generation configuration.

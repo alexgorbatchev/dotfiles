@@ -125,7 +125,7 @@ func TestCacheClearCommand(t *testing.T) {
 	for _, dry := range []bool{false, true} {
 		t.Run(fmt.Sprintf("dry run %t", dry), func(t *testing.T) {
 			p := newE2EProject(t, nil)
-			p.writeConfig(t, nil, "", `downloader: {cache: {enabled: false}}`)
+			p.writeConfig(t, nil, "", `downloader: {pruneCache: false, cache: {enabled: false}}`)
 			p.seedInstallation(t, "tool", "v2", filepath.Join(p.Root, "installed"))
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, r.URL.Path)
@@ -187,8 +187,20 @@ func TestCacheClearCommand(t *testing.T) {
 }
 
 func TestInstallPruneCacheFlag(t *testing.T) {
-	for _, automatic := range []bool{true, false} {
-		t.Run(fmt.Sprintf("automatic %t", automatic), func(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		configuration string
+		flag          string
+		automatic     bool
+	}{
+		{"default", "", "", true},
+		{"config enabled", "downloader: {pruneCache: true}", "", true},
+		{"config disabled", "downloader: {pruneCache: false}", "", false},
+		{"flag disables config", "downloader: {pruneCache: true}", "--prune-cache=false", false},
+		{"flag enables config", "downloader: {pruneCache: false}", "--prune-cache=true", true},
+		{"flag without value enables config", "downloader: {pruneCache: false}", "--prune-cache", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			p := newE2EProject(t, nil)
 			t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -196,10 +208,10 @@ func TestInstallPruneCacheFlag(t *testing.T) {
 			}))
 			defer server.Close()
 			for _, version := range []string{"v1", "v2"} {
-				p.writeConfig(t, tsTools{"tool": fmt.Sprintf(`install("curl-binary", {url: %q}).version(%q).bin("tool")`, server.URL+"/"+version, version)}, "", "")
+				p.writeConfig(t, tsTools{"tool": fmt.Sprintf(`install("curl-binary", {url: %q}).version(%q).bin("tool")`, server.URL+"/"+version, version)}, "", tc.configuration)
 				args := []string{"tool", "install", "tool", "--force"}
-				if !automatic {
-					args = append(args, "--prune-cache=false")
+				if tc.flag != "" {
+					args = append(args, tc.flag)
 				}
 				out, err := p.run(args...)
 				if err != nil {
@@ -213,7 +225,7 @@ func TestInstallPruneCacheFlag(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := 0
-			if !automatic {
+			if !tc.automatic {
 				want = 1
 			}
 			if result.Entries != want {

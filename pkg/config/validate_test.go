@@ -194,7 +194,7 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 			{
 				name:     "downloader.badProp error",
 				json:     `{ "downloader": { "badProp": true } }`,
-				expected: `unknown property "downloader.badProp" (valid properties under 'downloader': cache, retryCount, retryDelay, timeout)`,
+				expected: `unknown property "downloader.badProp" (valid properties under 'downloader': cache, pruneCache, retryCount, retryDelay, timeout)`,
 			},
 			{
 				name:     "downloader.cache.badProp error",

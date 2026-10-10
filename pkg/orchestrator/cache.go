@@ -43,7 +43,7 @@ func (o *Orchestrator) finishDownloadCache(ctx context.Context, tool string, ses
 		log.Warn(logger.Message(fmt.Sprintf("Could not record download cache ownership: %v", err)))
 		return
 	}
-	if !downloader.PruningEnabled(ctx) {
+	if !downloader.PruningEnabled(ctx, project.Downloader.IsPruningEnabled()) {
 		return
 	}
 	result, err := o.ClearDownloadCache(ctx, project)

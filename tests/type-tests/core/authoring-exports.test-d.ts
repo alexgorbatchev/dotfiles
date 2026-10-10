@@ -105,6 +105,10 @@ expectError(
   })),
 );
 
+// Automatic pruning is an independent boolean policy on the downloader.
+defineConfig(() => ({ downloader: { pruneCache: false } }));
+expectError(defineConfig(() => ({ downloader: { pruneCache: "false" } })));
+
 // Every cargo key the cargo installer reads.
 defineConfig(() => ({
   cargo: {

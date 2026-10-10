@@ -148,7 +148,10 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		ctx := config.WithDryRun(cmd.Context(), dryRun)
-		cmd.SetContext(downloader.WithPruning(ctx, prune))
+		if cmd.Flags().Changed("prune-cache") {
+			ctx = downloader.WithPruning(ctx, prune)
+		}
+		cmd.SetContext(ctx)
 		return nil
 	},
 }
@@ -158,7 +161,7 @@ func init() {
 	cobrahelptree.Setup(rootCmd)
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Path to configuration file")
 	rootCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Simulate operations without committing disk changes")
-	rootCmd.PersistentFlags().Bool("prune-cache", true, "Remove old cached downloads after successful installs")
+	rootCmd.PersistentFlags().Bool("prune-cache", true, "Override automatic cache pruning after successful installs")
 	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "Enable source location tracing in logs")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log", "default", "Log level (verbose, default, quiet)")
 	rootCmd.PersistentFlags().Var(platformValue{&platform}, "platform", "Target platform (macos, linux, windows; darwin is accepted for macos)")

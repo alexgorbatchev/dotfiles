@@ -34,10 +34,13 @@ func WithPruning(ctx context.Context, enabled bool) context.Context {
 	return context.WithValue(ctx, pruningKey{}, enabled)
 }
 
-// PruningEnabled reports the automatic policy, which defaults to enabled.
-func PruningEnabled(ctx context.Context) bool {
+// PruningEnabled returns the explicit context policy, or the configured default.
+func PruningEnabled(ctx context.Context, configured bool) bool {
 	enabled, ok := ctx.Value(pruningKey{}).(bool)
-	return !ok || enabled
+	if ok {
+		return enabled
+	}
+	return configured
 }
 
 // TrackCache returns a context recording cache hits and successful cache stores.

@@ -78,6 +78,31 @@ func TestToolConfigUnmarshalJSONRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestDownloaderPruningPolicy(t *testing.T) {
+	for _, tc := range []struct {
+		json string
+		want bool
+	}{
+		{`{}`, true},
+		{`{"downloader":{"pruneCache":true}}`, true},
+		{`{"downloader":{"pruneCache":false}}`, false},
+		{`{"downloader":{"cache":{"enabled":false}}}`, true},
+	} {
+		t.Run(tc.json, func(t *testing.T) {
+			var project ProjectConfig
+			if err := ValidateProjectConfigRawJSON([]byte(tc.json)); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(tc.json), &project); err != nil {
+				t.Fatal(err)
+			}
+			if got := project.Downloader.IsPruningEnabled(); got != tc.want {
+				t.Fatalf("pruning enabled = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestCacheConfigIsEnabled(t *testing.T) {
 	on, off := true, false
 

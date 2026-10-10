@@ -258,6 +258,20 @@ func TestDownloader(t *testing.T) {
 	})
 }
 
+func TestPruningPolicyPrecedence(t *testing.T) {
+	for _, configured := range []bool{false, true} {
+		ctx := context.Background()
+		if got := PruningEnabled(ctx, configured); got != configured {
+			t.Fatalf("configured policy = %t, want %t", got, configured)
+		}
+		for _, explicit := range []bool{false, true} {
+			if got := PruningEnabled(WithPruning(ctx, explicit), configured); got != explicit {
+				t.Fatalf("explicit policy = %t, want %t", got, explicit)
+			}
+		}
+	}
+}
+
 func TestPruneUnownedInstalledURL(t *testing.T) {
 	mem := fs.NewMemFS()
 	d := NewDownloader(mem, nil)

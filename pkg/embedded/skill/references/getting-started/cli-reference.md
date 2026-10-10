@@ -92,8 +92,10 @@ Use the recorded installed versions, including pinned versions, rather than the
 latest version available upstream. Accept no positional arguments or command-specific flags.
 
 Successful installations record download ownership, including cache hits, and run
-this cleanup automatically by default. Set the global `--prune-cache=false` flag
-to retain older downloads during installation or updates. Ownership is still
+this cleanup automatically by default. Configure the policy with
+[`downloader.pruneCache`](../configuration/project-configuration.md#downloader).
+An explicit `--prune-cache=true` or `--prune-cache=false` overrides configuration
+for the current command. Ownership is still
 recorded with that flag, so a later manual clear can prune those versions.
 Manual clearing bypasses the automatic policy and also works when
 `downloader.cache.enabled` is false. Failed installations do not change ownership
@@ -429,7 +431,7 @@ The following flags are available on all commands:
 
 - `-c, --config <path>`: Path to configuration file (default: `dotfiles.config.ts`).
 - `-d, --dry-run`: Simulate operations without modifying the filesystem.
-- `--prune-cache <bool>`: Automatically remove old downloaded versions after successful installs (default: `true`). See [cache cleanup](#dotfiles-cache-clear) for retention and manual clearing.
+- `--prune-cache <bool>`: Override automatic cleanup after successful installs. When omitted, use [`downloader.pruneCache`](../configuration/project-configuration.md#downloader), whose default is `true`. See [cache cleanup](#dotfiles-cache-clear) for retention and manual clearing.
 - `--trace`: Enable source location tracing in logs.
 - `--log <level>`: Set log level (`verbose`, `default`, `quiet`).
 - `--platform <os>`: Override target platform (`macos`, `linux`, `windows`; `darwin` is accepted as a spelling of `macos`). Any other value is rejected.

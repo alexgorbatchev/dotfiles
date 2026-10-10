@@ -150,13 +150,14 @@ and never sends a token written for your `host`.
 
 ### downloader
 
-| Key             | Default                       | Effect                                                        |
-| --------------- | ----------------------------- | ------------------------------------------------------------- |
-| `timeout`       | none, in ms                   | Bounds one download attempt; a slower download is abandoned   |
-| `retryCount`    | `0`                           | How many times a failed download is attempted again           |
-| `retryDelay`    | `1000` (one second), in ms    | Base delay between attempts, multiplied by the attempt number |
-| `cache.enabled` | `true`                        | Whether a downloaded asset is reused at all                   |
-| `cache.ttl`     | `2592000000` (30 days), in ms | How long a downloaded asset is reused                         |
+| Key             | Default                       | Effect                                                                                          |
+| --------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `timeout`       | none, in ms                   | Bounds one download attempt; a slower download is abandoned                                     |
+| `retryCount`    | `0`                           | How many times a failed download is attempted again                                             |
+| `retryDelay`    | `1000` (one second), in ms    | Base delay between attempts, multiplied by the attempt number                                   |
+| `pruneCache`    | `true`                        | Automatically remove downloads for versions no longer installed after a successful installation |
+| `cache.enabled` | `true`                        | Whether a downloaded asset is reused at all                                                     |
+| `cache.ttl`     | `2592000000` (30 days), in ms | How long a downloaded asset is reused                                                           |
 
 A download renders a progress line on stderr while it runs, and only when stderr is a
 terminal.
@@ -165,6 +166,18 @@ Cached downloads live in `cache/downloads` under `paths.generatedDir`, each with
 record of the SHA-256 and size it had when it was stored. A cached download is reused
 only while its content still matches that record. One that no longer does, or whose
 record is missing or unreadable, is removed with a warning and downloaded again.
+
+Set `downloader.pruneCache` to `false` to retain old downloads automatically:
+
+```typescript config
+downloader: { pruneCache: false },
+```
+
+An explicitly supplied [`--prune-cache`](../getting-started/cli-reference.md#global-flags)
+flag overrides this setting in either direction. Manual
+[`cache clear`](../getting-started/cli-reference.md#dotfiles-cache-clear) applies
+installed-version retention regardless of the setting or flag. This policy is
+independent of `downloader.cache.enabled`.
 
 ### cargo
 

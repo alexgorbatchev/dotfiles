@@ -93,6 +93,7 @@ var projectConfigConsumers = map[string]string{
 	"downloader.timeout":       "orchestrator downloadSettings, downloader.Settings.Timeout",
 	"downloader.retryCount":    "orchestrator downloadSettings, downloader.Settings.RetryCount",
 	"downloader.retryDelay":    "orchestrator downloadSettings, downloader.Settings.RetryDelay",
+	"downloader.pruneCache":    "orchestrator finishDownloadCache, downloader.PruningEnabled",
 	"downloader.cache.enabled": "orchestrator downloadSettings, downloader.Settings.CacheEnabled",
 	"downloader.cache.ttl":     "orchestrator downloadSettings, downloader.Settings.CacheTTL",
 
