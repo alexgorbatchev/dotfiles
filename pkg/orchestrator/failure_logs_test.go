@@ -82,8 +82,8 @@ func TestCompletionFailureLogNamesTheCause(t *testing.T) {
 }
 
 // TestPipelineFailureLogsNameTheCause pins that the failures GenerateTools and
-// InstallTools log without failing, syncing the TypeScript types and removing an
-// orphaned tool, are reported with their cause outside --trace (#131).
+// InstallTools encounter, syncing the TypeScript types and removing an orphaned
+// tool, are reported with their cause outside --trace (#131).
 func TestPipelineFailureLogsNameTheCause(t *testing.T) {
 	t.Parallel()
 	const (
@@ -144,8 +144,8 @@ func TestPipelineFailureLogsNameTheCause(t *testing.T) {
 				t.Fatalf("writing node_modules file: %v", err)
 			}
 
-			if err := tt.run(ctx, o, []*config.ToolConfig{{Name: "shell-only"}}, projCfg); err != nil {
-				t.Fatalf("these failures must not fail the %s: %v", tt.name, err)
+			if err := tt.run(ctx, o, []*config.ToolConfig{{Name: "shell-only"}}, projCfg); err == nil {
+				t.Fatalf("orphan cleanup failure must fail the %s after processing other tools", tt.name)
 			}
 			got := logBuf.String()
 			for _, want := range tt.want {

@@ -1,10 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/spf13/cobra"
 )
 
@@ -25,36 +26,26 @@ var toolUninstallCmd = &cobra.Command{
 		services.Orchestrator.SetLogger(log)
 		log.Info("Starting tool uninstallation...")
 
+		var failures toolbatch.Failures
 		if len(args) > 0 {
 			for _, toolName := range args {
+				if err := ctx.Err(); err != nil {
+					return errors.Join(failures.Err(), err)
+				}
 				targetTool := config.FindTool(services.ToolConfigs, toolName)
 				if targetTool == nil {
-					return fmt.Errorf("tool %q not found in configuration", toolName)
+					failures.Record(log, toolName, fmt.Errorf("tool %q not found in configuration", toolName))
+					continue
 				}
 
-				err = services.Orchestrator.UninstallTool(ctx, targetTool, services.ProjectConfig)
-				if err != nil {
-					return err
-				}
+				failures.Record(log, targetTool.Name, services.Orchestrator.UninstallTool(ctx, targetTool, services.ProjectConfig))
 			}
 		} else {
 			log.Info("Uninstalling all configured tools")
 
-			sorted, err := orchestrator.TopologicalSort(services.ToolConfigs)
-			if err != nil {
-				return err
-			}
-
-			// Uninstall in reverse topological order
-			for i := len(sorted) - 1; i >= 0; i-- {
-				tool := sorted[i]
-				err = services.Orchestrator.UninstallTool(ctx, tool, services.ProjectConfig)
-				if err != nil {
-					return err
-				}
-			}
+			return services.Orchestrator.UninstallTools(ctx, services.ToolConfigs, services.ProjectConfig)
 		}
 
-		return nil
+		return failures.Err()
 	},
 }

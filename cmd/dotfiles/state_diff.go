@@ -7,6 +7,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/drift"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/spf13/cobra"
 )
 
@@ -38,9 +39,22 @@ var stateDiffCmd = &cobra.Command{
 		}
 
 		inspector := drift.NewInspector(services.FS, services.Registry, services.ProjectConfig)
-		items, err := inspector.InspectAll(ctx, toolsToInspect)
-		if err != nil {
-			return fmt.Errorf("inspecting drift: %w", err)
+		var items []drift.Item
+		var failures toolbatch.Failures
+		log := GetLogger("diff", cmd.ErrOrStderr())
+		for _, tool := range toolsToInspect {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if tool.Disabled {
+				continue
+			}
+			inspected, err := inspector.InspectTool(ctx, tool)
+			if err != nil {
+				failures.Record(log, tool.Name, fmt.Errorf("inspecting drift: %w", err))
+				continue
+			}
+			items = append(items, inspected...)
 		}
 
 		var driftedItems []drift.Item
@@ -51,13 +65,19 @@ var stateDiffCmd = &cobra.Command{
 		}
 
 		if diffJSON {
-			return cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
+			if err := cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
 				"hasDrift": len(driftedItems) > 0,
 				"items":    driftedItems,
-			})
+			}); err != nil {
+				return err
+			}
+			return failures.Err()
 		}
 
 		if len(driftedItems) == 0 {
+			if err := failures.Err(); err != nil {
+				return err
+			}
 			if cliout.IsAgentMode() {
 				fmt.Fprintln(cmd.OutOrStdout(), "OK: all files in-sync")
 			} else {
@@ -93,7 +113,7 @@ var stateDiffCmd = &cobra.Command{
 			}
 		}
 
-		return nil
+		return failures.Err()
 	},
 }
 

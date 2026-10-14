@@ -89,6 +89,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 
 ## Shared conventions
 
+- Commands that process multiple tools must report each tool's failure and continue processing the remaining tools. A per-tool failure must never abort the batch; return a nonzero exit status after processing when any tool failed.
 - Before implementing a feature in any language, inspect existing dependencies and maintained third-party libraries. Prefer a suitable library, or native/standard-library functionality when it meets the requirements. Write custom functionality only when suitable existing solutions cannot meet them.
 - Implement Go code in `pkg/` organized by responsibility (domain-oriented, e.g. `pkg/config/`, `pkg/installer/`, `pkg/logger/`).
 - Accept interfaces, return concrete structs in Go functions. Wrap errors with context using `%w` (`fmt.Errorf("action: %w", err)`).

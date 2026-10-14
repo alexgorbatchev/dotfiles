@@ -218,6 +218,139 @@ func (m *mockInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig
 	return &installer.UpdateCheckResult{}, nil
 }
 
+func TestToolPipelinesContinueAfterFailures(t *testing.T) {
+	for _, pipeline := range []struct {
+		name string
+		run  func(*Orchestrator, context.Context, []*config.ToolConfig, *config.ProjectConfig) error
+	}{
+		{"generate", (*Orchestrator).GenerateTools},
+		{"install", (*Orchestrator).InstallTools},
+	} {
+		t.Run(pipeline.name, func(t *testing.T) {
+			mem := fs.NewMemFS()
+			o := newTestOrchestrator(t, mem, "")
+			var output bytes.Buffer
+			o.SetLogger(logger.New(logger.Config{Writer: &output}))
+			project := &config.ProjectConfig{Paths: config.PathsConfig{
+				HomeDir: "/home/user", TargetDir: "/target", GeneratedDir: "/generated", BinariesDir: "/binaries",
+			}}
+			tools := []*config.ToolConfig{
+				{Name: "first-failure", Symlinks: []config.SymlinkConfig{{Source: "/missing-first", Target: "/first-link"}}},
+				{Name: "second-failure", Symlinks: []config.SymlinkConfig{{Source: "/missing-second", Target: "/second-link"}}},
+				{Name: "healthy", Directories: []config.DirectoryConfig{{Path: "/healthy-generated"}}},
+			}
+			err := pipeline.run(o, context.Background(), tools, project)
+			if err == nil {
+				t.Fatal("batch succeeded despite tool failures")
+			}
+			for _, path := range []string{"/healthy-generated", "/generated/shell-scripts/main.zsh"} {
+				if exists, _ := mem.Exists(path); !exists {
+					t.Errorf("batch stopped before generating %s", path)
+				}
+			}
+			for _, cause := range []string{"/missing-first", "/missing-second"} {
+				if !strings.Contains(err.Error(), cause) || !strings.Contains(output.String(), cause) {
+					t.Errorf("failure %s was lost: error=%v, log=%s", cause, err, output.String())
+				}
+			}
+		})
+	}
+}
+
+func TestCleanupContinuesAfterToolFailure(t *testing.T) {
+	mem := fs.NewMemFS()
+	o := newTestOrchestrator(t, mem, "")
+	ctx := context.Background()
+	project := &config.ProjectConfig{Paths: config.PathsConfig{HomeDir: "/home/user", TargetDir: "/target", GeneratedDir: "/generated"}}
+	for _, tool := range []string{"a-broken", "z-good"} {
+		path := "/stale-" + tool
+		if tool == "a-broken" {
+			path = "{unknown}/unsafe"
+		}
+		if err := mem.WriteFile("/stale-"+tool, []byte("old"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+			return o.reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+				ToolName: tool, FilePath: path, FileType: "copy", OperationType: "write", CreatedAt: 1,
+			})
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tools := []*config.ToolConfig{{Name: "a-broken"}, {Name: "z-good"}}
+	err := o.CleanupStaleArtifacts(ctx, tools, project)
+	if err == nil || !strings.Contains(err.Error(), "{unknown}") {
+		t.Fatalf("error = %v, want unsafe recorded path reported", err)
+	}
+	if exists, _ := mem.Exists("/stale-z-good"); exists {
+		t.Error("cleanup stopped before removing the healthy tool's stale copy")
+	}
+}
+
+func TestShellGenerationContinuesAfterToolFailure(t *testing.T) {
+	for _, broken := range []struct {
+		name  string
+		shell config.ShellTypeConfig
+	}{
+		{"path", config.ShellTypeConfig{Paths: []interface{}{"{paths.dotfilesDir}/bin"}}},
+		{"environment", config.ShellTypeConfig{Env: map[string]string{"BAD": "{paths.dotfilesDir}"}}},
+		{"alias", config.ShellTypeConfig{Aliases: map[string]string{"bad": "{paths.dotfilesDir}"}}},
+		{"always", config.ShellTypeConfig{Scripts: []config.ShellScript{{Kind: config.ShellScriptAlways, Value: "{paths.dotfilesDir}"}}}},
+		{"once", config.ShellTypeConfig{Scripts: []config.ShellScript{{Kind: config.ShellScriptOnce, Value: "{paths.dotfilesDir}"}}}},
+	} {
+		t.Run(broken.name, func(t *testing.T) {
+			mem := fs.NewMemFS()
+			o := newTestOrchestrator(t, mem, "")
+			project := &config.ProjectConfig{Paths: config.PathsConfig{
+				HomeDir: "/home/user", GeneratedDir: "/generated", TargetDir: "/target",
+				DotfilesDir: "{paths.binariesDir}", BinariesDir: "{paths.dotfilesDir}",
+			}}
+			tools := []*config.ToolConfig{
+				{Name: "broken", ShellConfigs: &config.ShellConfigs{Zsh: &broken.shell}},
+				{Name: "healthy", ShellConfigs: &config.ShellConfigs{Zsh: &config.ShellTypeConfig{Aliases: map[string]string{"healthy": "echo healthy"}}}},
+			}
+			err := o.GenerateTools(context.Background(), tools, project)
+			if err == nil || !strings.Contains(err.Error(), "cycle") {
+				t.Errorf("error = %v, want placeholder cycle reported", err)
+			}
+			data, err := mem.ReadFile("/generated/shell-scripts/main.zsh")
+			if err != nil || !strings.Contains(string(data), "alias healthy='echo healthy'") {
+				t.Errorf("healthy shell configuration was not generated: %s, %v", data, err)
+			}
+		})
+	}
+}
+
+func TestInstallBatchSkipsFailedDependencies(t *testing.T) {
+	mem := fs.NewMemFS()
+	o := newTestOrchestrator(t, mem, "")
+	consumerInstaller := &mockInstaller{name: "consumer-installer"}
+	if err := o.instRegistry.Register(consumerInstaller); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.instRegistry.Register(&mockInstaller{name: "healthy-installer"}); err != nil {
+		t.Fatal(err)
+	}
+	project := &config.ProjectConfig{Paths: config.PathsConfig{HomeDir: "/home/user", GeneratedDir: "/generated", TargetDir: "/target", BinariesDir: "/binaries"}}
+	tools := []*config.ToolConfig{
+		{Name: "shared", InstallationMethod: "healthy-installer", Binaries: testutil.DeclaredBinaries("different-bin")},
+		{Name: "provider", Binaries: testutil.DeclaredBinaries("shared"), Symlinks: []config.SymlinkConfig{{Source: "/missing", Target: "/link"}}},
+		{Name: "consumer", InstallationMethod: "consumer-installer", Dependencies: []string{"shared"}},
+		{Name: "unrelated", Directories: []config.DirectoryConfig{{Path: "/unrelated"}}},
+	}
+	err := o.InstallTools(context.Background(), tools, project)
+	if err == nil || !strings.Contains(err.Error(), `dependency "provider" failed`) {
+		t.Errorf("error = %v, want consumer's failed binary provider reported", err)
+	}
+	if consumerInstaller.installCount != 0 {
+		t.Error("consumer was installed despite its dependency's failure")
+	}
+	if exists, _ := mem.Exists("/unrelated"); !exists {
+		t.Error("independent tool was not processed")
+	}
+}
+
 func TestGetBinaryNames(t *testing.T) {
 	t.Parallel()
 	// A bare string is not a shape .bin() records, so it names no binary; the map is

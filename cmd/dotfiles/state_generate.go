@@ -10,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ var stateGenerateCmd = &cobra.Command{
 
 		// Execute standalone generation of all tool configurations through the Orchestrator
 		err = services.Orchestrator.GenerateTools(ctx, services.ToolConfigs, services.ProjectConfig)
-		if err != nil {
+		if err != nil && !errors.Is(err, toolbatch.ErrFailed) {
 			return err
 		}
 
@@ -72,7 +73,7 @@ var stateGenerateCmd = &cobra.Command{
 			}
 		}
 
-		return nil
+		return err
 	},
 }
 

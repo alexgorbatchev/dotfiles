@@ -53,6 +53,30 @@ func TestScaffoldedTemplatesLoad(t *testing.T) {
 	}
 }
 
+func TestScaffoldedTemplatesLoadAfterFileFailure(t *testing.T) {
+	root := t.TempDir()
+	toolsDir := filepath.Join(root, "tools")
+	if err := os.MkdirAll(filepath.Join(toolsDir, "dotfiles.tool.ts"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	osFS := fs.NewOSFS()
+	if _, err := scaffold.Run(osFS, scaffold.Options{Dir: toolsDir, TargetOS: "linux"}); err == nil {
+		t.Fatal("expected an error reading a directory as a starter file")
+	}
+	configPath := filepath.Join(root, "dotfiles.config.ts")
+	if err := os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: `+strconv.Quote(filepath.ToSlash(root))+` } };`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	log := logger.New(logger.Config{Writer: io.Discard})
+	_, tools, _, err := vm.LoadTypeScriptConfig(log, osFS, configPath, vm.WithTarget(vm.Target{OS: "linux", Arch: "amd64"}))
+	if err != nil {
+		t.Fatalf("loading successful starter after another failed: %v", err)
+	}
+	if tools["typescript"] == nil {
+		t.Fatal("later starter was not created as a loadable tool")
+	}
+}
+
 // Homebrew's install prefix differs per macOS architecture and both are released
 // targets, so the scaffolded tool must resolve to the right one on each.
 func TestScaffoldedBrewToolResolvesPerArchitecture(t *testing.T) {

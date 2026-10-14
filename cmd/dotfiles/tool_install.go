@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/spf13/cobra"
 )
 
@@ -37,26 +39,27 @@ var toolInstallCmd = &cobra.Command{
 
 		if len(args) > 0 {
 			ctx = config.WithTargeted(ctx, true)
+			var failures toolbatch.Failures
 			for _, toolName := range args {
+				if err := ctx.Err(); err != nil {
+					return errors.Join(failures.Err(), err)
+				}
 				if strings.Contains(toolName, "=") {
 					continue
 				}
 				targetTool := config.FindTool(services.ToolConfigs, toolName)
 				if targetTool == nil {
-					return fmt.Errorf("tool %q not found in configuration", toolName)
+					failures.Record(log, toolName, fmt.Errorf("tool %q not found in configuration", toolName))
+					continue
 				}
 				if targetTool.Disabled {
 					log.WithTag(targetTool.Name).Info(logger.Message("Skipping installation: tool is disabled for this configuration"))
 					continue
 				}
 
-				err = services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig)
-				if err != nil {
-					toolLog := log.WithTag(targetTool.Name)
-					toolLog.Error(logger.Message(err.Error()))
-					return ErrSilent
-				}
+				failures.Record(log, targetTool.Name, services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig))
 			}
+			return failures.Err()
 		} else {
 			log.Info("Installing all configured tools")
 

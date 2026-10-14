@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
@@ -54,29 +56,49 @@ var stateLogCmd = &cobra.Command{
 		}
 
 		if logStatus {
+			var failures toolbatch.Failures
 			tools := []string{}
 			if toolFilter != "" {
 				tools = append(tools, toolFilter)
 			} else {
 				registered, err := services.Registry.GetRegisteredTools(ctx)
-				if err == nil {
-					tools = registered
+				if err != nil {
+					failures.Record(log, "system", fmt.Errorf("listing registered tools for status: %w", err))
+					return failures.Err()
 				}
+				tools = registered
 			}
 
 			allStates := []FileStateInfo{}
+			targetStates := make(map[string]bool)
 
 			for _, toolName := range tools {
+				if err := ctx.Err(); err != nil {
+					return errors.Join(failures.Err(), err)
+				}
 				fileStates, err := services.Registry.GetFileStatesForTool(ctx, toolName)
-				if err != nil || len(fileStates) == 0 {
+				if err != nil {
+					failures.Record(log, toolName, fmt.Errorf("reading file states: %w", err))
 					continue
 				}
 
 				for _, state := range fileStates {
-					exists, _ := services.FS.Exists(state.FilePath)
+					exists, err := services.FS.Exists(state.FilePath)
+					if err != nil {
+						failures.Record(log, toolName, fmt.Errorf("checking status path %q: %w", state.FilePath, err))
+						continue
+					}
 					targetPath := ""
 					if state.TargetPath != nil {
 						targetPath = *state.TargetPath
+					}
+					if targetPath != "" {
+						targetExists, err := services.FS.Exists(targetPath)
+						if err != nil {
+							failures.Record(log, toolName, fmt.Errorf("checking target %q of status path %q: %w", targetPath, state.FilePath, err))
+							continue
+						}
+						targetStates[targetPath] = targetExists
 					}
 					info := FileStateInfo{
 						ToolName:   toolName,
@@ -91,7 +113,10 @@ var stateLogCmd = &cobra.Command{
 			}
 
 			if logJSON {
-				return cliout.RenderJSON(cmd.OutOrStdout(), allStates)
+				if err := cliout.RenderJSON(cmd.OutOrStdout(), allStates); err != nil {
+					return err
+				}
+				return failures.Err()
 			}
 
 			if cliout.IsAgentMode() {
@@ -102,7 +127,7 @@ var stateLogCmd = &cobra.Command{
 					}
 					fmt.Fprintf(cmd.OutOrStdout(), "tool:%s path:%s type:%s exists:%t size:%d target:%s\n", state.ToolName, state.FilePath, state.FileType, state.Exists, sizeVal, state.TargetPath)
 				}
-				return nil
+				return failures.Err()
 			}
 
 			currentTool := ""
@@ -124,13 +149,13 @@ var stateLogCmd = &cobra.Command{
 				fmt.Fprintf(cmd.OutOrStdout(), "  %s %s [%s] - %s%s\n", statusTag, state.FilePath, state.FileType, statusText, sizeText)
 				if state.TargetPath != "" {
 					targetTag := "->"
-					if exists, _ := services.FS.Exists(state.TargetPath); !exists {
+					if !targetStates[state.TargetPath] {
 						targetTag = "[MISSING ->]"
 					}
 					fmt.Fprintf(cmd.OutOrStdout(), "    %s %s\n", targetTag, state.TargetPath)
 				}
 			}
-			return nil
+			return failures.Err()
 		}
 
 		filter := registry.FileOperationFilter{

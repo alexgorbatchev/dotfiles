@@ -15,7 +15,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - Resolve a manual tool's `binaryPath` (shadow-check delegation target) only through `installer.ResolveBinaryPath`, the helper the installers use, so shadow checking checks where the installer looked.
 - Skip missing completion binaries instantly in 0ms without spawning subprocesses or wasting timeouts.
 - Apply strict process-group timeouts (max 3s) for running completion commands (`cmdExec.SetProcessGroup(true)`).
-- Log `INFO [system] DONE` at the end of generation workflows.
+- Log `INFO [system] DONE` only when generation finishes without tool failures.
 - Use deterministic `.staging` directory during non-external tool installations and configure persistent download caching on all installer plugins.
 - `ensureShimDirs` is the only place either pipeline creates `paths.targetDir` and the usage-log directory, under the `"system"` owner. Recorded against a tool they become that tool's stale shims on the next `generate`; `CleanupStaleShims` therefore also skips any recorded path that is a directory.
 - Tool installation logging contract: `Installing...` is only emitted when installation begins (after `shouldSkipInstallation` determines the tool needs installing). Targeted installation (`config.IsTargeted(ctx) == true`, e.g. `tool install <tool>` or dashboard install) emits `Already installed` at INFO, while batch installation (`InstallTools`) stays at DEBUG to prevent log clutter.

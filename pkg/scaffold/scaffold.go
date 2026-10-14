@@ -5,6 +5,7 @@ package scaffold
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -187,7 +188,8 @@ var templates = []template{
 
 // Run provisions the starter tool configurations for opts.TargetOS into opts.Dir,
 // creating the directory when it does not exist. Existing files are reported as
-// skipped and left untouched unless opts.Force is set.
+// skipped and left untouched unless opts.Force is set. A failed template does not
+// stop later templates; successful results and all failures are returned together.
 func Run(fsys fs.FS, opts Options) ([]Result, error) {
 	if opts.Dir == "" {
 		return nil, fmt.Errorf("tool configs directory is required")
@@ -197,65 +199,67 @@ func Run(fsys fs.FS, opts Options) ([]Result, error) {
 	}
 
 	var results []Result
+	var failures []error
 	for _, t := range templates {
 		if t.targetOS != "" && t.targetOS != opts.TargetOS {
 			continue
 		}
 
-		path := filepath.Join(opts.Dir, t.name)
-		exists, err := fsys.Exists(path)
+		result, err := provisionTemplate(fsys, opts, t)
 		if err != nil {
-			return nil, fmt.Errorf("checking %q: %w", path, err)
-		}
-
-		var existing []byte
-		if exists {
-			if existing, err = fsys.ReadFile(path); err != nil {
-				return nil, fmt.Errorf("reading %q: %w", path, err)
-			}
-			if string(existing) == t.content {
-				results = append(results, Result{Path: path, Action: ActionSkipped})
-				continue
-			}
-			if !opts.Force {
-				// An untouched copy of an older template is reported separately, so the
-				// difference between "you edited this" and "this is out of date" is
-				// visible without ever overwriting anything.
-				action := ActionSkipped
-				if isLegacyContent(t.name, existing) {
-					action = ActionOutdated
-				}
-				results = append(results, Result{Path: path, Action: action})
-				continue
-			}
-		}
-
-		result := Result{Path: path, Action: ActionCreated}
-		if exists {
-			result.Action = ActionOverwrote
-			// Only the user's own edits are worth preserving; a copy this project
-			// generated can be reproduced from the template.
-			if !isLegacyContent(t.name, existing) {
-				// A free name rather than a fixed one, so scaffolding twice does not
-				// overwrite the copy of the file the user actually wrote.
-				reserved, err := backup.Reserve(fsys, path)
-				if err != nil {
-					return nil, fmt.Errorf("backing up %q: %w", path, err)
-				}
-				result.BackupPath = reserved
-				if err := fsys.WriteFile(result.BackupPath, existing, 0644); err != nil {
-					return nil, fmt.Errorf("backing up %q: %w", path, err)
-				}
-			}
-		}
-
-		if err := fsys.WriteFile(path, []byte(t.content), 0644); err != nil {
-			return nil, fmt.Errorf("writing %q: %w", path, err)
+			failures = append(failures, err)
+			continue
 		}
 		results = append(results, result)
 	}
+	return results, errors.Join(failures...)
+}
 
-	return results, nil
+func provisionTemplate(fsys fs.FS, opts Options, t template) (Result, error) {
+	path := filepath.Join(opts.Dir, t.name)
+	exists, err := fsys.Exists(path)
+	if err != nil {
+		return Result{}, fmt.Errorf("checking %q: %w", path, err)
+	}
+	var existing []byte
+	if exists {
+		if existing, err = fsys.ReadFile(path); err != nil {
+			return Result{}, fmt.Errorf("reading %q: %w", path, err)
+		}
+		if string(existing) == t.content {
+			return Result{Path: path, Action: ActionSkipped}, nil
+		}
+		if !opts.Force {
+			// An untouched older template is reported separately from user edits.
+			action := ActionSkipped
+			if isLegacyContent(t.name, existing) {
+				action = ActionOutdated
+			}
+			return Result{Path: path, Action: action}, nil
+		}
+	}
+
+	result := Result{Path: path, Action: ActionCreated}
+	if exists {
+		result.Action = ActionOverwrote
+		// Only the user's own edits are worth preserving; generated templates
+		// can be reproduced. Reserve a fresh name to preserve earlier backups.
+		if !isLegacyContent(t.name, existing) {
+			reserved, err := backup.Reserve(fsys, path)
+			if err != nil {
+				return Result{}, fmt.Errorf("backing up %q: %w", path, err)
+			}
+			result.BackupPath = reserved
+			if err := fsys.WriteFile(result.BackupPath, existing, 0644); err != nil {
+				return Result{}, fmt.Errorf("backing up %q: %w", path, err)
+			}
+		}
+	}
+
+	if err := fsys.WriteFile(path, []byte(t.content), 0644); err != nil {
+		return Result{}, fmt.Errorf("writing %q: %w", path, err)
+	}
+	return result, nil
 }
 
 // isLegacyContent reports whether content is exactly something this project generated

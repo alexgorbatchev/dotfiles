@@ -60,13 +60,22 @@ var toolCheckCmd = &cobra.Command{
 			for _, name := range args {
 				tc := config.FindTool(services.ToolConfigs, name)
 				if tc == nil {
-					return fmt.Errorf("tool %q not found in configuration", name)
+					err := fmt.Errorf("tool %q not found in configuration", name)
+					log.WithTag(name).Error(logger.Message(err.Error()))
+					failed = true
+					if toolCheckJSON {
+						jsonResults = append(jsonResults, ToolUpdateResult{ToolName: name, Status: checkStatusFailed, Error: err.Error()})
+					}
+					continue
 				}
 				toolsToCheck = append(toolsToCheck, tc)
 			}
 		}
 
 		for _, tool := range toolsToCheck {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if tool.Disabled || tool.InstallationMethod == "" {
 				continue
 			}
@@ -81,7 +90,12 @@ var toolCheckCmd = &cobra.Command{
 			// is an internal error, not something the configuration can cause.
 			inst, err := instReg.Get(tool.InstallationMethod)
 			if err != nil {
-				return fmt.Errorf("getting installer for %q: %w", tool.Name, err)
+				toolLog.Error(logger.Message(fmt.Sprintf("getting installer for %q: %v", tool.Name, err)))
+				failed = true
+				if toolCheckJSON {
+					jsonResults = append(jsonResults, failedCheck(tool, nil, err))
+				}
+				continue
 			}
 
 			toolDestDir := ""

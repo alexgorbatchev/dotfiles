@@ -11,13 +11,15 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
 	shellScriptsDir := shellScriptsDirOf(projCfg)
 
-	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+	var failures toolbatch.Failures
+	err := o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 		fsys := o.getTrackedFS(ctx, tx, "system", "init")
 
 		// 1. Ensure directories exist
@@ -104,7 +106,8 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 					resolvedPath, err := o.resolvePlaceholder(rawPath, tool, projCfg)
 					if err != nil {
-						return fmt.Errorf("resolving path %q: %w", rawPath, err)
+						failures.Record(o.logger, tool.Name, fmt.Errorf("resolving %s path %q: %w", sh, rawPath, err))
+						continue
 					}
 
 					if !o.fs.IsAbs(resolvedPath) && tool.ConfigFilePath != "" {
@@ -149,7 +152,8 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				for _, k := range envKeys {
 					vResolved, err := o.resolvePlaceholder(stc.Env[k], tool, projCfg)
 					if err != nil {
-						return fmt.Errorf("resolving env variable %q: %w", k, err)
+						failures.Record(o.logger, tool.Name, fmt.Errorf("resolving %s env variable %q: %w", sh, k, err))
+						continue
 					}
 					if sh == "powershell" {
 						envLines = append(envLines, fmt.Sprintf("$env:%s = %q", k, vResolved))
@@ -245,7 +249,8 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						for _, k := range aliasKeys {
 							vResolved, err := o.resolvePlaceholder(stc.Aliases[k], tool, projCfg)
 							if err != nil {
-								return fmt.Errorf("resolving alias %q: %w", k, err)
+								failures.Record(o.logger, tool.Name, fmt.Errorf("resolving %s alias %q: %w", sh, k, err))
+								continue
 							}
 							if sh == "powershell" {
 								toolBlockLines = append(toolBlockLines, fmt.Sprintf("Set-Alias -Name %s -Value %q", k, vResolved))
@@ -283,14 +288,16 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						case config.ShellScriptAlways:
 							valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
 							if err != nil {
-								return fmt.Errorf("resolving script: %w", err)
+								failures.Record(o.logger, tool.Name, fmt.Errorf("resolving %s script: %w", sh, err))
+								continue
 							}
 							toolBlockLines = append(toolBlockLines, unindentString(valResolved))
 
 						case config.ShellScriptOnce:
 							valResolved, err := o.resolvePlaceholder(scr.Value, tool, projCfg)
 							if err != nil {
-								return fmt.Errorf("resolving script: %w", err)
+								failures.Record(o.logger, tool.Name, fmt.Errorf("resolving %s script: %w", sh, err))
+								continue
 							}
 							ext := sh
 							if sh == "powershell" {
@@ -313,7 +320,8 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 							err = fsys.WriteFile(onceFilePath, []byte(scriptContent), 0777)
 							if err != nil {
-								return err
+								failures.Record(o.logger, tool.Name, fmt.Errorf("writing %s once script: %w", sh, err))
+								continue
 							}
 
 						case config.ShellScriptSourceFile:
@@ -387,6 +395,10 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return failures.Err()
 }
 
 // resolveSourceFilePath turns a .sourceFile() argument into the absolute,

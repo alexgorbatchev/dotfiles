@@ -21,6 +21,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
@@ -61,11 +62,20 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 		return fmt.Errorf("resolving dependencies: %w", err)
 	}
 
+	var failures toolbatch.Failures
 	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
-		return fmt.Errorf("cleaning up stale artifacts: %w", err)
+		if !errors.Is(err, toolbatch.ErrFailed) {
+			return fmt.Errorf("cleaning up stale artifacts: %w", err)
+		}
+		failures.Record(o.logger, "system", err)
 	}
 
+	failed := make(map[string]bool)
+	providers := resolvedDependencyProviders(sorted)
 	for _, tool := range sorted {
+		if err := ctx.Err(); err != nil {
+			return errors.Join(failures.Err(), err)
+		}
 		if tool.Disabled {
 			continue
 		}
@@ -74,13 +84,24 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 			continue
 		}
 
-		if err := o.InstallTool(ctx, tool, projCfg); err != nil {
-			return fmt.Errorf("installing tool %q: %w", tool.Name, err)
+		var dependencyErr error
+		if dep := failedDependency(tool, providers, failed); dep != "" {
+			dependencyErr = fmt.Errorf("Skipping installation: dependency %q failed to install", dep)
+		}
+		if dependencyErr == nil {
+			dependencyErr = o.InstallTool(ctx, tool, projCfg)
+		}
+		if dependencyErr != nil {
+			failed[tool.Name] = true
+			failures.Record(o.logger, tool.Name, dependencyErr)
 		}
 	}
 
 	if err := o.generateShellScripts(ctx, sorted, projCfg); err != nil {
-		return fmt.Errorf("generating shell scripts: %w", err)
+		if !errors.Is(err, toolbatch.ErrFailed) {
+			return fmt.Errorf("generating shell scripts: %w", err)
+		}
+		failures.Record(o.logger, "system", err)
 	}
 
 	if err := o.SyncTypeScriptTypes(ctx, tools, projCfg); err != nil {
@@ -89,7 +110,7 @@ func (o *Orchestrator) InstallTools(ctx context.Context, tools []*config.ToolCon
 
 	o.WarnConflicts(sorted, projCfg)
 
-	return nil
+	return failures.Err()
 }
 
 func isAutoInstall(tool *config.ToolConfig) bool {
@@ -635,14 +656,18 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 	}
 	sort.Strings(orphanedTools)
 
+	var failures toolbatch.Failures
 	for _, toolName := range orphanedTools {
+		if err := ctx.Err(); err != nil {
+			return errors.Join(failures.Err(), err)
+		}
 		o.logger.WithTag(toolName).Info(logger.Message("Cleaning up orphaned tool..."))
 		if err := o.cleanupToolArtifacts(ctx, toolName, projCfg); err != nil {
-			o.logger.WithTag(toolName).Error(logger.Message(fmt.Sprintf("Failed to cleanup orphaned tool: %v", err)))
+			failures.Record(o.logger, toolName, fmt.Errorf("Failed to cleanup orphaned tool: %w", err))
 		}
 	}
 
-	return nil
+	return failures.Err()
 }
 
 func (o *Orchestrator) cleanupToolArtifacts(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {

@@ -84,9 +84,6 @@ export default defineTool((install) =>
 			TargetOS: targetOS,
 			Force:    toolScaffoldForce,
 		})
-		if err != nil {
-			return err
-		}
 
 		created, overwrote := "Created", "Overwrote"
 		if dryRun {
@@ -109,7 +106,7 @@ export default defineTool((install) =>
 			}
 		}
 
-		return nil
+		return err
 	},
 }
 

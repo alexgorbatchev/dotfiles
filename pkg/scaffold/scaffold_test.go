@@ -365,24 +365,68 @@ func TestRunFSErrors(t *testing.T) {
 
 type faultyFS struct {
 	fs.FS
+	failurePath     string
 	existsErr       error
 	writeFileErr    error
 	writeBackupFail bool
 }
 
 func (f *faultyFS) Exists(path string) (bool, error) {
-	if f.existsErr != nil {
+	if f.existsErr != nil && (f.failurePath == "" || path == f.failurePath) {
 		return false, f.existsErr
 	}
 	return f.FS.Exists(path)
 }
 
 func (f *faultyFS) WriteFile(path string, data []byte, perm os.FileMode) error {
-	if f.writeFileErr != nil {
+	if f.writeFileErr != nil && (f.failurePath == "" || path == f.failurePath) {
 		return f.writeFileErr
 	}
 	if f.writeBackupFail && strings.Contains(path, ".bak") {
 		return errors.New("backup write failed")
 	}
 	return f.FS.WriteFile(path, data, perm)
+}
+
+func TestRunContinuesAfterTemplateFailure(t *testing.T) {
+	for _, operation := range []string{"exists", "write", "backup"} {
+		t.Run(operation, func(t *testing.T) {
+			mem := fs.NewMemFS()
+			if err := mem.MkdirAll("/tools", 0755); err != nil {
+				t.Fatal(err)
+			}
+			failure := errors.New("starter file unavailable")
+			faulty := &faultyFS{FS: mem, failurePath: "/tools/dotfiles.tool.ts"}
+			switch operation {
+			case "exists":
+				faulty.existsErr = failure
+			case "write":
+				faulty.writeFileErr = failure
+			case "backup":
+				if err := mem.WriteFile(faulty.failurePath, []byte("// my settings"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				faulty.writeBackupFail = true
+			}
+			results, err := Run(faulty, Options{Dir: "/tools", TargetOS: "linux", Force: true})
+			if err == nil {
+				t.Fatal("scaffolding succeeded despite failed first template")
+			}
+			if operation != "backup" && !errors.Is(err, failure) {
+				t.Errorf("failure cause lost: %v", err)
+			}
+			if _, err := mem.ReadFile("/tools/typescript.tool.ts"); err != nil {
+				t.Fatalf("later template was not written: %v", err)
+			}
+			if actionsByName(t, results)["typescript.tool.ts"] != ActionCreated {
+				t.Errorf("successful template was not reported: %+v", results)
+			}
+			if operation == "backup" {
+				original, err := mem.ReadFile(faulty.failurePath)
+				if err != nil || string(original) != "// my settings" {
+					t.Errorf("failed backup did not preserve the user's file: %q, %v", original, err)
+				}
+			}
+		})
+	}
 }

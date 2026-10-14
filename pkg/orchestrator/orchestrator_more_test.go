@@ -2032,8 +2032,8 @@ func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
 	tools := []*config.ToolConfig{toolB, toolA}
 
 	err = orch.GenerateTools(ctx, tools, projCfg)
-	if err != nil {
-		t.Fatalf("GenerateTools should not return error on auto-install failures: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "simulated network failure") {
+		t.Fatalf("GenerateTools must report auto-install failures after generating fallback shims: %v", err)
 	}
 
 	// Tool B should not have attempted installation since Tool A failed

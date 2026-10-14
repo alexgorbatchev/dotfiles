@@ -63,3 +63,31 @@ func TestMainErrorLogging(t *testing.T) {
 		t.Errorf("expected exactly 1 error line from structured logger, got %d lines: %q", len(lines), output)
 	}
 }
+
+func TestMainToolBatchFailure(t *testing.T) {
+	p := newE2EProject(t, tsTools{
+		"a-broken": `install().symlink("missing", "~/missing-link")`,
+		"z-good":   `install().ensureDir("~/good-generated")`,
+	})
+	previousExit := exitFunc
+	t.Cleanup(func() { exitFunc = previousExit })
+	var exitCode int
+	exitFunc = func(code int) { exitCode = code }
+	var output bytes.Buffer
+	rootCmd.SetErr(&output)
+	rootCmd.SetOut(&output)
+	rootCmd.SetArgs([]string{"--config", p.ConfigPath, "generate"})
+	main()
+	if exitCode != 1 {
+		t.Errorf("exit code = %d, want 1", exitCode)
+	}
+	if strings.Count(output.String(), "source path does not exist") != 1 {
+		t.Errorf("tool failure was duplicated or lost: %s", output.String())
+	}
+	if !strings.Contains(output.String(), "Command completed with tool failures") {
+		t.Errorf("batch failure summary missing: %s", output.String())
+	}
+	if _, err := os.Stat(p.HomeDir + "/good-generated"); err != nil {
+		t.Fatalf("batch stopped before healthy tool: %v", err)
+	}
+}

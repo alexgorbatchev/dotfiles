@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/spf13/cobra"
 )
 
@@ -141,6 +143,9 @@ When run without arguments, checks all installed tools for updates and installs 
 			// cannot update is reported with the cause, and the run goes on with the next
 			// tool; the command then fails.
 			for _, targetTool := range services.ToolConfigs {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
 				if targetTool.Disabled || targetTool.InstallationMethod == "" {
 					continue
 				}
@@ -168,7 +173,9 @@ When run without arguments, checks all installed tools for updates and installs 
 				// here is an internal error, as in tool check.
 				inst, err := services.Installers.Get(targetTool.InstallationMethod)
 				if err != nil {
-					return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
+					toolLogs.report.Error(logger.Message(fmt.Sprintf("getting installer for %q: %v", targetTool.Name, err)))
+					failed = true
+					continue
 				}
 
 				toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
@@ -212,23 +219,30 @@ When run without arguments, checks all installed tools for updates and installs 
 			return nil
 		}
 
+		var failures toolbatch.Failures
 		for _, toolName := range args {
+			if err := ctx.Err(); err != nil {
+				return errors.Join(failures.Err(), err)
+			}
 			targetTool := config.FindTool(services.ToolConfigs, toolName)
 			if targetTool == nil {
-				return fmt.Errorf("tool %q not found in configuration", toolName)
+				failures.Record(logs.report, toolName, fmt.Errorf("tool %q not found in configuration", toolName))
+				continue
 			}
 
 			if !targetTool.UpdateCheckEnabled() {
-				return fmt.Errorf("tool %q has update checks disabled via updateCheck.enabled", targetTool.Name)
+				failures.Record(logs.report, targetTool.Name, fmt.Errorf("tool %q has update checks disabled via updateCheck.enabled", targetTool.Name))
+				continue
 			}
 
 			installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 			if err != nil {
-				return fmt.Errorf("reading the installation of %q: %w", toolName, err)
+				failures.Record(logs.report, targetTool.Name, fmt.Errorf("reading the installation of %q: %w", toolName, err))
+				continue
 			}
 			if installed == nil {
 				if len(args) == 1 {
-					return fmt.Errorf("tool %q is not installed", toolName)
+					failures.Record(logs.report, targetTool.Name, fmt.Errorf("tool %q is not installed", toolName))
 				}
 				continue
 			}
@@ -240,7 +254,8 @@ When run without arguments, checks all installed tools for updates and installs 
 
 			inst, err := services.Installers.Get(targetTool.InstallationMethod)
 			if err != nil {
-				return fmt.Errorf("getting installer for %q: %w", targetTool.Name, err)
+				failures.Record(logs.report, targetTool.Name, fmt.Errorf("getting installer for %q: %w", targetTool.Name, err))
+				continue
 			}
 
 			toolDestDir := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current")
@@ -250,13 +265,15 @@ When run without arguments, checks all installed tools for updates and installs 
 			res, err := inst.CheckUpdate(ctx, targetTool)
 			plan, err := orchestrator.PlanUpdate(targetTool, installed.Version, res, err, force)
 			if err != nil {
-				return err
+				failures.Record(logs.report, targetTool.Name, err)
+				continue
 			}
 			if plan.Reinstall() {
 				announceUpdate(toolLogs.report, targetTool, plan)
 				recorded, err := services.Orchestrator.ApplyUpdate(ctx, targetTool, services.ProjectConfig, plan)
 				if err != nil {
-					return fmt.Errorf("updating tool %q%s failed: %w", targetTool.Name, plan.TargetDescription(), err)
+					failures.Record(logs.report, targetTool.Name, fmt.Errorf("updating tool %q%s failed: %w", targetTool.Name, plan.TargetDescription(), err))
+					continue
 				}
 				toolLogs.report.Info(logger.Message(plan.Completion(recorded)))
 			} else if plan.Status == orchestrator.CheckStatusAheadOfLatest {
@@ -266,7 +283,7 @@ When run without arguments, checks all installed tools for updates and installs 
 			}
 		}
 
-		return nil
+		return failures.Err()
 	},
 }
 

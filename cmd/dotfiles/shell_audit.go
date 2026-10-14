@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/spf13/cobra"
 )
 
@@ -36,8 +38,12 @@ var shellAuditCmd = &cobra.Command{
 		shimGen := shim.NewGenerator(services.FS)
 		conflicts := []ConflictItem{}
 		var conflictMessages []string
+		var failures toolbatch.Failures
 
 		for _, tool := range services.ToolConfigs {
+			if err := ctx.Err(); err != nil {
+				return errors.Join(failures.Err(), err)
+			}
 			for _, binName := range installer.GetBinaryNames(tool.Name, tool.Binaries) {
 				if binName == "" {
 					continue
@@ -45,19 +51,33 @@ var shellAuditCmd = &cobra.Command{
 
 				shimPath := filepath.Join(services.ProjectConfig.Paths.TargetDir, binName)
 				exists, err := services.FS.Exists(shimPath)
-				if err == nil && exists {
-					isShim, err := shimGen.IsGeneratedShim(shimPath)
-					if err == nil && !isShim {
-						conflicts = append(conflicts, ConflictItem{
-							ToolName: tool.Name,
-							Path:     shimPath,
-							Reason:   "exists but is not a generator shim",
-						})
-						conflictMessages = append(conflictMessages, fmt.Sprintf("[%s]: %s (exists but is not a generator shim)", tool.Name, shimPath))
-					}
+				if err != nil {
+					failures.Record(log, tool.Name, fmt.Errorf("checking audit path %q: %w", shimPath, err))
+					continue
+				}
+				if !exists {
+					continue
+				}
+				isShim, err := shimGen.IsGeneratedShim(shimPath)
+				if err != nil {
+					failures.Record(log, tool.Name, fmt.Errorf("inspecting audit path %q: %w", shimPath, err))
+					continue
+				}
+				if !isShim {
+					conflicts = append(conflicts, ConflictItem{
+						ToolName: tool.Name,
+						Path:     shimPath,
+						Reason:   "exists but is not a generator shim",
+					})
+					conflictMessages = append(conflictMessages, fmt.Sprintf("[%s]: %s (exists but is not a generator shim)", tool.Name, shimPath))
 				}
 			}
 		}
+		var conflictErr error
+		if len(conflicts) > 0 {
+			conflictErr = fmt.Errorf("conflicts detected with files not owned by the generator")
+		}
+		resultErr := errors.Join(failures.Err(), conflictErr)
 
 		if shellAuditJSON {
 			if err := cliout.RenderJSON(cmd.OutOrStdout(), map[string]any{
@@ -66,10 +86,7 @@ var shellAuditCmd = &cobra.Command{
 			}); err != nil {
 				return err
 			}
-			if len(conflicts) > 0 {
-				return fmt.Errorf("conflicts detected with files not owned by the generator")
-			}
-			return nil
+			return resultErr
 		}
 
 		if len(conflictMessages) > 0 {
@@ -83,9 +100,12 @@ var shellAuditCmd = &cobra.Command{
 					fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", msg)
 				}
 			}
-			return fmt.Errorf("conflicts detected with files not owned by the generator")
+			return resultErr
 		}
 
+		if resultErr != nil {
+			return resultErr
+		}
 		if cliout.IsAgentMode() {
 			fmt.Fprintln(cmd.OutOrStdout(), "OK: no conflicts")
 		} else {

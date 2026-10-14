@@ -32,6 +32,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -912,7 +913,7 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 		// Nothing in the fixture is installed, so every tool is reported as not installed (#151).
 		{name: "check-updates", args: []string{"-c", absConfig, "tool", "check"}, contains: []string{"github-release--bat: not installed"}},
 		{name: "tool info", args: []string{"-c", absConfig, "tool", "info", "github-release--bat"}, contains: []string{"github-release"}},
-		{name: "detect-conflicts", args: []string{"-c", absConfig, "shell", "audit"}, contains: []string{"conflicts"}},
+		{name: "detect-conflicts", args: []string{"-c", tempConfig, "shell", "audit"}, contains: []string{"conflicts"}},
 		{name: "env", args: []string{"-c", absConfig, "shell", "init"}, contains: []string{"export PATH="}},
 		{name: "cleanup", args: []string{"-c", absConfig, "state", "cleanup"}},
 		{name: "validate", args: []string{"-c", absConfig, "tool", "validate"}},
@@ -1114,8 +1115,12 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 	})
 
 	t.Run("detect-conflicts --json in human vs agent mode", func(t *testing.T) {
+		p := newE2EProject(t, tsTools{"good": `install().bin("good")`})
+		if out, err := p.run("generate"); err != nil {
+			t.Fatalf("generating audit fixture: %v\n%s", err, out.Combined)
+		}
 		t.Setenv("AGENT", "0")
-		outHuman, err := executeCommand("-c", absConfig, "shell", "audit", "--json")
+		outHuman, err := executeCommand("-c", p.ConfigPath, "shell", "audit", "--json")
 		if err != nil {
 			t.Fatalf("shell audit --json failed: %v", err)
 		}
@@ -1125,7 +1130,7 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 		}
 
 		t.Setenv("AGENT", "1")
-		outAgent, err := executeCommand("-c", absConfig, "shell", "audit", "--json")
+		outAgent, err := executeCommand("-c", p.ConfigPath, "shell", "audit", "--json")
 		if err != nil {
 			t.Fatalf("shell audit --json in agent mode failed: %v", err)
 		}
@@ -1136,8 +1141,12 @@ func TestDualModeAndJSONFlags(t *testing.T) {
 	})
 
 	t.Run("detect-conflicts text in agent mode", func(t *testing.T) {
+		p := newE2EProject(t, tsTools{"good": `install().bin("good")`})
+		if out, err := p.run("generate"); err != nil {
+			t.Fatalf("generating audit fixture: %v\n%s", err, out.Combined)
+		}
 		t.Setenv("AGENT", "1")
-		out, err := executeCommand("-c", absConfig, "shell", "audit")
+		out, err := executeCommand("-c", p.ConfigPath, "shell", "audit")
 		if err != nil {
 			t.Fatalf("shell audit failed: %v", err)
 		}
@@ -3307,6 +3316,160 @@ func TestLogCommand_OperationsAndStatus(t *testing.T) {
 	})
 }
 
+func TestShellAuditReportsInspectionFailures(t *testing.T) {
+	for _, mode := range []string{"human", "agent", "json"} {
+		for _, conflict := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/conflict=%t", mode, conflict), func(t *testing.T) {
+				t.Setenv("AGENT", "0")
+				if mode == "agent" {
+					t.Setenv("AGENT", "1")
+				}
+				p := newE2EProject(t, tsTools{
+					"a-broken": `install().bin("broken")`,
+					"z-good":   `install().bin("healthy")`,
+				})
+				broken := filepath.Join(p.TargetDir, "broken")
+				if err := os.Symlink(broken, broken); err != nil {
+					t.Fatal(err)
+				}
+				if conflict {
+					if err := os.WriteFile(filepath.Join(p.TargetDir, "healthy"), []byte("user owned binary"), 0755); err != nil {
+						t.Fatal(err)
+					}
+				}
+				args := []string{"shell", "audit"}
+				if mode == "json" {
+					args = append(args, "--json")
+				}
+				out, err := p.run(args...)
+				if err == nil {
+					t.Fatalf("audit succeeded despite an uninspectable file\n%s", out.Combined)
+				}
+				mustContain(t, "stderr", out.Stderr, "[a-broken]", "broken")
+				mustNotContain(t, "stdout", out.Stdout, "No conflicts detected", "OK: no conflicts")
+				if conflict {
+					mustContain(t, "stdout", out.Stdout, "z-good", "healthy")
+				}
+				if mode == "json" {
+					var report struct {
+						HasConflicts bool           `json:"hasConflicts"`
+						Conflicts    []ConflictItem `json:"conflicts"`
+					}
+					if err := json.Unmarshal([]byte(out.Stdout), &report); err != nil {
+						t.Fatalf("invalid JSON report: %v\n%s", err, out.Stdout)
+					}
+					if report.HasConflicts != conflict {
+						t.Errorf("hasConflicts = %t, want %t", report.HasConflicts, conflict)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestShellAuditReportsUnreadableHostShim(t *testing.T) {
+	p := newE2EProject(t, tsTools{"broken": `install().bin("broken")`})
+	if out, err := p.run("generate"); err != nil {
+		t.Fatalf("generating host shim: %v\n%s", err, out.Combined)
+	}
+	// The dry-run filesystem can stat host files, but deliberately cannot read
+	// their contents. An audit must report this incomplete inspection.
+	out, err := p.run("--dry-run", "shell", "audit")
+	if err == nil {
+		t.Fatalf("audit succeeded despite being unable to read the host shim\n%s", out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "[broken]", "inspecting audit path", "reading file")
+	mustNotContain(t, "stdout", out.Stdout, "No conflicts detected")
+}
+
+func TestLogStatusReportsInspectionFailures(t *testing.T) {
+	for _, mode := range []string{"human", "agent", "json"} {
+		for _, failure := range []string{"file", "target"} {
+			t.Run(mode+"/"+failure, func(t *testing.T) {
+				t.Setenv("AGENT", "0")
+				if mode == "agent" {
+					t.Setenv("AGENT", "1")
+				}
+				p := newE2EProject(t, tsTools{"a-broken": `install()`, "z-good": `install()`})
+				loop := filepath.Join(p.TargetDir, "loop")
+				if err := os.Symlink(loop, loop); err != nil {
+					t.Fatal(err)
+				}
+				broken := loop
+				var target *string
+				if failure == "target" {
+					broken = filepath.Join(p.TargetDir, "broken-target-record")
+					target = &loop
+					if err := os.WriteFile(broken, []byte("existing"), 0644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				healthy := filepath.Join(p.TargetDir, "healthy")
+				if err := os.WriteFile(healthy, []byte("healthy"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+					for _, record := range []*registry.FileOperationRecord{
+						{ToolName: "a-broken", FilePath: broken, TargetPath: target, FileType: "symlink", OperationType: "write"},
+						{ToolName: "z-good", FilePath: healthy, FileType: "binary", OperationType: "write"},
+					} {
+						if err := reg.RecordFileOperation(ctx, tx, record); err != nil {
+							return err
+						}
+					}
+					return nil
+				})
+				args := []string{"state", "log", "--status"}
+				if mode == "json" {
+					args = append(args, "--json")
+				}
+				out, err := p.run(args...)
+				if err == nil {
+					t.Fatalf("status succeeded despite an uninspectable %s\n%s", failure, out.Combined)
+				}
+				mustContain(t, "stderr", out.Stderr, "[a-broken]", "loop")
+				mustContain(t, "stdout", out.Stdout, "z-good", "healthy")
+				mustNotContain(t, "stdout", out.Stdout, "a-broken", "loop", "broken-target-record", "MISSING")
+				if mode == "json" {
+					var states []FileStateInfo
+					if err := json.Unmarshal([]byte(out.Stdout), &states); err != nil {
+						t.Fatalf("invalid JSON status: %v\n%s", err, out.Stdout)
+					}
+					if len(states) != 1 || states[0].FilePath != healthy || !states[0].Exists {
+						t.Errorf("partial status = %+v, want only healthy existing file", states)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestLogStatusReportsRegistryFailures(t *testing.T) {
+	for _, named := range []bool{false, true} {
+		t.Run(fmt.Sprintf("named=%t", named), func(t *testing.T) {
+			p := newE2EProject(t, tsTools{"broken": `install()`})
+			p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+				return reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+					ToolName: "broken", FilePath: filepath.Join(p.TargetDir, "broken"), FileType: "binary", OperationType: "write",
+				})
+			})
+			p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+				_, err := tx.ExecContext(ctx, "UPDATE file_operations SET size_bytes = 'invalid-size' WHERE tool_name = 'broken'")
+				return err
+			})
+			args := []string{"state", "log", "--status", "--json"}
+			if named {
+				args = append(args, "broken")
+			}
+			out, err := p.run(args...)
+			if err == nil {
+				t.Fatalf("status succeeded despite unreadable registry records\n%s", out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, "invalid-size")
+		})
+	}
+}
+
 func TestLogCommand_DiskLogFallback(t *testing.T) {
 	p := newE2EProject(t, tsTools{"bat": `install("manual")`})
 
@@ -3990,8 +4153,8 @@ func TestInstallCommand_ArgumentHandling(t *testing.T) {
 
 	t.Run("a failed installation is logged once and the error silenced", func(t *testing.T) {
 		out, err := p.run("tool", "install", "broken")
-		if !errors.Is(err, ErrSilent) {
-			t.Fatalf("error = %v, want ErrSilent", err)
+		if !errors.Is(err, toolbatch.ErrFailed) {
+			t.Fatalf("error = %v, want reported tool failure", err)
 		}
 		mustContain(t, "stderr", out.Stderr, "[broken] installation method not specified")
 	})
@@ -4108,6 +4271,220 @@ func TestInstallCommand_TargetedVsBatchAlreadyInstalled(t *testing.T) {
 	})
 }
 
+func TestToolBatchesContinueAfterFailure(t *testing.T) {
+	for _, command := range [][]string{
+		{"state", "generate"}, {"generate"}, {"tool", "install"},
+		{"tool", "install", "a-broken", "z-good"}, {"install", "a-broken", "z-good"},
+	} {
+		t.Run(strings.Join(command, " "), func(t *testing.T) {
+			tools := tsTools{
+				"a-broken": `install().symlink("missing.app", "~/Applications/Missing.app")`,
+				"z-good":   `install().ensureDir("~/good-generated")`,
+			}
+			p := newE2EProject(t, tools)
+			generating := command[len(command)-1] == "generate"
+			if generating {
+				p.writeConfig(t, tools, "", `"features": {"shellInstall": {"zsh": "~/.zshrc"}}`)
+				if err := os.WriteFile(filepath.Join(p.HomeDir, ".zshrc"), []byte("# existing settings\n"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			out, err := p.run(command...)
+			if err == nil {
+				t.Fatalf("batch succeeded despite the missing symlink source\n%s", out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, "a-broken", "source path does not exist")
+			if _, err := os.Stat(filepath.Join(p.HomeDir, "good-generated")); err != nil {
+				t.Errorf("tool after the failure was not generated: %v\n%s", err, out.Combined)
+			}
+			if len(command) == 1 || len(command) == 2 {
+				if _, err := os.Stat(filepath.Join(p.GeneratedDir, "shell-scripts", "main.zsh")); err != nil {
+					t.Errorf("batch did not finish shell generation: %v", err)
+				}
+			}
+			if generating {
+				completion := filepath.Join(p.GeneratedDir, "shell-scripts", "zsh", "completions", "_dotfiles")
+				if _, err := os.Stat(completion); err != nil {
+					t.Errorf("batch did not write CLI completion: %v", err)
+				}
+				profile, err := os.ReadFile(filepath.Join(p.HomeDir, ".zshrc"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				mustContain(t, "profile", string(profile), "# existing settings", "main.zsh")
+			}
+			mustNotContain(t, "stderr", out.Stderr, "DONE")
+		})
+	}
+}
+
+func TestNamedToolBatchesContinueAfterUnknownTool(t *testing.T) {
+	for _, command := range []string{"install", "uninstall", "update", "check"} {
+		t.Run(command, func(t *testing.T) {
+			p := newE2EProject(t, tsTools{"good": `install("manual")`})
+			p.seedInstallation(t, "good", "v1.0.0", filepath.Join(p.Root, "installed", "good"))
+			out, err := p.run("tool", command, "missing", "good")
+			if err == nil {
+				t.Fatalf("batch succeeded despite the unknown tool\n%s", out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, `tool "missing" not found in configuration`, "[good]")
+		})
+	}
+}
+
+func TestNamedUpdatesContinueAfterFailure(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	newReleaseServer(t, map[string]mockRelease{
+		"acme/healthy": {Tag: "v9.9.9", Binaries: []string{"z-good", "a-broken"}},
+	})
+	for _, broken := range []struct {
+		name string
+		tool string
+	}{
+		{"failed check", `install("github-release", {repo: "acme/unavailable"})`},
+		{"disabled checks", `install("github-release", {repo: "acme/healthy"}).updateCheck({enabled: false})`},
+		{"failed reinstall", `install("github-release", {repo: "acme/healthy"}).sudo()`},
+	} {
+		t.Run(broken.name, func(t *testing.T) {
+			p := newE2EProject(t, tsTools{
+				"a-broken": broken.tool,
+				"z-good":   fmt.Sprintf(`install("github-release", {repo: "acme/healthy", assetPattern: %q})`, releaseAssetName),
+			})
+			for _, name := range []string{"a-broken", "z-good"} {
+				p.seedInstallation(t, name, "v0.1.0", filepath.Join(p.Root, "installed", name))
+			}
+			out, err := p.run("tool", "update", "a-broken", "z-good")
+			if err == nil {
+				t.Fatalf("update batch succeeded despite failed first tool\n%s", out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, "[a-broken]", "[z-good] Successfully updated to version v9.9.9")
+			if rec := p.installation(t, "z-good"); rec == nil || rec.Version != "v9.9.9" {
+				t.Fatalf("healthy tool was not updated: %+v", rec)
+			}
+		})
+	}
+}
+
+func TestCleanupBatchesContinueAfterFailure(t *testing.T) {
+	p := newE2EProject(t, tsTools{"configured": `install()`})
+	for _, name := range []string{"a-broken", "z-good"} {
+		p.seedInstallation(t, name, "v1.0.0", filepath.Join(p.Root, "installed", name))
+	}
+	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, "CREATE TRIGGER keep_broken BEFORE DELETE ON tool_installations WHEN OLD.tool_name = 'a-broken' BEGIN SELECT RAISE(ABORT, 'cannot remove broken'); END")
+		return err
+	})
+	out, err := p.run("state", "cleanup")
+	if err == nil {
+		t.Fatalf("cleanup succeeded despite failure\n%s", out.Combined)
+	}
+	if rec := p.installation(t, "z-good"); rec != nil {
+		t.Fatalf("cleanup stopped before healthy orphan: %+v", rec)
+	}
+	mustContain(t, "stderr", out.Stderr, "[a-broken] Failed uninstalling orphaned tool: ", "cannot remove broken")
+}
+
+func TestUninstallBatchesContinueAfterFailure(t *testing.T) {
+	for _, named := range []bool{false, true} {
+		t.Run(fmt.Sprintf("named=%t", named), func(t *testing.T) {
+			p := newE2EProject(t, tsTools{"z-broken": `install("manual")`, "a-good": `install("manual")`})
+			for _, name := range []string{"z-broken", "a-good"} {
+				p.seedInstallation(t, name, "v1.0.0", filepath.Join(p.Root, "installed", name))
+			}
+			p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+				_, err := tx.ExecContext(ctx, "CREATE TRIGGER keep_broken BEFORE DELETE ON tool_installations WHEN OLD.tool_name = 'z-broken' BEGIN SELECT RAISE(ABORT, 'broken cannot be removed'); END")
+				return err
+			})
+			args := []string{"tool", "uninstall"}
+			if named {
+				args = append(args, "z-broken", "a-good")
+			}
+			out, err := p.run(args...)
+			if err == nil {
+				t.Fatalf("batch succeeded despite uninstall failure\n%s", out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, "z-broken", "broken cannot be removed")
+			if p.installation(t, "a-good") != nil {
+				t.Error("tool after the failure was not uninstalled")
+			}
+		})
+	}
+}
+
+func TestUninstallBatchKeepsDependenciesOfFailedTool(t *testing.T) {
+	p := newE2EProject(t, tsTools{
+		"consumer": `install("manual").dependsOn("provider")`,
+		"provider": `install("manual")`,
+		"other":    `install("manual")`,
+	})
+	for _, name := range []string{"consumer", "provider", "other"} {
+		p.seedInstallation(t, name, "v1.0.0", filepath.Join(p.Root, "installed", name))
+	}
+	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, "CREATE TRIGGER keep_consumer BEFORE DELETE ON tool_installations WHEN OLD.tool_name = 'consumer' BEGIN SELECT RAISE(ABORT, 'consumer cannot be removed'); END")
+		return err
+	})
+	out, err := p.run("tool", "uninstall")
+	if err == nil {
+		t.Fatalf("uninstall succeeded despite failed consumer\n%s", out.Combined)
+	}
+	if p.installation(t, "provider") == nil {
+		t.Error("dependency was removed while the failed consumer remains installed")
+	}
+	if p.installation(t, "other") != nil {
+		t.Error("independent tool was not uninstalled")
+	}
+}
+
+func TestDiffBatchContinuesAfterFailure(t *testing.T) {
+	// Direct command tests set their own streams. Inherit the root command's
+	// captured streams when exercising the complete CLI here.
+	stateDiffCmd.SetOut(nil)
+	stateDiffCmd.SetErr(nil)
+	for _, json := range []bool{false, true} {
+		t.Run(fmt.Sprintf("json=%t", json), func(t *testing.T) {
+			p := newE2EProject(t, tsTools{
+				"a-broken": `install().template("bad.tmpl", "~/broken")`,
+				"z-good":   `install().copy("good.conf", "~/healthy-copy")`,
+			})
+			for name, content := range map[string]string{"bad.tmpl": "unresolved = {missing_var}", "good.conf": "healthy-content"} {
+				if err := os.WriteFile(filepath.Join(p.Root, "tools", name), []byte(content), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			args := []string{"state", "diff"}
+			if json {
+				args = append(args, "--json")
+			}
+			out, err := p.run(args...)
+			if err == nil {
+				t.Fatalf("diff succeeded despite invalid template\n%s", out.Combined)
+			}
+			if !strings.Contains(out.Stdout, "z-good") {
+				t.Fatalf("healthy tool was not inspected: %v\n%s", err, out.Combined)
+			}
+			mustContain(t, "stdout", out.Stdout, "z-good", "healthy-copy")
+			mustContain(t, "stderr", out.Stderr, "a-broken")
+		})
+	}
+}
+
+func TestScaffoldBatchContinuesAfterFailure(t *testing.T) {
+	p := newE2EProject(t, tsTools{})
+	broken := filepath.Join(p.Root, "tools", "dotfiles.tool.ts")
+	if err := os.MkdirAll(broken, 0755); err != nil {
+		t.Fatal(err)
+	}
+	out, err := p.run("tool", "scaffold")
+	if err == nil {
+		t.Fatalf("scaffold succeeded despite unreadable starter file\n%s", out.Combined)
+	}
+	if _, err := os.Stat(filepath.Join(p.Root, "tools", "typescript.tool.ts")); err != nil {
+		t.Fatalf("later starter file was not written: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "Created", "typescript.tool.ts")
+}
+
 func TestUninstallCommand_Errors(t *testing.T) {
 	t.Run("unknown tool", func(t *testing.T) {
 		p := newE2EProject(t, tsTools{"bat": `install("manual")`})
@@ -4155,8 +4532,8 @@ func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
 		p.seedUnreadableInstallation(t, "ghost")
 
 		out, err := p.run("state", "cleanup")
-		if err != nil {
-			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		if err == nil {
+			t.Fatalf("state cleanup succeeded despite unreadable installations\n%s", out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "Failed querying installed tools: ", unreadableInstallationCause)
 	})
@@ -4170,8 +4547,8 @@ func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
 		})
 
 		out, err := p.run("state", "cleanup")
-		if err != nil {
-			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		if err == nil {
+			t.Fatalf("state cleanup succeeded despite uninstall failure\n%s", out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "[ghost] Failed uninstalling orphaned tool: ", "installations are kept")
 	})
@@ -4239,8 +4616,8 @@ func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
 		defer func() { mockInstallerUninstallHook = nil }()
 
 		out, err := p.run("state", "cleanup")
-		if err != nil {
-			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		if err == nil {
+			t.Fatalf("state cleanup succeeded despite uninstall failure\n%s", out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "[orphan-brew] Failed uninstalling orphaned tool: ", "brew uninstall failed: formula has dependents")
 		if rec := p.installation(t, "orphan-brew"); rec == nil {
@@ -4262,8 +4639,8 @@ func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
 		})
 
 		out, err := p.run("state", "cleanup")
-		if err != nil {
-			t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
+		if err == nil {
+			t.Fatalf("state cleanup succeeded despite unknown installer\n%s", out.Combined)
 		}
 		mustContain(t, "stderr", out.Stderr, "[orphan-custom] Failed uninstalling orphaned tool: ", "nonexistent-pkg-mgr")
 		if rec := p.installation(t, "orphan-custom"); rec == nil {

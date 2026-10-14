@@ -20,6 +20,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/symlink"
+	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
@@ -39,8 +40,12 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		return fmt.Errorf("resolving dependencies: %w", err)
 	}
 
+	var failures toolbatch.Failures
 	if err := o.CleanupStaleArtifacts(ctx, sorted, projCfg); err != nil {
-		return fmt.Errorf("cleaning up stale artifacts: %w", err)
+		if !errors.Is(err, toolbatch.ErrFailed) {
+			return fmt.Errorf("cleaning up stale artifacts: %w", err)
+		}
+		failures.Record(o.logger, "system", err)
 	}
 
 	if err := o.ensureShimDirs(ctx, projCfg); err != nil {
@@ -57,19 +62,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		shadowWarningsChan <- shadowChecker.CheckTools(ctx, sorted, projCfg)
 	}()
 
-	// Build binaryProviders and toolMap to trace dependencies
-	toolMap := make(map[string]*config.ToolConfig)
-	binaryProviders := make(map[string]string)
-	for _, tool := range sorted {
-		toolMap[tool.Name] = tool
-		bins := getBinaryNames(tool.Binaries)
-		if len(bins) == 0 {
-			bins = []string{tool.Name}
-		}
-		for _, b := range bins {
-			binaryProviders[b] = tool.Name
-		}
-	}
+	providers := resolvedDependencyProviders(sorted)
 
 	// Determine which tools need installation (either explicit auto-install or required by an auto-install tool)
 	autoInstallTools := make(map[string]bool)
@@ -86,11 +79,7 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		for _, tool := range sorted {
 			if autoInstallTools[tool.Name] {
 				for _, dep := range tool.Dependencies {
-					providerName := dep
-					if p, ok := binaryProviders[dep]; ok {
-						providerName = p
-					}
-					if depTool, ok := toolMap[providerName]; ok {
+					if depTool := providers[dep]; depTool != nil {
 						if !autoInstallTools[depTool.Name] {
 							autoInstallTools[depTool.Name] = true
 							changed = true
@@ -104,6 +93,9 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	failedAutoInstalls := make(map[string]bool)
 
 	for _, tool := range sorted {
+		if err := ctx.Err(); err != nil {
+			return errors.Join(failures.Err(), err)
+		}
 		if tool.Disabled {
 			continue
 		}
@@ -114,55 +106,38 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 
 		if autoInstallTools[tool.Name] {
 			// Check if any required dependency failed auto-installation
-			hasFailedDep := false
-			var failedDepName string
-			for _, dep := range tool.Dependencies {
-				providerName := dep
-				if p, ok := binaryProviders[dep]; ok {
-					providerName = p
-				}
-				if failedAutoInstalls[providerName] {
-					hasFailedDep = true
-					failedDepName = providerName
-					break
-				}
-			}
-
-			if hasFailedDep {
+			if failedDepName := failedDependency(tool, providers, failedAutoInstalls); failedDepName != "" {
 				failedAutoInstalls[tool.Name] = true
-				o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: dependency %q failed to install", failedDepName)))
-				if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
-					return fmt.Errorf("generating tool %q: %w", tool.Name, err)
-				}
+				failures.Record(o.logger, tool.Name, fmt.Errorf("Auto-install failed: dependency %q failed to install", failedDepName))
+				failures.Record(o.logger, tool.Name, o.GenerateTool(ctx, tool, projCfg))
 				continue
 			}
 
 			skip, err := o.shouldSkipInstallation(ctx, tool, projCfg)
 			if err != nil {
-				return err
+				failedAutoInstalls[tool.Name] = true
+				failures.Record(o.logger, tool.Name, err)
+				continue
 			}
 			if !skip {
 				if err := o.InstallTool(ctx, tool, projCfg); err != nil {
 					failedAutoInstalls[tool.Name] = true
-					o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Auto-install failed: %v", err)))
-					if genErr := o.GenerateTool(ctx, tool, projCfg); genErr != nil {
-						return fmt.Errorf("generating tool %q fallback: %w", tool.Name, genErr)
-					}
+					failures.Record(o.logger, tool.Name, fmt.Errorf("Auto-install failed: %w", err))
+					failures.Record(o.logger, tool.Name, o.GenerateTool(ctx, tool, projCfg))
 				}
 			} else {
-				if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
-					return fmt.Errorf("generating tool %q: %w", tool.Name, err)
-				}
+				failures.Record(o.logger, tool.Name, o.GenerateTool(ctx, tool, projCfg))
 			}
 		} else {
-			if err := o.GenerateTool(ctx, tool, projCfg); err != nil {
-				return fmt.Errorf("generating tool %q: %w", tool.Name, err)
-			}
+			failures.Record(o.logger, tool.Name, o.GenerateTool(ctx, tool, projCfg))
 		}
 	}
 
 	if err := o.generateShellScripts(ctx, sorted, projCfg); err != nil {
-		return fmt.Errorf("generating shell scripts: %w", err)
+		if !errors.Is(err, toolbatch.ErrFailed) {
+			return fmt.Errorf("generating shell scripts: %w", err)
+		}
+		failures.Record(o.logger, "system", err)
 	}
 
 	// The bin-name registry describes what the configuration declares, not what this
@@ -180,6 +155,9 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 		o.logger.WithTag(w.ToolName).Warn(logger.Message(w.Message))
 	}
 
+	if err := failures.Err(); err != nil {
+		return err
+	}
 	o.logger.WithTag("system").Info(logger.Message("DONE"))
 	return nil
 }
@@ -833,21 +811,31 @@ func (o *Orchestrator) editedSinceWritten(state *registry.FileState, path string
 	return fs.HashContent(data) != *state.ContentHash
 }
 
-// CleanupStaleArtifacts runs all orchestrator cleanup routines: orphaned tools, stale
-// shims, stale symlinks, and stale copies. The first routine to fail stops the rest:
-// every one of them removes files, and a routine only fails when it cannot say which
-// file a record names, which is the point at which the run must stop touching the disk.
+// CleanupStaleArtifacts isolates each tool's destructive cleanup. When a routine
+// cannot safely identify a tool's files, that tool's cleanup stops; other tools
+// are still reconciled, and all failures are returned after the batch.
 func (o *Orchestrator) CleanupStaleArtifacts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	var failures toolbatch.Failures
 	if err := o.CleanupOrphanedTools(ctx, tools, projCfg); err != nil {
-		return err
+		if !errors.Is(err, toolbatch.ErrFailed) {
+			return err
+		}
+		failures.Record(o.logger, "system", err)
 	}
-	if err := o.CleanupStaleShims(ctx, tools, projCfg); err != nil {
-		return err
+	for _, tool := range tools {
+		if err := ctx.Err(); err != nil {
+			return errors.Join(failures.Err(), err)
+		}
+		for _, cleanup := range []func(context.Context, []*config.ToolConfig, *config.ProjectConfig) error{
+			o.CleanupStaleShims, o.CleanupStaleSymlinks, o.CleanupStaleCopies,
+		} {
+			if err := cleanup(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+				failures.Record(o.logger, tool.Name, err)
+				break
+			}
+		}
 	}
-	if err := o.CleanupStaleSymlinks(ctx, tools, projCfg); err != nil {
-		return err
-	}
-	return o.CleanupStaleCopies(ctx, tools, projCfg)
+	return failures.Err()
 }
 
 func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {

@@ -78,6 +78,24 @@ Inside their respective domains, the same single-letter aliases are supported:
 - `dotfiles tool i` -> `dotfiles tool install`
 - `dotfiles tool u` -> `dotfiles tool update`
 
+## Batch Failures
+
+Commands that process multiple tools report a tool's failure on stderr and continue
+with the remaining tools, including when several tool names are supplied explicitly.
+An unknown tool name is reported without preventing other requested tools from running.
+The command exits 1 after processing if any tool failed; successful work is retained.
+Configuration-load errors, an invalid dependency graph, cancellation, and failures of
+shared resources can stop the command before every tool has been processed.
+
+Generation still writes the combined shell scripts, CLI completion, and configured
+shell-profile integration after a tool fails. A failed generation does not print `DONE`.
+An invalid shell entry is reported and omitted while other entries are generated.
+During dependency-ordered installation, a tool whose required provider failed is
+reported and skipped, while independent tools continue. During uninstallation in
+reverse dependency order, dependencies of a tool that could not be removed are kept.
+Scaffolding also attempts every starter file and reports successful writes even when
+another starter file cannot be checked, backed up, or written.
+
 ## Command Details
 
 ### `dotfiles cache`
@@ -209,7 +227,7 @@ In agent mode (`AGENT=1`) each tool is one line, `tool:<tool> status:<status> cu
 
 A tool is reported as up to date only when its installation method's query says so. When the query fails, the check fails, whether the tool is installed or not (see [`tool update`](#dotfiles-tool-update-tool)); `tool check` logs `Update check failed: <error>` for that tool and leaves it out of its plain and agent-mode output. A tool whose installation record cannot be read is logged as `Reading the installation record failed: <error>` and left out the same way. Under `--json`, either is listed with the status `failed`.
 
-Exit status: 0 unless the check of a tool failed, whatever the checks found, including an available update, a tool that is not installed, and an installation method that cannot check for updates. Disabled tools, tools with no installation method, and tools whose update checks are turned off with [`updateCheck.enabled`](../api-reference/core-api.md#updatecheckconfig) are skipped, named or not. Non-zero when the check of any tool failed, or when a named tool is not configured, which fails before anything is checked. `tool check` still checks and reports every other tool first, and under `--json` prints the whole array before exiting.
+Exit status: 0 unless the check of a tool failed, whatever the checks found, including an available update, a tool that is not installed, and an installation method that cannot check for updates. Disabled tools, tools with no installation method, and tools whose update checks are turned off with [`updateCheck.enabled`](../api-reference/core-api.md#updatecheckconfig) are skipped, named or not. Non-zero when the check of any tool failed or a named tool is not configured, following [batch failure handling](#batch-failures). `tool check` still checks and reports every other tool first, and under `--json` prints the whole array, including failed entries for unknown tool names, before exiting.
 
 - `--json`: Output update status in JSON format. Each entry carries `tool`, `status`, `currentVersion`, `latestVersion`, and `cached`. `status` is one of the statuses above, or `failed` for a tool whose check failed, whose entry also carries `error`, the cause that was logged. `currentVersion` is absent for a tool that is not installed or whose installation record could not be read, and `latestVersion` when nothing upstream named one.
 
@@ -316,6 +334,14 @@ Emits shell export strings and initialization hooks (similar to `brew shellenv`)
 
 Detects collisions across aliases, functions, and binaries, and reports every shim `dotfiles state generate` would have to write over a file it did not create. Run it before `dotfiles state generate --overwrite`.
 
+Filesystem inspection errors follow [batch failure handling](#batch-failures):
+other paths are still audited, confirmed conflicts are reported, and the command
+exits 1. An incomplete audit does not print a no-conflicts success message. Under
+`--json`, the report lists confirmed conflicts; stderr diagnostics and the nonzero
+exit status indicate incomplete inspection.
+Run audit without `--dry-run` to inspect existing files: the dry-run filesystem
+exposes host metadata but does not read host file contents.
+
 - `--json`: Output conflict analysis in JSON format.
 
 ---
@@ -375,6 +401,14 @@ Displays file operations and installation log entries.
 - `--type <kind>`: Filter by file kind (`shim`, `binary`, `symlink`, `copy`, `config`, `completion`, ...).
 - `--status`: Show current file states for tools instead of operation history.
 - `--json`: Output log entries in JSON format.
+
+With `--status`, registry and filesystem inspection errors follow
+[batch failure handling](#batch-failures). An entry whose file or target cannot be
+inspected is reported on stderr and omitted from the status output in every mode;
+it is never labeled `MISSING`. Other entries are still reported, and the command
+exits 1. A failure listing registered tools stops the status command because the
+tool list is unavailable. A confirmed missing file or target remains a normal
+status result.
 
 ---
 
