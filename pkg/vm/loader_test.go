@@ -337,10 +337,10 @@ func TestFindToolConfigFilesAndDirExists(t *testing.T) {
 		t.Error("expected error from findToolConfigFiles with null byte path")
 	}
 
-	// 7. compileFile non-existent file error
-	_, err = compileFile("/nonexistent/file.ts")
+	// 7. compileFileWithSourceMap non-existent file error
+	_, err = compileFileWithSourceMap("/nonexistent/file.ts")
 	if err == nil {
-		t.Error("expected error from compileFile with non-existent file")
+		t.Error("expected error from compileFileWithSourceMap with non-existent file")
 	}
 
 	// 8. Runtime error in config.ts during LoadTypeScriptConfig
@@ -362,21 +362,23 @@ func TestCompileFilePluginsAndDirName(t *testing.T) {
 	}
 	tsPath := filepath.Join(tmpDir, "test_plugins.ts")
 	tsContent := `
-	import { getE2eGeneratedDir } from "./e2eGeneratedDir";
-	export default {
-		dir: __dirname,
-		e2eDir: getE2eGeneratedDir(import.meta.dirname)
-	};`
+	import { defineConfig } from "@alexgorbatchev/dotfiles";
+	export default defineConfig({
+		paths: {
+			dotfilesDir: __dirname,
+			generatedDir: import.meta.dirname + "/.generated",
+		},
+	});`
 	_ = os.WriteFile(tsPath, []byte(tsContent), 0644)
 
-	code, err := compileFile(tsPath)
+	script, err := compileFileWithSourceMap(tsPath)
 	if err != nil {
-		t.Fatalf("compileFile with e2eGeneratedDir failed: %v", err)
+		t.Fatalf("compileFileWithSourceMap failed: %v", err)
 	}
 
 	expectedDir := filepath.ToSlash(tmpDir)
-	if !strings.Contains(code, expectedDir) {
-		t.Errorf("expected __dirname/import.meta.dirname to be replaced by %q in compiled code, got: %s", expectedDir, code)
+	if !strings.Contains(script.code, expectedDir) {
+		t.Errorf("expected __dirname/import.meta.dirname to be replaced by %q in compiled code, got: %s", expectedDir, script.code)
 	}
 }
 
@@ -402,14 +404,14 @@ func TestCompileFileLoadersForVariousExtensions(t *testing.T) {
 		if err := os.WriteFile(filePath, []byte(tc.content), 0644); err != nil {
 			t.Fatalf("writing %s: %v", filePath, err)
 		}
-		code, err := compileFile(filePath)
+		script, err := compileFileWithSourceMap(filePath)
 		if err != nil {
-			t.Errorf("compileFile(%s) failed: %v", filePath, err)
+			t.Errorf("compileFileWithSourceMap(%s) failed: %v", filePath, err)
 			continue
 		}
 		expectedDir := filepath.ToSlash(tmpDir)
-		if !strings.Contains(code, expectedDir) {
-			t.Errorf("compileFile(%s) did not contain %q in output: %s", filePath, expectedDir, code)
+		if !strings.Contains(script.code, expectedDir) {
+			t.Errorf("compileFileWithSourceMap(%s) did not contain %q in output: %s", filePath, expectedDir, script.code)
 		}
 	}
 }
@@ -537,8 +539,7 @@ func TestLoadTypeScriptConfigMultipleTools(t *testing.T) {
 	}
 
 	// Assert the authored tools are discovered, including the one nested in a
-	// subdirectory, rather than the map size: ensureStarterTools provisions additional
-	// starter tools on some platforms and the subject here is recursive discovery.
+	// subdirectory, rather than the map size.
 	for _, name := range []string{"tool1", "tool2"} {
 		if _, ok := toolMap[name]; !ok {
 			t.Errorf("expected tool %q in toolMap, got %v", name, slices.Sorted(maps.Keys(toolMap)))
@@ -1386,10 +1387,10 @@ func TestLoadTypeScriptConfig_UnknownFieldsError(t *testing.T) {
 		}
 	})
 
-	t.Run("compileFile error branch", func(t *testing.T) {
-		_, err := compileFile("/non/existent/file.ts")
+	t.Run("compileFileWithSourceMap error branch", func(t *testing.T) {
+		_, err := compileFileWithSourceMap("/non/existent/file.ts")
 		if err == nil {
-			t.Error("expected error from compileFile for non-existent file")
+			t.Error("expected error from compileFileWithSourceMap for non-existent file")
 		}
 	})
 

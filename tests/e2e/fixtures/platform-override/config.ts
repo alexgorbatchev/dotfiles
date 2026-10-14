@@ -1,7 +1,6 @@
 import { defineConfig } from "@alexgorbatchev/dotfiles";
-import { getE2eGeneratedDir } from "../../helpers/e2eGeneratedDir";
 
-const generatedDir = getE2eGeneratedDir(import.meta.dirname);
+const generatedDir = `${import.meta.dirname}/.generated`;
 
 export default defineConfig(() => ({
   paths: {

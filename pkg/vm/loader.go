@@ -195,14 +195,6 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	return fullConfig.ProjectConfig, fullConfig.ToolConfigs, eval, nil
 }
 
-func compileFile(entryPath string) (string, error) {
-	script, err := compileFileWithSourceMap(entryPath)
-	if err != nil {
-		return "", err
-	}
-	return script.code, nil
-}
-
 type compiledScript struct {
 	code      string
 	sourceMap []byte
@@ -223,22 +215,6 @@ func compileFileWithSourceMap(entryPath string) (compiledScript, error) {
 				func(args api.OnLoadArgs) (api.OnLoadResult, error) {
 					return api.OnLoadResult{
 						Contents: &loaderApiContentsRaw,
-						Loader:   api.LoaderTS,
-					}, nil
-				})
-
-			build.OnResolve(api.OnResolveOptions{Filter: `.*e2eGeneratedDir`},
-				func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-					return api.OnResolveResult{
-						Path:      "e2eGeneratedDir.ts",
-						Namespace: "e2eGeneratedDir",
-					}, nil
-				})
-			build.OnLoad(api.OnLoadOptions{Filter: `.*`, Namespace: "e2eGeneratedDir"},
-				func(args api.OnLoadArgs) (api.OnLoadResult, error) {
-					contents := `export function getE2eGeneratedDir(configDir) { return configDir + "/.generated"; }`
-					return api.OnLoadResult{
-						Contents: &contents,
 						Loader:   api.LoaderTS,
 					}, nil
 				})

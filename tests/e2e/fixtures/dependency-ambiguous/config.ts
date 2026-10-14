@@ -1,10 +1,8 @@
-import { getE2eGeneratedDir } from "../../helpers/e2eGeneratedDir";
-
 const mockServerHost = process.env["MOCK_SERVER_PORT"]
   ? `http://127.0.0.1:${process.env["MOCK_SERVER_PORT"]}`
   : "http://127.0.0.1:8765";
 
-const generatedDir = getE2eGeneratedDir(import.meta.dirname);
+const generatedDir = `${import.meta.dirname}/.generated`;
 
 export default {
   paths: {

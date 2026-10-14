@@ -55,8 +55,6 @@ CLAUDE.md
 # test-install runtime artifacts
 /test-install/.output/
 
-# compiled vm dist bundles
-pkg/vm/dist/
 /coverage.out
 
 # backups from typescriptify
