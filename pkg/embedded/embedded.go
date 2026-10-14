@@ -2,7 +2,7 @@ package embedded
 
 import "embed"
 
-// TypesFS embeds all generated TypeScript declaration files and package.json.
+// TypesFS embeds all generated TypeScript declaration files (index.d.ts and globals.d.ts).
 //
 //go:embed all:dist
 var TypesFS embed.FS

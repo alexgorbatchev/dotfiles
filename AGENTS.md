@@ -53,6 +53,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Go shellinit package: `pkg/shellinit/` -> `pkg/shellinit/AGENTS.md`
 - Go shim package: `pkg/shim/` -> `pkg/shim/AGENTS.md`
 - Go symlink package: `pkg/symlink/` -> `pkg/symlink/AGENTS.md`
+- Go toolbatch package: `pkg/toolbatch/` -> `pkg/toolbatch/AGENTS.md`
 - Go typecheck package: `pkg/typecheck/` -> `pkg/typecheck/AGENTS.md`
 - Go unwrap package: `pkg/unwrap/` -> `pkg/unwrap/AGENTS.md`
 - Go updater package: `pkg/updater/` -> `pkg/updater/AGENTS.md`

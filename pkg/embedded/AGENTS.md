@@ -8,7 +8,7 @@ Go `embed.FS` wrappers for shipped TypeScript declarations and the bundled dotfi
 
 ## Local conventions
 
-- `TypesFS` (`embed.FS`): embeds compiled TypeScript declaration files (`index.d.ts`, `globals.d.ts`) and `package.json` under `dist/`.
+- `TypesFS` (`embed.FS`): embeds compiled TypeScript declaration files (`index.d.ts`, `globals.d.ts`) under `dist/`.
 - `SkillFS` (`embed.FS`): embeds the single dotfiles skill and its reference documentation under `skill/`.
 - Declaration files invariant: `TypesFS` contains only `globals.d.ts` and `index.d.ts`; `tool-types.d.ts` is generated per project and must never be embedded.
 - Skill parity invariant (`embedded_test.go`): `TestSkillFSMirrorsCanonicalSkill` asserts that `SkillFS` embeds every file from `pkg/embedded/skill/` with identical content and no orphaned files. `TestAgentSkillSymlinkReadsEmbeddedSkill` verifies that the agent symlink resolves to this source and reads the same embedded files.

@@ -1,7 +1,8 @@
 ---
+author: alexgorbatchev
 created_on: 2026-08-15 01:01
-last_modified: 2026-08-19 11:45
-status: current
+last_modified: 2026-10-14 12:41
+status: archived
 review_sha: 95cc813cb9e757a76b909ba0b65926e71a9d20a4
 reviewed_at: 2026-08-19T11:45:00Z
 ---
@@ -18,18 +19,18 @@ reviewed_at: 2026-08-19T11:45:00Z
 - Setup/install commands:
   - `bun install --frozen-lockfile`
 - Test commands:
-  - `go test ./pkg/... ./cmd/...` (Go unit tests)
-  - `go test -count=1 -p 1 ./tests/e2e/...` (Go end-to-end suite)
+  - `go test ./pkg/... ./cmd/... ./scripts/...` (Go unit tests)
+  - `go test -p 1 ./tests/e2e/...` (Go end-to-end suite)
   - `bun test` (Dashboard frontend/shared unit tests)
 - Coverage commands:
   - `go test -coverprofile=coverage.out ./pkg/... ./cmd/... && go tool cover -func=coverage.out` (Go package coverage)
   - `bun test --coverage` (Dashboard JS/TS coverage)
 - Build/typecheck/lint commands (if applicable):
-  - `just check` (Full check: lint + typecheck + tests)
-  - `just lint` (oxfmt formatting check, dprint check on test-project, oxlint)
-  - `just fix` (oxfmt fix, dprint fmt, oxlint --fix)
-  - `just typecheck` (`tsgo -p tsconfig.json`)
-  - `just compile` (`go run scripts/build/main.go` - builds dashboard client and compiles Go binary into `bin/`)
+  - `just check` (Full check: lint + typecheck + unused + docs-links + tests)
+  - `just lint` (gofmt check, go vet, oxfmt formatting check, dprint check on test-project, oxlint)
+  - `just fix` (gofmt, oxfmt fix, dprint fmt, oxlint --fix)
+  - `just typecheck` (`tsc -p tsconfig.json`, `go run scripts/build/main.go --type-tests`, `packages/docs` sync + typecheck)
+  - `just compile` (`go run scripts/build/main.go` - builds dashboard client, generates types, and compiles Go release archives into `.dist/`)
 - Required env/services/fixtures:
   - Test project fixture: `test-project/dotfiles.config.ts`
   - Managed installer fixtures: `scripts/managed-installer/fixtures/`
