@@ -8,13 +8,10 @@
     "test-project"
   ],
   "type": "module",
-  "module": "cli.ts",
   "types": "./.dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./.dist/index.d.ts",
-      "import": "./.dist/cli.js",
-      "default": "./.dist/cli.js"
+      "types": "./.dist/index.d.ts"
     }
   },
   "scripts": {

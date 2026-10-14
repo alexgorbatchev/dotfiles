@@ -14,8 +14,7 @@ import "testing"
 // pkg/vm and cmd/dotfiles from ever reusing a cached result.
 //
 // It is kept behind the `buildtest` tag and run by `just test-build`, which
-// `just check` includes, so the full build is still verified on every check and
-// in CI.
+// CI runs as a step after the checks.
 func TestRunBuild(t *testing.T) {
 	if err := runBuild(); err != nil {
 		t.Fatalf("runBuild failed: %v", err)

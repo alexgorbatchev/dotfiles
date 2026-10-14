@@ -337,27 +337,7 @@ func TestBuildHelpers(t *testing.T) {
 		t.Fatalf("cleanPreviousBuild failed: %v", err)
 	}
 
-	// 3. generatePackageJsons
-	rootPkg := `{"version": "1.2.3"}`
-	_ = os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte(rootPkg), 0644)
-	_ = os.MkdirAll(filepath.Join(tmpDir, ".dist"), 0755)
-
-	version, err := generatePackageJsons(tmpDir)
-	if err != nil || version != "1.2.3" {
-		t.Fatalf("generatePackageJsons failed: %v, version=%q", err, version)
-	}
-
-	// 4. writeLauncher
-	err = writeLauncher(tmpDir)
-	if err != nil {
-		t.Fatalf("writeLauncher failed: %v", err)
-	}
-	cliJsData, err := os.ReadFile(filepath.Join(tmpDir, ".dist", "cli.js"))
-	if err != nil || !strings.Contains(string(cliJsData), "defineConfig") {
-		t.Errorf("expected cli.js launcher generated")
-	}
-
-	// 5. copyDirectoryRecursive
+	// 3. copyDirectoryRecursive
 	src := filepath.Join(tmpDir, "src_rec")
 	dst := filepath.Join(tmpDir, "dst_rec")
 	_ = os.MkdirAll(filepath.Join(src, "sub"), 0755)
@@ -374,7 +354,8 @@ func TestBuildHelpers(t *testing.T) {
 		t.Errorf("copyDirectoryRecursive failed: %v, %q", err, string(data))
 	}
 
-	// 6. copyAssetsAndSkill
+	// 4. copyAssetsAndSkill
+	_ = os.MkdirAll(filepath.Join(tmpDir, ".dist"), 0755)
 	_ = os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Readme"), 0644)
 	_ = os.WriteFile(filepath.Join(tmpDir, "LICENSE"), []byte("MIT"), 0644)
 	_ = os.MkdirAll(filepath.Join(tmpDir, "pkg", "embedded", "skill"), 0755)
@@ -385,7 +366,7 @@ func TestBuildHelpers(t *testing.T) {
 		t.Fatalf("copyAssetsAndSkill failed: %v", err)
 	}
 
-	// 7. printBuildSummary
+	// 5. printBuildSummary
 	printBuildSummary(tmpDir)
 }
 
@@ -450,24 +431,24 @@ func TestBuildTarget(t *testing.T) {
 func TestBuildErrorBranches(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// 1. generatePackageJsons with missing file
-	_, err := generatePackageJsons(tmpDir)
-	if err == nil {
-		t.Error("expected error with missing package.json")
+	// 1. compileAllBinaries with missing file
+	err := compileAllBinaries(tmpDir)
+	if err == nil || !strings.Contains(err.Error(), "failed to read root package.json") {
+		t.Errorf("expected read error with missing package.json, got: %v", err)
 	}
 
-	// 2. generatePackageJsons with invalid JSON
+	// 2. compileAllBinaries with invalid JSON
 	_ = os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte("invalid json"), 0644)
-	_, err = generatePackageJsons(tmpDir)
-	if err == nil {
-		t.Error("expected error with invalid package.json")
+	err = compileAllBinaries(tmpDir)
+	if err == nil || !strings.Contains(err.Error(), "failed to parse root package.json") {
+		t.Errorf("expected parse error with invalid package.json, got: %v", err)
 	}
 
-	// 3. generatePackageJsons with missing version
+	// 3. compileAllBinaries with missing version
 	_ = os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte("{}"), 0644)
-	_, err = generatePackageJsons(tmpDir)
-	if err == nil {
-		t.Error("expected error with package.json missing version")
+	err = compileAllBinaries(tmpDir)
+	if err == nil || !strings.Contains(err.Error(), "version not found in root package.json") {
+		t.Errorf("expected missing version error with package.json missing version, got: %v", err)
 	}
 
 	// 4. copyFile non-existent source

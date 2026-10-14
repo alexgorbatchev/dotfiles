@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * Finds the project root by traversing upward looking for cli.ts
+ * Finds the project root by traversing upward looking for go.mod
  */
 export function findProjectRoot(startDir: string): string {
   let currentDir = startDir;
