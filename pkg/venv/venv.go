@@ -99,12 +99,9 @@ func (m *Manager) Create(parentDir, envName string, force bool) (*EnvInfo, error
 		if !force {
 			return nil, fmt.Errorf("environment already exists at %s", envDir)
 		}
-		// Try deleting existing files first to enable fresh creation
-		_ = m.fs.Remove(filepath.Join(envDir, SourceFile))
-		_ = m.fs.Remove(filepath.Join(envDir, PowerShellFile))
-		_ = m.fs.Remove(filepath.Join(envDir, ConfigFile))
-		_ = m.fs.Remove(filepath.Join(envDir, ToolsDirName))
-		_ = m.fs.Remove(envDir)
+		if err := m.fs.RemoveAll(envDir); err != nil {
+			return nil, fmt.Errorf("removing existing environment directory: %w", err)
+		}
 	}
 
 	if err := m.fs.MkdirAll(envDir, 0755); err != nil {
@@ -263,13 +260,7 @@ func (m *Manager) Delete(envDir string) error {
 		return fmt.Errorf("not a valid virtual environment directory: %s", envDir)
 	}
 
-	_ = m.fs.Remove(filepath.Join(envDir, SourceFile))
-	_ = m.fs.Remove(filepath.Join(envDir, PowerShellFile))
-	_ = m.fs.Remove(filepath.Join(envDir, ConfigFile))
-	_ = m.fs.Remove(filepath.Join(envDir, ToolsDirName))
-
-	err = m.fs.Remove(envDir)
-	if err != nil {
+	if err := m.fs.RemoveAll(envDir); err != nil {
 		return fmt.Errorf("removing environment directory: %w", err)
 	}
 

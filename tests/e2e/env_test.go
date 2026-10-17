@@ -132,8 +132,7 @@ func TestE2EVenv(t *testing.T) {
 			t.Fatalf("failed to create virtual environment: %v", err)
 		}
 
-		// Customize config.ts inside the virtual-env to define paths
-		// Import from @alexgorbatchev/dotfiles directly so esbuild resolves it properly
+		// Customize dotfiles.config.ts inside the virtual-env to define paths
 		venvConfigContent := `export default {
   paths: {
     generatedDir: "` + filepath.ToSlash(info.EnvDir) + `/.generated",
@@ -143,9 +142,9 @@ func TestE2EVenv(t *testing.T) {
   },
 };
 `
-		err = os.WriteFile(filepath.Join(info.EnvDir, "config.ts"), []byte(venvConfigContent), 0644)
+		err = os.WriteFile(filepath.Join(info.EnvDir, "dotfiles.config.ts"), []byte(venvConfigContent), 0644)
 		if err != nil {
-			t.Fatalf("failed to write config.ts: %v", err)
+			t.Fatalf("failed to write dotfiles.config.ts: %v", err)
 		}
 
 		// Add a shell-only tool that doesn't require network
@@ -166,9 +165,12 @@ export default defineTool((install) =>
 			t.Fatalf("failed to write tool config: %v", err)
 		}
 
-		// Run generate with harness targeting this env's config
-		h.ConfigPath = filepath.Join(info.EnvDir, "config.ts")
-		stdout, stderr, exitCode, err := h.Generate()
+		// Run generate without --config, relying on DOTFILES_ENV_DIR resolution
+		h.Env = map[string]string{
+			venv.EnvDirVar:  info.EnvDir,
+			venv.EnvNameVar: envName,
+		}
+		stdout, stderr, exitCode, err := h.RunCommand("state", "generate")
 		if err != nil {
 			t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}

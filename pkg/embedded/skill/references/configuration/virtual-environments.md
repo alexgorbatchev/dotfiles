@@ -58,6 +58,8 @@ When activated, the following environment variables are set:
 | `XDG_CONFIG_HOME`   | `$DOTFILES_ENV_DIR/.config`          |
 | `PATH`              | Prepended with environment's bin dir |
 
+If `dotfiles` is not already available on `PATH` and has not been installed into the environment yet, the activation script automatically bootstraps `dotfiles` into `$DOTFILES_ENV_DIR` using `install.sh`. If `.generated/shell-scripts/main.<shell>` has not been generated yet, activation runs `dotfiles --config "$DOTFILES_ENV_DIR/dotfiles.config.ts" state generate` and sources the generated shell script.
+
 ## Using an Activated Environment
 
 Once activated, all dotfiles commands use the environment's configuration automatically:

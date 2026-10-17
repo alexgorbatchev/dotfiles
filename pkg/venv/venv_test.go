@@ -3,7 +3,9 @@ package venv
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -164,10 +166,28 @@ func TestManager_IsValidEnv_AndDelete(t *testing.T) {
 		t.Fatalf("Delete failed: %v", err)
 	}
 
-	// Verify it's gone
-	valid, _ = mgr.IsValidEnv(info.EnvDir)
-	if valid {
-		t.Errorf("expected env to be invalid after deletion")
+	// Case 5: Delete valid env on real OSFS when it contains nested tools and .generated files
+	osTmp := t.TempDir()
+	osMgr := NewManager(fs.NewOSFS())
+	osInfo, err := osMgr.Create(osTmp, "osenv", false)
+	if err != nil {
+		t.Fatalf("osMgr.Create failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(osInfo.ToolsDir, "foo.tool.ts"), []byte("export default {};"), 0644); err != nil {
+		t.Fatalf("writing nested tool: %v", err)
+	}
+	genDir := filepath.Join(osInfo.EnvDir, ".generated", "shell-scripts")
+	if err := os.MkdirAll(genDir, 0755); err != nil {
+		t.Fatalf("mkdir .generated: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(genDir, "main.zsh"), []byte("# init"), 0644); err != nil {
+		t.Fatalf("writing main.zsh: %v", err)
+	}
+	if err := osMgr.Delete(osInfo.EnvDir); err != nil {
+		t.Fatalf("Delete on OSFS with nested files failed: %v", err)
+	}
+	if _, err := os.Stat(osInfo.EnvDir); !os.IsNotExist(err) {
+		t.Errorf("expected %s to be completely removed, stat err = %v", osInfo.EnvDir, err)
 	}
 }
 
@@ -222,6 +242,13 @@ func (e *ErroringFS) Remove(path string) error {
 		return fmt.Errorf("mock remove error")
 	}
 	return e.FS.Remove(path)
+}
+
+func (e *ErroringFS) RemoveAll(path string) error {
+	if e.errOnRemove {
+		return fmt.Errorf("mock removeall error")
+	}
+	return e.FS.RemoveAll(path)
 }
 
 func TestManager_Errors(t *testing.T) {
@@ -303,6 +330,19 @@ func TestManager_Errors(t *testing.T) {
 		}
 	})
 
+	t.Run("remove fails in Create with force", func(t *testing.T) {
+		memFS := fs.NewMemFS()
+		mgr := NewManager(memFS)
+		_, _ = mgr.Create("/home/user/.dotfiles", "testenv", false)
+
+		errFS := &ErroringFS{FS: memFS, errOnRemove: true}
+		mgrErr := NewManager(errFS)
+		_, err := mgrErr.Create("/home/user/.dotfiles", "testenv", true)
+		if err == nil {
+			t.Fatal("expected error on RemoveAll in Create with force")
+		}
+	})
+
 	t.Run("remove fails in Delete", func(t *testing.T) {
 		memFS := fs.NewMemFS()
 		mgr := NewManager(memFS)
@@ -361,6 +401,38 @@ func TestManager_GetEnvInfo_DetectEnv_GetActiveEnv(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
+	// Check POSIX source content
+	srcContent, err := mem.ReadFile(filepath.Join(created.EnvDir, SourceFile))
+	if err != nil {
+		t.Fatalf("failed reading POSIX source: %v", err)
+	}
+	for _, want := range []string{
+		"_DOTFILES_OLD_PATH",
+		"user-bin",
+		"https://alexgorbatchev.github.io/dotfiles/install.sh",
+		"main.zsh",
+		"main.bash",
+	} {
+		if !strings.Contains(string(srcContent), want) {
+			t.Errorf("POSIX source script missing %q:\n%s", want, string(srcContent))
+		}
+	}
+
+	// Check PowerShell source content
+	psContent, err := mem.ReadFile(filepath.Join(created.EnvDir, PowerShellFile))
+	if err != nil {
+		t.Fatalf("failed reading PowerShell source: %v", err)
+	}
+	for _, want := range []string{
+		"_DOTFILES_OLD_PATH",
+		"user-bin",
+		"main.ps1",
+	} {
+		if !strings.Contains(string(psContent), want) {
+			t.Errorf("PowerShell source script missing %q:\n%s", want, string(psContent))
+		}
+	}
+
 	info, err = mgr.GetEnvInfo(created.EnvDir)
 	if err != nil {
 		t.Fatalf("GetEnvInfo failed: %v", err)
@@ -402,4 +474,153 @@ func TestManager_GetEnvInfo_DetectEnv_GetActiveEnv(t *testing.T) {
 	if inactive.Active {
 		t.Errorf("expected inactive environment when env vars are missing")
 	}
+}
+
+func TestActivationScript_BashRuntime(t *testing.T) {
+	bashPath, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not available on PATH")
+	}
+
+	t.Run("activates with dotfiles on PATH and deactivates cleanly", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		mgr := NewManager(fs.NewOSFS())
+		info, err := mgr.Create(tmpDir, ".env", false)
+		if err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+
+		fakeBinDir := filepath.Join(tmpDir, "fake-bin")
+		if err := os.MkdirAll(fakeBinDir, 0755); err != nil {
+			t.Fatalf("mkdir fake-bin: %v", err)
+		}
+
+		// Fake dotfiles binary that writes .generated/shell-scripts/main.bash when state generate is called
+		fakeDotfiles := filepath.Join(fakeBinDir, "dotfiles")
+		fakeDotfilesScript := "#!/usr/bin/env bash\n" +
+			"set -euo pipefail\n" +
+			"if [[ \"$*\" == *\"state generate\"* ]]; then\n" +
+			"  mkdir -p \"" + filepath.Join(info.EnvDir, ".generated", "shell-scripts") + "\"\n" +
+			"  mkdir -p \"" + filepath.Join(info.EnvDir, ".generated", "user-bin") + "\"\n" +
+			"  cat > \"" + filepath.Join(info.EnvDir, ".generated", "shell-scripts", "main.bash") + "\" <<'MAIN'\n" +
+			"dotfiles() {\n" +
+			"  echo \"wrapped-dotfiles:$*\"\n" +
+			"}\n" +
+			"export MY_VENV_VAR=\"from-main-bash\"\n" +
+			"MAIN\n" +
+			"fi\n"
+		if err := os.WriteFile(fakeDotfiles, []byte(fakeDotfilesScript), 0755); err != nil {
+			t.Fatalf("writing fake dotfiles: %v", err)
+		}
+
+		script := `set -euo pipefail
+export PATH="` + fakeBinDir + `:/usr/bin:/bin"
+export XDG_CONFIG_HOME="/original/xdg"
+orig_path="$PATH"
+source "` + info.SourcePath + `" >/dev/null
+echo "ACTIVE_DIR=$DOTFILES_ENV_DIR"
+echo "ACTIVE_NAME=$DOTFILES_ENV_NAME"
+echo "ACTIVE_XDG=$XDG_CONFIG_HOME"
+echo "ACTIVE_VAR=${MY_VENV_VAR:-}"
+echo "ACTIVE_DOTFILES=$(dotfiles status)"
+case ":$PATH:" in
+  *":` + filepath.Join(info.EnvDir, ".generated", "user-bin") + `:"*) echo "USER_BIN_IN_PATH=yes" ;;
+  *) echo "USER_BIN_IN_PATH=no" ;;
+esac
+dotfiles-deactivate >/dev/null
+echo "DEACTIVATED_DIR=${DOTFILES_ENV_DIR:-unset}"
+echo "DEACTIVATED_NAME=${DOTFILES_ENV_NAME:-unset}"
+echo "DEACTIVATED_XDG=${XDG_CONFIG_HOME:-unset}"
+if [ "$PATH" = "$orig_path" ]; then
+  echo "PATH_RESTORED=yes"
+else
+  echo "PATH_RESTORED=no ($PATH vs $orig_path)"
+fi
+`
+		cmd := exec.Command(bashPath, "--noprofile", "--norc", "-c", script)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("bash execution failed: %v\n%s", err, string(out))
+		}
+		got := string(out)
+		for _, want := range []string{
+			"ACTIVE_DIR=" + info.EnvDir,
+			"ACTIVE_NAME=.env",
+			"ACTIVE_XDG=" + filepath.Join(info.EnvDir, ".config"),
+			"ACTIVE_VAR=from-main-bash",
+			"ACTIVE_DOTFILES=wrapped-dotfiles:status",
+			"USER_BIN_IN_PATH=yes",
+			"DEACTIVATED_DIR=unset",
+			"DEACTIVATED_NAME=unset",
+			"DEACTIVATED_XDG=/original/xdg",
+			"PATH_RESTORED=yes",
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %q in output:\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("bootstraps dotfiles into env via install.sh when missing from PATH", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		mgr := NewManager(fs.NewOSFS())
+		info, err := mgr.Create(tmpDir, ".env", false)
+		if err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+
+		// Provide a fake curl that outputs an installer script when invoked
+		fakeCurlDir := filepath.Join(tmpDir, "curl-bin")
+		if err := os.MkdirAll(fakeCurlDir, 0755); err != nil {
+			t.Fatalf("mkdir curl-bin: %v", err)
+		}
+		fakeInstallScript := filepath.Join(tmpDir, "fake-install.sh")
+		installContent := "#!/usr/bin/env bash\n" +
+			"set -euo pipefail\n" +
+			"mkdir -p \"${INSTALL_DIR}/.generated/binaries/dotfiles/current\"\n" +
+			"mkdir -p \"${DOTFILES_TARGET_DIR}\"\n" +
+			"mkdir -p \"${INSTALL_DIR}/.generated/shell-scripts\"\n" +
+			"cat > \"${INSTALL_DIR}/.generated/binaries/dotfiles/current/dotfiles\" <<'BIN'\n" +
+			"#!/usr/bin/env bash\n" +
+			"echo \"bootstrapped-dotfiles:$*\"\n" +
+			"BIN\n" +
+			"chmod +x \"${INSTALL_DIR}/.generated/binaries/dotfiles/current/dotfiles\"\n" +
+			"ln -sf \"${INSTALL_DIR}/.generated/binaries/dotfiles/current/dotfiles\" \"${DOTFILES_TARGET_DIR}/dotfiles\"\n" +
+			"cat > \"${INSTALL_DIR}/.generated/shell-scripts/main.bash\" <<'MAIN'\n" +
+			"export BOOTSTRAPPED_ENV=\"yes\"\n" +
+			"MAIN\n"
+		if err := os.WriteFile(fakeInstallScript, []byte(installContent), 0755); err != nil {
+			t.Fatalf("writing fake-install.sh: %v", err)
+		}
+
+		fakeCurl := filepath.Join(fakeCurlDir, "curl")
+		curlContent := "#!/usr/bin/env bash\ncat \"" + fakeInstallScript + "\"\n"
+		if err := os.WriteFile(fakeCurl, []byte(curlContent), 0755); err != nil {
+			t.Fatalf("writing fake curl: %v", err)
+		}
+
+		script := `set -euo pipefail
+export PATH="` + fakeCurlDir + `:/usr/bin:/bin"
+export DOTFILES_INSTALL_SCRIPT_URL="https://example.invalid/install.sh"
+source "` + info.SourcePath + `" >/dev/null
+echo "BOOTSTRAPPED_ENV=${BOOTSTRAPPED_ENV:-no}"
+echo "WHICH_DOTFILES=$(command -v dotfiles)"
+echo "RUN_DOTFILES=$(dotfiles self version)"
+`
+		cmd := exec.Command(bashPath, "--noprofile", "--norc", "-c", script)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("bash bootstrap execution failed: %v\n%s", err, string(out))
+		}
+		got := string(out)
+		for _, want := range []string{
+			"BOOTSTRAPPED_ENV=yes",
+			"WHICH_DOTFILES=" + filepath.Join(info.EnvDir, ".generated", "user-bin", "dotfiles"),
+			"RUN_DOTFILES=bootstrapped-dotfiles:self version",
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %q in output:\n%s", want, got)
+			}
+		}
+	})
 }

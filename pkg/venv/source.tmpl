@@ -14,6 +14,10 @@
 
 dotfiles-deactivate() {
   if [ -n "${DOTFILES_ENV_DIR:-}" ]; then
+    if [ -n "${_DOTFILES_OLD_PATH:-}" ]; then
+      export PATH="${_DOTFILES_OLD_PATH}"
+      unset _DOTFILES_OLD_PATH
+    fi
     if [ -n "${_DOTFILES_OLD_XDG_CONFIG_HOME:-}" ]; then
       export XDG_CONFIG_HOME="${_DOTFILES_OLD_XDG_CONFIG_HOME}"
       unset _DOTFILES_OLD_XDG_CONFIG_HOME
@@ -22,7 +26,8 @@ dotfiles-deactivate() {
     fi
     unset DOTFILES_ENV_DIR
     unset DOTFILES_ENV_NAME
-    unset -f dotfiles-deactivate 2>/dev/null
+    unset -f dotfiles 2>/dev/null || true
+    unset -f dotfiles-deactivate 2>/dev/null || true
     echo "Deactivated dotfiles environment"
   fi
 }
@@ -39,6 +44,7 @@ else
   _dotfiles_script_dir="{{.EnvDir}}"
 fi
 
+export _DOTFILES_OLD_PATH="${PATH:-}"
 if [ -n "${XDG_CONFIG_HOME:-}" ]; then
   export _DOTFILES_OLD_XDG_CONFIG_HOME="${XDG_CONFIG_HOME}"
 fi
@@ -47,7 +53,39 @@ export DOTFILES_ENV_DIR="${_dotfiles_script_dir}"
 export DOTFILES_ENV_NAME="{{.EnvName}}"
 export XDG_CONFIG_HOME="${_dotfiles_script_dir}/.config"
 
-unset _dotfiles_script_dir
+_dotfiles_user_bin="${DOTFILES_ENV_DIR}/.generated/user-bin"
+case ":${PATH:-}:" in
+  *":${_dotfiles_user_bin}:"*) ;;
+  *) export PATH="${_dotfiles_user_bin}${PATH:+:$PATH}" ;;
+esac
+
+_dotfiles_env_bin="${DOTFILES_ENV_DIR}/.generated/binaries/dotfiles/current/dotfiles"
+if ! command -v dotfiles >/dev/null 2>&1 && [ ! -x "${_dotfiles_env_bin}" ]; then
+  echo "dotfiles CLI not found on PATH; bootstrapping into ${DOTFILES_ENV_DIR}..."
+  curl -fsSL "${DOTFILES_INSTALL_SCRIPT_URL:-https://alexgorbatchev.github.io/dotfiles/install.sh}" | \
+    INSTALL_DIR="${DOTFILES_ENV_DIR}" DOTFILES_YES=1 DOTFILES_TARGET_DIR="${_dotfiles_user_bin}" bash
+fi
+
+if [ -n "${ZSH_VERSION:-}" ]; then
+  _dotfiles_main_script="${DOTFILES_ENV_DIR}/.generated/shell-scripts/main.zsh"
+else
+  _dotfiles_main_script="${DOTFILES_ENV_DIR}/.generated/shell-scripts/main.bash"
+fi
+
+if [ ! -f "${_dotfiles_main_script}" ]; then
+  if command -v dotfiles >/dev/null 2>&1; then
+    dotfiles --config "${DOTFILES_ENV_DIR}/dotfiles.config.ts" state generate
+  elif [ -x "${_dotfiles_env_bin}" ]; then
+    "${_dotfiles_env_bin}" --config "${DOTFILES_ENV_DIR}/dotfiles.config.ts" state generate
+  fi
+fi
+
+if [ -f "${_dotfiles_main_script}" ]; then
+  # shellcheck disable=SC1090
+  . "${_dotfiles_main_script}"
+fi
+
+unset _dotfiles_script_dir _dotfiles_user_bin _dotfiles_env_bin _dotfiles_main_script
 
 echo "Activated dotfiles environment: {{.EnvName}}"
 echo "  Directory: ${DOTFILES_ENV_DIR}"

@@ -23,6 +23,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/proxy"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
+	"github.com/alexgorbatchev/dotfiles/pkg/venv"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
@@ -106,6 +107,11 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		}
 
 		var candidates []string
+		if envDir := os.Getenv(venv.EnvDirVar); envDir != "" {
+			for _, name := range candidateNames {
+				candidates = append(candidates, filepath.Join(envDir, name))
+			}
+		}
 		for _, name := range candidateNames {
 			candidates = append(candidates, filepath.Join(cwd, name))
 		}

@@ -56,6 +56,35 @@ func TestBootstrapServicesValid(t *testing.T) {
 	}
 }
 
+func TestBootstrapServices_UsesDotfilesEnvDirWhenConfigOmitted(t *testing.T) {
+	cwdDir := enterTempDir(t)
+	t.Setenv("DOTFILES_REPO_ROOT", cwdDir)
+
+	// Place a config in cwd to prove DOTFILES_ENV_DIR takes precedence over cwd
+	cwdCfg := filepath.Join(cwdDir, "dotfiles.config.ts")
+	if err := os.WriteFile(cwdCfg, []byte(`export default { paths: { generatedDir: "./.generated-cwd" } };`), 0644); err != nil {
+		t.Fatalf("writing cwd config: %v", err)
+	}
+
+	envDir := t.TempDir()
+	envCfg := filepath.Join(envDir, "dotfiles.config.ts")
+	if err := os.WriteFile(envCfg, []byte(`export default { paths: { generatedDir: "./.generated-env" } };`), 0644); err != nil {
+		t.Fatalf("writing env config: %v", err)
+	}
+
+	t.Setenv("DOTFILES_ENV_DIR", envDir)
+
+	services, err := BootstrapServices(context.Background(), "")
+	if err != nil {
+		t.Fatalf("BootstrapServices with DOTFILES_ENV_DIR failed: %v", err)
+	}
+	defer services.Close()
+
+	if services.ConfigPath != envCfg {
+		t.Errorf("services.ConfigPath = %q, want %q (from DOTFILES_ENV_DIR)", services.ConfigPath, envCfg)
+	}
+}
+
 func TestBootstrapServices_ExpandHomePath(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)

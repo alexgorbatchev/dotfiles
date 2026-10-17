@@ -13,6 +13,10 @@
 
 function global:dotfiles-deactivate {
   if ($env:DOTFILES_ENV_DIR) {
+    if ($env:_DOTFILES_OLD_PATH) {
+      $env:PATH = $env:_DOTFILES_OLD_PATH
+      Remove-Item Env:_DOTFILES_OLD_PATH -ErrorAction SilentlyContinue
+    }
     if ($env:_DOTFILES_OLD_XDG_CONFIG_HOME) {
       $env:XDG_CONFIG_HOME = $env:_DOTFILES_OLD_XDG_CONFIG_HOME
       Remove-Item Env:_DOTFILES_OLD_XDG_CONFIG_HOME -ErrorAction SilentlyContinue
@@ -21,7 +25,9 @@ function global:dotfiles-deactivate {
     }
     Remove-Item Env:DOTFILES_ENV_DIR -ErrorAction SilentlyContinue
     Remove-Item Env:DOTFILES_ENV_NAME -ErrorAction SilentlyContinue
+    Remove-Item Function:dotfiles -ErrorAction SilentlyContinue
     Remove-Item function:dotfiles-deactivate -ErrorAction SilentlyContinue
+    Write-Host "Deactivated dotfiles environment"
   }
 }
 
@@ -37,6 +43,7 @@ if ($env:DOTFILES_ENV_DIR) {
   dotfiles-deactivate
 }
 
+$env:_DOTFILES_OLD_PATH = $env:PATH
 if ($env:XDG_CONFIG_HOME) {
   $env:_DOTFILES_OLD_XDG_CONFIG_HOME = $env:XDG_CONFIG_HOME
 }
@@ -44,6 +51,24 @@ if ($env:XDG_CONFIG_HOME) {
 $env:DOTFILES_ENV_DIR = $targetDir
 $env:DOTFILES_ENV_NAME = "{{.EnvName}}"
 $env:XDG_CONFIG_HOME = "$targetDir\.config"
+
+$userBin = Join-Path $targetDir ".generated\user-bin"
+$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne $userBin }) -join [IO.Path]::PathSeparator
+$env:PATH = if ($filtered) { $userBin + [IO.Path]::PathSeparator + $filtered } else { $userBin }
+
+$mainScript = Join-Path $targetDir ".generated\shell-scripts\main.ps1"
+$envBin = Join-Path $targetDir ".generated\binaries\dotfiles\current\dotfiles.exe"
+if (-not (Test-Path $mainScript)) {
+  if (Get-Command dotfiles -ErrorAction SilentlyContinue) {
+    dotfiles --config "$targetDir\dotfiles.config.ts" state generate
+  } elseif (Test-Path $envBin) {
+    & $envBin --config "$targetDir\dotfiles.config.ts" state generate
+  }
+}
+
+if (Test-Path $mainScript) {
+  . $mainScript
+}
 
 Write-Host "Activated dotfiles environment: {{.EnvName}}"
 Write-Host "  Directory: $env:DOTFILES_ENV_DIR"

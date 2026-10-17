@@ -9,6 +9,7 @@ Virtual environment manager.
 ## Local conventions
 
 - Create and manage virtual environment activation scripts.
+- Virtual environment activation (`source` / `source.ps1`) uses `dotfiles` on `PATH` if available, or auto-bootstraps `dotfiles` into `$DOTFILES_ENV_DIR` via `install.sh` (`INSTALL_DIR=$DOTFILES_ENV_DIR DOTFILES_YES=1`), generates `.generated/` if missing, prepends `user-bin` to `PATH`, sources `.generated/shell-scripts/main.<zsh|bash|ps1>`, and restores `PATH` and `XDG_CONFIG_HOME` on `dotfiles-deactivate`.
 
 ## Local gotchas
 
