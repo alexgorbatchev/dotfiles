@@ -61,9 +61,6 @@
     "test-project": {
       "name": "test-project",
       "version": "1.0.0",
-      "devDependencies": {
-        "@alexgorbatchev/dotfiles": "file:..",
-      },
     },
   },
   "catalog": {
@@ -87,8 +84,6 @@
   },
   "packages": {
     "@adobe/css-tools": ["@adobe/css-tools@4.5.0", "", {}, "sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q=="],
-
-    "@alexgorbatchev/dotfiles": ["dotfiles@root:", {}],
 
     "@alexgorbatchev/typescript-ai-policy": ["@alexgorbatchev/typescript-ai-policy@13.0.0", "", { "dependencies": { "commander": "^14.0.3", "minimatch": "^10.2.5", "package-manager-detector": "^1.6.0" }, "peerDependencies": { "@typescript/native-preview": "*", "oxfmt": "^0.49.0", "oxlint": "^1.64.0", "typescript": ">=6.0.3" }, "optionalPeers": ["@typescript/native-preview", "typescript"], "bin": { "typescript-ai-policy": "dist/bin/typescript-ai-policy.js" } }, "sha512-i4uMBfqDLrn8GiK8ABL28eAT0WjKrqIQeIx8vqn1NhxsQMigGhSBvNieNeyWuUzOZR7JM2Luw4RWmsimEaa36A=="],
 
