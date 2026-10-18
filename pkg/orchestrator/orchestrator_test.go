@@ -4996,6 +4996,66 @@ func TestOrchestrator_ApplyUpdate(t *testing.T) {
 	}
 }
 
+func TestGenerateToolPrefersCurrentOverRecordedVersion(t *testing.T) {
+	t.Parallel()
+	for _, currentExists := range []bool{true, false} {
+		t.Run(fmt.Sprintf("current_exists=%t", currentExists), func(t *testing.T) {
+			ctx := context.Background()
+			memFS := fs.NewOSFS()
+			home := t.TempDir()
+			sqlDB, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer sqlDB.Close()
+			reg := registry.NewRegistry(sqlDB)
+			orch := NewOrchestrator(nil, memFS, exec.NewMockRunner(), reg, installer.NewRegistry())
+			projCfg := &config.ProjectConfig{Paths: config.PathsConfig{
+				HomeDir: home, TargetDir: filepath.Join(home, ".generated", "bin"),
+				BinariesDir: filepath.Join(home, ".generated", "binaries"), GeneratedDir: filepath.Join(home, ".generated"),
+			}}
+			tool := &config.ToolConfig{Name: "go-scaffold", InstallationMethod: "github-release", Binaries: testutil.DeclaredBinaries("go-scaffold")}
+			versionDir := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "v1.0.1")
+			recordedPath := filepath.Join(versionDir, tool.Name)
+			if err := memFS.MkdirAll(versionDir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := memFS.WriteFile(recordedPath, []byte("#!/bin/sh\n"), 0755); err != nil {
+				t.Fatal(err)
+			}
+			want := recordedPath
+			if currentExists {
+				currentDir := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current")
+				if err := memFS.Symlink(versionDir, currentDir); err != nil {
+					t.Fatal(err)
+				}
+				want = filepath.Join(currentDir, tool.Name)
+			}
+			paths, err := json.Marshal([]string{recordedPath})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+				return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+					ToolName: tool.Name, Version: "v1.0.1", InstallPath: versionDir, BinaryPaths: string(paths),
+				})
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+				t.Fatal(err)
+			}
+			content, err := memFS.ReadFile(filepath.Join(projCfg.Paths.TargetDir, tool.Name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if target := fmt.Sprintf("TOOL_EXECUTABLE=%q", want); !strings.Contains(string(content), target) {
+				t.Errorf("generated shim must contain %s", target)
+			}
+		})
+	}
+}
+
 func TestManualTool_ShimTargetUnifiedBetweenInstallAndGenerate(t *testing.T) {
 	t.Parallel()
 	const toolName = "hooked-manual"

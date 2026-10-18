@@ -1019,7 +1019,9 @@ func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.T
 	defaultBinaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
 	binaryPath := defaultBinaryPath
 
-	if knownPath != "" {
+	// Registry records from older installations can point directly at a version.
+	// Prefer current so changing the active version also changes the shim target.
+	if knownPath != "" && !installer.IsRealBinaryPath(ctx, o.fs, defaultBinaryPath) {
 		absPath := knownPath
 		if o.fs.IsAbs(knownPath) {
 			if abs, err := o.fs.Abs(knownPath); err == nil {
