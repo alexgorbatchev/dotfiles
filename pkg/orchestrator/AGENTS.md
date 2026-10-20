@@ -32,6 +32,8 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - Commit download-cache ownership only after recording a successful installation. Automatic pruning retains every recorded installed version; manual `ClearDownloadCache` bypasses the automatic policy, and dry runs remove nothing. A failed ownership update must skip automatic pruning.
 - `UninstallTools` (`uninstall_pipeline.go`) removes tools in reverse topological order, blocking removal of any dependency whose dependent failed to uninstall while continuing with independent tools via `toolbatch.Failures`.
 
+- `generateShellScripts` emits `shellinit.FormatPath` for the shim target directory twice: in the PATH Modifications section, so tool initializations can reach the shims, and again after the tool-specific initializations, so a tool script that prepends its own directories (`brew shellenv`) cannot shadow them. `TestGenerateShellScripts_ShimsStayFirstAfterToolInitializations` covers the second placement.
+
 ## Local gotchas
 
 - Executing generated shims during completion checks causes infinite recursion / nested `install` calls -> check `binariesDir` directly for the actual binary target, not `targetDir` shims.

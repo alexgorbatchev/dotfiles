@@ -327,20 +327,42 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 
 	binNames := GetBinaryNames(tool.Name, tool.Binaries)
 	prefix, _ := b.getBrewPrefix(ctx, formula)
-	resolvedBinaries := ResolveBinaryPaths(ctx, b.fsys, binNames, func(binName string) string {
-		if prefix != "" {
-			return filepath.Join(prefix, "bin", binName)
+	resolvedBinaries := make([]string, 0, len(binNames))
+	for _, binName := range binNames {
+		// The formula's own binary comes first: PATH can hold another formula's binary of the same name, as Homebrew's
+		// bin directory holds the regular ffmpeg when the tool installs the keg-only ffmpeg-full.
+		if formulaBinary, ok := b.formulaBinary(ctx, prefix, binName); ok {
+			resolvedBinaries = append(resolvedBinaries, formulaBinary)
+			continue
 		}
-		if exists, _ := b.fsys.Exists(filepath.Join("/opt/homebrew/bin", binName)); exists {
-			return filepath.Join("/opt/homebrew/bin", binName)
-		}
-		return filepath.Join("/usr/local/bin", binName)
-	})
+		resolvedBinaries = append(resolvedBinaries, ResolveBinaryPaths(ctx, b.fsys, []string{binName}, func(binName string) string {
+			if prefix != "" {
+				return filepath.Join(prefix, "bin", binName)
+			}
+			if exists, _ := b.fsys.Exists(filepath.Join("/opt/homebrew/bin", binName)); exists {
+				return filepath.Join("/opt/homebrew/bin", binName)
+			}
+			return filepath.Join("/usr/local/bin", binName)
+		})...)
+	}
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,
 		Version:  version,
 	}, nil
+}
+
+// formulaBinary returns binName in the bin directory of the formula installed at prefix, when that directory holds a
+// real binary of that name. A cask, or a formula whose binary lives elsewhere, has none there.
+func (b *BrewInstaller) formulaBinary(ctx context.Context, prefix string, binName string) (string, bool) {
+	if prefix == "" {
+		return "", false
+	}
+	path := filepath.Join(prefix, "bin", binName)
+	if !IsRealBinaryPath(ctx, b.fsys, path) {
+		return "", false
+	}
+	return path, true
 }
 
 // brewLinkArgs translates the `link` parameter into the leading arguments of a

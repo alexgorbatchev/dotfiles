@@ -10,6 +10,7 @@ Tool installer plugins (github-release, curl-script, cargo, brew, apt, dnf, pacm
 
 - Support slash-delimited `/pattern/flags` syntax across `compileRegex` and `MatchAssetPattern` for JavaScript `RegExp` interoperability.
 - Homebrew installer (`BrewInstaller`): `trust` defaults to `false`. When `trust: true`, automatically trust configured `tap`(s) before tapping/installing.
+- `BrewInstaller.Install` records each binary from the formula's own `<brew --prefix formula>/bin` when a real binary is there (`formulaBinary`), and searches PATH through `ResolveBinaryPaths` only for the rest: PATH can hold another formula's binary of the same name (the regular `ffmpeg` in Homebrew's bin directory for a keg-only `ffmpeg-full`).
 - Always use the injected `fs.FS` (`ResolvedFS.IsAbs()` / `ResolvedFS.Abs()`) for resolving user/tool paths (such as `binaryPath` in manual installer) instead of raw stdlib `filepath.IsAbs`.
 - Resolve a `binaryPath` install parameter only through `ResolveBinaryPath` (`binary_path.go`, v1 `expandToolConfigPath` rules), which `manual`, `curl-script` and the orchestrator share so the same value cannot mean different paths depending on who reads it.
 - `manual` installer (`ManualInstaller`) with `binaryPath` symlinks binaries into the destination directory by default (using relative symlinks where possible) and copies only upon explicit request (`copy: true` or `symlink: false`). Existing destination entries are cleared prior to installation so existing symlinks or stale artifacts are cleanly replaced without writing through.

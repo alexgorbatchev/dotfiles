@@ -756,6 +756,83 @@ func TestBrewInstaller(t *testing.T) {
 	})
 }
 
+// A formula's binaries are the ones in its own prefix. Another formula can put a binary of the same name earlier on
+// PATH: a keg-only ffmpeg-full shares its binary names with the regular ffmpeg formula, which other formulas install as
+// a dependency and link into Homebrew's bin directory.
+func TestBrewInstallerPrefersTheFormulasOwnBinaries(t *testing.T) {
+	const (
+		otherBinDir   = "/opt/homebrew/bin"
+		formulaPrefix = "/opt/homebrew/opt/ffmpeg-full"
+	)
+	t.Setenv("PATH", otherBinDir)
+	fsys := fs.NewMemFS()
+	for _, path := range []string{
+		filepath.Join(otherBinDir, "ffmpeg"),
+		filepath.Join(otherBinDir, "ffprobe"),
+		filepath.Join(formulaPrefix, "bin", "ffmpeg"),
+		filepath.Join(formulaPrefix, "bin", "ffprobe"),
+	} {
+		if err := fsys.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := fsys.WriteFile(path, []byte("#!/bin/sh\n"), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runner := exec.NewMockRunner()
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		if slices.Equal(c.Args, []string{"--prefix", "--", "ffmpeg-full"}) {
+			c.SetOutput([]byte(formulaPrefix + "\n"))
+		}
+		return nil
+	})
+
+	res, err := NewBrewInstaller(runner, fsys, nil).Install(context.Background(), &config.ToolConfig{
+		Name:          "ffmpeg",
+		Binaries:      testutil.DeclaredBinaries("ffmpeg", "ffprobe"),
+		InstallParams: map[string]interface{}{"formula": "ffmpeg-full"},
+	})
+	if err != nil {
+		t.Fatalf("Install(...) error = %v", err)
+	}
+	want := []string{filepath.Join(formulaPrefix, "bin", "ffmpeg"), filepath.Join(formulaPrefix, "bin", "ffprobe")}
+	if !slices.Equal(res.Binaries, want) {
+		t.Errorf("Install(...) binaries = %v, want the formula's own %v", res.Binaries, want)
+	}
+}
+
+// A binary the formula's prefix does not hold, such as one a cask installs, is still found on PATH.
+func TestBrewInstallerFindsBinariesOutsideTheFormulaPrefixOnPath(t *testing.T) {
+	const binDir = "/usr/local/bin"
+	t.Setenv("PATH", binDir)
+	fsys := fs.NewMemFS()
+	if err := fsys.MkdirAll(binDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := fsys.WriteFile(filepath.Join(binDir, "code"), []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	runner := exec.NewMockRunner()
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		if slices.Equal(c.Args, []string{"--prefix", "--", "visual-studio-code"}) {
+			c.SetOutput([]byte("/opt/homebrew/opt/visual-studio-code\n"))
+		}
+		return nil
+	})
+
+	res, err := NewBrewInstaller(runner, fsys, nil).Install(context.Background(), &config.ToolConfig{
+		Name:          "code",
+		Binaries:      testutil.DeclaredBinaries("code"),
+		InstallParams: map[string]interface{}{"formula": "visual-studio-code", "cask": true},
+	})
+	if err != nil {
+		t.Fatalf("Install(...) error = %v", err)
+	}
+	if want := []string{filepath.Join(binDir, "code")}; !slices.Equal(res.Binaries, want) {
+		t.Errorf("Install(...) binaries = %v, want %v", res.Binaries, want)
+	}
+}
+
 // TestBrewInstallerLinkParameter pins the v1 contract for `link`: a truthy
 // boolean or an options object runs `brew link`, while false or an omitted key
 // runs nothing (issue #34).

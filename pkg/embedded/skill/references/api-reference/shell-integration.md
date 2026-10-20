@@ -87,7 +87,7 @@ Add a directory to the PATH environment variable. Paths are deduplicated during 
 **Why use `.path()` instead of `.env({ PATH: ... })`?**
 
 - Paths are automatically deduplicated across all tools
-- Proper ordering is maintained (prepended to PATH; the dotfiles shim target directory is placed ahead of tool-defined paths)
+- Proper ordering is maintained (prepended to PATH; the dotfiles shim target directory is placed ahead of tool-defined paths). A path already on PATH moves to the front rather than staying where it is, so a profile that runs earlier and reorders PATH, such as macOS `path_helper` putting Homebrew first in a login shell, cannot shadow the shims. The shims are placed first once more after the tool initializations, because a tool script such as `brew shellenv` can prepend its own directories
 - TypeScript prevents using `PATH` in `.env()` with a clear error message
 
 **Note**: Setting `PATH` via `.env({ PATH: '...' })` is prohibited. Use `.path()` instead.

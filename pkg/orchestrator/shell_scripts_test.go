@@ -336,16 +336,17 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 		t.Fatalf("reading main.zsh: %v", err)
 	}
 	zshContent := string(zshData)
-	if !strings.Contains(zshContent, `export PATH="/home/user/.local/share/fnm/aliases/default/bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.local/share/fnm/aliases/default/bin"`) {
 		t.Errorf("expected main.zsh to export fnm path, got:\n%s", zshContent)
 	}
-	if !strings.Contains(zshContent, `export PATH="/home/user/.custom/bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.custom/bin"`) {
 		t.Errorf("expected main.zsh to export custom path from map, got:\n%s", zshContent)
 	}
-	// Count occurrences of TargetDir in PATH modifications
-	targetOccurrences := strings.Count(zshContent, `export PATH="/home/user/.generated/user-bin:$PATH"`)
+	// Count occurrences of TargetDir in PATH modifications; the shims are placed first once more after the
+	// tool initializations, outside this section.
+	targetOccurrences := strings.Count(pathModificationsSection(zshContent), `__dotfiles_dir="/home/user/.generated/user-bin"`)
 	if targetOccurrences != 1 {
-		t.Errorf("expected TargetDir to appear exactly once, got %d occurrences", targetOccurrences)
+		t.Errorf("expected TargetDir to appear exactly once in PATH modifications, got %d occurrences", targetOccurrences)
 	}
 
 	// 2. Check Bash
@@ -354,7 +355,7 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 		t.Fatalf("reading main.bash: %v", err)
 	}
 	bashContent := string(bashData)
-	if !strings.Contains(bashContent, `export PATH="/home/user/.local/share/fnm/aliases/default/bin:$PATH"`) {
+	if !strings.Contains(bashContent, `__dotfiles_dir="/home/user/.local/share/fnm/aliases/default/bin"`) {
 		t.Errorf("expected main.bash to export fnm path, got:\n%s", bashContent)
 	}
 
@@ -425,48 +426,48 @@ func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
 	zshContent := string(zshData)
 
 	// Tilde expansion: ~/custom-bin -> /home/user/custom-bin
-	if !strings.Contains(zshContent, `export PATH="/home/user/custom-bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/custom-bin"`) {
 		t.Errorf("expected tilde expansion for ~/custom-bin, got:\n%s", zshContent)
 	}
 
 	// $HOME expansion: $HOME/.local/share/fnm/aliases/default/bin -> /home/user/.local/share/fnm/aliases/default/bin
-	if !strings.Contains(zshContent, `export PATH="/home/user/.local/share/fnm/aliases/default/bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.local/share/fnm/aliases/default/bin"`) {
 		t.Errorf("expected $HOME expansion for fnm path, got:\n%s", zshContent)
 	}
 
 	// ${HOME} expansion: ${HOME}/.cargo/bin -> /home/user/.cargo/bin
-	if !strings.Contains(zshContent, `export PATH="/home/user/.cargo/bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.cargo/bin"`) {
 		t.Errorf("expected ${HOME} expansion for cargo path, got:\n%s", zshContent)
 	}
 
 	// Map path with $HOME: map[string]interface{}{"path": "$HOME/go/bin"} -> /home/user/go/bin
-	if !strings.Contains(zshContent, `export PATH="/home/user/go/bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/go/bin"`) {
 		t.Errorf("expected map path with $HOME to resolve to /home/user/go/bin, got:\n%s", zshContent)
 	}
 
 	// Relative path: ./rel-bin -> /home/user/tools/tool-a/rel-bin
-	if !strings.Contains(zshContent, `export PATH="/home/user/tools/tool-a/rel-bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/tools/tool-a/rel-bin"`) {
 		t.Errorf("expected relative path resolution for ./rel-bin, got:\n%s", zshContent)
 	}
 
 	// Spaced path: '   /home/user/spaced/bin/   ' -> /home/user/spaced/bin (exactly once)
-	if !strings.Contains(zshContent, `export PATH="/home/user/spaced/bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/spaced/bin"`) {
 		t.Errorf("expected trimmed/cleaned path for spaced bin, got:\n%s", zshContent)
 	}
-	spacedCount := strings.Count(zshContent, `export PATH="/home/user/spaced/bin:$PATH"`)
+	spacedCount := strings.Count(zshContent, `__dotfiles_dir="/home/user/spaced/bin"`)
 	if spacedCount != 1 {
 		t.Errorf("expected spaced path to be deduplicated to 1 occurrence, got %d", spacedCount)
 	}
 
 	// Map path with tilde: map[string]interface{}{"path": "~/map-bin"} -> /home/user/map-bin
-	if !strings.Contains(zshContent, `export PATH="/home/user/map-bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/map-bin"`) {
 		t.Errorf("expected map path with tilde to resolve to /home/user/map-bin, got:\n%s", zshContent)
 	}
 
-	// TargetDir appears only once
-	targetCount := strings.Count(zshContent, `export PATH="/home/user/.generated/user-bin:$PATH"`)
+	// TargetDir appears only once in PATH modifications
+	targetCount := strings.Count(pathModificationsSection(zshContent), `__dotfiles_dir="/home/user/.generated/user-bin"`)
 	if targetCount != 1 {
-		t.Errorf("expected TargetDir to appear exactly once, got %d", targetCount)
+		t.Errorf("expected TargetDir to appear exactly once in PATH modifications, got %d", targetCount)
 	}
 }
 
@@ -640,7 +641,7 @@ func TestGenerateShellScripts_DisabledAndHostnameFiltering(t *testing.T) {
 	if !strings.Contains(zshContent, `alias active_alias='echo active'`) {
 		t.Errorf("expected active_alias to be present in main.zsh")
 	}
-	if !strings.Contains(zshContent, `export PATH="/home/user/active/bin:$PATH"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/active/bin"`) {
 		t.Errorf("expected active tool path to be present in main.zsh")
 	}
 
