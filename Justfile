@@ -5,15 +5,15 @@ default: test
 
 # Run CLI in interactive human mode
 run *args:
-	go run ./cmd/dotfiles {{ args }}
+    go run ./cmd/dotfiles {{ args }}
 
 # Run CLI against test-project in interactive human mode
 test-project *args="state generate":
-	go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
+    go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Run CLI against test-project in agent mode (AGENT=1)
 run-ai *args="state generate":
-	AGENT=1 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
+    AGENT=1 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Full validation check (lint + typecheck + docs links + tests)
 check: lint typecheck unused docs-links test
@@ -96,3 +96,9 @@ dev-bootstrap target="~/.dotfiles":
 # Run release pipeline
 release bump="patch":
     bun scripts/release.ts {{ bump }}
+
+# Prepare dependencies and generated assets for local development
+setup:
+    bun install --frozen-lockfile
+    go mod download
+    just prepare
