@@ -369,6 +369,12 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				scriptLines = append(scriptLines, "")
 			}
 
+			// Tool initializations can put their own directories in front of PATH, as `brew shellenv` does, which
+			// would let a binary there shadow the tool a shim runs. Place the shims first again after them;
+			// FormatPath leaves PATH unchanged when they still are.
+			scriptLines = append(scriptLines, shellinit.FormatPath(sh, projCfg.Paths.TargetDir))
+			scriptLines = append(scriptLines, "")
+
 			// 7. Shell Completions Setup
 			scriptLines = append(scriptLines, shellinit.GenerateSectionHeader("Shell Completions Setup"))
 			completionsDir := filepath.Join(shellScriptsDir, sh, "completions")

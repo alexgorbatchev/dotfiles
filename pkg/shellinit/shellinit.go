@@ -194,19 +194,37 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 }
 
 // FormatPath returns shell script commands placing targetDir at the front of PATH.
+// A directory already on PATH moves to the front rather than staying where it is: on
+// macOS, path_helper in /etc/zprofile runs after ~/.zshenv in a login shell and moves
+// the system directories, Homebrew's among them, ahead of the ones set earlier.
 // Both branches are idempotent so that sourcing the generated script again (nested
-// shells, `exec zsh`, re-sourcing after generate) never grows PATH: PowerShell filters
-// existing occurrences out before prepending, and the POSIX shells only prepend when
-// the directory is not already present.
+// shells, `exec zsh`, re-sourcing after generate) never grows PATH: each removes the
+// directory's existing occurrences before prepending it, and the bash/zsh branch
+// leaves PATH untouched when the directory is already first.
 func FormatPath(shell, targetDir string) string {
 	switch shell {
 	case "powershell":
 		return fmt.Sprintf(`$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne "%s" }) -join [IO.Path]::PathSeparator
 $env:PATH = if ($filtered) { "%s" + [IO.Path]::PathSeparator + $filtered } else { "%s" }`, targetDir, targetDir, targetDir)
 	default: // zsh, bash, sh, etc.
-		return fmt.Sprintf(`if [[ ":$PATH:" != *":%s:"* ]]; then
-  export PATH="%s:$PATH"
-fi`, targetDir, targetDir)
+		// The directory is matched through a variable: a "/" written into ${var/pattern/...}
+		// would end the pattern, and quoting the expansion matches it literally in bash 3.2
+		// (macOS's /bin/bash), current bash and zsh. The loop also stops when a replacement
+		// changes nothing, so no shell can hang its startup here.
+		return fmt.Sprintf(`__dotfiles_dir="%s"
+if [[ ":$PATH:" != ":$__dotfiles_dir:"* ]]; then
+  __dotfiles_path=":$PATH:"
+  while [[ "$__dotfiles_path" == *":$__dotfiles_dir:"* ]]; do
+    __dotfiles_next=${__dotfiles_path/":$__dotfiles_dir:"/:}
+    [[ "$__dotfiles_next" == "$__dotfiles_path" ]] && break
+    __dotfiles_path=$__dotfiles_next
+  done
+  __dotfiles_path=${__dotfiles_path#:}
+  __dotfiles_path=${__dotfiles_path%%:}
+  export PATH="$__dotfiles_dir${__dotfiles_path:+:$__dotfiles_path}"
+  unset __dotfiles_path __dotfiles_next
+fi
+unset __dotfiles_dir`, targetDir)
 	}
 }
 

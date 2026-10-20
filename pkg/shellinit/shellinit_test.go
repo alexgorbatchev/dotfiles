@@ -1,11 +1,14 @@
 package shellinit
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	osexec "os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
@@ -489,6 +492,59 @@ func TestInjector_Errors(t *testing.T) {
 	})
 }
 
+// The bash/zsh form runs in the shell itself: what matters is the PATH it leaves.
+func TestFormatPathPlacesTheDirectoryFirstInBashAndZsh(t *testing.T) {
+	const dir = "/home/user/my bin"
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{name: "absent", path: "/usr/bin:/bin", want: dir + ":/usr/bin:/bin"},
+		// path_helper moved the system directories ahead of it in a macOS login shell.
+		{name: "present behind other directories", path: "/opt/homebrew/bin:/usr/bin:" + dir + ":/bin", want: dir + ":/opt/homebrew/bin:/usr/bin:/bin"},
+		{name: "already first", path: dir + ":/usr/bin", want: dir + ":/usr/bin"},
+		{name: "present more than once", path: "/usr/bin:" + dir + ":" + dir + ":/bin:" + dir, want: dir + ":/usr/bin:/bin"},
+		{name: "last", path: "/usr/bin:" + dir, want: dir + ":/usr/bin"},
+		{name: "only entry", path: dir, want: dir},
+		// A trailing colon would put the current directory on PATH.
+		{name: "empty", path: "", want: dir},
+		{name: "a directory sharing its prefix stays", path: "/usr/bin:" + dir + "2", want: dir + ":/usr/bin:" + dir + "2"},
+	}
+	shells := []struct {
+		name string
+		args []string
+	}{
+		{name: "bash", args: []string{"--noprofile", "--norc", "-c"}},
+		{name: "zsh", args: []string{"-f", "-c"}},
+	}
+	for _, sh := range shells {
+		shellPath, err := osexec.LookPath(sh.name)
+		if err != nil {
+			t.Logf("%s is not on PATH; skipping its cases", sh.name)
+			continue
+		}
+		for _, tt := range tests {
+			t.Run(sh.name+"/"+tt.name, func(t *testing.T) {
+				// Sourcing twice mirrors nested shells: the second run must leave PATH as the first did.
+				script := FormatPath(sh.name, dir) + "\n" + FormatPath(sh.name, dir) + "\nprintf '%s' \"$PATH\""
+				// A script that never ends would hang every shell start: fail instead of waiting.
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				cmd := osexec.CommandContext(ctx, shellPath, append(sh.args, script)...)
+				cmd.Env = []string{"PATH=" + tt.path}
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("%s -c failed: %v\n%s", sh.name, err, out)
+				}
+				if got := string(out); got != tt.want {
+					t.Errorf("PATH = %q, want %q", got, tt.want)
+				}
+			})
+		}
+	}
+}
+
 func TestFormatPath(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -496,22 +552,6 @@ func TestFormatPath(t *testing.T) {
 		targetDir string
 		want      string
 	}{
-		{
-			name:      "zsh guarded prepend",
-			shell:     "zsh",
-			targetDir: "/home/user/bin",
-			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
-  export PATH="/home/user/bin:$PATH"
-fi`,
-		},
-		{
-			name:      "bash guarded prepend",
-			shell:     "bash",
-			targetDir: "/home/user/bin",
-			want: `if [[ ":$PATH:" != *":/home/user/bin:"* ]]; then
-  export PATH="/home/user/bin:$PATH"
-fi`,
-		},
 		{
 			name:      "powershell path append",
 			shell:     "powershell",
