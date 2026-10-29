@@ -786,6 +786,60 @@ func TestFindTool(t *testing.T) {
 	}
 }
 
+func TestFindTargetTool(t *testing.T) {
+	// Ordered as the loader returns them: alphabetically, so the tools that would shadow
+	// a later tool's name come first.
+	toolConfigs := []*ToolConfig{
+		{
+			Name: "agent-resume",
+			ShellConfigs: &ShellConfigs{
+				Zsh: &ShellTypeConfig{
+					Functions: map[string]string{"codex": "command codex \"$@\""},
+					Aliases:   map[string]string{"cx": "codex"},
+				},
+			},
+		},
+		{Name: "bat-extras", Binaries: []interface{}{map[string]interface{}{"name": "bat"}}},
+		{Name: "codex", Binaries: []interface{}{map[string]interface{}{"name": "codex"}}},
+		{Name: "github-release--bat", Binaries: []interface{}{map[string]interface{}{"name": "batcat"}}},
+		{Name: "rg-wrapper", Binaries: []interface{}{map[string]interface{}{"name": "rg"}}},
+	}
+
+	tests := []struct {
+		name      string
+		query     string
+		wantMatch string
+	}{
+		{"exact name beats an earlier tool's shell function", "codex", "codex"},
+		{"name suffix beats an earlier tool's binary", "bat", "github-release--bat"},
+		{"binary name", "batcat", "github-release--bat"},
+		{"binary name of an unprefixed tool", "rg", "rg-wrapper"},
+		{"shell alias is not a tool", "cx", ""},
+		{"empty query", "", ""},
+		{"whitespace query", "   ", ""},
+		{"not found query", "nonexistent", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FindTargetTool(toolConfigs, tt.query)
+			gotName := ""
+			if got != nil {
+				gotName = got.Name
+			}
+			if gotName != tt.wantMatch {
+				t.Errorf("FindTargetTool(%q) = %q; want %q", tt.query, gotName, tt.wantMatch)
+			}
+		})
+	}
+
+	t.Run("shell function is not a tool", func(t *testing.T) {
+		if got := FindTargetTool(toolConfigs[:1], "codex"); got != nil {
+			t.Errorf("FindTargetTool(codex) = %q; want no tool when only a function has that name", got.Name)
+		}
+	})
+}
+
 func TestPathsConfig_GetToolConfigsDirs(t *testing.T) {
 	tests := []struct {
 		name  string

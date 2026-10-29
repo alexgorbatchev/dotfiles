@@ -50,7 +50,7 @@ var toolInfoCmd = &cobra.Command{
 		}
 		defer services.Close()
 
-		targetTool := config.FindTool(services.ToolConfigs, args[0])
+		targetTool := config.FindTargetTool(services.ToolConfigs, args[0])
 		if targetTool == nil {
 			return fmt.Errorf("tool %q not found", args[0])
 		}

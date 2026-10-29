@@ -710,7 +710,39 @@ func (tc *ToolConfig) Validate() error {
 	return nil
 }
 
+// FindTargetTool finds the tool a command acts on: the tool named query, else the one
+// whose name ends in "--"+query, else the one providing a binary named query. Shell
+// aliases and functions are not tools, so a function another tool declares under a
+// tool's name (a `codex` wrapper, say) never stands in for that tool.
+func FindTargetTool(toolConfigs []*ToolConfig, query string) *ToolConfig {
+	if strings.TrimSpace(query) == "" {
+		return nil
+	}
+	matchers := []func(*ToolConfig) bool{
+		func(tc *ToolConfig) bool { return tc.Name == query },
+		func(tc *ToolConfig) bool { return strings.HasSuffix(tc.Name, "--"+query) },
+		func(tc *ToolConfig) bool {
+			for _, b := range tc.Binaries {
+				if getBinaryName(b) == query {
+					return true
+				}
+			}
+			return false
+		},
+	}
+	for _, matches := range matchers {
+		for _, tc := range toolConfigs {
+			if matches(tc) {
+				return tc
+			}
+		}
+	}
+	return nil
+}
+
 // FindTool searches toolConfigs for a tool matching query by name, name suffix ("--"+query), binary name, or shell alias/function name.
+// It answers which tool file declares a name, as `tool which` does; commands that act on
+// a tool use FindTargetTool.
 func FindTool(toolConfigs []*ToolConfig, query string) *ToolConfig {
 	if strings.TrimSpace(query) == "" {
 		return nil

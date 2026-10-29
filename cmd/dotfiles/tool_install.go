@@ -47,7 +47,7 @@ var toolInstallCmd = &cobra.Command{
 				if strings.Contains(toolName, "=") {
 					continue
 				}
-				targetTool := config.FindTool(services.ToolConfigs, toolName)
+				targetTool := config.FindTargetTool(services.ToolConfigs, toolName)
 				if targetTool == nil {
 					failures.Record(log, toolName, fmt.Errorf("tool %q not found in configuration", toolName))
 					continue

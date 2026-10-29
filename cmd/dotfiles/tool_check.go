@@ -58,7 +58,7 @@ var toolCheckCmd = &cobra.Command{
 		if len(args) > 0 {
 			toolsToCheck = []*config.ToolConfig{}
 			for _, name := range args {
-				tc := config.FindTool(services.ToolConfigs, name)
+				tc := config.FindTargetTool(services.ToolConfigs, name)
 				if tc == nil {
 					err := fmt.Errorf("tool %q not found in configuration", name)
 					log.WithTag(name).Error(logger.Message(err.Error()))

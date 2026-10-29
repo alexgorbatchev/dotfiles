@@ -985,6 +985,38 @@ func TestUpdateAndValidateCommand_FindTool(t *testing.T) {
 	}
 }
 
+// A shell function another tool declares under a tool's name does not stand in for
+// that tool: agent-resume wraps codex in a function and sorts first, and updating codex
+// must still reach codex.
+func TestToolCommandsTargetToolsNotShellFunctions(t *testing.T) {
+	dir := t.TempDir()
+	configPath := writeTSProject(t, dir, `"paths": {`+projectPathsTS(dir)+`}`, tsTools{
+		"agent-resume": `install().zsh((shell) => shell.functions({ codex: 'command codex "$@"' }))`,
+		"codex":        `install("manual").bin("codex")`,
+	})
+
+	out, err := runCommand("-c", configPath, "tool", "update", "codex")
+	if err == nil {
+		t.Fatalf("expected update of an uninstalled tool to fail, output %q", out.Combined)
+	}
+	mustContain(t, "error", err.Error(), `tool "codex": tool "codex" is not installed`)
+	if strings.Contains(out.Combined, "[agent-resume]") {
+		t.Errorf("update resolved codex to agent-resume:\n%s", out.Combined)
+	}
+
+	info, err := runCommand("-c", configPath, "tool", "info", "codex", "--json")
+	if err != nil {
+		t.Fatalf("tool info codex: %v\n%s", err, info.Combined)
+	}
+	var report ToolInfoReport
+	if err := json.Unmarshal([]byte(info.Stdout), &report); err != nil {
+		t.Fatalf("decoding tool info: %v\n%s", err, info.Stdout)
+	}
+	if report.Name != "codex" || filepath.Base(report.ConfigFilePath) != "codex.tool.ts" {
+		t.Errorf("tool info codex described %q from %q, want codex from codex.tool.ts", report.Name, report.ConfigFilePath)
+	}
+}
+
 // A tool is named after its file.
 func TestBootstrapServices_ToolNameFromFileName(t *testing.T) {
 	tmpDir := t.TempDir()

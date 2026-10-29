@@ -224,7 +224,7 @@ When run without arguments, checks all installed tools for updates and installs 
 			if err := ctx.Err(); err != nil {
 				return errors.Join(failures.Err(), err)
 			}
-			targetTool := config.FindTool(services.ToolConfigs, toolName)
+			targetTool := config.FindTargetTool(services.ToolConfigs, toolName)
 			if targetTool == nil {
 				failures.Record(logs.report, toolName, fmt.Errorf("tool %q not found in configuration", toolName))
 				continue

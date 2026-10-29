@@ -31,7 +31,7 @@ var stateDiffCmd = &cobra.Command{
 
 		toolsToInspect := services.ToolConfigs
 		if len(args) > 0 {
-			targetTool := config.FindTool(services.ToolConfigs, args[0])
+			targetTool := config.FindTargetTool(services.ToolConfigs, args[0])
 			if targetTool == nil {
 				return fmt.Errorf("tool %q not found", args[0])
 			}

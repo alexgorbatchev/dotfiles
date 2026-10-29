@@ -58,7 +58,7 @@ When a tool name is provided (e.g. 'dotfiles tool validate ripgrep'), it validat
 
 		if len(args) > 0 {
 			targetName := args[0]
-			targetTool := config.FindTool(services.ToolConfigs, targetName)
+			targetTool := config.FindTargetTool(services.ToolConfigs, targetName)
 			if targetTool != nil {
 				targetTools = append(targetTools, targetTool)
 			}
