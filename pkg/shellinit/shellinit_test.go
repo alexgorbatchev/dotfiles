@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	osexec "os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -519,9 +521,9 @@ func TestFormatPathPlacesTheDirectoryFirstInBashAndZsh(t *testing.T) {
 		{name: "zsh", args: []string{"-f", "-c"}},
 	}
 	for _, sh := range shells {
-		shellPath, err := osexec.LookPath(sh.name)
+		shellPath, err := lookShellBinary(sh.name)
 		if err != nil {
-			t.Logf("%s is not on PATH; skipping its cases", sh.name)
+			t.Logf("%s is not on PATH as a binary; skipping its cases: %v", sh.name, err)
 			continue
 		}
 		for _, tt := range tests {
@@ -543,6 +545,32 @@ func TestFormatPathPlacesTheDirectoryFirstInBashAndZsh(t *testing.T) {
 			})
 		}
 	}
+}
+
+// lookShellBinary finds the shell itself on PATH, passing over wrapper scripts such as
+// dotfiles shims: the cases run it with PATH replaced, where a wrapper's own interpreter
+// (`#!/usr/bin/env bash`) cannot be found.
+func lookShellBinary(name string) (string, error) {
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		if dir == "" {
+			continue
+		}
+		candidate, err := osexec.LookPath(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		f, err := os.Open(candidate)
+		if err != nil {
+			continue
+		}
+		magic := make([]byte, 2)
+		_, readErr := io.ReadFull(f, magic)
+		_ = f.Close()
+		if readErr == nil && string(magic) != "#!" {
+			return candidate, nil
+		}
+	}
+	return "", osexec.ErrNotFound
 }
 
 func TestFormatPath(t *testing.T) {

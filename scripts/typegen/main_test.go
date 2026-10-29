@@ -162,8 +162,12 @@ func TestGetRepoRoot(t *testing.T) {
 		t.Fatalf("expected go.mod in repo root %s: %v", root, err)
 	}
 
-	// In a simulated repository hierarchy
-	mockRoot := t.TempDir()
+	// In a simulated repository hierarchy. getRepoRoot starts from os.Getwd, which reports
+	// the directory with symlinks resolved (/var -> /private/var on macOS).
+	mockRoot, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatalf("resolving the temporary directory: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(mockRoot, "go.mod"), []byte("module test\n"), 0644); err != nil {
 		t.Fatalf("failed to create go.mod: %v", err)
 	}

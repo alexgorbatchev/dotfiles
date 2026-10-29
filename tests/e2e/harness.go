@@ -65,7 +65,13 @@ type HarnessOptions struct {
 
 func NewTestHarness(t *testing.T, options HarnessOptions) *TestHarness {
 	t.Helper()
-	tempDir := t.TempDir()
+	// The CLI derives its paths from the working directory, which getcwd reports with every
+	// symlink resolved (macOS keeps temporary directories under /var -> /private/var), so
+	// expectations are built from the same resolved spelling.
+	tempDir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatalf("resolving the temporary directory: %v", err)
+	}
 
 	h := &TestHarness{
 		T:             t,
