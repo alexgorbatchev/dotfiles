@@ -29,9 +29,14 @@ func NewGenerator(f fs.FS) *Generator {
 
 // Config represents parameters for the generated executable shim.
 type Config struct {
-	ToolName             string
-	BinaryName           string
-	BinaryPath           string
+	ToolName   string
+	BinaryName string
+	BinaryPath string
+	// BashPath is the absolute path of the bash that runs the shim, written into its
+	// shebang. A shim runs wherever its binary is invoked, including under a PATH that
+	// has no bash on it (launchd, cron, a test's PATH), where `#!/usr/bin/env bash`
+	// fails before the shim starts.
+	BashPath             string
 	Sudo                 bool
 	CliCommand           string
 	ConfigFilePath       string
@@ -57,6 +62,11 @@ func (g *Generator) Generate(shimPath string, cfg Config) error {
 	}
 	if cfg.BinaryPath == "" {
 		return fmt.Errorf("binary path must not be empty")
+	}
+	// The kernel splits a shebang at whitespace, so a bash path containing any would
+	// run a different program with the rest as its argument.
+	if !filepath.IsAbs(cfg.BashPath) || strings.ContainsAny(cfg.BashPath, " \t\n") {
+		return fmt.Errorf("bash path must be an absolute path without whitespace, got %q", cfg.BashPath)
 	}
 
 	cleanShimPath := filepath.Clean(shimPath)

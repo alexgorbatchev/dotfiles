@@ -27,7 +27,7 @@ func (s *symlinkRefusingFS) Symlink(oldname, newname string) error {
 // instead, or the project's tool files would not typecheck at all.
 func TestSyncTypeScriptTypesCopiesWhenSymlinksAreUnavailable(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, &symlinkRefusingFS{FS: memFS}, "")
 
 	root := "/home/user/dotfiles"

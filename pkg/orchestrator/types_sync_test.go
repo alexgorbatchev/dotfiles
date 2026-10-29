@@ -36,7 +36,7 @@ func readGenerated(t *testing.T, memFS fs.FS, path string) string {
 
 func TestSyncTypeScriptTypesWritesModuleRegistryWithEveryTool(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.ts")
 	projCfg := typesProjectConfig()
 
@@ -63,7 +63,7 @@ func TestSyncTypeScriptTypesWritesModuleRegistryWithEveryTool(t *testing.T) {
 
 func TestSyncTypeScriptTypesWritesTheCLIOwnedTSConfig(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.ts")
 	projCfg := typesProjectConfig()
 
@@ -109,7 +109,7 @@ func TestSyncTypeScriptTypesWritesTheCLIOwnedTSConfig(t *testing.T) {
 
 func TestSyncTypeScriptTypesLeavesNonTSConfigOutOfTheProgram(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.js")
 	projCfg := typesProjectConfig()
 
@@ -145,7 +145,7 @@ func TestSyncTypeScriptTypesProjectTSConfigOwnership(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.ts")
 			projCfg := typesProjectConfig()
 			path := filepath.Join(projCfg.Paths.DotfilesDir, "tsconfig.json")
@@ -180,7 +180,7 @@ func TestSyncTypeScriptTypesProjectTSConfigOwnership(t *testing.T) {
 // would sit two directories away from the CLI's bin-name registry of that very name.
 func TestSyncTypeScriptTypesRemovesFilesTheEmbeddedPackageNoLongerHas(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.ts")
 	projCfg := typesProjectConfig()
 

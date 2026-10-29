@@ -28,7 +28,7 @@ import (
 
 func TestOrchestratorSettersAndHelpers(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -95,7 +95,7 @@ func TestOrchestratorSettersAndHelpers(t *testing.T) {
 
 func TestCleanupStaleArtifactsAndCopies(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -165,7 +165,7 @@ func TestLineLogWriter(t *testing.T) {
 
 func TestShouldSkipInstallationAndHealth(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -254,7 +254,7 @@ func TestShouldSkipInstallationAndHealth(t *testing.T) {
 
 func TestGetTargetVersion(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	orch := NewOrchestrator(logger.New(logger.Config{Writer: io.Discard}), memFS, runner, nil, nil)
 
@@ -319,7 +319,7 @@ func TestGetTargetVersion(t *testing.T) {
 
 func TestGenerateCompletionsForTool(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -376,7 +376,7 @@ func TestGenerateCompletionsForTool(t *testing.T) {
 
 func TestCleanupStaleArtifactsWithStaleFiles(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -450,7 +450,7 @@ func TestCleanupStaleArtifactsWithStaleFiles(t *testing.T) {
 }
 
 func TestAutoInstallAndCliCommandHelpers(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	orch := NewOrchestrator(logger.New(logger.Config{Writer: io.Discard}), memFS, runner, nil, nil)
 
@@ -487,7 +487,7 @@ func TestAutoInstallAndCliCommandHelpers(t *testing.T) {
 
 func TestGenerateToolFilteringAndCopies(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -560,7 +560,7 @@ func TestGenerateToolFilteringAndCopies(t *testing.T) {
 
 func TestInstallToolErrorBranches(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -629,7 +629,7 @@ func TestInstallToolErrorBranches(t *testing.T) {
 
 func TestRemoveAllAndHealthCheckEdgeCases(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -708,7 +708,7 @@ func TestRemoveAllAndHealthCheckEdgeCases(t *testing.T) {
 
 func TestGenerateShellScriptsFeaturesAndTypes(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -779,7 +779,7 @@ func TestGenerateShellScriptsFeaturesAndTypes(t *testing.T) {
 
 func TestGenerateToolsFullWorkflow(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -834,7 +834,7 @@ func TestGenerateToolsFullWorkflow(t *testing.T) {
 
 func TestInstallToolsWorkflow(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -885,7 +885,7 @@ func TestInstallToolsWorkflow(t *testing.T) {
 
 func TestInstallToolNonExternalSuccessAndError(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -956,7 +956,7 @@ func TestInstallToolNonExternalSuccessAndError(t *testing.T) {
 
 func TestInstallToolConflictingShimWarning(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -1007,7 +1007,7 @@ func TestInstallToolConflictingShimWarning(t *testing.T) {
 
 func TestInstallToolsAndCleanupErrors(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -1057,7 +1057,7 @@ func TestInstallToolsAndCleanupErrors(t *testing.T) {
 
 func TestGenerateToolsAutoInstallAndDisabled(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -1121,7 +1121,7 @@ func TestGenerateToolsAutoInstallAndDisabled(t *testing.T) {
 
 func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -1340,7 +1340,7 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 
 func TestGenerateToolsAndInstallToolsAllPaths(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -1431,7 +1431,7 @@ func (m *mockFailingInstaller) Install(ctx context.Context, tool *config.ToolCon
 }
 
 func TestOrchestratorCoverageBoost(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -1675,7 +1675,7 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 }
 
 func TestInstallToolExternallyManaged(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	ctx := context.Background()
 
@@ -1765,7 +1765,7 @@ func TestBuildHookEnv(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
 	if err != nil {
@@ -1870,7 +1870,7 @@ func TestBuildHookEnv(t *testing.T) {
 
 func TestRemoveAllNonEmptyDirectory(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	nestedDir := "/test/dir/sub/nested"
 	_ = memFS.MkdirAll(nestedDir, 0755)
 	_ = memFS.WriteFile(filepath.Join(nestedDir, "file.txt"), []byte("data"), 0644)
@@ -1895,7 +1895,7 @@ func TestGenerateTools_PropagateAutoInstallToDependencies(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
 	if err != nil {
@@ -1974,7 +1974,7 @@ func TestGenerateTools_DependencyAutoInstallFailureCascade(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
 	if err != nil {
@@ -2079,7 +2079,7 @@ func TestInstallTool_StagingDirectoryAndPersistentDownloadCache(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
 	if err != nil {
@@ -2171,7 +2171,7 @@ func TestInstallTool_AppliesCargoSettings(t *testing.T) {
 	instReg := installer.NewRegistry()
 	spy := &cargoSettingsSpyInstaller{cacheSpyInstaller: cacheSpyInstaller{name: "cargo-spy-installer"}}
 	_ = instReg.Register(spy)
-	orch := NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), registry.NewRegistry(database), instReg)
+	orch := NewOrchestrator(log, newMemFS(), exec.NewMockRunner(), registry.NewRegistry(database), instReg)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -2224,7 +2224,7 @@ func TestInstallTool_AppliesGitHubSettings(t *testing.T) {
 	instReg := installer.NewRegistry()
 	spy := &gitHubSettingsSpyInstaller{cacheSpyInstaller: cacheSpyInstaller{name: "github-spy-installer"}}
 	_ = instReg.Register(spy)
-	orch := NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), registry.NewRegistry(database), instReg)
+	orch := NewOrchestrator(log, newMemFS(), exec.NewMockRunner(), registry.NewRegistry(database), instReg)
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -2326,7 +2326,7 @@ func TestGetPatternForBinaryCoverage(t *testing.T) {
 }
 
 func TestRemoveAllCoverage(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/nested/sub/dir", 0755)
 	_ = memFS.WriteFile("/nested/sub/dir/file.txt", []byte("hello"), 0644)
 	_ = memFS.WriteFile("/nested/sub/file2.txt", []byte("world"), 0644)
@@ -2347,7 +2347,7 @@ func TestRemoveAllCoverage(t *testing.T) {
 
 func TestCleanupStaleArtifacts_FullPipeline(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -2388,7 +2388,7 @@ func TestIsWithinCoverage(t *testing.T) {
 
 func TestRequireStagedPayloadAndDiscardStaging(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	// 1. discardStaging with empty string returns immediately
@@ -2429,7 +2429,7 @@ func TestRequireStagedPayloadAndDiscardStaging(t *testing.T) {
 
 func TestInstallTools_DisabledAndHostnameFiltering(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -2471,7 +2471,7 @@ func TestInstallTools_DisabledAndHostnameFiltering(t *testing.T) {
 
 func TestGenerateCompletionsForToolCoverage(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	orch := newTestOrchestrator(t, memFS, "")
 	orch.runner = runner
@@ -2552,7 +2552,7 @@ func TestGenerateCompletionsForToolCoverage(t *testing.T) {
 }
 
 func TestFindSystemBinaryCoverage(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -2598,7 +2598,7 @@ func TestFindSystemBinaryCoverage(t *testing.T) {
 }
 
 func TestPruneSyncedPackageCoverage(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	pkgDir := "/home/user/.generated/node_modules/@alexgorbatchev/dotfiles"
@@ -2620,7 +2620,7 @@ func TestPruneSyncedPackageCoverage(t *testing.T) {
 }
 
 func TestWriteTypeCheckProgramCoverage(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -2656,7 +2656,7 @@ func TestWriteTypeCheckProgramCoverage(t *testing.T) {
 }
 
 func TestGetCliCommandAndFormatPathCoverage(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	// 1. formatPath with nil / empty HomeDir
@@ -2683,7 +2683,7 @@ func TestGetCliCommandAndFormatPathCoverage(t *testing.T) {
 
 func TestEnsureShimDirsAndGenerateToolNilConfig(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	if err := orch.ensureShimDirs(ctx, nil); err == nil {
@@ -2711,7 +2711,7 @@ func TestEnsureShimDirsAndGenerateToolNilConfig(t *testing.T) {
 
 func TestCleanupStaleCopiesErrorsAndFiltering(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{

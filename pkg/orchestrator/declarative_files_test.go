@@ -37,7 +37,7 @@ func newDeclTool() *config.ToolConfig {
 
 func declFixture(t *testing.T) (*Orchestrator, *fs.MemFS) {
 	t.Helper()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	for _, dir := range []string{"/home/user", declToolDir, "/home/user/bin"} {
 		if err := memFS.MkdirAll(dir, 0755); err != nil {
 			t.Fatalf("creating %s: %v", dir, err)
@@ -793,7 +793,7 @@ func TestDeclarativeFilesAdditionalCoverage(t *testing.T) {
 	}
 
 	// 5. contract with non-TrackedFileSystem
-	orchPlain := &Orchestrator{fs: fs.NewMemFS()}
+	orchPlain := &Orchestrator{fs: newMemFS()}
 	if got := orchPlain.contract("/home/user/test.txt"); got != "/home/user/test.txt" {
 		t.Errorf("contract with MemFS = %q, want %q", got, "/home/user/test.txt")
 	}

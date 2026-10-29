@@ -11,7 +11,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
@@ -51,7 +50,7 @@ func TestCompletionFailureLogNamesTheCause(t *testing.T) {
 			}
 			var logBuf bytes.Buffer
 			log := logger.New(logger.Config{Writer: &logBuf})
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			o := NewOrchestrator(log, memFS, exec.NewMockRunner(), registry.NewRegistry(sqlDB), instReg)
 			projCfg := &config.ProjectConfig{Paths: config.PathsConfig{
 				HomeDir:         "/home/user",
@@ -127,7 +126,7 @@ func TestPipelineFailureLogsNameTheCause(t *testing.T) {
 			}
 
 			var logBuf bytes.Buffer
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			o := NewOrchestrator(logger.New(logger.Config{Writer: &logBuf}), memFS, exec.NewMockRunner(), reg, installer.NewRegistry())
 			projCfg := &config.ProjectConfig{Paths: config.PathsConfig{
 				HomeDir:      "/home/user",

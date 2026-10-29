@@ -16,7 +16,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
@@ -124,7 +123,7 @@ func TestDashboard_CheckUpdateUsesConfiguredGitHubCache(t *testing.T) {
 	}
 	defer sqlDB.Close()
 
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	gh := installer.NewGitHubInstaller(exec.NewMockRunner(), fsys, nil, nil)
 	instReg := installer.NewRegistry()
 	if err := instReg.Register(gh); err != nil {
@@ -356,7 +355,7 @@ func TestDashboard_NilInstallersRegistry(t *testing.T) {
 
 	t.Run("update reports error when installers is nil", func(t *testing.T) {
 		// Server needs an orchestrator to get past the orchestrator nil check
-		orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), nil, reg, nil)
+		orch := orchestrator.NewOrchestrator(log, newMemFS(), nil, reg, nil)
 		serverWithOrch := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", &config.ProjectConfig{}, []*config.ToolConfig{tool}, orch, nil)
 		if err := serverWithOrch.Start(); err != nil {
 			t.Fatalf("starting server: %v", err)

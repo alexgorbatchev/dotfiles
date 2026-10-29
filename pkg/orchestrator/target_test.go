@@ -12,7 +12,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
@@ -77,7 +76,7 @@ func (r *targetRecordingInstaller) CheckUpdate(ctx context.Context, tool *config
 func TestInstallToolGivesTheInstallerTheRunsTarget(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 
 	database, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
 	if err != nil {
@@ -156,7 +155,7 @@ func TestRunHooksUsesTheRunsTarget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			orch.SetTarget(tt.target)
 

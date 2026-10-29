@@ -96,7 +96,7 @@ func TestOrchestratorPrunesDownloadCache(t *testing.T) {
 	for _, automatic := range []bool{true, false} {
 		t.Run(fmt.Sprintf("automatic %t", automatic), func(t *testing.T) {
 			ctx := context.Background()
-			mem := fs.NewMemFS()
+			mem := newMemFS()
 			database, err := db.NewConnection(ctx, ":memory:")
 			if err != nil {
 				t.Fatal(err)
@@ -111,7 +111,7 @@ func TestOrchestratorPrunesDownloadCache(t *testing.T) {
 			orch := NewOrchestrator(nil, mem, runner, reg, installers)
 			orch.SetSymlinkFS(mem)
 			project := &config.ProjectConfig{Paths: config.PathsConfig{
-				HomeDir: "/home", TargetDir: "/bin", BinariesDir: "/binaries", GeneratedDir: "/generated",
+				HomeDir: "/home", TargetDir: "/user-bin", BinariesDir: "/binaries", GeneratedDir: "/generated",
 			}}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/failed" {
@@ -227,7 +227,7 @@ func TestToolPipelinesContinueAfterFailures(t *testing.T) {
 		{"install", (*Orchestrator).InstallTools},
 	} {
 		t.Run(pipeline.name, func(t *testing.T) {
-			mem := fs.NewMemFS()
+			mem := newMemFS()
 			o := newTestOrchestrator(t, mem, "")
 			var output bytes.Buffer
 			o.SetLogger(logger.New(logger.Config{Writer: &output}))
@@ -258,7 +258,7 @@ func TestToolPipelinesContinueAfterFailures(t *testing.T) {
 }
 
 func TestCleanupContinuesAfterToolFailure(t *testing.T) {
-	mem := fs.NewMemFS()
+	mem := newMemFS()
 	o := newTestOrchestrator(t, mem, "")
 	ctx := context.Background()
 	project := &config.ProjectConfig{Paths: config.PathsConfig{HomeDir: "/home/user", TargetDir: "/target", GeneratedDir: "/generated"}}
@@ -300,7 +300,7 @@ func TestShellGenerationContinuesAfterToolFailure(t *testing.T) {
 		{"once", config.ShellTypeConfig{Scripts: []config.ShellScript{{Kind: config.ShellScriptOnce, Value: "{paths.dotfilesDir}"}}}},
 	} {
 		t.Run(broken.name, func(t *testing.T) {
-			mem := fs.NewMemFS()
+			mem := newMemFS()
 			o := newTestOrchestrator(t, mem, "")
 			project := &config.ProjectConfig{Paths: config.PathsConfig{
 				HomeDir: "/home/user", GeneratedDir: "/generated", TargetDir: "/target",
@@ -323,7 +323,7 @@ func TestShellGenerationContinuesAfterToolFailure(t *testing.T) {
 }
 
 func TestInstallBatchSkipsFailedDependencies(t *testing.T) {
-	mem := fs.NewMemFS()
+	mem := newMemFS()
 	o := newTestOrchestrator(t, mem, "")
 	consumerInstaller := &mockInstaller{name: "consumer-installer"}
 	if err := o.instRegistry.Register(consumerInstaller); err != nil {
@@ -384,7 +384,7 @@ func TestGetBinaryNames(t *testing.T) {
 func TestOrchestrator_InstallFollowsInstallParamVersionPin(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open sqlite DB: %v", err)
@@ -459,7 +459,7 @@ var timestampPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}$
 func TestOrchestrator_Install(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	// Initialize sqlite connection and registry
@@ -563,7 +563,7 @@ func TestOrchestrator_Install(t *testing.T) {
 func TestOrchestrator_Install_UnversionedToolTimestamp(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name()))
@@ -630,7 +630,7 @@ func TestOrchestrator_Install_UnversionedToolTimestamp(t *testing.T) {
 func TestOrchestrator_Generate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	// Initialize sqlite connection and registry
@@ -753,7 +753,7 @@ func TestOrchestrator_Generate(t *testing.T) {
 func TestOrchestrator_Errors(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, _ := db.NewConnection(ctx, ":memory:")
@@ -823,7 +823,7 @@ func TestOrchestrator_Errors(t *testing.T) {
 func TestOrchestrator_AdditionalBranches(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, _ := db.NewConnection(ctx, ":memory:")
@@ -899,7 +899,7 @@ func TestOrchestrator_AdditionalBranches(t *testing.T) {
 func TestOrchestrator_UninstallTool(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, _ := db.NewConnection(ctx, ":memory:")
@@ -981,7 +981,7 @@ func TestOrchestrator_UninstallTool(t *testing.T) {
 func TestOrchestrator_UninstallTool_FailingUninstallLeavesRecordsIntact(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1062,7 +1062,7 @@ func TestOrchestrator_UninstallTool_FailingUninstallLeavesRecordsIntact(t *testi
 func TestOrchestrator_UninstallTool_UnknownInstallationMethodFails(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1103,7 +1103,7 @@ func TestOrchestrator_UninstallTool_UnknownInstallationMethodFails(t *testing.T)
 func TestOrchestrator_UninstallTool_FallbackToRecordedInstallMethod(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1164,7 +1164,7 @@ func TestOrchestrator_UninstallTool_FallbackToRecordedInstallMethod(t *testing.T
 func TestOrchestrator_UninstallTool_PurgeRemovalError(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1219,7 +1219,7 @@ func (r *removeAllErrorFS) RemoveAll(path string) error { return r.err }
 func TestOrchestrator_UninstallTool_MoreBranches(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	projCfg := &config.ProjectConfig{
@@ -1292,7 +1292,7 @@ func TestOrchestrator_UninstallTool_MoreBranches(t *testing.T) {
 func TestOrchestrator_InstallSudoMismatch(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1339,7 +1339,7 @@ func TestOrchestrator_InstallSudoMismatch(t *testing.T) {
 func TestOrchestrator_OnceScriptSelfDeletionAndPruning(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1442,7 +1442,7 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 		Writer: &logBuf,
 	})
 
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
@@ -1528,7 +1528,7 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 }
 
 func TestOrchestrator_GetCliCommand(t *testing.T) {
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	reg := registry.NewRegistry(nil)
 	orch := NewOrchestrator(nil, fsys, nil, reg, nil)
 
@@ -1550,7 +1550,7 @@ func TestOrchestrator_GetCliCommand(t *testing.T) {
 }
 
 func TestOrchestrator_FormatCliCommandForShell(t *testing.T) {
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	reg := registry.NewRegistry(nil)
 	orch := NewOrchestrator(nil, fsys, nil, reg, nil)
 	projCfg := &config.ProjectConfig{
@@ -1633,7 +1633,7 @@ func TestOrchestrator_FormatCliCommandForShell(t *testing.T) {
 func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
 	t.Parallel()
 	log := logger.New(logger.Config{})
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	trackedFS := fs.NewTrackedFileSystem(memFS, nil, log, "system")
 	runner := exec.NewMockRunner()
 	dbConn, err := db.NewConnection(context.Background(), ":memory:")
@@ -1693,7 +1693,7 @@ func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1781,7 +1781,7 @@ func TestFormatFunctionBody(t *testing.T) {
 func TestOrchestrator_CleanupOrphanedTools(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1839,7 +1839,7 @@ func TestOrchestrator_CleanupOrphanedTools(t *testing.T) {
 func TestOrchestrator_CleanupStaleShims(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1901,7 +1901,7 @@ func TestOrchestrator_CleanupStaleShims(t *testing.T) {
 func TestOrchestrator_CleanupStaleSymlinks(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -1971,7 +1971,7 @@ func TestOrchestrator_CleanupStaleSymlinks(t *testing.T) {
 func TestOrchestrator_SymlinkModeEnforcementRetainsSourceFile(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -2075,7 +2075,7 @@ func TestOrchestrator_SymlinkModeEnforcementRetainsSourceFile(t *testing.T) {
 func TestOrchestrator_CleanupStaleSymlinks_Guardrails(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -2193,7 +2193,7 @@ func TestOrchestrator_CleanupStaleSymlinks_Guardrails(t *testing.T) {
 func TestOrchestrator_CleanupStaleCopies(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -2248,7 +2248,7 @@ func TestGenerateCompletionsForTool_SkipMissingSource(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
@@ -2311,7 +2311,7 @@ func TestGenerateCompletionsForTool_CmdCompletion(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 	runner.Register("mytool", []byte("# mytool zsh completion"), nil)
 	runner.Register("/home/user/.generated/binaries/mytool/current/mytool", []byte("# mytool zsh completion"), nil)
@@ -2399,7 +2399,7 @@ func TestGenerateCompletionsForTool_CmdTimeoutIsReportedAsTimeout(t *testing.T) 
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 	runner.Register("/home/user/.generated/binaries/stalledtool/current/stalledtool", nil, context.DeadlineExceeded)
 
@@ -2460,7 +2460,7 @@ func TestManualToolWithoutBinaryPath_NoShimAndWarning(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -2587,7 +2587,7 @@ func TestManualBinaryPathResolvesLikeTheInstaller(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			runner := exec.NewMockRunner()
 
 			sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -2664,7 +2664,7 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
-	rfs := fs.NewResolvedFS(fs.NewMemFS(), "/home/user")
+	rfs := fs.NewResolvedFS(newMemFS(), "/home/user")
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -2751,7 +2751,7 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 func TestManualToolMultiCallBinary_ShimsTargetPerNameFiles(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -2843,7 +2843,7 @@ func TestGenerateTool_ExternalToolBootstrapShimTargetsCurrentEntrypoint(t *testi
 		t.Run(method, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles.config.ts")
 
 			projCfg := &config.ProjectConfig{
@@ -2899,7 +2899,7 @@ func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			runner := exec.NewMockRunner()
 			log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 
@@ -3040,7 +3040,7 @@ func TestInstallTool_BeforeInstallHookStagesThePayload(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			runner := exec.NewMockRunner()
 			sqlDB, err := db.NewConnection(ctx, ":memory:")
 			if err != nil {
@@ -3129,7 +3129,7 @@ func TestInstallTool_ManualHookStagingWithBinaryPath(t *testing.T) {
 	afterInstallMarker := "/home/user/markers/after-install"
 
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
@@ -3306,7 +3306,7 @@ func TestGenerateTool_AppliesCopies(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			writeMemFile(t, memFS, copyToolDir+"/config.toml", "managed")
 			for path, content := range tt.existing {
@@ -3359,7 +3359,7 @@ func TestGenerateTool_AppliesCopies(t *testing.T) {
 func TestGenerateTool_CopiesDirectoryTree(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/themes/dark.toml", "dark")
@@ -3409,7 +3409,7 @@ func TestGenerateTool_CopiesDirectoryTree(t *testing.T) {
 func TestGenerateTool_CopyMissingSourceFails(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	tool := newCopyTool(config.CopyConfig{Source: "./missing.toml", Target: "~/.config/copy-tool/config.toml"})
@@ -3430,7 +3430,7 @@ func TestGenerateTool_CopyMissingSourceFails(t *testing.T) {
 func TestInstallTool_AppliesCopies(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	if err := orch.instRegistry.Register(&mockInstaller{name: "mock-copy"}); err != nil {
 		t.Fatalf("registering installer: %v", err)
@@ -3545,7 +3545,7 @@ func TestGenerateTool_CopyDirectoryPolicy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			projCfg := copyProjectConfig()
 			writeMemFile(t, memFS, copyToolDir+"/themes/dark.toml", "dark")
@@ -3740,7 +3740,7 @@ func TestOrchestrator_UndeclaredBinariesLogLevel(t *testing.T) {
 func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -3840,7 +3840,7 @@ func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
 func TestOrchestrator_GenerateTools_DependencyOnDisabledProvider(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -3902,7 +3902,7 @@ func TestInstallThenGenerate_SystemDirectoriesAreNotToolOwnedShims(t *testing.T)
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -4017,7 +4017,7 @@ func (r *removeErrorFS) Remove(path string) error { return r.err }
 func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -4096,7 +4096,7 @@ func TestGenerateToolsRejectsUnresolvablePlaceholderInRecordedPath(t *testing.T)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			fsys := fs.NewMemFS()
+			fsys := newMemFS()
 			runner := exec.NewMockRunner()
 
 			sqlDB, err := db.NewConnection(ctx, ":memory:")
@@ -4184,7 +4184,7 @@ func TestManualBinaryPathRejectsUnresolvablePlaceholder(t *testing.T) {
 	for _, pipeline := range []string{"generate", "install"} {
 		t.Run(pipeline, func(t *testing.T) {
 			ctx := context.Background()
-			fsys := fs.NewMemFS()
+			fsys := newMemFS()
 			sqlDB, err := db.NewConnection(ctx, ":memory:")
 			if err != nil {
 				t.Fatalf("opening the registry database: %v", err)
@@ -4260,7 +4260,7 @@ func TestGenerateCompletionsForToolRejectsUnresolvablePlaceholder(t *testing.T) 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			fsys := fs.NewMemFS()
+			fsys := newMemFS()
 			sqlDB, err := db.NewConnection(ctx, ":memory:")
 			if err != nil {
 				t.Fatalf("opening the registry database: %v", err)
@@ -4367,7 +4367,7 @@ func TestSymlinkAndCopyPlaceholdersResolved(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			if err := orch.instRegistry.Register(&mockInstaller{name: "mock-method"}); err != nil {
 				t.Fatalf("registering installer: %v", err)
@@ -4459,7 +4459,7 @@ func TestSymlinkAndCopyRejectsUnresolvablePlaceholder(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			if err := orch.instRegistry.Register(&mockInstaller{name: "mock-method"}); err != nil {
 				t.Fatalf("registering installer: %v", err)
@@ -4844,7 +4844,7 @@ func TestCheckTool(t *testing.T) {
 	t.Run("a package manager is not asked about a package dotfiles never installed", func(t *testing.T) {
 		t.Parallel()
 		runner := exec.NewMockRunner()
-		brew := installer.NewBrewInstaller(runner, fs.NewMemFS(), nil)
+		brew := installer.NewBrewInstaller(runner, newMemFS(), nil)
 		got, err := CheckTool(ctx, brew, &config.ToolConfig{Name: "sl", InstallationMethod: "brew"}, nil)
 		if err != nil {
 			t.Fatalf("CheckTool: %v", err)
@@ -4924,7 +4924,7 @@ func TestUpdatePlan_Messages(t *testing.T) {
 func TestOrchestrator_ApplyUpdate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open sqlite DB: %v", err)
@@ -5061,7 +5061,7 @@ func TestManualTool_ShimTargetUnifiedBetweenInstallAndGenerate(t *testing.T) {
 	const toolName = "hooked-manual"
 
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
@@ -5152,7 +5152,7 @@ func TestManualTool_ShimTargetUnifiedBetweenInstallAndGenerate(t *testing.T) {
 func TestOrchestrator_CleanupMountPoint_UninstallRefusesWhenDetachFails(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	// Register an Hdiutil that fails detach even with -force
@@ -5216,7 +5216,7 @@ func TestOrchestrator_CleanupMountPoint_UninstallRefusesWhenDetachFails(t *testi
 func TestOrchestrator_CleanupMountPoint_UninstallDetachesAndRemoves(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	// Register an Hdiutil where detach succeeds
@@ -5284,7 +5284,7 @@ func TestOrchestrator_CleanupMountPoint_UninstallDetachesAndRemoves(t *testing.T
 func TestOrchestrator_CleanupMountPoint_StaleStagingRefusesWhenDetachFails(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	archivetest.Hdiutil{
@@ -5352,7 +5352,7 @@ func TestOrchestrator_CleanupMountPoint_StaleStagingRefusesWhenDetachFails(t *te
 func TestOrchestrator_CleanupMountPoint_DiscardStagingProtectsMountPoint(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 
 	archivetest.Hdiutil{
@@ -5390,7 +5390,7 @@ func TestOrchestrator_CleanupMountPoint_DiscardStagingProtectsMountPoint(t *test
 func TestOrchestrator_SafeRemoveAll_EdgeCases(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 	orch := NewOrchestrator(nil, fsys, runner, nil, nil)
 
@@ -5466,7 +5466,7 @@ func TestOrchestrator_SafeRemoveAll_EdgeCases(t *testing.T) {
 
 func TestOrchestrator_IsMountPoint_Cases(t *testing.T) {
 	t.Parallel()
-	fsys := fs.NewMemFS()
+	fsys := newMemFS()
 
 	// Non-existent path is false
 	if isMountPoint(fsys, "/nonexistent") {
@@ -5538,7 +5538,7 @@ func (s *safeRemoveAllErrFS) ReadDir(path string) ([]string, error) {
 func TestOrchestrator_SafeRemoveAll_Errors(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 
 	// Exists error
@@ -5581,7 +5581,7 @@ func TestOrchestrator_FileDev_Host(t *testing.T) {
 func TestConcurrentInstallTool_GitHubRelease(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open sqlite DB: %v", err)
@@ -5739,7 +5739,7 @@ func TestConcurrentInstallTool_GitHubRelease(t *testing.T) {
 func TestConcurrentInstallTool_CurlBinary(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	sqlDB, err := db.NewConnection(ctx, ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open sqlite DB: %v", err)
@@ -5860,7 +5860,7 @@ func TestInstallTool_DoesNotTagInstallerName(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{Writer: &logBuf})
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 
 	instReg := installer.NewRegistry()
@@ -5939,7 +5939,7 @@ func TestInstallTool_TargetedVsBatchLogging(t *testing.T) {
 		Level:  logger.LogLevelDefault,
 	})
 
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 
 	instReg := installer.NewRegistry()

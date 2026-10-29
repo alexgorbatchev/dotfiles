@@ -8,7 +8,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
@@ -59,7 +58,7 @@ func TestUninstallToolHandsTheInstallerTheRecordedBundle(t *testing.T) {
 			if err := instReg.Register(inst); err != nil {
 				t.Fatalf("Register: %v", err)
 			}
-			orch := NewOrchestrator(nil, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
+			orch := NewOrchestrator(nil, newMemFS(), exec.NewMockRunner(), reg, instReg)
 			projCfg := &config.ProjectConfig{Paths: config.PathsConfig{
 				HomeDir: "/home/user", TargetDir: "/home/user/bin", BinariesDir: "/home/user/binaries",
 			}}
@@ -105,7 +104,7 @@ func TestUninstallToolWithoutARecord(t *testing.T) {
 	if err := instReg.Register(inst); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	orch := NewOrchestrator(nil, fs.NewMemFS(), exec.NewMockRunner(), registry.NewRegistry(sqlDB), instReg)
+	orch := NewOrchestrator(nil, newMemFS(), exec.NewMockRunner(), registry.NewRegistry(sqlDB), instReg)
 	projCfg := &config.ProjectConfig{Paths: config.PathsConfig{BinariesDir: "/home/user/binaries"}}
 
 	if err := orch.UninstallTool(ctx, &config.ToolConfig{Name: "vscode", InstallationMethod: "bundle"}, projCfg); err != nil {
@@ -130,7 +129,7 @@ func TestUninstallToolReportsAnUnreadableRecord(t *testing.T) {
 	if err := instReg.Register(inst); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	orch := NewOrchestrator(nil, fs.NewMemFS(), exec.NewMockRunner(), registry.NewRegistry(sqlDB), instReg)
+	orch := NewOrchestrator(nil, newMemFS(), exec.NewMockRunner(), registry.NewRegistry(sqlDB), instReg)
 	_ = sqlDB.Close()
 
 	err = orch.UninstallTool(ctx, &config.ToolConfig{Name: "vscode", InstallationMethod: "bundle"}, &config.ProjectConfig{})

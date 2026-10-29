@@ -33,7 +33,7 @@ type copyScenario struct {
 func runCopyScenario(t *testing.T, tt copyScenario) (target, backup string, backupExists bool) {
 	t.Helper()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/config.toml", tt.base)
@@ -110,7 +110,7 @@ func TestApplyCopies_RecordsTheSource(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			projCfg := copyProjectConfig()
 			writeMemFile(t, memFS, source, tt.base)
@@ -135,7 +135,7 @@ func TestApplyCopies_RecordsTheSource(t *testing.T) {
 	t.Run("adopted", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "")
 		writeMemFile(t, memFS, source, "same\n")
 		writeMemFile(t, memFS, copyToolTarget, "same\n")
@@ -156,7 +156,7 @@ func TestApplyCopies_RecordsTheSource(t *testing.T) {
 func TestApplyCopies_KeptCopyStaysInConflictForStateDiff(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/config.toml", "v1\n")
@@ -187,7 +187,7 @@ func TestApplyCopies_DirectoryPolicyAppliesPerFile(t *testing.T) {
 	t.Parallel()
 	const themesTarget = "/home/user/.config/copy-tool/themes"
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/themes/dark.toml", "dark\n")
@@ -242,7 +242,7 @@ func TestApplyCopies_MemberRemovedFromSourceIsCleanedUp(t *testing.T) {
 	t.Parallel()
 	const themesTarget = "/home/user/.config/copy-tool/themes"
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/themes/dark.toml", "dark\n")
@@ -288,7 +288,7 @@ func TestApplyCopies_SymlinkAtTarget(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			writeMemFile(t, memFS, copyToolDir+"/config.toml", "managed\n")
 			if err := memFS.MkdirAll("/home/user/.config/copy-tool", 0755); err != nil {
@@ -327,7 +327,7 @@ func TestApplyCopies_SymlinkAtTarget(t *testing.T) {
 func TestApplyCopies_ParentDirectoriesAreNotRecordedAsCopies(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/themes/nested/a.toml", "a\n")
@@ -356,7 +356,7 @@ func TestApplyCopies_ParentDirectoriesAreNotRecordedAsCopies(t *testing.T) {
 func TestApplyCopies_KeepsSourcePermissionWithoutDeclaredMode(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	writeMemFile(t, memFS, copyToolDir+"/run.sh", "#!/bin/sh\n")
 	if err := memFS.Chmod(copyToolDir+"/run.sh", 0o755); err != nil {
@@ -409,7 +409,7 @@ func TestSettleWholeFile_KeptUnmanagedFileIsNotTakenOver(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			projCfg := copyProjectConfig()
 			writeMemFile(t, memFS, copyToolDir+"/config.toml", "from the repository\n")
@@ -442,7 +442,7 @@ func TestSettleWholeFile_KeptUnmanagedFileIsNotTakenOver(t *testing.T) {
 func TestCleanupOrphanedTools_BacksUpAnEditedCopy(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/config.toml", "managed\n")
@@ -585,7 +585,7 @@ func mustWrite(t *testing.T, path, content string) {
 func TestCleanupStaleCopies_BacksUpAnEditedFile(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := copyProjectConfig()
 	writeMemFile(t, memFS, copyToolDir+"/config.toml", "managed\n")
@@ -640,7 +640,7 @@ func TestSettleWholeFile_MergedFileSurvivesTheNextRun(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
-			memFS := fs.NewMemFS()
+			memFS := newMemFS()
 			orch := newTestOrchestrator(t, memFS, "")
 			projCfg := copyProjectConfig()
 			writeMemFile(t, memFS, copyToolDir+"/config.toml", base)
@@ -797,7 +797,7 @@ func TestCleanupStaleCopies_DoesNotRemoveThroughASymlinkedDirectory(t *testing.T
 func TestContentForAction_DescribesUnmanagedEntries(t *testing.T) {
 	t.Parallel()
 	var logBuf bytes.Buffer
-	orch := newTestOrchestrator(t, fs.NewMemFS(), "")
+	orch := newTestOrchestrator(t, newMemFS(), "")
 	orch.logger = logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
 
 	for _, action := range []drift.Action{drift.ActionKeep, drift.ActionPrompt} {

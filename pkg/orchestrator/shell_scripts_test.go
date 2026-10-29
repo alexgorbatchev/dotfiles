@@ -52,7 +52,7 @@ func newTestOrchestrator(t *testing.T, memFS fs.FS, configFilePath string) *Orch
 func TestSourceFilesDirectEmission(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -137,7 +137,7 @@ func TestSourceFilesDirectEmission(t *testing.T) {
 func TestGenerateShellScripts_ToolBlockEmissionOrder(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -221,7 +221,7 @@ func TestGenerateShellScripts_ToolBlockEmissionOrder(t *testing.T) {
 func TestGenerateShellScripts_DeterministicOrder(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -287,7 +287,7 @@ func TestGenerateShellScripts_DeterministicOrder(t *testing.T) {
 func TestGenerateShellScripts_PathModifications(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -373,7 +373,7 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -474,7 +474,7 @@ func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
 func TestGenerateShellScripts_PowershellFullEmission(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -573,7 +573,7 @@ func TestGenerateShellScripts_PowershellFullEmission(t *testing.T) {
 func TestGenerateShellScripts_DisabledAndHostnameFiltering(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{
@@ -697,7 +697,7 @@ func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
 	}
 
 	// 1. With configFilePath set
-	memFS1 := fs.NewMemFS()
+	memFS1 := newMemFS()
 	orchWithConfig := newTestOrchestrator(t, memFS1, "/home/user/.dotfiles/dotfiles.config.ts")
 	err := orchWithConfig.generateShellScripts(ctx, nil, projCfg)
 	if err != nil {
@@ -722,7 +722,7 @@ func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
 	}
 
 	// 2. Without configFilePath
-	memFS2 := fs.NewMemFS()
+	memFS2 := newMemFS()
 	orchWithoutConfig := newTestOrchestrator(t, memFS2, "")
 	err = orchWithoutConfig.generateShellScripts(ctx, nil, projCfg)
 	if err != nil {
@@ -758,7 +758,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 
 	t.Run("with custom multi-token CLI command", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "go run /custom/repo/cmd/dotfiles")
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles.config.ts")
 		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
 			t.Fatalf("generateShellScripts failed: %v", err)
@@ -784,7 +784,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 
 	t.Run("with custom single binary path", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "/opt/dotfiles/bin/dotfiles")
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "")
 		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
 			t.Fatalf("generateShellScripts failed: %v", err)
@@ -810,7 +810,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 
 	t.Run("with multi-token command having space in package path", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "go run /path with spaces/cmd/dotfiles")
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "")
 		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
 			t.Fatalf("generateShellScripts failed: %v", err)
@@ -836,7 +836,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 
 	t.Run("with bare dotfiles prevents recursion", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "dotfiles")
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles.config.ts")
 		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
 			t.Fatalf("generateShellScripts failed: %v", err)
@@ -862,7 +862,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 
 	t.Run("with virtual path containing spaces not on host disk", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "/virtual path with spaces/bin/dotfiles")
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "")
 		if err := orch.generateShellScripts(ctx, nil, projCfg); err != nil {
 			t.Fatalf("generateShellScripts failed: %v", err)
@@ -1086,7 +1086,7 @@ func TestGenerateShellScripts_BashCompletionsAreSourced(t *testing.T) {
 func TestCompletionsAreWrittenAndLoadedPerShell(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	projCfg := &config.ProjectConfig{

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 const cliCompletionTestPath = "/home/user/.generated/shell-scripts/zsh/completions/_dotfiles"
@@ -24,7 +23,7 @@ func cliCompletionProjectConfig() *config.ProjectConfig {
 func TestGenerateCLICompletion_WritesAndTracksUnderSystem(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	script := []byte("#compdef dotfiles\ncompdef _dotfiles dotfiles\n")
 
@@ -63,7 +62,7 @@ func TestGenerateCLICompletion_WritesAndTracksUnderSystem(t *testing.T) {
 func TestGenerateCLICompletion_FallsBackToGeneratedDir(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 	projCfg := cliCompletionProjectConfig()
 	projCfg.Paths.ShellScriptsDir = ""
@@ -79,7 +78,7 @@ func TestGenerateCLICompletion_FallsBackToGeneratedDir(t *testing.T) {
 func TestGenerateCLICompletion_DryRunWritesNothing(t *testing.T) {
 	t.Setenv("DOTFILES_DRY_RUN", "true")
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	if err := orch.GenerateCLICompletion(ctx, cliCompletionProjectConfig(), []byte("#compdef dotfiles\n")); err != nil {
@@ -92,7 +91,7 @@ func TestGenerateCLICompletion_DryRunWritesNothing(t *testing.T) {
 
 func TestGenerateCLICompletion_NilProjectConfig(t *testing.T) {
 	t.Parallel()
-	orch := newTestOrchestrator(t, fs.NewMemFS(), "")
+	orch := newTestOrchestrator(t, newMemFS(), "")
 	if err := orch.GenerateCLICompletion(context.Background(), nil, []byte("x")); err == nil {
 		t.Fatal("expected an error for a nil project configuration")
 	}

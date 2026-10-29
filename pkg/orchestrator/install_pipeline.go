@@ -359,6 +359,10 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 
 	shimGen := shim.NewGenerator(o.fs)
 	shimDir := projCfg.Paths.TargetDir
+	bashPath, err := o.shimBashPath(projCfg)
+	if err != nil {
+		return err
+	}
 
 	var recordedBinaryPaths []string
 
@@ -377,6 +381,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			ToolName:       tool.Name,
 			BinaryName:     binName,
 			BinaryPath:     binaryPath,
+			BashPath:       bashPath,
 			Sudo:           tool.Sudo,
 			CliCommand:     o.getCliCommand(),
 			ConfigFilePath: o.getConfigFilePath(),

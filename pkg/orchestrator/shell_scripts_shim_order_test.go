@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
 )
 
@@ -15,7 +14,7 @@ import (
 func TestGenerateShellScripts_ShimsStayFirstAfterToolInitializations(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
 	const shimDir = "/home/user/.generated/user-bin"

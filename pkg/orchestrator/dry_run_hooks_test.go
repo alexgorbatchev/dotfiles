@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
@@ -46,7 +45,7 @@ func TestRunHooksSkippedOnDryRun(t *testing.T) {
 	projCfg.Paths.GeneratedDir = filepath.Join(root, ".generated")
 
 	t.Run("hook runs on a normal run", func(t *testing.T) {
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "")
 		ctx := config.WithDryRun(context.Background(), false)
 
@@ -59,7 +58,7 @@ func TestRunHooksSkippedOnDryRun(t *testing.T) {
 	})
 
 	t.Run("hook is skipped on a dry run", func(t *testing.T) {
-		memFS := fs.NewMemFS()
+		memFS := newMemFS()
 		orch := newTestOrchestrator(t, memFS, "")
 		ctx := config.WithDryRun(context.Background(), true)
 

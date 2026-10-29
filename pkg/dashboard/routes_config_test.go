@@ -17,7 +17,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
@@ -192,7 +191,7 @@ func TestDashboardMoreRoutes(t *testing.T) {
 		})
 	})
 
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	instReg := installer.NewRegistry()
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})

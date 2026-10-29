@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 func TestWantsShim(t *testing.T) {
@@ -45,7 +44,7 @@ func TestWantsShim(t *testing.T) {
 // the tool's other binaries get their shims.
 func TestGenerateToolSkipsShimlessBinaries(t *testing.T) {
 	t.Parallel()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "/home/user/dotfiles/dotfiles.config.ts")
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{

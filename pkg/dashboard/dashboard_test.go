@@ -24,7 +24,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
@@ -160,7 +159,7 @@ func TestDashboard_ToolsSchemaAndConcurrency(t *testing.T) {
 	*toolConfigs[0].Version = "1.0.0"
 	*toolConfigs[1].Version = "2.0.0"
 
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	instReg := installer.NewRegistry()
 
@@ -536,7 +535,7 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 	// it, so that pin is exercised on github-release: the route asks the real
 	// github-release installer, pointed at githubAPI, and the orchestrator installs
 	// through githubInst.
-	realGH := installer.NewGitHubInstaller(exec.NewMockRunner(), fs.NewMemFS(), nil, nil)
+	realGH := installer.NewGitHubInstaller(exec.NewMockRunner(), newMemFS(), nil, nil)
 	githubInst := &mockCheckUpdateInstaller{name: "github-release", latestVersion: "v9.9.9"}
 	wrappedGH := &mockGitHubInstallerForUpdateRoute{
 		mockCheckUpdateInstaller: githubInst,
@@ -558,7 +557,7 @@ func TestDashboard_UpdateRoute_RefusesPinnedTool(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer githubAPI.Close()
-	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
+	orch := orchestrator.NewOrchestrator(log, newMemFS(), exec.NewMockRunner(), reg, instReg)
 
 	tempDir := t.TempDir()
 	projCfg := &config.ProjectConfig{
@@ -819,7 +818,7 @@ func TestDashboard_UpdateRoute_ReportsCheckOutcome(t *testing.T) {
 			t.Fatalf("registering %s with the orchestrator: %v", m.name, err)
 		}
 	}
-	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
+	orch := orchestrator.NewOrchestrator(log, newMemFS(), exec.NewMockRunner(), reg, instReg)
 
 	tempDir := t.TempDir()
 	projCfg := &config.ProjectConfig{
@@ -1520,7 +1519,7 @@ func TestDashboardAPIsWithOrchestratorAndDBData(t *testing.T) {
 		},
 	}
 
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	instReg := installer.NewRegistry()
 	orch := orchestrator.NewOrchestrator(log, memFS, runner, reg, instReg)
@@ -1815,7 +1814,7 @@ func TestDashboard_InstallErrorResponse(t *testing.T) {
 		},
 	}
 
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	runner := exec.NewMockRunner()
 	instReg := installer.NewRegistry()
 	_ = instReg.Register(&mockFailingInstaller{})
@@ -2292,7 +2291,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 	}
 	instReg := installer.NewRegistry()
 	_ = instReg.Register(&mockInstallerForTest{name: "github-release"})
-	orch := orchestrator.NewOrchestrator(log, fs.NewMemFS(), exec.NewMockRunner(), reg, instReg)
+	orch := orchestrator.NewOrchestrator(log, newMemFS(), exec.NewMockRunner(), reg, instReg)
 
 	server := NewServer(log, "127.0.0.1", 0, reg, testFS(), "", projCfg, toolConfigs, orch, instReg)
 	if err := server.Start(); err != nil {

@@ -9,13 +9,12 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
-	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
 func TestShadowChecker_BuiltinDetection(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	sc := NewShadowChecker(memFS, nil)
 
 	tests := []struct {
@@ -94,7 +93,7 @@ func TestShadowChecker_BuiltinDetection(t *testing.T) {
 }
 
 func TestShadowChecker_ExternalCommandDetection(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/usr/bin", 0755)
 	_ = memFS.WriteFile("/usr/bin/git", []byte("echo git"), 0755)
 	_ = memFS.WriteFile("/usr/bin/ls", []byte("echo ls"), 0755)
@@ -177,7 +176,7 @@ func TestShadowChecker_ExternalCommandDetection(t *testing.T) {
 
 func TestShadowChecker_IntentionalDelegationExemption(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/usr/bin", 0755)
 	_ = memFS.WriteFile("/usr/bin/git", []byte("echo git"), 0755)
 
@@ -299,7 +298,7 @@ func TestShadowChecker_IntentionalDelegationExemption(t *testing.T) {
 
 func TestShadowChecker_FalsePositiveExemptions(t *testing.T) {
 	ctx := context.Background()
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
@@ -470,7 +469,7 @@ exec "$TOOL_EXECUTABLE" "$@"
 }
 
 func TestShadowChecker_HelperCoverage(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	sc := NewShadowChecker(memFS, nil)
 
 	// isSameBinary edge cases
@@ -538,7 +537,7 @@ SOME_VAR="val"
 }
 
 func TestShadowChecker_IgnoreGeneratedAndTargetDirs(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/home/user/.generated/bin", 0755)
 	_ = memFS.WriteFile("/home/user/.generated/bin/tool-bin", []byte("echo shim"), 0755)
 
@@ -567,7 +566,7 @@ func TestShadowChecker_IgnoreGeneratedAndTargetDirs(t *testing.T) {
 }
 
 func TestShadowChecker_FallbackDirs(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/opt/homebrew/bin", 0755)
 	_ = memFS.WriteFile("/opt/homebrew/bin/brew-cmd", []byte("echo brew"), 0755)
 
@@ -601,7 +600,7 @@ func TestShadowChecker_FallbackDirs(t *testing.T) {
 }
 
 func TestShadowChecker_DisabledAndHostnameFiltering(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/usr/bin", 0755)
 	_ = memFS.WriteFile("/usr/bin/git", []byte("echo git"), 0755)
 
@@ -640,7 +639,7 @@ func TestShadowChecker_DisabledAndHostnameFiltering(t *testing.T) {
 }
 
 func TestShadowChecker_ShimFalseExemption(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/usr/bin", 0755)
 	_ = memFS.WriteFile("/usr/bin/tsc", []byte("echo tsc"), 0755)
 
@@ -673,7 +672,7 @@ func TestShadowChecker_ShimFalseExemption(t *testing.T) {
 }
 
 func TestGenerateTools_EmitsShadowWarnings(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	_ = memFS.MkdirAll("/usr/bin", 0755)
 	_ = memFS.WriteFile("/usr/bin/ls", []byte("echo ls"), 0755)
 
@@ -724,7 +723,7 @@ func TestGenerateTools_EmitsShadowWarnings(t *testing.T) {
 }
 
 func TestShadowChecker_CheckToolsAndContextCancellation(t *testing.T) {
-	memFS := fs.NewMemFS()
+	memFS := newMemFS()
 	sc := NewShadowChecker(memFS, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -222,6 +222,10 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	shimGen := shim.NewGenerator(o.fs)
 	shimDir := projCfg.Paths.TargetDir
+	bashPath, err := o.shimBashPath(projCfg)
+	if err != nil {
+		return err
+	}
 
 	for _, binName := range binaryNames {
 		shimPath := filepath.Join(shimDir, binName)
@@ -231,6 +235,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			ToolName:       tool.Name,
 			BinaryName:     binName,
 			BinaryPath:     binaryPath,
+			BashPath:       bashPath,
 			Sudo:           tool.Sudo,
 			CliCommand:     o.getCliCommand(),
 			ConfigFilePath: o.getConfigFilePath(),
@@ -1046,6 +1051,16 @@ func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.T
 	}
 
 	return binaryPath
+}
+
+// shimBashPath resolves the bash a shim's shebang names: the first bash on PATH, or in a
+// standard location, that is not itself a shim this project generated.
+func (o *Orchestrator) shimBashPath(projCfg *config.ProjectConfig) (string, error) {
+	bashPath, err := o.findSystemBinary("bash", projCfg)
+	if err != nil {
+		return "", fmt.Errorf("resolving the bash that runs shims: %w", err)
+	}
+	return bashPath, nil
 }
 
 func (o *Orchestrator) findSystemBinary(binName string, projCfg *config.ProjectConfig) (string, error) {
