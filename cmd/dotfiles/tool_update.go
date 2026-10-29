@@ -241,9 +241,7 @@ When run without arguments, checks all installed tools for updates and installs 
 				continue
 			}
 			if installed == nil {
-				if len(args) == 1 {
-					failures.Record(logs.report, targetTool.Name, fmt.Errorf("tool %q is not installed", toolName))
-				}
+				failures.Record(logs.report, targetTool.Name, fmt.Errorf("tool %q is not installed", toolName))
 				continue
 			}
 

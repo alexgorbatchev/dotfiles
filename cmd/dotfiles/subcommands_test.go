@@ -904,6 +904,8 @@ func TestAdditionalCmdCoverage(t *testing.T) {
 		{name: "uninstall one", args: []string{"-c", absConfig, "--dry-run", "tool", "uninstall", "bat"}},
 		{name: "uninstall all", args: []string{"-c", absConfig, "--dry-run", "tool", "uninstall"}},
 		{name: "update uninstalled tool", args: []string{"-c", absConfig, "--dry-run", "tool", "update", "bat"}, wantErr: `tool "bat" is not installed`},
+		// Every named tool that is not installed is reported, not only a lone one.
+		{name: "update uninstalled tools", args: []string{"-c", absConfig, "--dry-run", "tool", "update", "bat", "fd"}, wantErr: `tool "fd" is not installed`},
 		{name: "update all", args: []string{"-c", absConfig, "--dry-run", "tool", "update"}},
 		{name: "log", args: []string{"-c", absConfig, "state", "log"}},
 		{name: "log tail", args: []string{"-c", absConfig, "state", "log", "--tail", "10"}},
