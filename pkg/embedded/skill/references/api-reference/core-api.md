@@ -114,6 +114,7 @@ Externally-managed installers (`apt`, `brew`, `dnf`, `dmg`, `npm`, `pacman`, `pk
 - Running the shim auto-installs the tool on first use (if needed)
 - Running `{binary} @update` triggers a shim-driven update flow
 - Shim executions append usage events to a local log for dashboard analytics
+- A shim names the bash that runs it by absolute path: `dotfiles generate` writes the first `bash` on PATH (or in `/usr/bin`, `/usr/local/bin`, `/bin` or `/opt/homebrew/bin`) that is not one of its own shims, so the shim starts even under a PATH without bash, as from launchd or cron. Generation fails when it finds no bash. That path belongs to the machine that ran `generate`, so a dotfiles directory shared between machines needs `dotfiles generate` on each of them; copying `.generated/` to a machine whose bash lives elsewhere leaves every shim unable to start
 - Removing a `.bin(name)` declaration and rerunning `dotfiles generate` cleans up the stale shim automatically
 - `.bin(name, { shim: false })` declares the binary without a shim: it is installed under the tool's `current` directory and remains a `dependsOn()` target, but nothing is written to `paths.targetDir` (this is how the scaffolded `typescript.tool.ts` keeps `tsc` off PATH)
 - During `dotfiles generate`, declared binaries, aliases, and functions are checked for shadowing against external system commands on PATH and shell builtins; see [Troubleshooting](../configuration/troubleshooting.md#shadow-warnings-during-generate)

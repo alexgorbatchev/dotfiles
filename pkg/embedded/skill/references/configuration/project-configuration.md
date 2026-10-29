@@ -269,3 +269,9 @@ With the defaults above and `dotfilesDir: '~/.dotfiles'`:
     ├── cache/            # Downloaded assets and release metadata
     └── registry.db       # What the CLI has written, per tool
 ```
+
+`.generated/` belongs to the machine that generated it: installed binaries are built for
+its platform, and shims name its bash by absolute path (see
+[`.bin(name)` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).
+Share `dotfiles.config.ts` and `tools/` between machines, and run `dotfiles generate` on
+each.
