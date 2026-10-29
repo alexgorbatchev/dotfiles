@@ -97,8 +97,10 @@ dev-bootstrap target="~/.dotfiles":
 release bump="patch":
     bun scripts/release.ts {{ bump }}
 
-# Prepare dependencies and generated assets for local development
+# Prepare a fresh clone or worktree: dependencies, the assets the Go packages embed,
+# and the fixture's generated declarations that `just typecheck` resolves
 setup:
     bun install --frozen-lockfile
     go mod download
     just prepare
+    just test-project state generate
