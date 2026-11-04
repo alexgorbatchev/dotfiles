@@ -66,12 +66,6 @@ func TestWriteOperationsRequireTransaction(t *testing.T) {
 		t.Errorf("Expected ErrTransactionRequired, got: %v", err)
 	}
 
-	// RemoveFileOperationsByTool
-	err = reg.RemoveFileOperationsByTool(ctx, nil, "test-tool")
-	if err != ErrTransactionRequired {
-		t.Errorf("Expected ErrTransactionRequired, got: %v", err)
-	}
-
 	// RecordToolInstallation
 	err = reg.RecordToolInstallation(ctx, nil, toolRecord)
 	if err != ErrTransactionRequired {
@@ -246,19 +240,6 @@ func TestFileOperationsTracking(t *testing.T) {
 	}
 	if len(tools) != 2 || tools[0] != "bat" || tools[1] != "ripgrep" {
 		t.Errorf("Wrong registered tools output: %v", tools)
-	}
-
-	// Test removal
-	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
-		return reg.RemoveFileOperationsByTool(ctx, tx, "bat")
-	})
-	if err != nil {
-		t.Fatalf("Failed to remove bat file operations: %v", err)
-	}
-
-	ops, err = reg.GetFileOperations(ctx, FileOperationFilter{ToolName: "bat"})
-	if err != nil || len(ops) != 0 {
-		t.Errorf("Expected 0 operations for bat after removal, got: %v", ops)
 	}
 }
 

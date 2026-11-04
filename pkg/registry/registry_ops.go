@@ -383,21 +383,6 @@ func (r *Registry) RecordFileOperation(ctx context.Context, tx *sql.Tx, record *
 	return nil
 }
 
-// RemoveFileOperationsByTool purges file operation logs for a specific tool.
-func (r *Registry) RemoveFileOperationsByTool(ctx context.Context, tx *sql.Tx, toolName string) error {
-	if tx == nil {
-		return ErrTransactionRequired
-	}
-
-	query := "DELETE FROM file_operations WHERE tool_name = ?"
-	_, err := tx.ExecContext(ctx, query, toolName)
-	if err != nil {
-		return fmt.Errorf("deleting file operations for tool: %w", err)
-	}
-
-	return nil
-}
-
 // RenameFileOperationPrefix updates file_path in file_operations when a directory is renamed.
 func (r *Registry) RenameFileOperationPrefix(ctx context.Context, tx *sql.Tx, oldPrefix, newPrefix string) error {
 	if tx == nil {

@@ -288,7 +288,7 @@ func TestRegistryMethodsEdgeCases(t *testing.T) {
 		t.Errorf("expected error from WithTx")
 	}
 
-	// RemoveToolInstallation & RemoveFileOperationsByTool
+	// RemoveToolInstallation
 	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
 		_ = reg.RecordToolInstallation(ctx, tx, &ToolInstallationRecord{
 			ToolName:    "removetool",
@@ -311,9 +311,8 @@ func TestRegistryMethodsEdgeCases(t *testing.T) {
 	})
 
 	_ = reg.WithTx(ctx, func(tx *sql.Tx) error {
-		_ = reg.RemoveToolInstallation(ctx, tx, "removetool")
 		_ = reg.Compact(ctx, tx)
-		return reg.RemoveFileOperationsByTool(ctx, tx, "removetool")
+		return reg.RemoveToolInstallation(ctx, tx, "removetool")
 	})
 
 	inst, _ := reg.GetToolInstallation(ctx, "removetool")
