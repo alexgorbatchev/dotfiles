@@ -136,7 +136,16 @@ export default defineTool((install) => install().zsh((shell) => shell.env({ FOO:
 
 ### Orphaned Artifact Cleanup
 
-When a `.tool.ts` configuration file is removed, `dotfiles generate` automatically cleans up the corresponding generated shims and completions on the next run. Removing a `.bin()` declaration from an existing tool also removes that tool's stale shim on the next `dotfiles generate`. No manual cleanup is needed.
+When a `.tool.ts` configuration file is removed, the next `dotfiles generate` removes everything dotfiles recorded creating for that tool: its shims, symlinks, completions, copies, templates, managed blocks, the directories it created once they are empty, and its install directory under `paths.binariesDir` with the downloaded binaries in it. Each removal is recorded in the registry, so `dotfiles state log <tool>` shows what happened to every file. Removing a `.bin()` declaration from an existing tool also removes that tool's stale shim on the next `dotfiles generate`. No manual cleanup is needed.
+
+Cleanup only removes what is still dotfiles' own:
+
+- A symlink is removed while it still points where dotfiles pointed it, including when that target was deleted along with the tool's directory. A link that now points somewhere else, or a file or directory put in its place, is left alone with a warning.
+- A copy or template you edited is moved aside to a `.bak` file rather than deleted.
+- A directory the tool created is kept while it still holds files dotfiles did not create, and a directory that existed before the tool is never removed.
+- A package installed by a package manager (`brew`, `apt`, `npm`, ...) or an app bundle placed in `/Applications` is left installed with a warning, because uninstalling it needs the tool's configuration. `dotfiles tool uninstall` removes it while the tool is still configured.
+
+When something cannot be removed, generate reports the failure, exits non-zero, and keeps the records of what is left, so the next run retries it.
 
 ### Auto-Generated Types
 

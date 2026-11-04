@@ -178,7 +178,7 @@ Named disabled tools, including tools disabled by a non-matching platform block,
 
 #### `dotfiles tool uninstall [tool...]`
 
-Removes installed tools and their associated binaries, shims, and symlinks. With no argument, uninstalls every configured tool in reverse dependency order.
+Removes installed tools: runs each tool's installer uninstall, then removes what dotfiles recorded for it as [orphaned artifact cleanup](../configuration/getting-started.md#orphaned-artifact-cleanup) describes. With no argument, uninstalls every configured tool in reverse dependency order.
 
 #### `dotfiles tool update [tool...]`
 
@@ -432,7 +432,7 @@ Reports state across all symlinks, copies, templates, and managed blocks: `in-sy
 
 #### `dotfiles state cleanup`
 
-Uninstalls every tool that is recorded as installed but is no longer configured or has been disabled, removing its binaries, shims and symlinks. Artifacts of tools that are still configured are reconciled by `dotfiles state generate`, not here.
+Uninstalls every tool that is recorded as installed but is no longer configured or has been disabled: it runs the tool's installer uninstall, then removes what dotfiles recorded for it as [orphaned artifact cleanup](../configuration/getting-started.md#orphaned-artifact-cleanup) describes. Artifacts of tools that are still configured are reconciled by `dotfiles state generate`, not here.
 
 #### `dotfiles state log [tool]`
 

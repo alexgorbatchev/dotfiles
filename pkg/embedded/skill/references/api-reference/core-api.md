@@ -102,8 +102,10 @@ do not nest.
 the two record the same thing.
 
 A tool that is `.disable()`d, or whose `.hostname()` pattern does not match the machine,
-is skipped with a warning, and whatever it generated before is removed on the next
-`dotfiles generate` -- the configuration is kept, the artifacts are not.
+is skipped with a warning, and whatever it generated before, its downloaded binaries
+included, is removed on the next `dotfiles generate` as
+[orphaned artifact cleanup](../configuration/getting-started.md#orphaned-artifact-cleanup)
+describes -- the configuration is kept, the artifacts are not.
 
 #### `.bin(name)` runtime behavior
 

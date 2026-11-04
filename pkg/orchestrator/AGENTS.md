@@ -30,6 +30,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - Inspect directory trees before recursive removals (`discardStaging`, stale-staging cleanup, `purgeToolState`, target promotion) for attached mount points (`isMountPoint`, checking device ID differences from parent or `.dmg-mount`/`-mount` directory markers). Safely detach them via `archive.DetachDmg` before removal; if detaching fails, refuse removal with an error naming the mount point and instructing the user to run `hdiutil detach -force <mountPoint>` rather than allowing `RemoveAll` to descend into a mounted volume.
 - Clone registered installers via `installer.Clone` during `InstallTool` and `UninstallTool` to isolate per-tool install state (`BinDir`, `fsys`, `log`, `sysCtx`) across concurrent executions while preserving shared project-level settings.
 - Commit download-cache ownership only after recording a successful installation. Automatic pruning retains every recorded installed version; manual `ClearDownloadCache` bypasses the automatic policy, and dry runs remove nothing. A failed ownership update must skip automatic pruning.
+- `removeToolArtifacts` (`tool_removal.go`) is the one removal of everything a tool recorded: `UninstallTool` runs it after the installer's `Uninstall`, and `CleanupOrphanedTools` runs it alone (an orphan has no configuration to drive a package manager, so external packages and app bundles are reported, not removed). It removes the tool's install directories, its managed blocks (`cleanupStaleBlocks`, never the shared file), and each recorded path judged with `Lstat` (never `Exists`, which follows a link whose target went away with the tool): a symlink only while it points at its recorded source, a directory only when empty and created by the tool, an edited copy or template moved aside. Every handled path gets an `rm` record; a failure keeps the remaining records and the installation record so the next run retries. Ownership comes from the registry-wide `GetFileStates`, so a path another tool wrote since is not removed.
 - `UninstallTools` (`uninstall_pipeline.go`) removes tools in reverse topological order, blocking removal of any dependency whose dependent failed to uninstall while continuing with independent tools via `toolbatch.Failures`.
 
 - `generateShellScripts` emits `shellinit.FormatPath` for the shim target directory twice: in the PATH Modifications section, so tool initializations can reach the shims, and again after the tool-specific initializations, so a tool script that prepends its own directories (`brew shellenv`) cannot shadow them. `TestGenerateShellScripts_ShimsStayFirstAfterToolInitializations` covers the second placement.
@@ -50,6 +51,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - `pkg/orchestrator/orchestrator.go`
 - `pkg/orchestrator/install_pipeline.go`
 - `pkg/orchestrator/uninstall_pipeline.go`
+- `pkg/orchestrator/tool_removal.go`
 - `pkg/orchestrator/generate_pipeline.go`
 - `pkg/orchestrator/cache.go`
 - `pkg/orchestrator/cache_retention.go`

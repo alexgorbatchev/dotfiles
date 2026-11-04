@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -565,8 +564,8 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		}
 	}
 
-	// 2. Purge file operations, shims, symlinks, binaries dir, and DB entries
-	return o.purgeToolState(ctx, tool.Name, projCfg)
+	// 2. Remove everything dotfiles recorded for the tool and forget its installation
+	return o.removeToolArtifacts(ctx, tool.Name, projCfg)
 }
 
 // recordedInstallation reads what the registry recorded about the tool's install, for
@@ -580,131 +579,6 @@ func (o *Orchestrator) recordedInstallation(ctx context.Context, toolName string
 		return nil, fmt.Errorf("reading the installation record of %s: %w", toolName, err)
 	}
 	return rec, nil
-}
-
-func (o *Orchestrator) purgeToolState(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
-	var toolBinDir string
-	if projCfg != nil && projCfg.Paths.BinariesDir != "" {
-		toolBinDir = filepath.Join(projCfg.Paths.BinariesDir, toolName)
-		if err := o.safeRemoveAll(ctx, o.fs, toolBinDir); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("removing binaries directory %s: %w", toolBinDir, err)
-		}
-	}
-
-	if o.reg != nil {
-		fileStates, err := o.reg.GetFileStatesForTool(ctx, toolName)
-		if err != nil {
-			return fmt.Errorf("reading file states of %s: %w", toolName, err)
-		}
-		for _, fileState := range fileStates {
-			if fileState.LastOperation != "rm" {
-				if toolBinDir != "" && isWithin(toolBinDir, fileState.FilePath) {
-					continue
-				}
-				if err := o.fs.Remove(fileState.FilePath); err != nil && !os.IsNotExist(err) {
-					return fmt.Errorf("removing file %s: %w", fileState.FilePath, err)
-				}
-			}
-		}
-	}
-
-	if o.reg == nil {
-		return nil
-	}
-
-	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		if err := o.reg.RemoveFileOperationsByTool(ctx, tx, toolName); err != nil {
-			return err
-		}
-		return o.reg.RemoveToolInstallation(ctx, tx, toolName)
-	})
-}
-
-// CleanupOrphanedTools removes tools that are registered in the registry DB but no longer present in active tool configs.
-func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
-	if projCfg == nil || o.reg == nil {
-		return nil
-	}
-
-	activeTools := make(map[string]bool)
-	for _, tool := range tools {
-		if tool.IsActive() {
-			activeTools[tool.Name] = true
-		}
-	}
-
-	registeredToolsMap := make(map[string]bool)
-
-	opsTools, err := o.reg.GetRegisteredTools(ctx)
-	if err == nil {
-		for _, name := range opsTools {
-			if name != "system" {
-				registeredToolsMap[name] = true
-			}
-		}
-	}
-
-	installations, err := o.reg.GetAllToolInstallations(ctx)
-	if err == nil {
-		for _, inst := range installations {
-			if inst.ToolName != "system" {
-				registeredToolsMap[inst.ToolName] = true
-			}
-		}
-	}
-
-	var orphanedTools []string
-	for name := range registeredToolsMap {
-		if !activeTools[name] {
-			orphanedTools = append(orphanedTools, name)
-		}
-	}
-	sort.Strings(orphanedTools)
-
-	var failures toolbatch.Failures
-	for _, toolName := range orphanedTools {
-		if err := ctx.Err(); err != nil {
-			return errors.Join(failures.Err(), err)
-		}
-		o.logger.WithTag(toolName).Info(logger.Message("Cleaning up orphaned tool..."))
-		if err := o.cleanupToolArtifacts(ctx, toolName, projCfg); err != nil {
-			failures.Record(o.logger, toolName, fmt.Errorf("Failed to cleanup orphaned tool: %w", err))
-		}
-	}
-
-	return failures.Err()
-}
-
-func (o *Orchestrator) cleanupToolArtifacts(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
-	fileStates, err := o.reg.GetFileStatesForTool(ctx, toolName)
-	if err == nil {
-		for _, fileState := range fileStates {
-			if fileState.LastOperation == "rm" {
-				continue
-			}
-			exists, err := o.fs.Exists(fileState.FilePath)
-			if err != nil || !exists {
-				continue
-			}
-			switch fileState.FileType {
-			case "copy":
-				// An edited copy is moved aside rather than deleted, as it is when only
-				// its declaration is removed.
-				if err := o.removeStaleFile(toolName, fileState, projCfg, fileState.FilePath); err != nil {
-					return err
-				}
-			case "shim", "symlink", "completion":
-				_ = o.fs.Remove(fileState.FilePath)
-			}
-		}
-	}
-
-	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		if err := o.reg.RemoveFileOperationsByTool(ctx, tx, toolName); err != nil {
-			return err
-		}
-		return o.reg.RemoveToolInstallation(ctx, tx, toolName)
-	})
 }
 
 func isExactTopLevelVersion(v string) bool {

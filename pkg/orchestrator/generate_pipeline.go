@@ -794,7 +794,11 @@ func (o *Orchestrator) removeStaleFile(toolName string, state *registry.FileStat
 	}
 	o.logger.WithTag(toolName).Info(logger.Message(fmt.Sprintf("Removing stale file: %s", o.formatPath(projCfg, path))))
 	for _, p := range paths {
-		_ = o.fs.Remove(p) // best effort: a spelling that names nothing is not an error
+		// A spelling that names nothing is not an error; failing to remove one that
+		// does is, so the record survives for the next run to retry.
+		if err := o.fs.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("%s: removing stale %s %s: %w", toolName, state.FileType, p, err)
+		}
 	}
 	return nil
 }

@@ -1199,6 +1199,11 @@ func TestOrchestrator_UninstallTool_PurgeRemovalError(t *testing.T) {
 		t.Fatalf("RecordFileOperation: %v", err)
 	}
 
+	_ = fsys.MkdirAll("/home/user/bin", 0755)
+	if err := fsys.WriteFile("/home/user/bin/locked-shim", []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
 	tool := &config.ToolConfig{Name: "locked-tool"}
 	err = orch.UninstallTool(ctx, tool, projCfg)
 	if err == nil {
@@ -1262,7 +1267,7 @@ func TestOrchestrator_UninstallTool_MoreBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("GetFileStatesForTool failure reports error", func(t *testing.T) {
+	t.Run("an unreadable registry reports the error", func(t *testing.T) {
 		sqlDB, err := db.NewConnection(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("db: %v", err)
@@ -1271,9 +1276,9 @@ func TestOrchestrator_UninstallTool_MoreBranches(t *testing.T) {
 		orch := NewOrchestrator(nil, fsys, runner, reg, installer.NewRegistry())
 		_ = sqlDB.Close()
 
-		err = orch.purgeToolState(ctx, "t", projCfg)
-		if err == nil || !strings.Contains(err.Error(), "reading file states of t") {
-			t.Fatalf("expected reading file states error, got %v", err)
+		err = orch.removeToolArtifacts(ctx, "t", projCfg)
+		if err == nil || !strings.Contains(err.Error(), "reading the installation record of t") {
+			t.Fatalf("expected reading the installation record error, got %v", err)
 		}
 	})
 
@@ -1281,8 +1286,9 @@ func TestOrchestrator_UninstallTool_MoreBranches(t *testing.T) {
 		rmErr := errors.New("cannot remove directory")
 		errFS := &removeAllErrorFS{FS: fsys, err: rmErr}
 		orch := NewOrchestrator(nil, errFS, runner, nil, installer.NewRegistry())
+		_ = fsys.MkdirAll("/home/user/binaries/t", 0755)
 
-		err := orch.purgeToolState(ctx, "t", projCfg)
+		err := orch.removeToolArtifacts(ctx, "t", projCfg)
 		if err == nil || !strings.Contains(err.Error(), "cannot remove directory") {
 			t.Fatalf("expected cannot remove directory error, got %v", err)
 		}
