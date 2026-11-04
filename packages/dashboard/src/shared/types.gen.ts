@@ -57,6 +57,9 @@ export interface FeaturesConfig {
   catalog: CatalogConfig;
   shellInstall?: ShellInstallConfig;
 }
+export interface AIConfig {
+  harness?: string[];
+}
 export interface ProjectConfig {
   paths: PathsConfig;
   system: SystemConfig;
@@ -64,6 +67,7 @@ export interface ProjectConfig {
   cargo: CargoConfig;
   downloader: DownloaderConfig;
   features: FeaturesConfig;
+  ai: AIConfig;
 }
 export interface BinaryConfig {
   name: string;

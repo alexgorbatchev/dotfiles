@@ -63,6 +63,9 @@ func acceptedProjectKeys() []string {
 	for _, k := range shellInstallKeys {
 		keys = append(keys, "features.shellInstall."+k)
 	}
+	for _, k := range aiKeys {
+		keys = append(keys, "ai."+k)
+	}
 	return keys
 }
 
@@ -104,6 +107,8 @@ var projectConfigConsumers = map[string]string{
 	// Accepted by the configuration loader, but no command writes a catalog file.
 	"features.catalog.generate": "",
 	"features.catalog.filePath": "",
+
+	"ai.harness": "harness.Argv, the command tool make runs",
 
 	"cargo.userAgent":               "installer.CargoSettings.UserAgent, sent with crates.io and Cargo.toml requests",
 	"cargo.cratesIo.host":           "installer.CargoSettings.CratesIO.Host, the crates.io site root CargoInstaller queries under /api/v1/crates",

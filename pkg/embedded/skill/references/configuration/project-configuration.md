@@ -53,7 +53,7 @@ export default defineConfig(({ configFileDir, systemInfo }) => ({
 
 ## Configuration Reference
 
-A configuration may set seven top-level keys: the six sections below and the
+A configuration may set eight top-level keys: the seven sections below and the
 [`platform`](#platform-overrides) override list. Any other key aborts the load with an
 "unknown property" error that lists the ones that are accepted, so a misspelling is
 never silently ignored.
@@ -210,6 +210,33 @@ Cached responses live in `cache/cargo/crates-io` and `cache/cargo/github-raw` un
 `--force` fetches fresh data. The archives themselves are cached by the `downloader`
 section.
 
+### ai
+
+The AI coding assistant that
+[`dotfiles tool make`](../getting-started/cli-reference.md#dotfiles-tool-make-request)
+starts to write a tool configuration.
+
+| Key       | Default | Effect                                                                 |
+| --------- | ------- | ---------------------------------------------------------------------- |
+| `harness` | none    | The assistant's command, as a list: the executable, then its arguments |
+
+```typescript config
+ai: {
+  harness: ["claude", "PROMPT"],
+},
+```
+
+Every element that is exactly `"PROMPT"` is replaced with the instructions `tool make`
+generates; an element that merely contains the word is passed unchanged. The list is
+run directly, without a shell, so the instructions reach the assistant as one argument
+and nothing in them needs quoting or escaping. Name the executable as you would on the
+command line: a bare name is looked up on `PATH`.
+
+The list needs at least one `"PROMPT"` element and an executable before it. Without
+`harness`, `tool make` stops with an error naming the setting; nothing else reads it.
+Like every array, a platform override's `harness` replaces the base list rather than
+adding to it.
+
 ## Platform Overrides
 
 The `platform` list applies partial configuration only on matching machines. Each entry
@@ -235,7 +262,7 @@ export default defineConfig(() => ({
   `"windows"`) and/or `arch` (`"x86_64"`, `"arm64"`); at least one is required, and a
   field left out matches any value. An entry applies when any of its matchers matches.
 - `config` may set any of the sections above (`paths`, `system`,
-  `github`, `cargo`, `downloader`, `features`). Objects merge into the base
+  `github`, `cargo`, `downloader`, `features`, `ai`). Objects merge into the base
   configuration recursively; every other value, including arrays such as
   `toolConfigsDir`, replaces the base value.
 - Entries apply in order, so a later matching entry wins over an earlier one.

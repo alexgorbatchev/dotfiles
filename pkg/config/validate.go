@@ -54,7 +54,7 @@ func ValidateLoaderResultRawJSON(data []byte) error {
 
 // projectSectionKeys are the sections of a project configuration. A platform override's
 // config may set any of them, which is why the "platform" list itself is not among them.
-var projectSectionKeys = []string{"paths", "system", "github", "cargo", "downloader", "features"}
+var projectSectionKeys = []string{"paths", "system", "github", "cargo", "downloader", "features", "ai"}
 
 // platformOverrideKeys are the properties of one entry in the "platform" list.
 var platformOverrideKeys = []string{"match", "config"}
@@ -76,6 +76,7 @@ var (
 	featuresKeys         = []string{"catalog", "shellInstall"}
 	catalogKeys          = []string{"generate", "filePath"}
 	shellInstallKeys     = []string{"zsh", "bash", "powershell"}
+	aiKeys               = []string{"harness"}
 	hostKeys             = []string{"host", "cache", "token", "userAgent"}
 	cacheKeys            = []string{"enabled", "ttl"}
 )
@@ -253,6 +254,12 @@ func validateProjectSection(path, key string, v interface{}) error {
 				if err := checkKeys(qualifyPath(path, "shellInstall"), shMap, shellInstallKeys); err != nil {
 					return err
 				}
+			}
+		}
+	case "ai":
+		if sub, ok := v.(map[string]interface{}); ok {
+			if err := checkKeys(path, sub, aiKeys); err != nil {
+				return err
 			}
 		}
 	}

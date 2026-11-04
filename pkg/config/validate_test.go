@@ -118,7 +118,7 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 		if !strings.Contains(err.Error(), `unknown top-level property "completelyUnknownProperty"`) {
 			t.Errorf("unexpected error message: %v", err)
 		}
-		if !strings.Contains(err.Error(), "valid properties: cargo, downloader, features, github, paths, platform, system") {
+		if !strings.Contains(err.Error(), "valid properties: ai, cargo, downloader, features, github, paths, platform, system") {
 			t.Errorf("unexpected allowed list: %v", err)
 		}
 	})
@@ -142,12 +142,12 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 			{
 				name:     "logging.badProp error (rejected top-level property)",
 				json:     `{ "logging": { "badProp": true } }`,
-				expected: `unknown top-level property "logging" (valid properties: cargo, downloader, features, github, paths, platform, system)`,
+				expected: `unknown top-level property "logging" (valid properties: ai, cargo, downloader, features, github, paths, platform, system)`,
 			},
 			{
 				name:     "updates.badProp error (rejected top-level property)",
 				json:     `{ "updates": { "badProp": true } }`,
-				expected: `unknown top-level property "updates" (valid properties: cargo, downloader, features, github, paths, platform, system)`,
+				expected: `unknown top-level property "updates" (valid properties: ai, cargo, downloader, features, github, paths, platform, system)`,
 			},
 			{
 				name:     "github.badProp error",
@@ -210,6 +210,11 @@ func TestValidateProjectConfigRawJSON(t *testing.T) {
 				name:     "features.shellInstall.fish error",
 				json:     `{ "features": { "shellInstall": { "fish": "~/.config/fish/config.fish" } } }`,
 				expected: `unknown property "features.shellInstall.fish" (valid properties under 'features.shellInstall': bash, powershell, zsh)`,
+			},
+			{
+				name:     "ai.harnes suggestion",
+				json:     `{ "ai": { "harnes": ["claude", "PROMPT"] } }`,
+				expected: `unknown property "ai.harnes" (did you mean "ai.harness"?)`,
 			},
 		}
 
@@ -351,7 +356,7 @@ func TestValidateProjectConfigPlatformOverrides(t *testing.T) {
 		{
 			name:     "config cannot nest another platform list",
 			json:     `{ "platform": [{ "match": [{ "os": "macos" }], "config": { "platform": [] } }] }`,
-			expected: `unknown property "platform[0].config.platform" (valid properties under 'platform[0].config': cargo, downloader, features, github, paths, system)`,
+			expected: `unknown property "platform[0].config.platform" (valid properties under 'platform[0].config': ai, cargo, downloader, features, github, paths, system)`,
 		},
 		{
 			name:     "second override is reported with its index",

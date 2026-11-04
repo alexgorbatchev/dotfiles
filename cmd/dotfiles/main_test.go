@@ -8,6 +8,9 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	if os.Getenv(stubHarnessEnv) != "" {
+		runStubHarness()
+	}
 	_ = os.Setenv("AGENT", "0")
 	os.Exit(m.Run())
 }

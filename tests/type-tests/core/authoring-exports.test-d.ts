@@ -170,3 +170,8 @@ defineTool((install, ctx) => {
     return platformBuilder;
   });
 });
+
+// The AI harness is an argument list, never a shell command line.
+defineConfig(() => ({ ai: { harness: ["claude", "-p", "PROMPT"] } }));
+expectError(defineConfig(() => ({ ai: { harness: "claude -p PROMPT" } })));
+expectError(defineConfig(() => ({ ai: { command: ["claude", "PROMPT"] } })));

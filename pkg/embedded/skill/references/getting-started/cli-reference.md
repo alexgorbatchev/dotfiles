@@ -16,6 +16,7 @@ dotfiles tool validate fzf --json
 dotfiles tool files fzf
 dotfiles tool scaffold
 dotfiles tool add owner/my-tool # example: a repository publishing my-tool.tool.ts
+dotfiles tool make https://github.com/muesli/duf with config
 
 # System, binary, and storage path queries
 dotfiles path
@@ -298,6 +299,29 @@ dotfiles install my-tool    # install the configured tool immediately
 ```
 
 `dotfiles generate` and `dotfiles install` are shortcuts for [`state generate`](#dotfiles-state-generate) and [`tool install`](#dotfiles-tool-install-tool). Alternatively, run a binary declared with a shim to trigger installation on first use; its name can differ from `my-tool`. Ensure your generated shell configuration is [loaded](../configuration/getting-started.md#load-generated-config) when using shell aliases, functions, or completions.
+
+#### `dotfiles tool make <request...>`
+
+Starts the AI coding assistant configured as [`ai.harness`](../configuration/project-configuration.md#ai) and asks it to create a `.tool.ts` configuration for the request. The request is usually a repository URL, optionally followed by further wishes. Every argument is joined with single spaces into one request, so it needs no quoting:
+
+```bash
+dotfiles tool make https://github.com/muesli/duf
+dotfiles tool make https://github.com/muesli/duf with config
+```
+
+The assistant receives instructions to:
+
+1. Read this skill with `dotfiles skill`, follow its tool-creation procedure, and export the reference files with `dotfiles skill copy` to read them.
+2. Pass `--config <path>` with the configuration file in use to every `dotfiles` command it runs.
+3. Create the tool file in the first configured `toolConfigsDir` directory, following the layout of the tool files already there.
+4. When the tool reads a configuration file from the home directory, create that file beside the tool file, prefilled with the tool's documented settings, and link it into place with [`.symlink()`](../api-reference/shell-integration.md#symbolic-links).
+5. Run `dotfiles generate` and fix every error it reports.
+
+The assistant runs from the directory holding the configuration file and shares the terminal: it reads your input and writes its output directly, and an interrupt (`Ctrl-C`) goes to the assistant without ending `dotfiles`. There is no timeout. `tool make` exits with the assistant's exit status; when the status is not 0 it also reports the status on stderr. When the assistant cannot be started or is ended by a signal, `tool make` reports why and exits 1. `dotfiles` itself writes nothing else while the assistant runs.
+
+Fails before starting anything when the request is empty, when `ai.harness` is not set, or when it has no `"PROMPT"` element or no executable before one.
+
+- `--dry-run`: Print the instructions to stdout and log the configured command on stderr instead of starting the assistant.
 
 ---
 

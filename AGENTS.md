@@ -43,6 +43,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Go features package: `pkg/features/` -> `pkg/features/AGENTS.md`
 - Go filesystem package: `pkg/fs/` -> `pkg/fs/AGENTS.md`
 - Go github package: `pkg/github/` -> `pkg/github/AGENTS.md`
+- Go harness package: `pkg/harness/` -> `pkg/harness/AGENTS.md`
 - Go installer package: `pkg/installer/` -> `pkg/installer/AGENTS.md`
 - Go lifecycle package: `pkg/lifecycle/` -> `pkg/lifecycle/AGENTS.md`
 - Go logger package: `pkg/logger/` -> `pkg/logger/AGENTS.md`

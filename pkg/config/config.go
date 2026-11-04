@@ -142,6 +142,14 @@ type ShellInstallConfig struct {
 	Powershell string `json:"powershell,omitempty" yaml:"powershell,omitempty"`
 }
 
+// AIConfig is how the CLI reaches an AI coding harness.
+type AIConfig struct {
+	// Harness is the command `tool make` runs, as an argument vector executed directly
+	// with no shell. Every element equal to "PROMPT" is replaced with the generated
+	// prompt, so the prompt reaches the harness as one argument without quoting.
+	Harness []string `json:"harness,omitempty" yaml:"harness,omitempty"`
+}
+
 // FeaturesConfig defines core features configurations.
 type FeaturesConfig struct {
 	Catalog      CatalogConfig       `json:"catalog" yaml:"catalog"`
@@ -156,6 +164,7 @@ type ProjectConfig struct {
 	Cargo      CargoConfig      `json:"cargo" yaml:"cargo"`
 	Downloader DownloaderConfig `json:"downloader" yaml:"downloader"`
 	Features   FeaturesConfig   `json:"features" yaml:"features"`
+	AI         AIConfig         `json:"ai" yaml:"ai"`
 	// ConfigFileDir is the directory holding the configuration file this configuration
 	// was read from. It is what every relative setting is anchored to, and what
 	// `{configFileDir}` and `ctx.configFileDir` mean, so whoever evaluates a hook or

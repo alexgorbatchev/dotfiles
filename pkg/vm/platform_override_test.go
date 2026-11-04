@@ -115,6 +115,41 @@ func TestProjectConfigSectionOfWrongTypeIsRejected(t *testing.T) {
 	}
 }
 
+// ai.harness is an argument vector: it loads element for element, a platform override
+// replaces the whole list as it does every array, and a shell-style string is rejected
+// rather than split.
+func TestProjectAIHarnessLoads(t *testing.T) {
+	const harnessConfig = `
+import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig(() => ({
+  ai: { harness: ["claude", "--model", "a model", "PROMPT"] },
+  platform: [{ match: [{ os: "linux" }], config: { ai: { harness: ["codex", "PROMPT"] } } }],
+}));`
+	tests := []struct {
+		targetOS string
+		want     []string
+	}{
+		{targetOS: "darwin", want: []string{"claude", "--model", "a model", "PROMPT"}},
+		{targetOS: "linux", want: []string{"codex", "PROMPT"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.targetOS, func(t *testing.T) {
+			projCfg, _, err := loadProjectSource(t, harnessConfig, projectPathsProbeTool, WithTarget(Target{OS: tt.targetOS, Arch: "arm64"}))
+			if err != nil {
+				t.Fatalf("load failed: %v", err)
+			}
+			if strings.Join(projCfg.AI.Harness, "|") != strings.Join(tt.want, "|") {
+				t.Fatalf("AI.Harness = %q, want %q", projCfg.AI.Harness, tt.want)
+			}
+		})
+	}
+
+	_, _, err := loadProjectSource(t, `export default { ai: { harness: "claude PROMPT" } };`, projectPathsProbeTool)
+	if err == nil || !strings.Contains(err.Error(), "unmarshaling JSON to ProjectConfig struct") {
+		t.Fatalf("a string harness loaded: %v", err)
+	}
+}
+
 // A loader result whose tool map is not an object is rejected when the envelope is
 // decoded, before any project configuration is looked at.
 func TestEvaluateUnifiedBundleRejectsMalformedToolConfigs(t *testing.T) {

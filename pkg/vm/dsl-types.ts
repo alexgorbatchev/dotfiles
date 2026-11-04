@@ -1,4 +1,5 @@
 import type {
+  AIConfig,
   CargoConfig,
   CargoHostConfig,
   CargoReleaseHostConfig,
@@ -227,6 +228,13 @@ export interface IDownloaderConfig extends DeepPartial<DownloaderConfig> {}
  * System privilege elevation configuration.
  */
 export interface ISystemConfig extends DeepPartial<SystemConfig> {}
+
+/**
+ * AI coding harness configuration. `harness` is the command `dotfiles tool make` runs, as
+ * an argument list executed without a shell; each `"PROMPT"` element is replaced with the
+ * generated prompt.
+ */
+export interface IAIConfig extends DeepPartial<AIConfig> {}
 
 /**
  * Operating systems a project-level platform override can target.

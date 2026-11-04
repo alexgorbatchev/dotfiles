@@ -8,6 +8,9 @@ export default defineConfig(({ configFileDir }) => ({
     toolConfigsDir: [`${configFileDir}/tools`, `${configFileDir}/extra-tools`],
     binariesDir: "{paths.generatedDir}/binaries",
   },
+  ai: {
+    harness: ["claude", "PROMPT"],
+  },
   features: {
     catalog: {
       generate: true,
