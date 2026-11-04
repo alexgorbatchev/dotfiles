@@ -1270,6 +1270,8 @@ func TestPositionalArgumentValidation(t *testing.T) {
 		{"venv create rejects a second name", []string{"venv", "create", "a", "b"}, atMostOne},
 		{"venv delete rejects a second name", []string{"venv", "delete", "a", "b"}, atMostOne},
 		{"state generate takes no arguments", []string{"state", "generate", "bat"}, `unknown command "bat" for "dotfiles state generate"`},
+		{"state pull takes no arguments", []string{"state", "pull", "bat"}, `unknown command "bat" for "dotfiles state pull"`},
+		{"pull takes no arguments", []string{"pull", "bat"}, `unknown command "bat" for "dotfiles pull"`},
 		{"state cleanup takes no arguments", []string{"state", "cleanup", "bat"}, `unknown command "bat" for "dotfiles state cleanup"`},
 		{"self version takes no arguments", []string{"self", "version", "bat"}, `unknown command "bat" for "dotfiles self version"`},
 		{"version takes no arguments", []string{"version", "bat"}, `unknown command "bat" for "dotfiles version"`},
@@ -5107,7 +5109,7 @@ func TestRootShortcutsAndDomainAliases(t *testing.T) {
 	})
 
 	t.Run("root shortcuts remain hidden from help", func(t *testing.T) {
-		for _, name := range []string{"generate", "g", "install", "i", "update", "u"} {
+		for _, name := range []string{"generate", "g", "pull", "install", "i", "update", "u"} {
 			cmd, _, err := rootCmd.Find([]string{name})
 			if err != nil {
 				t.Fatalf("finding command %s: %v", name, err)

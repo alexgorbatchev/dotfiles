@@ -9,6 +9,7 @@ var stateCmd = &cobra.Command{
 
 func init() {
 	stateCmd.AddCommand(stateGenerateCmd)
+	stateCmd.AddCommand(statePullCmd)
 	stateCmd.AddCommand(stateDiffCmd)
 	stateCmd.AddCommand(stateCleanupCmd)
 	stateCmd.AddCommand(stateLogCmd)

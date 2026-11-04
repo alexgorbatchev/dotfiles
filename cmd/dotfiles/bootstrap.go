@@ -78,8 +78,12 @@ func (s *Services) Close() error {
 	return errors.Join(errs...)
 }
 
-// BootstrapServices parses config files and initializes core services.
-func BootstrapServices(ctx context.Context, configPath string) (services *Services, err error) {
+// resolveConfigPath answers which configuration file a run uses, as an absolute path:
+// the --config value (with ~ expanded, and a relative path tried against the working
+// directory and then the repository root), or else the first default file found in
+// the active virtual environment, the working directory and the repository root.
+// It only locates the file; BootstrapServices loads it.
+func resolveConfigPath(configPath string) (string, error) {
 	repoRoot := os.Getenv("DOTFILES_REPO_ROOT")
 	if repoRoot == "" {
 		// Find repo root from working directory
@@ -130,7 +134,7 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 			}
 		}
 		if !found {
-			return nil, fmt.Errorf("configuration file not specified and defaults not found")
+			return "", fmt.Errorf("configuration file not specified and defaults not found")
 		}
 	} else {
 		if home, err := os.UserHomeDir(); err == nil {
@@ -148,7 +152,16 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed resolving absolute config path: %w", err)
+		return "", fmt.Errorf("failed resolving absolute config path: %w", err)
+	}
+	return absConfigPath, nil
+}
+
+// BootstrapServices parses config files and initializes core services.
+func BootstrapServices(ctx context.Context, configPath string) (services *Services, err error) {
+	absConfigPath, err := resolveConfigPath(configPath)
+	if err != nil {
+		return nil, err
 	}
 	if err := requireScriptConfig(absConfigPath); err != nil {
 		return nil, err

@@ -21,60 +21,67 @@ var stateGenerateCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	Short:   "Compile and link shims, symlinks, blocks, and templates",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-		if overwrite {
-			ctx = config.WithOverwrite(ctx, true)
-		}
-		services, err := BootstrapServices(ctx, cfgFile)
-		if err != nil {
-			return err
-		}
-		defer services.Close()
-
-		log := GetLogger("generate", cmd.ErrOrStderr())
-		services.Orchestrator.SetLogger(log)
-		log.Info("Starting generation...")
-
-		// Execute standalone generation of all tool configurations through the Orchestrator
-		err = services.Orchestrator.GenerateTools(ctx, services.ToolConfigs, services.ProjectConfig)
-		if err != nil && !errors.Is(err, toolbatch.ErrFailed) {
-			return err
-		}
-
-		// Tool completion failures are logged rather than fatal, and the CLI's own
-		// completion follows the same rule: a broken Tab must not fail generation.
-		if err := writeCLICompletion(ctx, services); err != nil {
-			log.Error(logger.Message(fmt.Sprintf("Failed to write CLI completion: %v", err)))
-		}
-
-		// Source the generated scripts from the profiles named by features.shellInstall.
-		if shellInstall := services.ProjectConfig.Features.ShellInstall; shellInstall != nil {
-			log.Info("Integrating generated shell scripts with profiles...")
-
-			shellScriptsDir := services.ProjectConfig.Paths.ShellScriptsDir
-			if shellScriptsDir == "" {
-				shellScriptsDir = filepath.Join(services.ProjectConfig.Paths.GeneratedDir, "shell-scripts")
-			}
-
-			inj := shellinit.NewInjector(services.FS)
-			for _, target := range []struct{ shell, profile, script string }{
-				{"zsh", shellInstall.Zsh, "main.zsh"},
-				{"bash", shellInstall.Bash, "main.bash"},
-				{"powershell", shellInstall.Powershell, "main.ps1"},
-			} {
-				if target.profile == "" {
-					continue
-				}
-				injectProfile(log, inj, shellinit.InjectOptions{
-					ProfilePath: utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, target.profile),
-					Shell:       target.shell,
-					ScriptPath:  filepath.Join(shellScriptsDir, target.script),
-				})
-			}
-		}
-
-		return err
+		return generateState(cmd)
 	},
+}
+
+// generateState loads the configuration and writes every artifact it declares. It is
+// the whole of state generate, and the step state pull runs once the configuration's
+// repository is up to date.
+func generateState(cmd *cobra.Command) error {
+	ctx := cmd.Context()
+	if overwrite {
+		ctx = config.WithOverwrite(ctx, true)
+	}
+	services, err := BootstrapServices(ctx, cfgFile)
+	if err != nil {
+		return err
+	}
+	defer services.Close()
+
+	log := GetLogger("generate", cmd.ErrOrStderr())
+	services.Orchestrator.SetLogger(log)
+	log.Info("Starting generation...")
+
+	// Execute standalone generation of all tool configurations through the Orchestrator
+	err = services.Orchestrator.GenerateTools(ctx, services.ToolConfigs, services.ProjectConfig)
+	if err != nil && !errors.Is(err, toolbatch.ErrFailed) {
+		return err
+	}
+
+	// Tool completion failures are logged rather than fatal, and the CLI's own
+	// completion follows the same rule: a broken Tab must not fail generation.
+	if err := writeCLICompletion(ctx, services); err != nil {
+		log.Error(logger.Message(fmt.Sprintf("Failed to write CLI completion: %v", err)))
+	}
+
+	// Source the generated scripts from the profiles named by features.shellInstall.
+	if shellInstall := services.ProjectConfig.Features.ShellInstall; shellInstall != nil {
+		log.Info("Integrating generated shell scripts with profiles...")
+
+		shellScriptsDir := services.ProjectConfig.Paths.ShellScriptsDir
+		if shellScriptsDir == "" {
+			shellScriptsDir = filepath.Join(services.ProjectConfig.Paths.GeneratedDir, "shell-scripts")
+		}
+
+		inj := shellinit.NewInjector(services.FS)
+		for _, target := range []struct{ shell, profile, script string }{
+			{"zsh", shellInstall.Zsh, "main.zsh"},
+			{"bash", shellInstall.Bash, "main.bash"},
+			{"powershell", shellInstall.Powershell, "main.ps1"},
+		} {
+			if target.profile == "" {
+				continue
+			}
+			injectProfile(log, inj, shellinit.InjectOptions{
+				ProfilePath: utils.ExpandHomePath(services.ProjectConfig.Paths.HomeDir, target.profile),
+				Shell:       target.shell,
+				ScriptPath:  filepath.Join(shellScriptsDir, target.script),
+			})
+		}
+	}
+
+	return err
 }
 
 // injectProfile makes the profile source the generated script. Only an existing
@@ -92,6 +99,9 @@ func injectProfile(log *logger.Logger, inj *shellinit.Injector, opts shellinit.I
 }
 
 var overwrite bool
+
+// overwriteUsage describes --overwrite on every command that generates.
+const overwriteUsage = "Overwrite conflicting files that were not created by the generator"
 
 // writeCLICompletion renders cobra's zsh completion for this binary and hands it to
 // the orchestrator, which places it where the generated main.zsh's fpath finds it.

@@ -11,6 +11,15 @@ var rootGenerateCmd = &cobra.Command{
 	RunE:    stateGenerateCmd.RunE,
 }
 
+var rootPullCmd = &cobra.Command{
+	Use:    "pull",
+	Short:  "Update the configuration from its git repository, then regenerate (shortcut for state pull)",
+	Long:   statePullLong,
+	Args:   cobra.NoArgs,
+	Hidden: true,
+	RunE:   statePullCmd.RunE,
+}
+
 var rootInstallCmd = &cobra.Command{
 	Use:               "install [tool...]",
 	Aliases:           []string{"i"},
@@ -40,7 +49,9 @@ var rootVersionCmd = &cobra.Command{
 }
 
 func init() {
-	rootGenerateCmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite conflicting files that were not created by the generator")
+	rootGenerateCmd.Flags().BoolVar(&overwrite, "overwrite", false, overwriteUsage)
+
+	rootPullCmd.Flags().BoolVar(&overwrite, "overwrite", false, overwriteUsage)
 
 	rootInstallCmd.Flags().Bool("shim-mode", false, "Quiet installation mode for shims")
 	rootInstallCmd.Flags().BoolP("force", "f", false, "Force installation even if already installed")
@@ -49,6 +60,7 @@ func init() {
 	rootUpdateCmd.Flags().BoolP("force", "f", false, "Force re-download and re-installation even if already up to date")
 
 	rootCmd.AddCommand(rootGenerateCmd)
+	rootCmd.AddCommand(rootPullCmd)
 	rootCmd.AddCommand(rootInstallCmd)
 	rootCmd.AddCommand(rootUpdateCmd)
 	rootCmd.AddCommand(rootVersionCmd)

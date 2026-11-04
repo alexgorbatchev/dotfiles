@@ -34,6 +34,7 @@ dotfiles venv delete myenv
 
 # System state, drift detection, and orchestration
 dotfiles state generate
+dotfiles state pull
 dotfiles state diff
 dotfiles state cleanup
 dotfiles state log fzf --tail 50
@@ -56,6 +57,7 @@ dotfiles self upgrade --check
 
 # Top-level convenience shortcuts
 dotfiles g                     # shortcut for dotfiles state generate
+dotfiles pull                  # shortcut for dotfiles state pull
 dotfiles i fzf                 # shortcut for dotfiles tool install fzf
 dotfiles u                     # shortcut for dotfiles tool update
 dotfiles version               # shortcut for dotfiles self version
@@ -68,6 +70,7 @@ For everyday convenience, the most high-frequency commands provide top-level roo
 | Shortcut                                   | Canonical Command                 | Description                                             |
 | :----------------------------------------- | :-------------------------------- | :------------------------------------------------------ |
 | `dotfiles generate`, `dotfiles g`          | `dotfiles state generate`         | Compile and link shims, symlinks, blocks, and templates |
+| `dotfiles pull`                            | `dotfiles state pull`             | Update the configuration from git, then regenerate      |
 | `dotfiles install [tool...]`, `dotfiles i` | `dotfiles tool install [tool...]` | Install one or all configured tools                     |
 | `dotfiles update [tool...]`, `dotfiles u`  | `dotfiles tool update [tool...]`  | Upgrade tools to their latest available release         |
 | `dotfiles version`                         | `dotfiles self version`           | Print the dotfiles CLI version                          |
@@ -379,6 +382,19 @@ _(Alias: `g`, Root shortcuts: `dotfiles generate`, `dotfiles g`)_
 Writes the shims, symlinks, copies, shell initialization scripts and completions the configuration calls for, and removes the artifacts of declarations that have gone.
 
 - `--overwrite`: Replace files that the generator did not create, instead of leaving them in place. See [`shell audit`](#dotfiles-shell-audit) for finding them first.
+
+#### `dotfiles state pull`
+
+_(Root shortcut: `dotfiles pull`)_
+
+Updates the configuration from its git repository, then runs [`state generate`](#dotfiles-state-generate) against the updated files. Accepts no positional arguments.
+
+- The repository is the git work tree containing the configuration file, found with `git rev-parse --show-toplevel` after following symlinks, so a `~/.dotfiles.config.ts` symlinked into a checkout pulls that checkout. The configuration file is chosen the same way as for every other command (`--config`, the active virtual environment, then the working directory).
+- The current branch is updated with `git pull --ff-only --no-rebase`: it moves forward to its upstream branch or not at all, whatever `pull.rebase` is configured to. Local commits missing upstream, uncommitted changes the update would overwrite, a detached `HEAD`, and a branch without an upstream make git refuse; the command then exits 1 without generating. Uncommitted changes git can keep are kept.
+- A configuration that is not inside a git repository, or a missing `git` executable, is an error, and nothing is generated.
+- git's output is logged on stderr, prefixed with `|`, at the default log level; `--quiet` hides it. git runs attached to the terminal without a timeout, so it can ask for credentials or an SSH key passphrase.
+- `--dry-run` checks that the configuration is in a git repository, skips the pull, and simulates generation against the current checkout.
+- `--overwrite`: Passed to generation; see [`state generate`](#dotfiles-state-generate).
 
 #### `dotfiles state diff [tool]`
 
