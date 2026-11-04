@@ -22,10 +22,11 @@ The repository is the one the configuration file lives in, after following symli
 Its current branch is fast-forwarded to its upstream branch, and then everything
 "state generate" does runs against the updated configuration.
 
-The pull never merges or rebases. Local commits the upstream branch does not have,
-uncommitted changes the update would overwrite, a detached HEAD, or a branch with no
-upstream stop the command before anything is generated. A configuration that is not
-inside a git repository is an error.
+The pull never merges or rebases. Diverged history (local commits while the upstream
+branch also moved on), uncommitted changes the update would overwrite, a detached HEAD,
+or a branch with no upstream stop the command before anything is generated. A branch
+that is only ahead of its upstream is left as it is and generation still runs. A
+configuration that is not inside a git repository is an error.
 
 With --dry-run nothing is pulled, and generation is simulated against the current
 checkout.`

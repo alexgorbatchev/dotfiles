@@ -193,6 +193,24 @@ func TestStatePull_DryRunLeavesCheckout(t *testing.T) {
 	assertExists(t, filepath.Join(f.TargetDir, "second"), false)
 }
 
+func TestStatePull_AheadOfUpstreamStillGenerates(t *testing.T) {
+	f := newPullFixture(t)
+	writeTSProject(t, f.Root, `"paths": {`+projectPathsTS(f.Root)+`}`, tsTools{"first": pullFixtureTools["first"], "local": `install().bin("local")`})
+	runGit(t, f.Root, "add", "-A", "dotfiles.config.ts", "tools")
+	runGit(t, f.Root, "commit", "-q", "-m", "unpushed change")
+	before := f.head(t)
+
+	out, err := f.run("state", "pull")
+	if err != nil {
+		t.Fatalf("pull ahead of upstream: %v\n%s", err, out.Combined)
+	}
+	if got := f.head(t); got != before {
+		t.Fatalf("HEAD moved from %s to %s", before, got)
+	}
+	// The unpushed tool is generated: being ahead is not a refusal.
+	assertExists(t, filepath.Join(f.TargetDir, "local"), true)
+}
+
 func TestStatePull_FailuresStopBeforeGeneration(t *testing.T) {
 	tests := []struct {
 		name    string
