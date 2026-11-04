@@ -51,7 +51,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 
 			// 2. Dotfiles CLI Section
 			scriptLines = append(scriptLines, shellinit.GenerateSectionHeader("Dotfiles CLI"))
-			cliCmd := o.formatCliCommandForShell(sh, projCfg)
+			cliCmd := o.CliCommandForShell(sh, projCfg)
 			var wrapper string
 			if o.configFilePath != "" {
 				if sh == "powershell" {
@@ -224,7 +224,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 					}
 					if sourceFile != "" {
 						fullSourcePath := filepath.ToSlash(filepath.Join(pluginPath, sourceFile))
-						cliCmd := o.formatCliCommandForShell("zsh", projCfg)
+						cliCmd := o.CliCommandForShell("zsh", projCfg)
 						cfgFile := o.getConfigFilePath()
 
 						toolBlockLines = append(toolBlockLines,
@@ -500,7 +500,11 @@ func formatFunctionBody(body string) string {
 	return strings.Join(formatted, "\n")
 }
 
-func (o *Orchestrator) formatCliCommandForShell(sh string, projCfg *config.ProjectConfig) string {
+// CliCommandForShell returns the command that runs this CLI, written for the shell sh
+// ("zsh", "bash" or "powershell"): the executing binary, the dev `go run` command, or
+// DOTFILES_CLI_COMMAND, quoted where a path holds spaces. Anything that tells a shell,
+// or a program driving one, to run the CLI uses it instead of naming "dotfiles".
+func (o *Orchestrator) CliCommandForShell(sh string, projCfg *config.ProjectConfig) string {
 	cliCmd := o.getCliCommand()
 
 	// Normalize Windows backslashes for all shells. Forward slashes are safe in

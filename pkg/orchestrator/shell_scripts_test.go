@@ -704,8 +704,8 @@ func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
 		t.Fatalf("failed to generate shell scripts: %v", err)
 	}
 
-	expectedCmdZsh := orchWithConfig.formatCliCommandForShell("zsh", projCfg)
-	expectedCmdPs1 := orchWithConfig.formatCliCommandForShell("powershell", projCfg)
+	expectedCmdZsh := orchWithConfig.CliCommandForShell("zsh", projCfg)
+	expectedCmdPs1 := orchWithConfig.CliCommandForShell("powershell", projCfg)
 
 	zshData1, _ := memFS1.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
 	zshContent1 := string(zshData1)

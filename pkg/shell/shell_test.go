@@ -206,3 +206,25 @@ func TestGenerateScript(t *testing.T) {
 		}
 	}
 }
+
+func TestQuote(t *testing.T) {
+	tests := []struct {
+		name string
+		word string
+		want string
+	}{
+		{name: "a safe word", word: "/home/dev/.dotfiles/dotfiles.config.ts", want: "/home/dev/.dotfiles/dotfiles.config.ts"},
+		{name: "a space", word: "/Users/me/Mobile Documents/dotfiles.config.ts", want: "'/Users/me/Mobile Documents/dotfiles.config.ts'"},
+		{name: "a single quote", word: "it's", want: `'it'\''s'`},
+		{name: "a glob", word: "*.ts", want: "'*.ts'"},
+		{name: "a control character", word: "a'\\\tb\n", want: `$'a\'\\\tb\n'`},
+		{name: "empty", word: "", want: "''"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Quote(tt.word); got != tt.want {
+				t.Errorf("Quote(%q) = %q, want %q", tt.word, got, tt.want)
+			}
+		})
+	}
+}

@@ -1561,10 +1561,10 @@ func TestOrchestrator_FormatCliCommandForShell(t *testing.T) {
 
 	t.Run("multi-token go run without spaces", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "go run /path/to/cmd/dotfiles")
-		if got := orch.formatCliCommandForShell("zsh", projCfg); got != "go run /path/to/cmd/dotfiles" {
+		if got := orch.CliCommandForShell("zsh", projCfg); got != "go run /path/to/cmd/dotfiles" {
 			t.Errorf("expected %q, got %q", "go run /path/to/cmd/dotfiles", got)
 		}
-		if got := orch.formatCliCommandForShell("powershell", projCfg); got != "go run /path/to/cmd/dotfiles" {
+		if got := orch.CliCommandForShell("powershell", projCfg); got != "go run /path/to/cmd/dotfiles" {
 			t.Errorf("expected %q, got %q", "go run /path/to/cmd/dotfiles", got)
 		}
 	})
@@ -1572,30 +1572,30 @@ func TestOrchestrator_FormatCliCommandForShell(t *testing.T) {
 	t.Run("multi-token go run with space in package path", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "go run /path with spaces/cmd/dotfiles")
 		want := `go run "/path with spaces/cmd/dotfiles"`
-		if got := orch.formatCliCommandForShell("zsh", projCfg); got != want {
+		if got := orch.CliCommandForShell("zsh", projCfg); got != want {
 			t.Errorf("expected %q, got %q", want, got)
 		}
 	})
 
 	t.Run("windows backslashes converted for all shells", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", `C:\Users\bin\dotfiles`)
-		if got := orch.formatCliCommandForShell("zsh", projCfg); got != "C:/Users/bin/dotfiles" {
+		if got := orch.CliCommandForShell("zsh", projCfg); got != "C:/Users/bin/dotfiles" {
 			t.Errorf("expected forward slashes for zsh, got %q", got)
 		}
-		if got := orch.formatCliCommandForShell("powershell", projCfg); got != "C:/Users/bin/dotfiles" {
+		if got := orch.CliCommandForShell("powershell", projCfg); got != "C:/Users/bin/dotfiles" {
 			t.Errorf("expected forward slashes for powershell, got %q", got)
 		}
 	})
 
 	t.Run("bare dotfiles prevents recursion with command in bash and zsh", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "dotfiles")
-		if got := orch.formatCliCommandForShell("zsh", projCfg); got != "command dotfiles" {
+		if got := orch.CliCommandForShell("zsh", projCfg); got != "command dotfiles" {
 			t.Errorf("expected 'command dotfiles' for zsh, got %q", got)
 		}
-		if got := orch.formatCliCommandForShell("bash", projCfg); got != "command dotfiles" {
+		if got := orch.CliCommandForShell("bash", projCfg); got != "command dotfiles" {
 			t.Errorf("expected 'command dotfiles' for bash, got %q", got)
 		}
-		if got := orch.formatCliCommandForShell("powershell", projCfg); got != `"/home/user/.generated/bin/dotfiles"` {
+		if got := orch.CliCommandForShell("powershell", projCfg); got != `"/home/user/.generated/bin/dotfiles"` {
 			t.Errorf("expected target bin for powershell, got %q", got)
 		}
 	})
@@ -1603,10 +1603,10 @@ func TestOrchestrator_FormatCliCommandForShell(t *testing.T) {
 	t.Run("path with spaces quoted even if not on host disk", func(t *testing.T) {
 		t.Setenv("DOTFILES_CLI_COMMAND", "/virtual/dir with spaces/bin/dotfiles")
 		want := `"/virtual/dir with spaces/bin/dotfiles"`
-		if got := orch.formatCliCommandForShell("zsh", projCfg); got != want {
+		if got := orch.CliCommandForShell("zsh", projCfg); got != want {
 			t.Errorf("expected %q, got %q", want, got)
 		}
-		if got := orch.formatCliCommandForShell("powershell", projCfg); got != want {
+		if got := orch.CliCommandForShell("powershell", projCfg); got != want {
 			t.Errorf("expected %q, got %q", want, got)
 		}
 	})
@@ -1624,7 +1624,7 @@ func TestOrchestrator_FormatCliCommandForShell(t *testing.T) {
 
 		t.Setenv("DOTFILES_CLI_COMMAND", dummyBin)
 		want := fmt.Sprintf(`"%s"`, filepath.ToSlash(dummyBin))
-		if got := orch.formatCliCommandForShell("zsh", projCfg); got != want {
+		if got := orch.CliCommandForShell("zsh", projCfg); got != want {
 			t.Errorf("expected quoted path %s, got %s", want, got)
 		}
 	})

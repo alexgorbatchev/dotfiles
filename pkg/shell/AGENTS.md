@@ -9,6 +9,7 @@ Shell type detection and environment configuration.
 ## Local conventions
 
 - Support zsh, bash, and powershell syntax generation.
+- `Quote` (`quote.go`) is the one POSIX shell-word quoting helper; use it wherever a command line is shown to a person or program to run, instead of hand-quoting.
 
 ## Local gotchas
 
