@@ -43,11 +43,17 @@ func runStubHarness() {
 	os.Exit(code)
 }
 
+// stubCLI is the CLI command the prompt names in tests: DOTFILES_CLI_COMMAND, which
+// the orchestrator's CLI resolution honours first, set to a path with a space so the
+// prompt has to quote it.
+const stubCLI = "/opt/dot files/dotfiles"
+
 // makeProject is a project whose ai.harness runs the stub harness with the given
 // arguments after the executable, and the file the stub records its run in.
 func makeProject(t *testing.T, harnessArgs ...string) (e2eProject, string) {
 	t.Helper()
 	p := newE2EProject(t, nil)
+	t.Setenv("DOTFILES_CLI_COMMAND", stubCLI)
 	// The real runner, so the stub harness is actually started.
 	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
 	record := filepath.Join(t.TempDir(), "run.json")
@@ -97,6 +103,7 @@ func TestToolMakeRunsTheHarness(t *testing.T) {
 		Subject:        "https://github.com/muesli/duf with config",
 		ConfigPath:     p.ConfigPath,
 		ToolConfigsDir: filepath.Join(p.Root, "tools"),
+		CLI:            `"` + stubCLI + `"`,
 	})
 	if len(run.Args) != 3 || run.Args[0] != "-p" || run.Args[1] != wantPrompt || run.Args[2] != "--verbose" {
 		t.Fatalf("harness arguments = %q, want [-p <prompt> --verbose] with prompt\n%s", run.Args, wantPrompt)
@@ -188,12 +195,34 @@ func TestToolMakeDryRunPrintsThePrompt(t *testing.T) {
 	if _, err := os.Stat(record); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("a dry run started the harness: %v", err)
 	}
-	wantPrompt := harness.ToolPrompt(harness.ToolRequest{Subject: "duf", ConfigPath: p.ConfigPath, ToolConfigsDir: filepath.Join(p.Root, "tools")})
+	wantPrompt := harness.ToolPrompt(harness.ToolRequest{Subject: "duf", ConfigPath: p.ConfigPath, ToolConfigsDir: filepath.Join(p.Root, "tools"), CLI: `"` + stubCLI + `"`})
 	if out.Stdout != wantPrompt {
 		t.Fatalf("stdout = %q, want the prompt %q", out.Stdout, wantPrompt)
 	}
 	wantLog := fmt.Sprintf("Would run AI harness: %q", []string{os.Args[0], "-p", harness.Placeholder})
 	if !strings.Contains(out.Stderr, wantLog) {
 		t.Fatalf("stderr = %q, want %q", out.Stderr, wantLog)
+	}
+}
+
+// A harness executable written relative to the home directory starts, as it would from
+// a shell, although no shell runs it.
+func TestToolMakeExpandsAHomeRelativeHarness(t *testing.T) {
+	p, record := makeProject(t, harness.Placeholder)
+	harnessDir := filepath.Join(p.HomeDir, "bin")
+	if err := os.MkdirAll(harnessDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(os.Args[0], filepath.Join(harnessDir, "stub-harness")); err != nil {
+		t.Fatal(err)
+	}
+	p.ConfigPath = p.writeConfig(t, nil, "", `"ai": {"harness": ["~/bin/stub-harness", "PROMPT"]}`)
+
+	out, err := p.run("tool", "make", "duf")
+	if err != nil {
+		t.Fatalf("tool make: %v\n%s", err, out.Combined)
+	}
+	if run := readStubHarnessRun(t, record); len(run.Args) != 1 || !strings.HasPrefix(run.Args[0], "Create a dotfiles tool configuration file (.tool.ts) for: duf\n") {
+		t.Fatalf("harness arguments = %q, want the prompt", run.Args)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"slices"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
+	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
 // Placeholder is the ai.harness element that is replaced with the prompt. Only an
@@ -24,7 +25,11 @@ var ErrNotConfigured = errors.New(`no AI harness is configured: set ai.harness i
 // Argv returns the configured harness command with every element equal to Placeholder
 // replaced by prompt. The result is an argument vector for direct execution, so the
 // prompt reaches the harness as a single argument however it is worded.
-func Argv(command []string, prompt string) ([]string, error) {
+//
+// A leading ~ (or $HOME) in the executable is expanded to homeDir, as it is in the
+// configuration's path settings, because no shell is there to expand it. Every other
+// element is passed as it is written.
+func Argv(command []string, prompt, homeDir string) ([]string, error) {
 	if len(command) == 0 {
 		return nil, ErrNotConfigured
 	}
@@ -35,11 +40,12 @@ func Argv(command []string, prompt string) ([]string, error) {
 		return nil, fmt.Errorf("ai.harness %q has no %q element to receive the prompt", command, Placeholder)
 	}
 	argv := make([]string, len(command))
-	for i, arg := range command {
+	argv[0] = utils.ExpandHomePath(homeDir, command[0])
+	for i, arg := range command[1:] {
 		if arg == Placeholder {
 			arg = prompt
 		}
-		argv[i] = arg
+		argv[i+1] = arg
 	}
 	return argv, nil
 }

@@ -23,10 +23,12 @@ needs no quoting:
 
 The assistant is told to read the dotfiles skill, create the tool file in the
 primary tool configs directory, add a prefilled configuration file linked into
-the home directory when the tool reads one, and run dotfiles generate.
+the home directory when the tool reads one, and run dotfiles generate. Each
+command it is given runs this same dotfiles program with this configuration.
 
 ai.harness is the assistant's command as a list, such as ["claude", "PROMPT"].
-Each "PROMPT" element is replaced with the instructions, and the command is run
+Each "PROMPT" element is replaced with the instructions, a leading ~ in the
+first element is expanded to the home directory, and the command is run
 directly, without a shell, from the directory holding dotfiles.config.ts. It
 shares this terminal, and this command exits with the assistant's exit status.
 
@@ -48,9 +50,11 @@ With --dry-run, prints the instructions instead of starting the assistant.`,
 			Subject:        request,
 			ConfigPath:     services.ConfigPath,
 			ToolConfigsDir: services.ProjectConfig.Paths.GetPrimaryToolConfigsDir(),
+			// AI harnesses run their commands through bash.
+			CLI: services.Orchestrator.CliCommandForShell("bash", services.ProjectConfig),
 		})
 		command := services.ProjectConfig.AI.Harness
-		argv, err := harness.Argv(command, prompt)
+		argv, err := harness.Argv(command, prompt, services.ProjectConfig.Paths.HomeDir)
 		if err != nil {
 			return err
 		}

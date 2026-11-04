@@ -312,10 +312,12 @@ dotfiles tool make https://github.com/muesli/duf with config
 The assistant receives instructions to:
 
 1. Read this skill with `dotfiles skill`, follow its tool-creation procedure, and export the reference files with `dotfiles skill copy` to read them.
-2. Pass `--config <path>` with the configuration file in use to every `dotfiles` command it runs.
+2. Run every `dotfiles` command with `--config <path>` naming the configuration file in use.
 3. Create the tool file in the first configured `toolConfigsDir` directory, following the layout of the tool files already there.
 4. When the tool reads a configuration file from the home directory, create that file beside the tool file, prefilled with the tool's documented settings, and link it into place with [`.symlink()`](../api-reference/shell-integration.md#symbolic-links).
 5. Run `dotfiles generate` and fix every error it reports.
+
+Each of these commands names the `dotfiles` program that is running `tool make`, the way the generated shell integration does, rather than whichever `dotfiles` the assistant would find on `PATH`, and the configuration path is shell-quoted.
 
 The assistant runs from the directory holding the configuration file and shares the terminal: it reads your input and writes its output directly, and an interrupt (`Ctrl-C`) goes to the assistant without ending `dotfiles`. There is no timeout. `tool make` exits with the assistant's exit status; when the status is not 0 it also reports the status on stderr. When the assistant cannot be started or is ended by a signal, `tool make` reports why and exits 1. `dotfiles` itself writes nothing else while the assistant runs.
 

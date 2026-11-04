@@ -17,7 +17,7 @@ import (
 // it and keep waiting, or the harness is left running without the process that started
 // it. Without the handling in Run, the interrupt sent below would end the test binary.
 func TestRunSurvivesAnInterruptWhileTheHarnessRuns(t *testing.T) {
-	argv, err := Argv(helperCommand(t, Placeholder), "prompt")
+	argv, err := Argv(helperCommand(t, Placeholder), "prompt", "")
 	if err != nil {
 		t.Fatal(err)
 	}

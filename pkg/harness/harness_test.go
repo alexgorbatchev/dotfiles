@@ -71,6 +71,8 @@ func TestArgv(t *testing.T) {
 		{name: "replaces the placeholder element", command: []string{"claude", "-p", "PROMPT"}, want: []string{"claude", "-p", "the prompt"}},
 		{name: "replaces every placeholder element", command: []string{"h", "PROMPT", "--again", "PROMPT"}, want: []string{"h", "the prompt", "--again", "the prompt"}},
 		{name: "keeps text that only contains the placeholder", command: []string{"h", "--prompt=PROMPT", "PROMPT"}, want: []string{"h", "--prompt=PROMPT", "the prompt"}},
+		{name: "expands a home-relative executable", command: []string{"~/.claude/local/claude", "~/notes", "PROMPT"}, want: []string{"/home/dev/.claude/local/claude", "~/notes", "the prompt"}},
+		{name: "expands $HOME in the executable", command: []string{"$HOME/bin/codex", "PROMPT"}, want: []string{"/home/dev/bin/codex", "the prompt"}},
 		{name: "unconfigured", command: nil, wantErr: ErrNotConfigured.Error()},
 		{name: "empty list", command: []string{}, wantErr: ErrNotConfigured.Error()},
 		{name: "no placeholder", command: []string{"claude", "-p"}, wantErr: `ai.harness ["claude" "-p"] has no "PROMPT" element to receive the prompt`},
@@ -79,7 +81,7 @@ func TestArgv(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Argv(tt.command, "the prompt")
+			got, err := Argv(tt.command, "the prompt", "/home/dev")
 			if tt.wantErr != "" {
 				if err == nil || err.Error() != tt.wantErr {
 					t.Fatalf("Argv(%q) error = %v, want %q", tt.command, err, tt.wantErr)
@@ -97,11 +99,11 @@ func TestArgv(t *testing.T) {
 }
 
 func TestArgvLeavesTheConfiguredCommandUnchanged(t *testing.T) {
-	command := []string{"claude", "PROMPT"}
-	if _, err := Argv(command, "the prompt"); err != nil {
+	command := []string{"~/claude", "PROMPT"}
+	if _, err := Argv(command, "the prompt", "/home/dev"); err != nil {
 		t.Fatal(err)
 	}
-	if command[1] != Placeholder {
+	if command[0] != "~/claude" || command[1] != Placeholder {
 		t.Fatalf("Argv rewrote the configured command: %q", command)
 	}
 }
@@ -186,7 +188,7 @@ func TestRunExecutesTheHarness(t *testing.T) {
 		t.Fatal(err)
 	}
 	prompt := "make a tool for `x` with \"quotes\", $HOME and\nnewlines"
-	argv, err := Argv(helperCommand(t, "-p", Placeholder), prompt)
+	argv, err := Argv(helperCommand(t, "-p", Placeholder), prompt, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -229,8 +229,11 @@ ai: {
 Every element that is exactly `"PROMPT"` is replaced with the instructions `tool make`
 generates; an element that merely contains the word is passed unchanged. The list is
 run directly, without a shell, so the instructions reach the assistant as one argument
-and nothing in them needs quoting or escaping. Name the executable as you would on the
-command line: a bare name is looked up on `PATH`.
+and nothing in them needs quoting or escaping. A bare executable name is looked up on
+`PATH`. A leading `~` (or `$HOME`) in the executable expands to `paths.homeDir`, as in
+the path settings; any other relative path is resolved from the configuration file's
+directory. Every other element is passed exactly as written, with no `~` or variable
+expansion.
 
 The list needs at least one `"PROMPT"` element and an executable before it. Without
 `harness`, `tool make` stops with an error naming the setting; nothing else reads it.
