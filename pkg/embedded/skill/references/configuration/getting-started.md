@@ -141,7 +141,7 @@ When a `.tool.ts` configuration file is removed, the next `dotfiles generate` re
 Cleanup only removes what is still dotfiles' own:
 
 - A symlink is removed while it still points where dotfiles pointed it, including when that target was deleted along with the tool's directory. A link that now points somewhere else, or a file or directory put in its place, is left alone with a warning.
-- A copy or template you edited is moved aside to a `.bak` file rather than deleted.
+- A copy or template you edited is moved aside to a `.bak` file rather than deleted. A copied file is left alone when a directory above it is no longer the one dotfiles copied into, such as a copied directory you replaced with a link to your own.
 - A directory the tool created is kept while it still holds files dotfiles did not create, and a directory that existed before the tool is never removed.
 - A package installed by a package manager (`brew`, `apt`, `npm`, ...) or an app bundle placed in `/Applications` is left installed with a warning, because uninstalling it needs the tool's configuration. `dotfiles tool uninstall` removes it while the tool is still configured.
 

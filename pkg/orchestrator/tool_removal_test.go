@@ -288,30 +288,168 @@ func TestCleanupOrphanedToolsRemovesDeclaredFiles(t *testing.T) {
 	assertForgotten(t, orch, "decl-tool")
 }
 
-// A path another tool wrote after the orphaned one belongs to that tool now.
+// A path another tool wrote after the orphaned one belongs to that tool now, while
+// the orphaned tool's own file still goes.
 func TestCleanupOrphanedToolsKeepsAPathAnotherToolTookOver(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	orch, memFS := declFixture(t)
-	const shared = "/home/user/bin/shared"
+	const (
+		shared = "/home/user/bin/shared"
+		own    = "/home/user/bin/gone-only"
+	)
 	writeDecl(t, memFS, shared, "the active tool's shim")
-	for _, owner := range []string{"gone-tool", "active-tool"} {
-		err := orch.reg.WithTx(ctx, func(tx *sql.Tx) error {
-			return orch.reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
-				ToolName: owner, OperationType: "writeFile", FilePath: shared, FileType: "shim", OperationID: owner,
-			})
-		})
-		if err != nil {
-			t.Fatalf("recording %s: %v", owner, err)
-		}
-	}
+	writeDecl(t, memFS, own, "the orphaned tool's shim")
+	recordShim(t, orch, "gone-tool", own)
+	recordShim(t, orch, "gone-tool", shared)
+	recordShim(t, orch, "active-tool", shared)
 	active := &config.ToolConfig{Name: "active-tool"}
 
 	if err := orch.CleanupOrphanedTools(ctx, []*config.ToolConfig{active}, declProjectConfig()); err != nil {
 		t.Fatalf("CleanupOrphanedTools: %v", err)
 	}
+	assertGone(t, memFS, own)
+	assertRemovalRecorded(t, orch, "gone-tool", own)
 	if _, err := memFS.Lstat(shared); err != nil {
 		t.Errorf("the active tool's file was removed: %v", err)
+	}
+	if st, err := orch.reg.GetFileState(ctx, shared); err != nil || st == nil || st.ToolName != "active-tool" {
+		t.Errorf("state of %s = %+v, %v; want it still owned by active-tool", shared, st, err)
+	}
+	assertForgotten(t, orch, "gone-tool")
+}
+
+// recordShim records that toolName wrote a shim at path.
+func recordShim(t *testing.T, orch *Orchestrator, toolName, path string) {
+	t.Helper()
+	ctx := context.Background()
+	err := orch.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return orch.reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName: toolName, OperationType: "writeFile", FilePath: path, FileType: "shim", OperationID: toolName + path,
+		})
+	})
+	if err != nil {
+		t.Fatalf("recording %s for %s: %v", path, toolName, err)
+	}
+}
+
+// A directory the tool created keeps its record while a file inside it could not be
+// removed, so the retry that removes the file removes the directory as well.
+func TestCleanupOrphanedToolsKeepsADirectoryWhoseContentFailed(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	orch, memFS := declFixture(t)
+	const (
+		dir      = "/home/user/.app"
+		rendered = dir + "/app.conf"
+	)
+	writeDecl(t, memFS, declToolDir+"/app.conf.tmpl", "setting = 1\n")
+	tool := newDeclTool()
+	tool.Directories = []config.DirectoryConfig{{Path: "~/.app"}}
+	tool.Templates = []config.TemplateConfig{{Source: "./app.conf.tmpl", Target: "~/.app/app.conf"}}
+	if err := orch.GenerateTool(ctx, tool, declProjectConfig()); err != nil {
+		t.Fatalf("GenerateTool: %v", err)
+	}
+	failing := &failingRemoveFS{FS: orch.fs, path: rendered, fail: true}
+	orch.fs = failing
+
+	if err := orch.CleanupOrphanedTools(ctx, nil, declProjectConfig()); !errors.Is(err, toolbatch.ErrFailed) {
+		t.Fatalf("CleanupOrphanedTools = %v; want a reported tool failure", err)
+	}
+	if st, err := orch.reg.GetFileState(ctx, dir); err != nil || st == nil {
+		t.Fatalf("state of %s = %+v, %v; want its record kept", dir, st, err)
+	}
+
+	failing.fail = false
+	if err := orch.CleanupOrphanedTools(ctx, nil, declProjectConfig()); err != nil {
+		t.Fatalf("retried CleanupOrphanedTools: %v", err)
+	}
+	assertGone(t, memFS, dir)
+	assertRemovalRecorded(t, orch, "decl-tool", dir)
+	assertForgotten(t, orch, "decl-tool")
+}
+
+// A copied directory the user replaced with a link to their own leads every recorded
+// member path into the user's files, which are kept; only the records end. This runs
+// on the real filesystem, because only there does a path resolve through a symlink
+// above its last component.
+func TestCleanupOrphanedToolsKeepsFilesReachedThroughAReplacedCopyDirectory(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{name: "an identical file", content: "managed\n"},
+		{name: "an edited file", content: "edited\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			home := t.TempDir()
+			toolDir := filepath.Join(home, "dotfiles", "tools", "decl-tool")
+			projCfg := &config.ProjectConfig{Paths: config.PathsConfig{
+				HomeDir:      home,
+				TargetDir:    filepath.Join(home, ".generated", "bin"),
+				BinariesDir:  filepath.Join(home, ".generated", "binaries"),
+				GeneratedDir: filepath.Join(home, ".generated"),
+			}}
+			orch := newTestOrchestrator(t, fs.NewResolvedFS(fs.NewOSFS(), home), "")
+			var logBuf bytes.Buffer
+			orch.logger = logger.New(logger.Config{Writer: &logBuf})
+			mustWrite(t, filepath.Join(toolDir, "nvim", "init.lua"), "managed\n")
+			tool := &config.ToolConfig{
+				Name:           "decl-tool",
+				ConfigFilePath: filepath.Join(toolDir, "decl-tool.tool.ts"),
+				Copies:         []config.CopyConfig{{Source: "./nvim", Target: "~/.config/nvim"}},
+			}
+			if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+				t.Fatalf("GenerateTool: %v", err)
+			}
+			copied := filepath.Join(home, ".config", "nvim")
+			if err := os.RemoveAll(copied); err != nil {
+				t.Fatal(err)
+			}
+			mine := filepath.Join(home, "my-nvim", "init.lua")
+			mustWrite(t, mine, tt.content)
+			if err := os.Symlink(filepath.Dir(mine), copied); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := orch.CleanupOrphanedTools(ctx, nil, projCfg); err != nil {
+				t.Fatalf("CleanupOrphanedTools: %v", err)
+			}
+			if got, err := os.ReadFile(mine); err != nil || string(got) != tt.content {
+				t.Errorf("the user's file holds %q, %v; want %q", got, err, tt.content)
+			}
+			if _, err := os.Lstat(mine + ".bak"); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("the user's file was backed up (lstat error %v)", err)
+			}
+			if !strings.Contains(logBuf.String(), "~/.config/nvim above it is no longer the directory dotfiles copied into") {
+				t.Errorf("log does not explain why the file was kept:\n%s", logBuf.String())
+			}
+			assertForgotten(t, orch, "decl-tool")
+		})
+	}
+}
+
+func TestCopyRootBound(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name, source, target, want string
+	}{
+		{"a single file renamed", "/repo/x/settings.json", "/home/.config/app/config.json", "/home/.config/app/config.json"},
+		{"a member of a renamed directory", "/repo/x/nvim-cfg/lua/a.lua", "/home/.config/nvim/lua/a.lua", "/home/.config/nvim"},
+		{"a member of a directory named alike", "/repo/x/nvim/init.lua", "/home/.config/nvim/init.lua", "/home/.config"},
+		{"paths alike to the root", "/a/b", "/a/b", "/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := copyRootBound(tt.source, tt.target); got != tt.want {
+				t.Errorf("copyRootBound(%q, %q) = %q, want %q", tt.source, tt.target, got, tt.want)
+			}
+		})
 	}
 }
 

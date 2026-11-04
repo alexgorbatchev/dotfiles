@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/drift"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
@@ -173,9 +174,13 @@ func (o *Orchestrator) removeToolArtifacts(ctx context.Context, toolName string,
 
 	var errs []error
 	var removedDirs []string
+	// failed holds every path that could not be removed, so a directory above one keeps
+	// its record: once the next run removes what is inside, it removes the directory.
+	var failed []string
 	for _, dir := range installDirs {
 		if err := o.removeInstallDir(ctx, toolName, dir, projCfg); err != nil {
 			errs = append(errs, err)
+			failed = append(failed, dir)
 			continue
 		}
 		removedDirs = append(removedDirs, dir)
@@ -204,8 +209,11 @@ func (o *Orchestrator) removeToolArtifacts(ctx context.Context, toolName string,
 			if !withinAny(removedDirs, st.FilePath) {
 				continue // its install directory is still there, and so is its record
 			}
+		} else if holdsAny(st.FilePath, failed) {
+			continue // something inside could not be removed, so neither can this
 		} else if err := o.removeRecordedPath(ctx, toolName, st, projCfg); err != nil {
 			errs = append(errs, err)
+			failed = append(failed, st.FilePath)
 			continue
 		}
 		if err := o.recordRemoved(ctx, toolName, st); err != nil {
@@ -301,7 +309,7 @@ func (o *Orchestrator) removeRecordedPath(ctx context.Context, toolName string, 
 		o.leaveInPlace(toolName, projCfg, path, "it is a symlink now, not the file dotfiles wrote")
 		return nil
 	case st.FileType == "copy" || st.FileType == "template":
-		return o.removeStaleFile(toolName, st, projCfg, path)
+		return o.removeRecordedCopy(toolName, st, projCfg)
 	}
 
 	if err := o.fs.Remove(path); err != nil {
@@ -309,6 +317,68 @@ func (o *Orchestrator) removeRecordedPath(ctx context.Context, toolName string, 
 	}
 	o.logger.WithTag(toolName).Info(logger.Message(fmt.Sprintf("rm %s", o.formatPath(projCfg, path))))
 	return nil
+}
+
+// removeRecordedCopy removes a copied or templated file, moving an edited one aside,
+// unless a directory on the way to it is no longer one the copy created. Lstat judges
+// only the last component of a path, so a copied directory the user replaced with a
+// symlink to their own would otherwise lead the removal into their files.
+func (o *Orchestrator) removeRecordedCopy(toolName string, st *registry.FileState, projCfg *config.ProjectConfig) error {
+	path := st.FilePath
+	top := path
+	if st.TargetPath != nil {
+		top = copyRootBound(*st.TargetPath, path)
+	}
+	dir, err := o.firstForeignDir(path, top)
+	if err != nil {
+		return err
+	}
+	if dir != "" {
+		o.leaveInPlace(toolName, projCfg, path, fmt.Sprintf(
+			"%s above it is no longer the directory dotfiles copied into", o.formatPath(projCfg, dir),
+		))
+		return nil
+	}
+	return o.removeStaleFile(toolName, st, projCfg, path)
+}
+
+// copyRootBound returns the highest directory the declared copy that placed target
+// can have started at, judged from the source it was copied from: a member of a
+// copied directory shares its path below the copy's root with its source. Where the
+// source and target directories are also named alike, the bound lies above the real
+// root, which can only make the check more cautious.
+func copyRootBound(source, target string) string {
+	top := filepath.Clean(target)
+	src := filepath.Clean(source)
+	for filepath.Base(src) == filepath.Base(top) {
+		parent, srcParent := filepath.Dir(top), filepath.Dir(src)
+		if parent == top || srcParent == src {
+			break
+		}
+		top, src = parent, srcParent
+	}
+	return top
+}
+
+// firstForeignDir returns the first directory from path's parent up to top that is
+// no longer a real directory (see drift.ForeignEntry), or "" when there is none or
+// top is path itself.
+func (o *Orchestrator) firstForeignDir(path, top string) (string, error) {
+	if top == path || !isWithin(top, path) {
+		return "", nil
+	}
+	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
+		foreign, err := drift.ForeignEntry(o.fs, dir, true)
+		if err != nil {
+			return "", fmt.Errorf("inspecting %s: %w", dir, err)
+		}
+		if foreign {
+			return dir, nil
+		}
+		if dir == top || dir == filepath.Dir(dir) {
+			return "", nil
+		}
+	}
 }
 
 // removeRecordedSymlink removes a symlink dotfiles created, but only while it still
@@ -397,6 +467,16 @@ func (o *Orchestrator) recordRemoved(ctx context.Context, toolName string, st *r
 		return fmt.Errorf("recording the removal of %s: %w", st.FilePath, err)
 	}
 	return nil
+}
+
+// holdsAny reports whether one of paths lies beneath dir.
+func holdsAny(dir string, paths []string) bool {
+	for _, p := range paths {
+		if p != dir && isWithin(dir, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // withinAny reports whether path is one of dirs or lies beneath one of them.

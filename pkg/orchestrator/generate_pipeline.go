@@ -760,16 +760,8 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 // the copy dotfiles made.
 func (o *Orchestrator) reachedThroughForeignEntry(roots []string, path string) bool {
 	for _, root := range roots {
-		if !isWithin(root, path) || root == path {
-			continue
-		}
-		for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
-			if foreign, err := drift.ForeignEntry(o.fs, dir, true); err != nil || foreign {
-				return true
-			}
-			if dir == root || dir == filepath.Dir(dir) {
-				break
-			}
+		if dir, err := o.firstForeignDir(path, root); err != nil || dir != "" {
+			return true
 		}
 	}
 	return false
