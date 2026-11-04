@@ -641,3 +641,161 @@ func TestCleanupOrphanedToolsReportsAnUnreadableRegistry(t *testing.T) {
 		t.Fatalf("CleanupOrphanedTools = %v; want a reported failure to find orphaned tools", err)
 	}
 }
+
+// Earlier versions deleted an orphaned tool's records but kept its downloaded
+// binaries, so such an install directory has nothing in the registry to be found by.
+// Only a directory with the install layout that belongs to no active and no recorded
+// tool is removed.
+func TestCleanupOrphanedToolsRemovesLeftoverInstallDirectories(t *testing.T) {
+	t.Parallel()
+	const binaries = "/home/user/.generated/binaries"
+	tests := []struct {
+		name        string
+		setup       func(t *testing.T, orch *Orchestrator, memFS *fs.MemFS)
+		active      []*config.ToolConfig
+		dir         string // under binaries; old-tool when empty
+		wantRemoved bool
+	}{
+		{
+			name: "a downloaded install of a removed tool",
+			setup: func(t *testing.T, _ *Orchestrator, memFS *fs.MemFS) {
+				writeDecl(t, memFS, binaries+"/old-tool/current/old-bin", "binary")
+			},
+			wantRemoved: true,
+		},
+		{
+			name: "an external install of a removed tool",
+			setup: func(t *testing.T, _ *Orchestrator, memFS *fs.MemFS) {
+				writeDecl(t, memFS, binaries+"/old-tool/external/.keep", "")
+				if err := memFS.Symlink("external", binaries+"/old-tool/current"); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantRemoved: true,
+		},
+		{
+			name: "a directory without the install layout",
+			setup: func(t *testing.T, _ *Orchestrator, memFS *fs.MemFS) {
+				writeDecl(t, memFS, binaries+"/old-tool/notes.txt", "mine")
+			},
+		},
+		{
+			name: "the install of an active tool",
+			setup: func(t *testing.T, _ *Orchestrator, memFS *fs.MemFS) {
+				writeDecl(t, memFS, binaries+"/old-tool/current/old-bin", "binary")
+			},
+			active: []*config.ToolConfig{{Name: "old-tool"}},
+		},
+		{
+			name: "the CLI's own deployment",
+			setup: func(t *testing.T, _ *Orchestrator, memFS *fs.MemFS) {
+				writeDecl(t, memFS, binaries+"/dotfiles/current/dotfiles", "binary")
+			},
+			dir: "dotfiles",
+		},
+		{
+			name: "a symlink in the binaries directory",
+			setup: func(t *testing.T, _ *Orchestrator, memFS *fs.MemFS) {
+				writeDecl(t, memFS, "/home/user/elsewhere/current/x", "x")
+				if err := memFS.MkdirAll(binaries, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := memFS.Symlink("/home/user/elsewhere", binaries+"/old-tool"); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			orch, memFS := declFixture(t)
+			var logBuf bytes.Buffer
+			orch.logger = logger.New(logger.Config{Writer: &logBuf})
+			tt.setup(t, orch, memFS)
+
+			if err := orch.CleanupOrphanedTools(ctx, tt.active, declProjectConfig()); err != nil {
+				t.Fatalf("CleanupOrphanedTools: %v", err)
+			}
+
+			dir := tt.dir
+			if dir == "" {
+				dir = "old-tool"
+			}
+			_, err := memFS.Lstat(binaries + "/" + dir)
+			if removed := errors.Is(err, os.ErrNotExist); removed != tt.wantRemoved {
+				t.Errorf("removed = %v (lstat error %v), want %v\n%s", removed, err, tt.wantRemoved, logBuf.String())
+			}
+
+		})
+	}
+}
+
+// One leftover that cannot be removed is reported against its tool, and the others
+// are still removed.
+func TestCleanupOrphanedToolsReportsALeftoverInstallItCouldNotRemove(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	orch, memFS := declFixture(t)
+	var logBuf bytes.Buffer
+	orch.logger = logger.New(logger.Config{Writer: &logBuf})
+	const binaries = "/home/user/.generated/binaries"
+	writeDecl(t, memFS, binaries+"/a-tool/current/a", "binary")
+	writeDecl(t, memFS, binaries+"/b-tool/current/b", "binary")
+	orch.fs = &failingRemoveAllFS{FS: orch.fs, path: binaries + "/a-tool"}
+
+	err := orch.CleanupOrphanedTools(ctx, nil, declProjectConfig())
+	if !errors.Is(err, toolbatch.ErrFailed) {
+		t.Fatalf("CleanupOrphanedTools = %v; want a reported tool failure", err)
+	}
+	if !strings.Contains(logBuf.String(), "[a-tool]") {
+		t.Errorf("the failure is not reported against its tool:\n%s", logBuf.String())
+	}
+	if _, err := memFS.Lstat(binaries + "/a-tool"); err != nil {
+		t.Errorf("a-tool's directory is gone although removing it failed: %v", err)
+	}
+	assertGone(t, memFS, binaries+"/b-tool")
+}
+
+// A tool the registry records an installation of is removed through its record, and
+// the sweep for unrecorded leftovers does not try its directory a second time.
+func TestCleanupOrphanedToolsLeavesARecordedInstallToItsRecord(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	orch, memFS := declFixture(t)
+	orch.logger = logger.New(logger.Config{Writer: &bytes.Buffer{}})
+	const dir = "/home/user/.generated/binaries/old-tool"
+	writeDecl(t, memFS, dir+"/current/old-bin", "binary")
+	rec := &registry.ToolInstallationRecord{ToolName: "old-tool", Version: "1", InstallPath: dir}
+	if err := orch.reg.WithTx(ctx, func(tx *sql.Tx) error { return orch.reg.RecordToolInstallation(ctx, tx, rec) }); err != nil {
+		t.Fatal(err)
+	}
+	failing := &failingRemoveAllFS{FS: orch.fs, path: dir}
+	orch.fs = failing
+
+	if err := orch.CleanupOrphanedTools(ctx, nil, declProjectConfig()); !errors.Is(err, toolbatch.ErrFailed) {
+		t.Fatalf("CleanupOrphanedTools = %v; want a reported tool failure", err)
+	}
+	if failing.calls != 1 {
+		t.Errorf("removing %s was attempted %d times, want once, through the record", dir, failing.calls)
+	}
+	if got, err := orch.reg.GetToolInstallation(ctx, "old-tool"); err != nil || got == nil {
+		t.Errorf("installation record = %+v, %v; want it kept for the retry", got, err)
+	}
+}
+
+// failingRemoveAllFS fails to remove one directory tree and counts the attempts.
+type failingRemoveAllFS struct {
+	fs.FS
+	path  string
+	calls int
+}
+
+func (f *failingRemoveAllFS) RemoveAll(path string) error {
+	if path == f.path {
+		f.calls++
+		return os.ErrPermission
+	}
+	return f.FS.RemoveAll(path)
+}

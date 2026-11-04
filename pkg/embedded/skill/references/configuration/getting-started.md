@@ -147,6 +147,8 @@ Cleanup only removes what is still dotfiles' own:
 
 When something cannot be removed, generate reports the failure, exits non-zero, and keeps the records of what is left, so the next run retries it.
 
+A directory under `paths.binariesDir` whose name matches no active tool and that the registry records nothing for is removed as well when it holds a `current` entry, the layout every install leaves. That is how the downloaded binaries of tools removed before dotfiles recorded these removals are cleaned up. `paths.binariesDir/dotfiles`, where the installer deploys the CLI itself, and anything else in `paths.binariesDir` are left alone.
+
 ### Auto-Generated Types
 
 Running `dotfiles generate` writes everything type-checking needs under `.generated/`:

@@ -57,7 +57,83 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 		}
 	}
 
+	if err := o.removeLeftoverInstallDirs(ctx, active, recorded, projCfg, &failures); err != nil {
+		return errors.Join(failures.Err(), err)
+	}
 	return failures.Err()
+}
+
+// installLayoutEntry is what every install leaves in a tool's directory under the
+// binaries directory: the promoted installation, or the link to an external one.
+const installLayoutEntry = "current"
+
+// cliInstallName is the directory under the binaries directory the CLI itself is
+// deployed to by scripts/dev-bootstrap and scripts/managed-installer, outside the
+// registry. Unrecorded, it is the running CLI rather than a removed tool's leftover.
+const cliInstallName = "dotfiles"
+
+// removeLeftoverInstallDirs removes the install directory of every tool that left
+// nothing in the registry to find it by: earlier versions deleted an orphaned tool's
+// records without removing its downloaded binaries. A directory under the binaries
+// directory is such a leftover only when it has the install layout, no active tool
+// has its name, the registry records nothing for that name, and it is not where the
+// CLI itself is deployed. Each failure is
+// recorded against the tool and the rest are still tried; only a cancelled context
+// is returned.
+func (o *Orchestrator) removeLeftoverInstallDirs(ctx context.Context, active map[string]bool, recorded []string, projCfg *config.ProjectConfig, failures *toolbatch.Failures) error {
+	binariesDir := projCfg.Paths.BinariesDir
+	if binariesDir == "" {
+		return nil
+	}
+	names, err := o.fs.ReadDir(binariesDir)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			failures.Record(o.logger, systemToolName, fmt.Errorf("listing %s for leftover installs: %w", binariesDir, err))
+		}
+		return nil
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if active[name] || name == systemToolName || name == cliInstallName || slices.Contains(recorded, name) {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		dir := filepath.Join(binariesDir, name)
+		leftover, err := o.isLeftoverInstallDir(dir)
+		if err != nil {
+			failures.Record(o.logger, name, err)
+			continue
+		}
+		if !leftover {
+			continue
+		}
+		o.logger.WithTag(name).Info(logger.Message("Removing the install directory of a tool that is no longer configured..."))
+		if err := o.removeInstallDir(ctx, name, dir, projCfg); err != nil {
+			failures.Record(o.logger, name, fmt.Errorf("Failed to cleanup orphaned tool: %w", err))
+		}
+	}
+	return nil
+}
+
+// isLeftoverInstallDir reports whether dir is a real directory holding the install
+// layout, rather than anything else that happens to sit in the binaries directory.
+func (o *Orchestrator) isLeftoverInstallDir(dir string) (bool, error) {
+	info, err := o.fs.Lstat(dir)
+	if err != nil {
+		return false, fmt.Errorf("inspecting %s: %w", dir, err)
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return false, nil
+	}
+	if _, err := o.fs.Lstat(filepath.Join(dir, installLayoutEntry)); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("inspecting %s: %w", dir, err)
+	}
+	return true, nil
 }
 
 // removeOrphanedTool removes an orphaned tool's artifacts. Unlike an uninstall, it

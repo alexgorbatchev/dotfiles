@@ -89,6 +89,23 @@ func TestE2EOrphanedToolCleanup(t *testing.T) {
 	if strings.Contains(stdout+stderr, "[github-release-tool]") {
 		t.Errorf("the repeated generate cleaned the tool up again:\n%s%s", stdout, stderr)
 	}
+
+	// An install directory an earlier version left behind after deleting the tool's
+	// records is found by its layout instead.
+	leftover := filepath.Join(generated, "binaries", "long-gone-tool")
+	if err := os.MkdirAll(filepath.Join(leftover, "current"), 0o755); err != nil {
+		t.Fatalf("creating the leftover install: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(leftover, "current", "long-gone-tool"), []byte("binary"), 0o755); err != nil {
+		t.Fatalf("writing the leftover binary: %v", err)
+	}
+	stdout, stderr, exitCode, err = h.Generate()
+	if err != nil || exitCode != 0 {
+		t.Fatalf("generate with a leftover install failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	if _, err := os.Lstat(leftover); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the leftover install directory survived generate (lstat error %v)", err)
+	}
 }
 
 func assertNoInstallationRecord(t *testing.T, h *TestHarness, toolName string) {
