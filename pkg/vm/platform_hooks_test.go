@@ -112,26 +112,93 @@ func TestHooksRegisteredBeforeAPlatformInstallSurviveIt(t *testing.T) {
 	}
 }
 
-// Recording the events must not write them into the object the tool file passed as
-// parameters, which the tool may share with other declarations.
+// The builder must never alias the object a tool file passed as parameters: hooks
+// registered later write their events into the builder's parameters, and a tool may
+// share one object between blocks, such as one for each platform.
 func TestPlatformInstallKeepsTheCallersParametersUntouched(t *testing.T) {
-	toolConfigs, err := loadToolSource(t, `
-		import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
-		const params = { binaryPath: "/usr/bin/true" };
-		export default defineTool((install) =>
-			install()
-				.hook("after-install", async () => {})
-				.platform(Platform.MacOS, (install) => {
-					install("manual", params).bin("probe");
-					if ("hooks" in params) {
-						throw new Error("the caller's parameters were changed");
-					}
-				}),
-		);`, WithTarget(Target{OS: "darwin", Arch: "arm64"}))
-	if err != nil {
-		t.Fatalf("load failed: %v", err)
+	tests := []struct {
+		name   string
+		source string
+		want   []string
+		absent []string
+	}{
+		{
+			name: "hook registered before the platform block",
+			source: `
+				import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+				const params = { binaryPath: "/usr/bin/true" };
+				export default defineTool((install) =>
+					install()
+						.hook("after-install", async () => {})
+						.platform(Platform.MacOS, (install) => {
+							install("manual", params).bin("probe");
+							if ("hooks" in params) throw new Error("the caller's parameters were changed");
+						}),
+				);`,
+			want: []string{HookAfterInstall},
+		},
+		{
+			name: "hook chained onto the platform install",
+			source: `
+				import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+				const params = { binaryPath: "/usr/bin/true" };
+				export default defineTool((install) =>
+					install().platform(Platform.MacOS, (install) => {
+						install("manual", params).bin("probe").hook("after-install", async () => {});
+						if ("hooks" in params) throw new Error("the caller's parameters were changed");
+					}),
+				);`,
+			want: []string{HookAfterInstall},
+		},
+		{
+			name: "hook registered after the platform block",
+			source: `
+				import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+				const params = { binaryPath: "/usr/bin/true" };
+				export default defineTool((install) => {
+					const tool = install()
+						.platform(Platform.MacOS, (install) => install("manual", params).bin("probe"))
+						.hook("after-install", async () => {});
+					if ("hooks" in params) throw new Error("the caller's parameters were changed");
+					return tool;
+				});`,
+			want: []string{HookAfterInstall},
+		},
+		{
+			name: "inactive platform block sharing the parameters",
+			source: `
+				import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+				const params = { binaryPath: "/usr/bin/true" };
+				export default defineTool((install) =>
+					install()
+						.platform(Platform.Linux, (install) =>
+							install("manual", params).bin("probe").hook("before-install", async () => {}))
+						.platform(Platform.MacOS, (install) => install("manual", params).bin("probe")),
+				);`,
+			absent: []string{HookBeforeInstall},
+		},
 	}
-	if tool := toolConfigs["probe"]; tool == nil || !tool.HasHook(HookAfterInstall) {
-		t.Fatalf("expected the after-install event on the loaded tool, got %v", toolConfigs)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			toolConfigs, err := loadToolSource(t, tt.source, WithTarget(Target{OS: "darwin", Arch: "arm64"}))
+			if err != nil {
+				t.Fatalf("load failed: %v", err)
+			}
+			tool := toolConfigs["probe"]
+			if tool == nil {
+				t.Fatalf("expected the probe tool to be loaded, got %v", toolConfigs)
+			}
+			for _, event := range tt.want {
+				if !tool.HasHook(event) {
+					t.Errorf("expected the %s event on the loaded tool: %v", event, tool.InstallParams)
+				}
+			}
+			for _, event := range tt.absent {
+				if tool.HasHook(event) {
+					t.Errorf("the %s event leaked from another block's parameters: %v", event, tool.InstallParams)
+				}
+			}
+		})
 	}
 }
