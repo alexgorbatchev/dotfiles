@@ -14,7 +14,7 @@ describe("documentation sync", () => {
   let tmpDir: string;
 
   beforeAll(async () => {
-    const tmpBase = path.join(REPO_ROOT, ".tmp");
+    const tmpBase = process.env.TMPDIR ?? path.join(REPO_ROOT, ".tmp");
     fs.mkdirSync(tmpBase, { recursive: true });
     tmpDir = fs.mkdtempSync(path.join(tmpBase, "docs-sync-test-"));
     await $`bun ${path.join(DOCS_DIR, "sync.ts")}`

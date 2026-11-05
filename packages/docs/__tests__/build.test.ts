@@ -1,30 +1,42 @@
+import fs from "node:fs";
 import path from "node:path";
 import { $ } from "bun";
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { collectHrefs } from "./helpers";
+import { cleanupDir, collectHrefs, prepareBuildFixture } from "./helpers";
 
 const DOCS_DIR = path.resolve(import.meta.dir, "..");
-const DIST_DIR = path.join(DOCS_DIR, "dist");
+let fixtureRoot: string;
+let distDir: string;
 const MARKDOWN_HREF_PATTERN = /\.md(?:#.*)?$/;
 const BUILD_TIMEOUT_MS = 180_000;
 // Starlight decorates every heading with a `.sl-anchor-link`; only the links written in the source count.
 const CONTENT_LINK_SELECTOR = ".sl-markdown-content a:not(.sl-anchor-link)";
 
 async function readPage(route: string): Promise<string> {
-  return Bun.file(path.join(DIST_DIR, route, "index.html")).text();
+  return Bun.file(path.join(distDir, route, "index.html")).text();
 }
 
 describe("site build", () => {
   beforeAll(async () => {
-    await $`bun run build`.cwd(DOCS_DIR).quiet();
+    const scratch = process.env.TMPDIR ?? path.resolve(DOCS_DIR, "../../.tmp");
+    fs.mkdirSync(scratch, { recursive: true });
+    fixtureRoot = fs.mkdtempSync(path.join(scratch, "docs-build-"));
+    const fixtureDocs = await prepareBuildFixture(fixtureRoot);
+    distDir = path.join(fixtureDocs, "dist");
+    await $`bun run build`
+      .cwd(fixtureDocs)
+      .env({ ...process.env, TMPDIR: fixtureRoot, NODE_COMPILE_CACHE: path.join(fixtureRoot, "node-compile-cache") })
+      .quiet();
   }, BUILD_TIMEOUT_MS);
+
+  afterAll(() => cleanupDir(fixtureRoot));
 
   test("leaves no markdown hrefs in any built page", async () => {
     const markdownHrefs: string[] = [];
 
-    for await (const file of new Bun.Glob("**/index.html").scan({ cwd: DIST_DIR })) {
-      const hrefs = await collectHrefs(await Bun.file(path.join(DIST_DIR, file)).text(), "a[href]");
+    for await (const file of new Bun.Glob("**/index.html").scan({ cwd: distDir })) {
+      const hrefs = await collectHrefs(await Bun.file(path.join(distDir, file)).text(), "a[href]");
       markdownHrefs.push(...hrefs.filter((href) => MARKDOWN_HREF_PATTERN.test(href)).map((href) => `${file}: ${href}`));
     }
 

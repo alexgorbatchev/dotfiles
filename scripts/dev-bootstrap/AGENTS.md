@@ -34,6 +34,7 @@ Enables testing feature changes, bug fixes, or TypeScript declaration updates ag
 - **Never run the Go toolchain under a test-overridden `HOME`:** When `GOPATH` is not exported (as on CI runners), Go derives it from `HOME`, so a `go build` or `go run` started after `t.Setenv("HOME", t.TempDir())` extracts the module cache into the temp directory. Go writes that cache read-only, and the `TempDir` cleanup then fails with `permission denied` (issue #171). Tests that change `HOME` must pass a prebuilt `DevBin` and `SkipAssets: true`. Reproduce with `env -u GOPATH -u GOMODCACHE go test -count=1 ./scripts/dev-bootstrap/`, as a non-root user.
 - **Shim routing**: The interactive shim generated at `<dotfilesDir>/.generated/bin/dotfiles` executes `<binariesDir>/dotfiles/current/dotfiles`. Deploying directly to `<binariesDir>/dotfiles/current/dotfiles` ensures interactive shell invocations run the local development build immediately without requiring a GitHub release download.
 - **Empty target bootstrap**: `tool scaffold` requires an existing `dotfiles.config.ts` or `dotfiles.config.js` to initialize services. When bootstrapping a fresh target directory, `dev-bootstrap` creates starter configuration files before invoking `tool scaffold`.
+- Fresh-target tests isolate the home directory before `Run`: the starter configuration targets home and would otherwise write shims into the developer's files. Compile `sharedDevBin(t)` before changing home, as required above.
 
 ## Boundaries
 

@@ -23,15 +23,59 @@ test: test-unit test-e2e test-ts
 
 # Run Go unit tests only
 test-unit:
-    go test ./pkg/... ./cmd/... ./scripts/...
+    just _test go go test ./pkg/... ./cmd/... ./scripts/...
 
 # Run Go E2E tests only
 test-e2e:
-    go test -p 1 ./tests/e2e/...
+    just _test go go test -p 1 ./tests/e2e/...
 
 # Run TypeScript tests only
 test-ts:
-    bun test
+    just _test bun bun test
+
+# Own test scratch and children even when a suite fails or is interrupted.
+[positional-arguments]
+[private]
+_test runtime +command:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    runtime="$1"
+    shift
+    if [[ "$runtime" == go ]]; then
+        # Keep Go test inputs outside the checkout so its result cache stays usable.
+        scratch=$(mktemp -d -t dotfiles-tests.XXXXXXXX)
+    else
+        mkdir -p .tmp
+        scratch=$(mktemp -d "$PWD/.tmp/test-run.XXXXXXXX")
+    fi
+    child=
+    cleanup() {
+        local status=$?
+        trap - EXIT
+        trap '' HUP INT TERM
+        if [[ -n "$child" ]]; then
+            kill -TERM -- "-$child" 2>/dev/null || true
+            for ((attempt=0; attempt<50; attempt++)); do
+                kill -0 -- "-$child" 2>/dev/null || break
+                sleep 0.1
+            done
+            kill -KILL -- "-$child" 2>/dev/null || true
+            wait "$child" 2>/dev/null || true
+        fi
+        rm -rf -- "$scratch"
+        exit "$status"
+    }
+    trap cleanup EXIT
+    trap 'trap "" HUP INT TERM; exit 129' HUP
+    trap 'trap "" HUP INT TERM; exit 130' INT
+    trap 'trap "" HUP INT TERM; exit 143' TERM
+    export TMPDIR="$scratch"
+    export GOTMPDIR="$scratch"
+    export NODE_COMPILE_CACHE="$scratch/node-compile-cache"
+    set -m
+    "$@" &
+    child=$!
+    wait "$child"
 
 # Run the full release build end to end. Kept out of `test-unit` and `check`
 # because it rewrites generated sources and .dist, which stops every package that

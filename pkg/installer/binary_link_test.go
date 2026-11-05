@@ -467,12 +467,12 @@ func TestExtractionInstallersRejectOutsideLinks(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		install func(fsys fs.FS, binDir, url string) error
+		install func(fsys fs.FS, dl *downloader.Downloader, binDir, url string) error
 	}{
 		{
 			name: "curl-tar",
-			install: func(fsys fs.FS, binDir, url string) error {
-				inst := NewCurlTarInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), nil)
+			install: func(fsys fs.FS, dl *downloader.Downloader, binDir, url string) error {
+				inst := NewCurlTarInstaller(exec.NewMockRunner(), fsys, dl, nil)
 				inst.BinDir = binDir
 				_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"url": url}})
 				return err
@@ -480,8 +480,8 @@ func TestExtractionInstallersRejectOutsideLinks(t *testing.T) {
 		},
 		{
 			name: "cargo prebuilt archive",
-			install: func(fsys fs.FS, binDir, url string) error {
-				inst := NewCargoInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+			install: func(fsys fs.FS, dl *downloader.Downloader, binDir, url string) error {
+				inst := NewCargoInstaller(exec.NewMockRunner(), fsys, dl, &SystemContext{OS: "linux", Arch: "amd64"})
 				inst.BinDir = binDir
 				_, err := inst.installArchive(context.Background(), &config.ToolConfig{Name: "mytool"}, url, "mytool-quickinstall.tar.gz", "")
 				return err
@@ -501,7 +501,9 @@ func TestExtractionInstallersRejectOutsideLinks(t *testing.T) {
 			// A link the archive did not ship, left beside what it extracts.
 			symlinkOrFatal(t, fsys, store, filepath.Join(binDir, "mytool"))
 
-			err := tt.install(fsys, binDir, server.URL+"/mytool.tar.gz")
+			dl := downloader.NewDownloader(fsys, nil)
+			dl.CacheDir = at("/cache")
+			err := tt.install(fsys, dl, binDir, server.URL+"/mytool.tar.gz")
 			if err == nil || !strings.Contains(err.Error(), "outside the extracted archive") {
 				t.Fatalf("install error = %v, want the outside link refused", err)
 			}

@@ -44,6 +44,7 @@ Tool installer plugins (github-release, curl-script, cargo, brew, apt, dnf, pacm
 ## Local gotchas
 
 - Unlogged network requests or asset downloads look like hung processes -> always log explicit progress steps (`Fetching release info...`, `Downloading...`, `Extracting...`).
+- Tests using `fs.NewOSFS()` must give downloaders a cache directory inside the test's owned temporary root; the default relative cache writes into the package checkout.
 
 ## Boundaries
 

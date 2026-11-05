@@ -215,6 +215,11 @@ export default defineConfig(({ configFileDir }) => ({
 
 	t.Run("bootstraps fresh empty directory without config", func(t *testing.T) {
 		tmpTarget := t.TempDir()
+		// The starter configuration targets HOME; compile the shared CLI before
+		// changing it so the Go module cache remains outside this sandbox.
+		homeDir := t.TempDir()
+		t.Setenv("HOME", homeDir)
+		t.Setenv("USERPROFILE", homeDir)
 
 		var stdout, stderr bytes.Buffer
 		opts := Options{
