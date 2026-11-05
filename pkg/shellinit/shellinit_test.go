@@ -528,12 +528,14 @@ func TestFormatPathPlacesTheDirectoryFirstInBashAndZsh(t *testing.T) {
 		}
 		for _, tt := range tests {
 			t.Run(sh.name+"/"+tt.name, func(t *testing.T) {
+				// Even zsh -f reads the system zshenv, which may replace an empty
+				// PATH. Set the fixture after startup through a positional argument.
 				// Sourcing twice mirrors nested shells: the second run must leave PATH as the first did.
-				script := FormatPath(sh.name, dir) + "\n" + FormatPath(sh.name, dir) + "\nprintf '%s' \"$PATH\""
+				script := "PATH=\"$1\"\n" + FormatPath(sh.name, dir) + "\n" + FormatPath(sh.name, dir) + "\nprintf '%s' \"$PATH\""
 				// A script that never ends would hang every shell start: fail instead of waiting.
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
-				cmd := osexec.CommandContext(ctx, shellPath, append(sh.args, script)...)
+				cmd := osexec.CommandContext(ctx, shellPath, append(sh.args, script, "dotfiles-path-test", tt.path)...)
 				cmd.Env = []string{"PATH=" + tt.path}
 				out, err := cmd.CombinedOutput()
 				if err != nil {

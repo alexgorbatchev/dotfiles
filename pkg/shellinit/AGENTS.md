@@ -15,6 +15,7 @@ Shell initialization script generator (main.zsh, main.bash, main.ps1, .once/).
 ## Local gotchas
 
 - Re-running `.once` scripts on every shell launch -> verify `.once` script state marker files before execution.
+- Shell behavior tests set their fixture PATH inside the shell after startup: even `zsh -f` reads the system zshenv, which may replace an empty inherited PATH.
 
 ## Boundaries
 
