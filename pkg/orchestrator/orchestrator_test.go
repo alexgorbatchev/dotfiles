@@ -3010,6 +3010,7 @@ func newShimTargetOrchestrator(t *testing.T, binName string) (*Orchestrator, *fs
 	}
 
 	orch := NewOrchestrator(log, memFS, exec.NewMockRunner(), registry.NewRegistry(sqlDB), installer.NewRegistry())
+	orch.SetSymlinkFS(memFS)
 	projCfg := &config.ProjectConfig{
 		Paths: config.PathsConfig{
 			HomeDir:      "/home/user",
@@ -3102,6 +3103,57 @@ func TestGenerateTool_InstalledToolWithMissingBinaryReportsSystemSubstitute(t *t
 	wantWarn := `WARN	[orbstack] Installed binary "docker" is missing at ~/binaries/orbstack/current/docker; its shim runs /usr/bin/docker, which dotfiles did not install`
 	if !strings.Contains(logBuf.String(), wantWarn) {
 		t.Errorf("want warning %q, log:\n%s", wantWarn, logBuf.String())
+	}
+}
+
+func TestInstallThenGenerate_SystemSubstituteIsReportedEveryTime(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	const binName = "docker"
+	orch, memFS, logBuf, projCfg := newShimTargetOrchestrator(t, binName)
+
+	// The installer reports a binary that is not there, as OrbStack's cask does, so the
+	// shim can only fall back to the docker on PATH.
+	reported := "/opt/homebrew/opt/orbstack/bin/docker"
+	if err := orch.instRegistry.Register(&mockInstaller{name: "brew", binaries: []string{reported}}); err != nil {
+		t.Fatalf("registering installer: %v", err)
+	}
+	tool := &config.ToolConfig{
+		Name:               "orbstack",
+		InstallationMethod: "brew",
+		Binaries:           testutil.DeclaredBinaries(binName),
+	}
+	wantWarn := `Installed binary "docker" is missing at ~/binaries/orbstack/current/docker; its shim runs /usr/bin/docker, which dotfiles did not install`
+	wantTarget := fmt.Sprintf("TOOL_EXECUTABLE=%q", "/usr/bin/"+binName)
+	shimPath := filepath.Join(projCfg.Paths.TargetDir, binName)
+
+	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("InstallTool failed: %v", err)
+	}
+	if shim, _ := memFS.ReadFile(shimPath); !strings.Contains(string(shim), wantTarget) {
+		t.Errorf("after install, want %s in shim:\n%s", wantTarget, shim)
+	}
+	if !strings.Contains(logBuf.String(), wantWarn) {
+		t.Errorf("install must report the substitute, log:\n%s", logBuf.String())
+	}
+
+	record, err := orch.reg.GetToolInstallation(ctx, tool.Name)
+	if err != nil || record == nil {
+		t.Fatalf("expected an installation record, got %v, %v", record, err)
+	}
+	if strings.Contains(record.BinaryPaths, "/usr/bin/") {
+		t.Errorf("the substitute was recorded as the tool's binary: %s", record.BinaryPaths)
+	}
+
+	logBuf.Reset()
+	if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("GenerateTool failed: %v", err)
+	}
+	if shim, _ := memFS.ReadFile(shimPath); !strings.Contains(string(shim), wantTarget) {
+		t.Errorf("after generate, want %s in shim:\n%s", wantTarget, shim)
+	}
+	if !strings.Contains(logBuf.String(), wantWarn) {
+		t.Errorf("generate after install must still report the substitute, log:\n%s", logBuf.String())
 	}
 }
 

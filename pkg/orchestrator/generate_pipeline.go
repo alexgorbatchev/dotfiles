@@ -231,7 +231,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	for _, binName := range binaryNames {
 		shimPath := filepath.Join(shimDir, binName)
-		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, recordedBinaryPaths[binName], installed)
+		binaryPath, _ := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, recordedBinaryPaths[binName], installed)
 
 		shimCfg := shim.Config{
 			ToolName:       tool.Name,
@@ -1017,8 +1017,11 @@ func getPatternForBinary(toolBinaries []interface{}, binName string) string {
 // resolveShimBinaryPath determines the target executable path for a generated shim.
 // Both state generate and tool install resolve shim targets through this helper so
 // their target selection cannot drift. installed reports whether the tool has an
-// installation record; install passes true for the tool it has just installed.
-func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.ToolConfig, binName string, projCfg *config.ProjectConfig, knownPath string, installed bool) string {
+// installation record; install passes true for the tool it has just installed. The
+// second result reports a substitute: a binary found on PATH rather than one dotfiles
+// installed, which must never be recorded as the tool's own binary, or the next
+// generate would find it real and stop warning.
+func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.ToolConfig, binName string, projCfg *config.ProjectConfig, knownPath string, installed bool) (string, bool) {
 	shimPath := filepath.Join(projCfg.Paths.TargetDir, binName)
 	defaultBinaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
 	binaryPath := defaultBinaryPath
@@ -1038,7 +1041,7 @@ func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.T
 	}
 
 	if binaryPath != shimPath && installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
-		return binaryPath
+		return binaryPath, false
 	}
 
 	// A tool that was never installed keeps targeting the dotfiles-managed current
@@ -1048,7 +1051,7 @@ func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.T
 	// tools the install pipeline links the entrypoint to wherever the package manager
 	// put the binary, so the post-install re-check succeeds without guessing a path.
 	if !installed {
-		return defaultBinaryPath
+		return defaultBinaryPath, false
 	}
 
 	// An installed tool whose entrypoint and recorded binary are both missing, such
@@ -1059,10 +1062,10 @@ func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.T
 		o.logger.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf(
 			"Installed binary %q is missing at %s; its shim runs %s, which dotfiles did not install",
 			binName, o.formatPath(projCfg, defaultBinaryPath), o.formatPath(projCfg, sysBin))))
-		return sysBin
+		return sysBin, true
 	}
 
-	return defaultBinaryPath
+	return defaultBinaryPath, false
 }
 
 // shimBashPath resolves the bash a shim's shebang names: the first bash on PATH, or in a

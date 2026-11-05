@@ -366,10 +366,19 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	var recordedBinaryPaths []string
 
 	for _, binName := range binaryNames {
-		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, reportedPaths[binName], true)
+		binaryPath, substitute := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, reportedPaths[binName], true)
 		shimPath := filepath.Join(shimDir, binName)
 
-		recordedBinaryPaths = append(recordedBinaryPaths, binaryPath)
+		// A substitute found on PATH is not the tool's binary: recording it would make
+		// the next generate find it real and run it without a warning.
+		recordedPath := binaryPath
+		if substitute {
+			recordedPath = reportedPaths[binName]
+			if recordedPath == "" {
+				recordedPath = filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
+			}
+		}
+		recordedBinaryPaths = append(recordedBinaryPaths, recordedPath)
 
 		// The binary is installed and recorded either way; only its shim is optional.
 		if !wantsShim(tool.Binaries, binName) {
