@@ -10,6 +10,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 ## Local conventions
 
 - Installer-reported binaries without a `.bin()` declaration are debug diagnostics, not warnings; omitting a declaration can be intentional.
+- `resolveShimBinaryPath` targets a tool's `current` entrypoint, or the binary its installation recorded, and never a same-named system binary for a tool without an installation record: the shim installs on first use only while its target is missing. Only an installed tool whose entrypoint and recorded binary are both missing falls back to `findSystemBinary`, with a warning naming the substitute.
 - Check binary existence ONLY in `targetDir` or `binariesDir` before executing completion commands (do NOT check or execute system `PATH` binaries).
 - Always use the injected `fs.FS` (`ResolvedFS.IsAbs()` / `ResolvedFS.Abs()`) for resolving user/tool paths (such as `binaryPath`, symlinks, completion sources) instead of raw stdlib `filepath.IsAbs`.
 - Resolve a manual tool's `binaryPath` (shadow-check delegation target) only through `installer.ResolveBinaryPath`, the helper the installers use, so shadow checking checks where the installer looked.

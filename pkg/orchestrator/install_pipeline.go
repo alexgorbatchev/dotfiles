@@ -366,7 +366,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 	var recordedBinaryPaths []string
 
 	for _, binName := range binaryNames {
-		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, reportedPaths[binName])
+		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, reportedPaths[binName], true)
 		shimPath := filepath.Join(shimDir, binName)
 
 		recordedBinaryPaths = append(recordedBinaryPaths, binaryPath)

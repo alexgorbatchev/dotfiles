@@ -202,7 +202,9 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	// Check DB registry for recorded binary paths
 	var recordedBinaryPaths map[string]string
-	if instRecord, err := o.reg.GetToolInstallation(ctx, tool.Name); err == nil && instRecord != nil && instRecord.BinaryPaths != "" {
+	instRecord, instErr := o.reg.GetToolInstallation(ctx, tool.Name)
+	installed := instErr == nil && instRecord != nil
+	if installed && instRecord.BinaryPaths != "" {
 		var paths []string
 		if err := json.Unmarshal([]byte(instRecord.BinaryPaths), &paths); err == nil {
 			recordedBinaryPaths = make(map[string]string)
@@ -229,7 +231,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	for _, binName := range binaryNames {
 		shimPath := filepath.Join(shimDir, binName)
-		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, recordedBinaryPaths[binName])
+		binaryPath := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, recordedBinaryPaths[binName], installed)
 
 		shimCfg := shim.Config{
 			ToolName:       tool.Name,
@@ -1014,8 +1016,9 @@ func getPatternForBinary(toolBinaries []interface{}, binName string) string {
 
 // resolveShimBinaryPath determines the target executable path for a generated shim.
 // Both state generate and tool install resolve shim targets through this helper so
-// their target selection cannot drift.
-func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.ToolConfig, binName string, projCfg *config.ProjectConfig, knownPath string) string {
+// their target selection cannot drift. installed reports whether the tool has an
+// installation record; install passes true for the tool it has just installed.
+func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.ToolConfig, binName string, projCfg *config.ProjectConfig, knownPath string, installed bool) string {
 	shimPath := filepath.Join(projCfg.Paths.TargetDir, binName)
 	defaultBinaryPath := filepath.Join(projCfg.Paths.BinariesDir, tool.Name, "current", binName)
 	binaryPath := defaultBinaryPath
@@ -1034,19 +1037,32 @@ func (o *Orchestrator) resolveShimBinaryPath(ctx context.Context, tool *config.T
 		}
 	}
 
-	// When nothing real is found the shim keeps targeting the dotfiles-managed
-	// current entrypoint: for externally-managed tools the install pipeline links
-	// it to wherever the package manager put the binary, so the bootstrap shim's
-	// post-install re-check succeeds without guessing a system path.
-	if binaryPath == shimPath || !installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
-		if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
-			binaryPath = sysBin
-		} else {
-			binaryPath = defaultBinaryPath
-		}
+	if binaryPath != shimPath && installer.IsRealBinaryPath(ctx, o.fs, binaryPath) {
+		return binaryPath
 	}
 
-	return binaryPath
+	// A tool that was never installed keeps targeting the dotfiles-managed current
+	// entrypoint, so its first use installs it: the shim's install branch runs only
+	// while that target is missing, and a same-named binary found elsewhere would
+	// replace the configured tool without ever installing it. For externally-managed
+	// tools the install pipeline links the entrypoint to wherever the package manager
+	// put the binary, so the post-install re-check succeeds without guessing a path.
+	if !installed {
+		return defaultBinaryPath
+	}
+
+	// An installed tool whose entrypoint and recorded binary are both missing, such
+	// as a package whose binaries land outside the prefix its installer reports, is
+	// pointed at the binary of that name on PATH, and the substitution is reported
+	// because that binary is not one dotfiles installed or verified.
+	if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != shimPath {
+		o.logger.WithTag(tool.Name).Warn(logger.Message(fmt.Sprintf(
+			"Installed binary %q is missing at %s; its shim runs %s, which dotfiles did not install",
+			binName, o.formatPath(projCfg, defaultBinaryPath), o.formatPath(projCfg, sysBin))))
+		return sysBin
+	}
+
+	return defaultBinaryPath
 }
 
 // shimBashPath resolves the bash a shim's shebang names: the first bash on PATH, or in a

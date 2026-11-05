@@ -2986,6 +2986,125 @@ func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
 	}
 }
 
+// newShimTargetOrchestrator builds an orchestrator whose log can be read back and whose
+// filesystem holds a real-looking same-named binary in a standard system location, the
+// one findSystemBinary falls back to whatever PATH the test process has.
+func newShimTargetOrchestrator(t *testing.T, binName string) (*Orchestrator, *fs.MemFS, *bytes.Buffer, *config.ProjectConfig) {
+	t.Helper()
+	ctx := context.Background()
+	memFS := newMemFS()
+	var logBuf bytes.Buffer
+	log := logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf})
+
+	sqlDB, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite DB: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	if err := memFS.MkdirAll("/usr/bin", 0755); err != nil {
+		t.Fatalf("creating /usr/bin: %v", err)
+	}
+	if err := memFS.WriteFile(filepath.Join("/usr/bin", binName), []byte("system-binary"), 0755); err != nil {
+		t.Fatalf("writing system binary: %v", err)
+	}
+
+	orch := NewOrchestrator(log, memFS, exec.NewMockRunner(), registry.NewRegistry(sqlDB), installer.NewRegistry())
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			TargetDir:    "/home/user/bin",
+			BinariesDir:  "/home/user/binaries",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+	return orch, memFS, &logBuf, projCfg
+}
+
+func TestGenerateTool_UninstalledToolNeverTargetsSameNamedSystemBinary(t *testing.T) {
+	t.Parallel()
+	const binName = "git"
+
+	for _, method := range []string{"brew", "apt", "github-release"} {
+		t.Run(method, func(t *testing.T) {
+			t.Parallel()
+			orch, memFS, logBuf, projCfg := newShimTargetOrchestrator(t, binName)
+			tool := &config.ToolConfig{
+				Name:               binName,
+				InstallationMethod: method,
+				Binaries:           testutil.DeclaredBinaries(binName),
+			}
+
+			if err := orch.GenerateTool(context.Background(), tool, projCfg); err != nil {
+				t.Fatalf("GenerateTool failed: %v", err)
+			}
+
+			shimBytes, err := memFS.ReadFile(filepath.Join(projCfg.Paths.TargetDir, binName))
+			if err != nil {
+				t.Fatalf("expected shim to exist: %v", err)
+			}
+			shim := string(shimBytes)
+
+			// The shim installs the tool on first use only while its target is missing,
+			// so an uninstalled tool must target its own entrypoint, never /usr/bin/git.
+			want := fmt.Sprintf("TOOL_EXECUTABLE=%q", filepath.Join(projCfg.Paths.BinariesDir, binName, "current", binName))
+			if !strings.Contains(shim, want) {
+				t.Errorf("want %s in shim:\n%s", want, shim)
+			}
+			if strings.Contains(shim, "/usr/bin/"+binName) {
+				t.Errorf("uninstalled tool's shim targets the system binary:\n%s", shim)
+			}
+			if strings.Contains(logBuf.String(), "which dotfiles did not install") {
+				t.Errorf("uninstalled tool must not report a substitute binary, log:\n%s", logBuf.String())
+			}
+		})
+	}
+}
+
+func TestGenerateTool_InstalledToolWithMissingBinaryReportsSystemSubstitute(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	const binName = "docker"
+	orch, memFS, logBuf, projCfg := newShimTargetOrchestrator(t, binName)
+	tool := &config.ToolConfig{
+		Name:               "orbstack",
+		InstallationMethod: "brew",
+		Binaries:           testutil.DeclaredBinaries(binName),
+	}
+
+	// The recorded binary is gone and current holds no entrypoint, as for a cask whose
+	// binaries land outside the prefix its installer reported.
+	if err := orch.reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return orch.reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
+			ToolName:    tool.Name,
+			Version:     "1.0.0",
+			InstallPath: filepath.Join(projCfg.Paths.BinariesDir, tool.Name),
+			Timestamp:   "now",
+			InstalledAt: 100,
+			BinaryPaths: `["/opt/homebrew/opt/orbstack/bin/docker"]`,
+		})
+	}); err != nil {
+		t.Fatalf("recording installation: %v", err)
+	}
+
+	if err := orch.GenerateTool(ctx, tool, projCfg); err != nil {
+		t.Fatalf("GenerateTool failed: %v", err)
+	}
+
+	shimBytes, err := memFS.ReadFile(filepath.Join(projCfg.Paths.TargetDir, binName))
+	if err != nil {
+		t.Fatalf("expected shim to exist: %v", err)
+	}
+	if want := fmt.Sprintf("TOOL_EXECUTABLE=%q", "/usr/bin/"+binName); !strings.Contains(string(shimBytes), want) {
+		t.Errorf("want %s in shim:\n%s", want, shimBytes)
+	}
+
+	wantWarn := `WARN	[orbstack] Installed binary "docker" is missing at ~/binaries/orbstack/current/docker; its shim runs /usr/bin/docker, which dotfiles did not install`
+	if !strings.Contains(logBuf.String(), wantWarn) {
+		t.Errorf("want warning %q, log:\n%s", wantWarn, logBuf.String())
+	}
+}
+
 // writeHookedManualTool puts a manual .tool.ts on disk whose before-install hook runs
 // the given body and whose after-install hook records where the tool ended up. The
 // file has to be on the real disk because hooks are re-evaluated from it.
