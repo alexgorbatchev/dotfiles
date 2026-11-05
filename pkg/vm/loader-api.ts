@@ -692,7 +692,23 @@ export function defineTool(callback: AsyncConfigureTool): unknown {
         }
       }
       if (params) {
-        targetBuilder["installParams"] = params as Record<string, unknown>;
+        // .hook() records its events in installParams, the only place Go learns which
+        // events to re-enter the VM for, so events registered before this call (on the
+        // builder ahead of a .platform() block) must survive the replacement.
+        const next = params as Record<string, unknown>;
+        const previous = (targetBuilder["installParams"] || {}) as Record<string, unknown>;
+        const registered = (previous["hooks"] || []) as string[];
+        if (registered.length > 0) {
+          const events = [...((next["hooks"] || []) as string[])];
+          for (const event of registered) {
+            if (events.indexOf(event) === -1) {
+              events.push(event);
+            }
+          }
+          targetBuilder["installParams"] = { ...next, hooks: events };
+        } else {
+          targetBuilder["installParams"] = next;
+        }
       }
       return targetBuilder;
     };
