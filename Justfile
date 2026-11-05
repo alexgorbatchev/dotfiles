@@ -106,12 +106,11 @@ unused:
 
 # Typecheck TypeScript client, test-project and the docs site, and run the tsd tests
 # against the generated declarations in .dist (produced by `just prepare`).
-# The docs site has its own Astro tsconfig and needs the synced content and generated `.astro/` types first.
+# The docs site syncs content and Astro types in an owned copy before checking them.
 typecheck:
     ./node_modules/.bin/tsc -p tsconfig.json
     go run scripts/build/main.go --type-tests
-    bun --cwd packages/docs sync
-    cd packages/docs && ./node_modules/.bin/astro sync && ../../node_modules/.bin/tsc -p tsconfig.json
+    just _test bun bun packages/docs/typecheck.ts
 
 # Check skill documentation links, anchors and page reachability (.agents/skills/dotfiles)
 docs-links:

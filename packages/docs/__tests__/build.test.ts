@@ -3,7 +3,8 @@ import path from "node:path";
 import { $ } from "bun";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { cleanupDir, collectHrefs, prepareBuildFixture } from "./helpers";
+import { prepareDocsWorkspace } from "../workspace";
+import { cleanupDir, collectHrefs } from "./helpers";
 
 const DOCS_DIR = path.resolve(import.meta.dir, "..");
 let fixtureRoot: string;
@@ -22,7 +23,7 @@ describe("site build", () => {
     const scratch = process.env.TMPDIR ?? path.resolve(DOCS_DIR, "../../.tmp");
     fs.mkdirSync(scratch, { recursive: true });
     fixtureRoot = fs.mkdtempSync(path.join(scratch, "docs-build-"));
-    const fixtureDocs = await prepareBuildFixture(fixtureRoot);
+    const fixtureDocs = await prepareDocsWorkspace(fixtureRoot);
     distDir = path.join(fixtureDocs, "dist");
     await $`bun run build`
       .cwd(fixtureDocs)
