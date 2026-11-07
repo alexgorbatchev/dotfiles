@@ -31,6 +31,60 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 )
 
+func TestToolInstallRefreshesShellConfiguration(t *testing.T) {
+	for _, failGeneration := range []bool{false, true} {
+		t.Run(fmt.Sprintf("shell generation failure=%t", failGeneration), func(t *testing.T) {
+			ctx := context.Background()
+			database, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer database.Close()
+			reg := registry.NewRegistry(database)
+			mem := newMemFS()
+			log := logger.New(logger.Config{Writer: io.Discard})
+			installers := installer.NewRegistry()
+			orch := orchestrator.NewOrchestrator(log, mem, exec.NewMockRunner(), reg, installers)
+			project := &config.ProjectConfig{Paths: config.PathsConfig{
+				HomeDir: "/home/user", TargetDir: "/target", GeneratedDir: "/generated", BinariesDir: "/binaries",
+			}}
+			tools := []*config.ToolConfig{
+				{Name: "workspace", ShellConfigs: &config.ShellConfigs{Zsh: &config.ShellTypeConfig{Functions: map[string]string{"workspace": "echo workspace-ready"}}}},
+				{Name: "other", ShellConfigs: &config.ShellConfigs{Zsh: &config.ShellTypeConfig{Functions: map[string]string{"other": "echo other-ready"}}}},
+			}
+			if failGeneration {
+				if err := mem.MkdirAll("/generated", 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := mem.WriteFile("/generated/shell-scripts", []byte("not a directory"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			server := NewServer(log, "127.0.0.1", 0, reg, mem, "", project, tools, orch, installers)
+			recorder := httptest.NewRecorder()
+			server.handleToolInstall(recorder, httptest.NewRequest(http.MethodPost, "/api/tools/workspace/install", nil), "workspace")
+			var response struct {
+				Success bool `json:"success"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Success == failGeneration {
+				t.Fatalf("unexpected install response: %s", recorder.Body.String())
+			}
+			if !failGeneration {
+				script, err := mem.ReadFile("/generated/shell-scripts/main.zsh")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(string(script), "echo workspace-ready") || !strings.Contains(string(script), "echo other-ready") {
+					t.Fatalf("install dropped configured shell functions: %s", script)
+				}
+			}
+		})
+	}
+}
+
 func TestDashboardServer(t *testing.T) {
 	log := logger.New(logger.Config{
 		Level:  logger.LogLevelQuiet,

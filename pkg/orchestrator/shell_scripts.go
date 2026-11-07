@@ -15,6 +15,20 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 )
 
+// GenerateShellScripts refreshes shared shell initialization from the complete
+// configuration without installing or regenerating other tools' artifacts.
+func (o *Orchestrator) GenerateShellScripts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	if projCfg == nil {
+		return fmt.Errorf("project configuration is nil")
+	}
+	active, skipped := partitionTools(tools)
+	sorted, err := o.sortActiveTools(active, skipped)
+	if err != nil {
+		return fmt.Errorf("resolving dependencies: %w", err)
+	}
+	return o.generateShellScripts(ctx, sorted, projCfg)
+}
+
 func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
 	shellScriptsDir := shellScriptsDirOf(projCfg)
 

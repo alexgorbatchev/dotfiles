@@ -171,6 +171,8 @@ _(Alias: `i`, Root shortcuts: `dotfiles install`, `dotfiles i`)_
 
 Installs the named tools, by tool name or by binary name. With no argument, installs every configured tool, in dependency order.
 
+Named installation also refreshes the combined shell initialization from all active tools in dependency order, preserving other tools' shell setup without generating their other artifacts. A tool without an installation method reports `[<tool>] Generating configuration...` at INFO level on stderr; batch, quiet, and shim modes suppress that message. Reload the shell to activate the generated setup. A failure to write shell initialization makes installation fail.
+
 Named disabled tools, including tools disabled by a non-matching platform block, are skipped with `[<tool>] Skipping installation: tool is disabled for this configuration` at INFO level on stderr. Skipping leaves the exit status at 0 and continues to the next named tool without installation or artifact generation. `--force` does not override a disabled tool. Batch installation skips disabled tools silently; quiet and shim modes suppress the INFO message.
 
 - `-f, --force`: Force reinstallation even if already installed.

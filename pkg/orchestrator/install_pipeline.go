@@ -152,6 +152,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			return fmt.Errorf("installation method not specified")
 		}
 		// For shell-only tools (which have no installation method), proceed directly to generate shims, copies, and symlinks.
+		log := o.logger.WithTag(tool.Name)
+		if config.IsTargeted(ctx) {
+			log.Info(logger.Message("Generating configuration..."))
+		} else {
+			log.Debug(logger.Message("Generating configuration..."))
+		}
 		return o.GenerateTool(ctx, tool, projCfg)
 	}
 

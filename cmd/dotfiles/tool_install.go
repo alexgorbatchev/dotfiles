@@ -40,6 +40,7 @@ var toolInstallCmd = &cobra.Command{
 		if len(args) > 0 {
 			ctx = config.WithTargeted(ctx, true)
 			var failures toolbatch.Failures
+			refreshShell := false
 			for _, toolName := range args {
 				if err := ctx.Err(); err != nil {
 					return errors.Join(failures.Err(), err)
@@ -57,7 +58,11 @@ var toolInstallCmd = &cobra.Command{
 					continue
 				}
 
+				refreshShell = true
 				failures.Record(log, targetTool.Name, services.Orchestrator.InstallTool(ctx, targetTool, services.ProjectConfig))
+			}
+			if refreshShell {
+				failures.Record(log, "system", services.Orchestrator.GenerateShellScripts(ctx, services.ToolConfigs, services.ProjectConfig))
 			}
 			return failures.Err()
 		} else {

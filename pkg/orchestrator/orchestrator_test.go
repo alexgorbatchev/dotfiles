@@ -6108,6 +6108,79 @@ func (m *loggingMockInstaller) Install(ctx context.Context, tool *config.ToolCon
 	return m.mockInstaller.Install(ctx, tool)
 }
 
+func TestGenerateShellScripts_CompleteActiveConfiguration(t *testing.T) {
+	mem := newMemFS()
+	o := newTestOrchestrator(t, mem, "")
+	project := &config.ProjectConfig{Paths: config.PathsConfig{
+		HomeDir: "/home/user", TargetDir: "/target", GeneratedDir: "/generated", BinariesDir: "/binaries",
+	}}
+	tool := func(name string) *config.ToolConfig {
+		return &config.ToolConfig{Name: name, ShellConfigs: &config.ShellConfigs{
+			Zsh:        &config.ShellTypeConfig{Functions: map[string]string{name: "echo " + name}},
+			Bash:       &config.ShellTypeConfig{Functions: map[string]string{name: "echo " + name}},
+			Powershell: &config.ShellTypeConfig{Functions: map[string]string{name: "echo " + name}},
+		}}
+	}
+	dependent, dependency, disabled, remote := tool("dependent"), tool("dependency"), tool("disabled"), tool("remote")
+	dependent.Dependencies = []string{"dependency"}
+	disabled.Disabled = true
+	remote.Hostname = "dotfiles-test-other-host.invalid"
+	tools := []*config.ToolConfig{dependent, disabled, remote, dependency}
+	if err := o.GenerateShellScripts(context.Background(), tools, project); err != nil {
+		t.Fatal(err)
+	}
+	for _, shell := range []string{"zsh", "bash", "ps1"} {
+		script, err := mem.ReadFile("/generated/shell-scripts/main." + shell)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(script)
+		if !strings.Contains(text, "echo dependent") || !strings.Contains(text, "echo dependency") {
+			t.Errorf("%s missing active tool shell setup: %s", shell, text)
+		}
+		if strings.Index(text, "echo dependency") > strings.Index(text, "echo dependent") {
+			t.Errorf("%s dependent preceded its dependency", shell)
+		}
+		if strings.Contains(text, "echo disabled") || strings.Contains(text, "echo remote") {
+			t.Errorf("%s included inactive shell setup", shell)
+		}
+	}
+	dependent.Dependencies = []string{"missing"}
+	if err := o.GenerateShellScripts(context.Background(), tools, project); err == nil {
+		t.Error("unresolved dependency did not fail shell generation")
+	}
+	if err := o.GenerateShellScripts(context.Background(), tools, nil); err == nil {
+		t.Error("nil project configuration did not fail shell generation")
+	}
+}
+
+func TestInstallTool_ShellOnlyLogging(t *testing.T) {
+	for _, targeted := range []bool{false, true} {
+		t.Run(fmt.Sprintf("targeted=%t", targeted), func(t *testing.T) {
+			mem := newMemFS()
+			o := newTestOrchestrator(t, mem, "")
+			var output bytes.Buffer
+			o.SetLogger(logger.New(logger.Config{Writer: &output}))
+			project := &config.ProjectConfig{Paths: config.PathsConfig{
+				HomeDir: "/home/user", TargetDir: "/target", GeneratedDir: "/generated", BinariesDir: "/binaries",
+			}}
+			tool := &config.ToolConfig{Name: "workspace", Directories: []config.DirectoryConfig{{Path: "/workspace-config"}}}
+			if err := o.InstallTool(config.WithTargeted(context.Background(), targeted), tool, project); err != nil {
+				t.Fatal(err)
+			}
+			if exists, err := mem.Exists("/workspace-config"); err != nil || !exists {
+				t.Fatalf("shell-only configuration was not generated: %v", err)
+			}
+			if strings.Contains(output.String(), "[workspace] Generating configuration...") != targeted {
+				t.Errorf("unexpected logging: %s", output.String())
+			}
+			if strings.Contains(output.String(), "[workspace] Installing...") {
+				t.Error("shell-only tool reported binary installation")
+			}
+		})
+	}
+}
+
 func TestInstallTool_TargetedVsBatchLogging(t *testing.T) {
 	ctx := context.Background()
 	var logBuf bytes.Buffer

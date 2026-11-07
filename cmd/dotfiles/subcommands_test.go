@@ -4307,6 +4307,64 @@ func TestInstallCommand_TargetedVsBatchAlreadyInstalled(t *testing.T) {
 	})
 }
 
+func TestInstallCommand_RefreshesShellOnlyConfiguration(t *testing.T) {
+	for _, command := range [][]string{{"install"}, {"tool", "install"}} {
+		for _, mode := range [][]string{nil, {"--quiet"}, {"--shim-mode"}} {
+			args := append(append([]string{}, command...), mode...)
+			t.Run(strings.Join(args, " "), func(t *testing.T) {
+				p := newE2EProject(t, tsTools{
+					"workspace": `install().dependsOn("other").zsh(sh => sh.functions({workspace: "echo workspace-ready"}).always("export WORKSPACE_READY=yes"))`,
+					"other":     `install().zsh(sh => sh.functions({other: "echo other-ready"}))`,
+					"disabled":  `install().disable().zsh(sh => sh.always("echo disabled-marker"))`,
+					"untouched": `install().ensureDir("~/must-not-be-generated").zsh(sh => sh.always("echo untouched-marker"))`,
+				})
+				out, err := p.run(append(args, "workspace")...)
+				if err != nil {
+					t.Fatalf("install workspace: %v\n%s", err, out.Combined)
+				}
+				if out.Stdout != "" {
+					t.Errorf("status leaked to stdout: %q", out.Stdout)
+				}
+				if len(mode) == 0 {
+					mustContain(t, "stderr", out.Stderr, "[workspace] Generating configuration...")
+				} else {
+					mustNotContain(t, "stderr", out.Stderr, "Generating configuration...")
+				}
+				mustNotContain(t, "stderr", out.Stderr, "[workspace] Installing...")
+				scriptPath := filepath.Join(p.GeneratedDir, "shell-scripts", "main.zsh")
+				script, err := os.ReadFile(scriptPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				text := string(script)
+				mustContain(t, "shell initialization", text, "echo workspace-ready", "WORKSPACE_READY", "echo other-ready", "echo untouched-marker")
+				mustNotContain(t, "shell initialization", text, "disabled-marker")
+				if strings.Index(text, "echo other-ready") > strings.Index(text, "echo workspace-ready") {
+					t.Error("dependent shell setup preceded its dependency")
+				}
+				if _, err := os.Stat(filepath.Join(p.HomeDir, "must-not-be-generated")); !os.IsNotExist(err) {
+					t.Fatalf("targeted install generated an unrelated tool's files: %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestInstallCommand_ShellGenerationFailure(t *testing.T) {
+	p := newE2EProject(t, tsTools{"workspace": `install().zsh(sh => sh.always("echo workspace-ready"))`})
+	if err := os.MkdirAll(p.GeneratedDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(p.GeneratedDir, "shell-scripts"), []byte("not a directory"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := p.run("install", "workspace")
+	if err == nil {
+		t.Fatalf("install succeeded despite shell generation failure\n%s", out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "[system]", "not a directory")
+}
+
 func TestToolBatchesContinueAfterFailure(t *testing.T) {
 	for _, command := range [][]string{
 		{"state", "generate"}, {"generate"}, {"tool", "install"},
@@ -4333,10 +4391,8 @@ func TestToolBatchesContinueAfterFailure(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(p.HomeDir, "good-generated")); err != nil {
 				t.Errorf("tool after the failure was not generated: %v\n%s", err, out.Combined)
 			}
-			if len(command) == 1 || len(command) == 2 {
-				if _, err := os.Stat(filepath.Join(p.GeneratedDir, "shell-scripts", "main.zsh")); err != nil {
-					t.Errorf("batch did not finish shell generation: %v", err)
-				}
+			if _, err := os.Stat(filepath.Join(p.GeneratedDir, "shell-scripts", "main.zsh")); err != nil {
+				t.Errorf("batch did not finish shell generation: %v", err)
 			}
 			if generating {
 				completion := filepath.Join(p.GeneratedDir, "shell-scripts", "zsh", "completions", "_dotfiles")

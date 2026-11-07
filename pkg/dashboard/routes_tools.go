@@ -655,6 +655,9 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 	}
 	s.broadcaster.Broadcast(toolName, fmt.Sprintf("INFO\t[%s] Starting installation...\n", toolName))
 	err := s.orchestrator.InstallTool(ctx, targetTool, s.projectConfig)
+	if err == nil {
+		err = s.orchestrator.GenerateShellScripts(ctx, s.toolConfigs, s.projectConfig)
+	}
 	if err != nil {
 		s.reportFailure(w, toolName, fmt.Sprintf("Installation failed: %v", err))
 		return
