@@ -8,7 +8,7 @@ SQLite registry database connection and schema migrations.
 
 ## Local conventions
 
-- Use in-memory SQLite (`:memory:`) in unit tests and dry-run mode.
+- Use empty in-memory SQLite in isolated unit tests. Dry runs use `NewSnapshot` to copy the configured registry through SQLite's backup API into shared in-memory SQLite, including committed WAL data. Open the source read-only and migrate only the copy; a missing source starts empty, while an unreadable or corrupt source fails.
 
 ## Local gotchas
 

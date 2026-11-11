@@ -2,6 +2,7 @@ package fs
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -470,6 +471,78 @@ func TestMemFS_ModTime(t *testing.T) {
 
 	if linfo.ModTime().IsZero() {
 		t.Fatalf("expected non-zero ModTime in Lstat for /test.txt")
+	}
+}
+
+func TestMemFS_HostFallback_RemovalIsIsolated(t *testing.T) {
+	for _, recursive := range []bool{false, true} {
+		t.Run(fmt.Sprintf("recursive=%t", recursive), func(t *testing.T) {
+			dir := t.TempDir()
+			file := filepath.Join(dir, "original")
+			link := filepath.Join(dir, "link")
+			if err := os.WriteFile(file, []byte("host bytes"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(file, link); err != nil {
+				t.Fatal(err)
+			}
+			mem := NewMemFSWithHostFallback()
+			if recursive {
+				if err := mem.RemoveAll(dir); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := mem.Remove(dir); err == nil {
+					t.Fatal("removed a nonempty host directory")
+				}
+				for _, path := range []string{file, link, dir} {
+					if err := mem.Remove(path); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := mem.Remove(file); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("second removal: %v", err)
+				}
+			}
+			for _, path := range []string{dir, file, link} {
+				if exists, err := mem.Exists(path); err != nil || exists {
+					t.Errorf("removed path still exists: %s (%v)", path, err)
+				}
+				if _, err := mem.Stat(path); !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("Stat removed path: %v", err)
+				}
+				if _, err := mem.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("Lstat removed path: %v", err)
+				}
+				if _, err := os.Lstat(path); err != nil {
+					t.Errorf("host path changed: %v", err)
+				}
+			}
+			if _, err := mem.Readlink(link); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("Readlink removed path: %v", err)
+			}
+			if err := mem.MkdirAll(dir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := mem.WriteFile(file, []byte("new bytes"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if exists, err := mem.Exists(file); err != nil || !exists {
+				t.Fatalf("recreated path missing: %v", err)
+			}
+			if exists, err := mem.Exists(link); err != nil || exists {
+				t.Fatalf("recreated directory exposed old host child: %v", err)
+			}
+			if err := mem.Remove(file); err != nil {
+				t.Fatal(err)
+			}
+			if exists, err := mem.Exists(file); err != nil || exists {
+				t.Fatalf("removing recreated file exposed host file: %v", err)
+			}
+			if content, err := os.ReadFile(file); err != nil || string(content) != "host bytes" {
+				t.Fatalf("host contents changed: %q (%v)", content, err)
+			}
+		})
 	}
 }
 

@@ -19,8 +19,8 @@ const maxOpenConns = 10
 // NewConnection opens a database connection using modernc.org/sqlite,
 // configures a connection pool, runs WAL & busy timeout PRAGMAs,
 // and initializes the database schema. It respects context cancellation.
-// For dry-runs, swap the dsn to ":memory:" (Option A) to execute queries
-// natively in memory without mutating physical disk state.
+// Use ":memory:" for an empty isolated registry, or NewSnapshot to simulate
+// against an existing registry without changing its installation state.
 func NewConnection(ctx context.Context, dsn string) (*sql.DB, error) {
 	// Ensure the parent directory exists for file-backed databases
 	cleanPath := dsn

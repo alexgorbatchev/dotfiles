@@ -62,6 +62,49 @@ func TestSkillPrintsEmbeddedInstructions(t *testing.T) {
 	}
 }
 
+func TestDryRunUsesInstalledRegistryWithoutChangingIt(t *testing.T) {
+	p := newE2EProject(t, tsTools{"example": `install("manual")`})
+	p.seedInstallation(t, "example", "1.2.3", filepath.Join(p.Root, "installed"))
+	managed := filepath.Join(p.TargetDir, "example")
+	if err := os.WriteFile(managed, []byte("installed shim"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+		return reg.RecordFileOperation(ctx, tx, &registry.FileOperationRecord{
+			ToolName: "example", OperationType: "shim", FilePath: managed, FileType: "shim",
+		})
+	})
+	path := filepath.Join(p.GeneratedDir, "registry.db")
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := p.run("--dry-run", "tool", "info", "example", "--json")
+	if err != nil {
+		t.Fatalf("dry-run info: %v\n%s", err, out.Combined)
+	}
+	var report ToolInfoReport
+	if err := json.Unmarshal([]byte(out.Stdout), &report); err != nil {
+		t.Fatal(err)
+	}
+	if !report.Installed || report.InstalledVersion != "1.2.3" {
+		t.Fatalf("dry-run lost installed state: %+v", report)
+	}
+	if out, err := p.run("--dry-run", "tool", "uninstall", "example"); err != nil {
+		t.Fatalf("dry-run uninstall: %v\n%s", err, out.Combined)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("dry-run modified live registry: %v", err)
+	}
+	if rec := p.installation(t, "example"); rec == nil || rec.Version != "1.2.3" {
+		t.Fatalf("dry-run removed the real installation: %+v", rec)
+	}
+	if content, err := os.ReadFile(managed); err != nil || string(content) != "installed shim" {
+		t.Fatalf("dry-run modified the installed shim: %q (%v)", content, err)
+	}
+}
+
 func TestCacheClearExistingDownloads(t *testing.T) {
 	p := newE2EProject(t, tsTools{"tool": `install("github-release", {repo: "acme/tool"})`})
 	p.seedInstallation(t, "tool", "v2", filepath.Join(p.Root, "installed"))

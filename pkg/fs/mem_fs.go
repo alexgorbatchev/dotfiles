@@ -36,6 +36,7 @@ type MemFS struct {
 	// visible, never its contents.
 	hostFallback bool
 	files        map[string]*fileNode
+	removedHost  map[string]bool
 }
 
 // NewMemFS creates and returns an empty in-memory filesystem, isolated from the
@@ -54,6 +55,7 @@ func NewMemFSWithHostFallback() *MemFS {
 	return &MemFS{
 		files:        make(map[string]*fileNode),
 		hostFallback: true,
+		removedHost:  make(map[string]bool),
 	}
 }
 
@@ -153,7 +155,14 @@ func (m *MemFS) Remove(path string) error {
 	cleanPath := filepath.Clean(path)
 	node, ok := m.files[cleanPath]
 	if !ok {
-		return &os.PathError{Op: "remove", Path: path, Err: os.ErrNotExist}
+		if !m.hostFallback || m.hostPathRemovedLocked(cleanPath) {
+			return &os.PathError{Op: "remove", Path: path, Err: os.ErrNotExist}
+		}
+		info, err := os.Lstat(cleanPath)
+		if err != nil {
+			return err
+		}
+		node = &fileNode{isDir: info.IsDir()}
 	}
 
 	if node.isDir {
@@ -168,9 +177,21 @@ func (m *MemFS) Remove(path string) error {
 				return &os.PathError{Op: "remove", Path: path, Err: os.ErrInvalid} // directory not empty
 			}
 		}
+		if m.hostFallback && !m.hostPathRemovedLocked(cleanPath) {
+			entries, err := os.ReadDir(cleanPath)
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			for _, entry := range entries {
+				if !m.hostPathRemovedLocked(filepath.Join(cleanPath, entry.Name())) {
+					return &os.PathError{Op: "remove", Path: path, Err: os.ErrInvalid}
+				}
+			}
+		}
 	}
 
 	delete(m.files, cleanPath)
+	m.hideHostPathLocked(cleanPath)
 	return nil
 }
 
@@ -182,7 +203,7 @@ func (m *MemFS) Exists(path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if m.hostFallback {
+	if m.hostFallback && !m.hostPathRemovedLocked(path) {
 		if _, osErr := os.Stat(path); osErr == nil {
 			return true, nil
 		}
@@ -564,7 +585,7 @@ func (m *MemFS) Readlink(path string) (string, error) {
 	cleanPath := filepath.Clean(path)
 	node, ok := m.files[cleanPath]
 	if !ok {
-		if m.hostFallback {
+		if m.hostFallback && !m.hostPathRemovedLocked(path) {
 			if linkTarget, osErr := os.Readlink(path); osErr == nil {
 				return linkTarget, nil
 			}
@@ -584,7 +605,7 @@ func (m *MemFS) Lstat(path string) (os.FileInfo, error) {
 	cleanPath := filepath.Clean(path)
 	node, ok := m.files[cleanPath]
 	if !ok {
-		if m.hostFallback {
+		if m.hostFallback && !m.hostPathRemovedLocked(path) {
 			if osInfo, osErr := os.Lstat(path); osErr == nil {
 				return osInfo, nil
 			}
@@ -615,7 +636,7 @@ func (m *MemFS) Stat(path string) (os.FileInfo, error) {
 
 	currPath, currNode, err := m.resolveNodeLocked(path)
 	if err != nil {
-		if m.hostFallback {
+		if m.hostFallback && !m.hostPathRemovedLocked(path) {
 			if osInfo, osErr := os.Stat(path); osErr == nil {
 				return osInfo, nil
 			}
@@ -642,10 +663,7 @@ func (m *MemFS) RemoveAll(path string) error {
 	defer m.mu.Unlock()
 
 	cleanPath := filepath.Clean(path)
-	_, ok := m.files[cleanPath]
-	if !ok {
-		return nil
-	}
+	m.hideHostPathLocked(cleanPath)
 
 	separator := string(filepath.Separator)
 	prefix := cleanPath
@@ -660,6 +678,34 @@ func (m *MemFS) RemoveAll(path string) error {
 	}
 
 	return nil
+}
+
+// Tombstones hide host metadata after a simulated deletion. In-memory entries
+// take precedence, so recreating a path does not expose its old host children.
+func (m *MemFS) hostPathRemovedLocked(path string) bool {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return true
+	}
+	for {
+		if m.removedHost[abs] {
+			return true
+		}
+		parent := filepath.Dir(abs)
+		if parent == abs {
+			return false
+		}
+		abs = parent
+	}
+}
+
+func (m *MemFS) hideHostPathLocked(path string) {
+	if !m.hostFallback {
+		return
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		m.removedHost[abs] = true
+	}
 }
 
 func (m *MemFS) Abs(path string) (string, error) {

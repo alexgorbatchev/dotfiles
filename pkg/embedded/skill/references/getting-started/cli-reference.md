@@ -508,7 +508,7 @@ Upgrades or downgrades the `dotfiles` CLI binary from GitHub Releases. With a ve
 The following flags are available on all commands:
 
 - `-c, --config <path>`: Path to configuration file (default: `dotfiles.config.ts`).
-- `-d, --dry-run`: Simulate operations without modifying the filesystem.
+- `-d, --dry-run`: Simulate operations using an isolated in-memory snapshot of the existing installation registry. Installed tools and recorded file operations remain visible; simulated writes and schema upgrades affect only the copy. A missing registry starts empty; an unreadable registry fails. Generated files and installation state on disk remain unchanged.
 - `--prune-cache <bool>`: Override automatic cleanup after successful installs. When omitted, use [`downloader.pruneCache`](../configuration/project-configuration.md#downloader), whose default is `true`. See [cache cleanup](#dotfiles-cache-clear) for retention and manual clearing.
 - `--trace`: Enable source location tracing in logs.
 - `--log <level>`: Set log level (`verbose`, `default`, `quiet`).
