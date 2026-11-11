@@ -24,6 +24,7 @@ Goja JS VM, TypeScript config loader, and authoring DSL bindings.
 - Stage-specific lifecycle hook context interfaces (`IBeforeInstallContext`, `IAfterDownloadContext`, `IAfterExtractContext`, `IAfterInstallContext`) each extend `IHookContext` with the non-optional properties available at that stage (`stagingDir` for before-install, `downloadPath` for after-download, `downloadPath`/`extractDir`/`extractResult` for after-extract, and `installedDir`/`binaryPaths` for after-install). The `.hook(...)` builder overloads on `IToolConfigBuilder` and `IPlatformConfigBuilder` narrow the callback context parameter to the stage's specific interface when an event literal is passed, while continuing to accept general `(event: HookEvent, handler: (context: IHookContext) => Promise<unknown> | unknown)` as a fallback.
 - When collecting tool configurations in `generateEntryLoader`, track the origin file path per tool name and fail immediately if another tool file resolves to the same name, naming both files and the conflicting name.
 - Format all Goja VM failures through the diagnostic engine (`FormatVMFailure` in `diagnostics.go`) using the bundle's sourcemap to resolve exact source file, line, and column, print a formatted source code frame with caret pointer, strip internal `<eval>` references, and provide actionable hints for common authoring mistakes.
+- Emit source maps with an absolute source root matching the bundle output directory, so config and hook diagnostics resolve sources independently of the caller's working directory.
 
 ## Local gotchas
 

@@ -201,6 +201,10 @@ type compiledScript struct {
 }
 
 func compileFileWithSourceMap(entryPath string) (compiledScript, error) {
+	entryPath, err := filepath.Abs(entryPath)
+	if err != nil {
+		return compiledScript{}, fmt.Errorf("resolving compilation entry: %w", err)
+	}
 	resolverPlugin := api.Plugin{
 		Name: "resolver",
 		Setup: func(build api.PluginBuild) {
@@ -261,7 +265,10 @@ func compileFileWithSourceMap(entryPath string) (compiledScript, error) {
 		Format:      api.FormatCommonJS,
 		Target:      api.ES2015,
 		Sourcemap:   api.SourceMapExternal,
-		Outfile:     "bundle.js",
+		// Resolve sources from the emitted map's directory, independently of the
+		// caller's cwd or the configuration directory used for hook diagnostics.
+		Outfile:    filepath.Join(filepath.Dir(entryPath), "bundle.js"),
+		SourceRoot: filepath.ToSlash(filepath.Dir(entryPath)) + "/",
 	})
 
 	if len(result.Errors) > 0 {
