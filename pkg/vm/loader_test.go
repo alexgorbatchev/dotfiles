@@ -16,7 +16,41 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/go-sourcemap/sourcemap"
 )
+
+func TestCompiledSourceMapResolvesEntryOutsideWorkingDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "tools")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(dir, "probe.tool.ts")
+	if err := os.WriteFile(entry, []byte("export default () => { throw new Error('probe'); };"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	script, err := compileFileWithSourceMap(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	consumer, err := sourcemap.Parse("", script.sourceMap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolvedEntry, err := filepath.EvalSymlinks(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line, content := range strings.Split(script.code, "\n") {
+		if col := strings.Index(content, "throw new Error"); col >= 0 {
+			source, _, _, _, ok := consumer.Source(line+1, col)
+			if !ok || filepath.Clean(source) != filepath.Clean(resolvedEntry) {
+				t.Fatalf("source = %q (mapped %t), want %q", source, ok, entry)
+			}
+			return
+		}
+	}
+	t.Fatal("compiled error statement missing")
+}
 
 func TestLoaderFileSystemWriteOperations(t *testing.T) {
 	var logBuf bytes.Buffer
