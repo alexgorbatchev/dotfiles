@@ -1,15 +1,170 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestNewSnapshot(t *testing.T) {
+	for _, journal := range []string{"DELETE", "WAL"} {
+		t.Run(journal, func(t *testing.T) {
+			ctx := context.Background()
+			path := filepath.Join(t.TempDir(), "registry #1%.db")
+			source := url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(path), "/")}
+			live, err := NewConnection(ctx, source.String())
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { live.Close() })
+			for _, query := range []string{
+				"PRAGMA journal_mode=" + journal,
+				"PRAGMA wal_autocheckpoint=0",
+				"CREATE TABLE snapshot_test (value TEXT)",
+				"INSERT INTO snapshot_test VALUES ('installed')",
+			} {
+				if _, err := live.ExecContext(ctx, query); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			snapshot, err := NewSnapshot(ctx, path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { snapshot.Close() })
+			var value string
+			if err := snapshot.QueryRowContext(ctx, "SELECT value FROM snapshot_test").Scan(&value); err != nil || value != "installed" {
+				t.Fatalf("snapshot value = %q, err = %v", value, err)
+			}
+			if _, err := snapshot.ExecContext(ctx, "UPDATE snapshot_test SET value='simulated'"); err != nil {
+				t.Fatal(err)
+			}
+			// Hold one connection to force the pool to open another, which must
+			// see the same writable snapshot rather than an empty database.
+			held, err := snapshot.Conn(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer held.Close()
+			if err := snapshot.QueryRowContext(ctx, "SELECT value FROM snapshot_test").Scan(&value); err != nil || value != "simulated" {
+				t.Fatalf("pooled snapshot value = %q, err = %v", value, err)
+			}
+			if err := live.QueryRowContext(ctx, "SELECT value FROM snapshot_test").Scan(&value); err != nil || value != "installed" {
+				t.Fatalf("live value = %q, err = %v", value, err)
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatalf("snapshot changed live database bytes: %v", err)
+			}
+		})
+	}
+}
+
+func TestNewSnapshotMissingAndInvalid(t *testing.T) {
+	for _, invalid := range []bool{false, true} {
+		t.Run(fmt.Sprint(invalid), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "registry.db")
+			if invalid {
+				if err := os.WriteFile(path, []byte("not sqlite"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			snapshot, err := NewSnapshot(context.Background(), path)
+			if invalid {
+				if err == nil {
+					snapshot.Close()
+					t.Fatal("invalid registry must fail")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer snapshot.Close()
+			var count int
+			if err := snapshot.QueryRow("SELECT count(*) FROM tool_installations").Scan(&count); err != nil || count != 0 {
+				t.Fatalf("missing registry snapshot count=%d: %v", count, err)
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatalf("missing source was created: %v", err)
+			}
+		})
+	}
+}
+
+func TestNewSnapshotMigratesOnlyTheCopy(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "registry.db")
+	live, err := NewConnection(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := live.ExecContext(ctx, "ALTER TABLE tool_installations DROP COLUMN app_bundle_path"); err != nil {
+		live.Close()
+		t.Fatal(err)
+	}
+	if err := live.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := NewSnapshot(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer snapshot.Close()
+	if _, err := snapshot.ExecContext(ctx, "SELECT app_bundle_path FROM tool_installations"); err != nil {
+		t.Fatalf("snapshot not migrated: %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("source migrated: %v", err)
+	}
+}
+
+func TestNewSnapshotErrors(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "not-a-directory")
+	if err := os.WriteFile(file, []byte("file"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	for _, tt := range []struct {
+		name string
+		path string
+		ctx  context.Context
+	}{
+		{"stat failure", filepath.Join(file, "registry.db"), context.Background()},
+		{"directory", root, context.Background()},
+		{"canceled", filepath.Join(root, "missing.db"), canceled},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			conn, err := NewSnapshot(tt.ctx, tt.path)
+			if conn != nil {
+				conn.Close()
+				t.Fatal("failed snapshot returned a database")
+			}
+			if err == nil {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
 
 func TestNewConnectionInMemory(t *testing.T) {
 	ctx := context.Background()

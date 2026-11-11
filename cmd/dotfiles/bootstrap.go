@@ -219,16 +219,16 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 		return toolConfigs[i].Name < toolConfigs[j].Name
 	})
 
-	// For dry-runs and tests, we still open a valid database.
-	// If in unit testing or dry-run, use in-memory SQLite to prevent disk state pollution.
-	var dbPath string
-	if inMemory {
-		dbPath = ":memory:"
+	dbPath := filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
+	var sqlDB *sql.DB
+	if dryRun {
+		sqlDB, err = db.NewSnapshot(ctx, dbPath)
+	} else if inMemory {
+		// Unit tests without --dry-run remain independent of host installations.
+		sqlDB, err = db.NewConnection(ctx, ":memory:")
 	} else {
-		dbPath = filepath.Join(projCfg.Paths.GeneratedDir, "registry.db")
+		sqlDB, err = db.NewConnection(ctx, dbPath)
 	}
-
-	sqlDB, err := db.NewConnection(ctx, dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed connecting to SQLite database: %w", err)
 	}

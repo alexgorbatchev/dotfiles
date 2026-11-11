@@ -50,6 +50,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - When `--config` is omitted and `DOTFILES_ENV_DIR` is set to a directory containing a default configuration file (`dotfiles.config.ts`, etc.), `BootstrapServices` resolves that virtual environment's configuration before checking `cwd` or `repoRoot`.
 - `skill` prints the single embedded `dotfiles` skill verbatim to stdout in both output modes, without loading a configuration or listing installed skills. It accepts no positional arguments or command-specific flags. `skill copy <path>` exports only the `dotfiles/` folder and its references.
 - Every command that calls `BootstrapServices` must `defer services.Close()`, never `services.DB.Close()`: `Close` also stops the `DEV_PROXY` caching proxy that the bootstrap owns (`devproxy.go`). A command with its own outbound HTTP and no `Services` (`upgrade`) calls `startDevProxy` itself; one with `Services` uses `services.HTTPClient` when it is non-nil.
+- `BootstrapServices` uses `db.NewSnapshot` for `--dry-run` so installed tools and recorded file operations remain visible without writing to the live registry. In-memory unit tests without `--dry-run` still start with an empty registry.
 
 ## Local gotchas
 
