@@ -3,6 +3,7 @@ package installer
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -10,6 +11,50 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
+
+func TestNpmInstallerPrefersGlobalBinaries(t *testing.T) {
+	for _, manager := range []string{"npm", "bun"} {
+		for _, global := range []bool{true, false} {
+			t.Run(manager+map[bool]string{true: "/global", false: "/fallback"}[global], func(t *testing.T) {
+				root := t.TempDir()
+				localDir := filepath.Join(root, "node_modules", ".bin")
+				globalDir := filepath.Join(root, "global", "bin")
+				t.Setenv("PATH", localDir)
+				fsys := fs.NewMemFS()
+				for _, dir := range []string{localDir, globalDir} {
+					if err := fsys.MkdirAll(dir, 0755); err != nil {
+						t.Fatal(err)
+					}
+				}
+				local := filepath.Join(localDir, "example")
+				if err := fsys.WriteFile(local, []byte("old"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				want := local
+				if global {
+					want = filepath.Join(globalDir, "example")
+					if err := fsys.WriteFile(want, []byte("new"), 0755); err != nil {
+						t.Fatal(err)
+					}
+				}
+				runner := exec.NewMockRunner()
+				prefix := globalDir
+				if manager == "npm" {
+					prefix = filepath.Dir(globalDir)
+				}
+				runner.Register(manager, []byte(prefix+"\n"), nil)
+				tool := &config.ToolConfig{Name: "example", InstallParams: map[string]interface{}{"packageManager": manager}}
+				res, err := NewNpmInstaller(runner, fsys, nil).Install(context.Background(), tool)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !slices.Equal(res.Binaries, []string{want}) {
+					t.Fatalf("binaries = %v, want %s", res.Binaries, want)
+				}
+			})
+		}
+	}
+}
 
 func TestNpmInstaller(t *testing.T) {
 	runner := exec.NewMockRunner()

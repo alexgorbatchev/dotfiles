@@ -139,7 +139,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 	}
 
-	resolvedBinaries = ResolveBinaryPaths(ctx, n.fsys, binNames, func(binName string) string {
+	globalPath := func(binName string) string {
 		if prefix != "" {
 			if pkgManager == "bun" {
 				return filepath.Join(prefix, binName)
@@ -147,7 +147,16 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 			return filepath.Join(prefix, "bin", binName)
 		}
 		return filepath.Join("/usr/local/bin", binName)
-	})
+	}
+	for _, binName := range binNames {
+		// bun x and npm exec prepend project-local binaries to PATH. The global
+		// install must record the binary it just installed, not that older copy.
+		if path := globalPath(binName); prefix != "" && IsRealBinaryPath(ctx, n.fsys, path) {
+			resolvedBinaries = append(resolvedBinaries, path)
+			continue
+		}
+		resolvedBinaries = append(resolvedBinaries, ResolveBinaryPaths(ctx, n.fsys, []string{binName}, globalPath)...)
+	}
 
 	return &InstallResult{
 		Binaries: resolvedBinaries,
