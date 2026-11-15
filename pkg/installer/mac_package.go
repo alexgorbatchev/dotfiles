@@ -121,6 +121,8 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 	downloadURL := src.url
 	downloadName := tool.Name + ext
 	viaGhCli := false
+	var releaseAsset *githubAsset
+	token := githubToken(f.host(), tool.InstallParams, f.github.Token)
 
 	if src.repo != "" {
 		version := tool.RequestedVersion()
@@ -134,7 +136,7 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 			version:    version,
 			prerelease: src.prerelease,
 			ghCli:      src.ghCli,
-			token:      githubToken(f.host(), tool.InstallParams, f.github.Token),
+			token:      token,
 		})
 		if err != nil {
 			return payload, err
@@ -146,6 +148,7 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 		}
 		downloadURL = matched.BrowserDownloadURL
 		downloadName = matched.Name
+		releaseAsset = matched
 		payload.releaseTag = release.TagName
 		viaGhCli = ghUsed
 	} else if name := fileNameFromURL(downloadURL); name != "" {
@@ -154,10 +157,13 @@ func (f macPackageFetcher) fetch(ctx context.Context, tool *config.ToolConfig, s
 
 	payload.downloadPath = filepath.Join(destDir, downloadName)
 	f.info(fmt.Sprintf("Downloading %s...", downloadName))
-	if viaGhCli {
-		if err := f.releaseClient().downloadAssetViaGhCli(ctx, src.repo, payload.releaseTag, downloadName, destDir); err != nil {
+	if releaseAsset != nil {
+		if err := f.releaseClient().downloadAsset(ctx, githubAssetRequest{
+			repo: src.repo, tag: payload.releaseTag, destDir: destDir, token: token,
+			asset: *releaseAsset, viaGhCLI: viaGhCli,
+		}, f.fsys, f.dl); err != nil {
 			payload.cleanup(f.fsys)
-			return payload, fmt.Errorf("downloading release asset via gh CLI: %w", err)
+			return payload, err
 		}
 	} else if err := f.dl.Download(ctx, downloadURL, payload.downloadPath, ""); err != nil {
 		payload.cleanup(f.fsys)

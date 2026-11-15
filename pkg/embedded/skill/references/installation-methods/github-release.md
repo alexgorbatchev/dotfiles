@@ -30,6 +30,12 @@ The GitHub API host is a project setting (`github.host` in `dotfiles.config.ts`)
 
 GitHub release metadata is cached for normal installs and update checks. When you run `dotfiles install --force <tool>` or `dotfiles update <tool>` for a `github-release` tool that tracks `latest`, dotfiles bypasses that metadata cache so the command rechecks GitHub before reinstalling.
 
+## Downloads and Verification
+
+Release assets are downloaded from their direct browser URLs. For a private asset whose browser URL returns 401, 403 or 404, dotfiles retries through GitHub's asset API when a token and asset ID are available. Credentials are sent only to the configured API origin (scheme, host and port), and are removed when a download redirects to another origin. `ghCli: true` uses `gh` for both release lookup and asset downloads.
+
+Before extraction or installation, dotfiles verifies the asset's `sha256:` digest when GitHub provides one. Without a supported digest, it checks the advertised file size when positive; a size check detects incomplete downloads but does not authenticate their contents. The same checks apply to HTTP and `gh` downloads, including GitHub-backed DMG and PKG sources. A mismatch removes the downloaded file and fails the install before the payload is used. Assets with neither a supported digest nor a positive size remain installable without those checks.
+
 ## Asset Selection (Optional)
 
 The installer uses built-in smart selection logic by default. It parses filenames and correctly matches combinations of OS and CPU architecture (e.g. `linux`/`darwin`/`macos`/`win`/`windows` + `amd64`/`arm64`/`aarch64`/`x64`/`x86_64`).

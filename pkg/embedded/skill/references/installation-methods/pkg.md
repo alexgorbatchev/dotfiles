@@ -4,6 +4,8 @@ Install macOS `.pkg` installer packages with the system `installer` command.
 
 Use this for tools distributed as signed Apple installer packages instead of tarballs, binaries, or DMGs.
 
+GitHub sources share [release download authentication and integrity checks](github-release.md#downloads-and-verification), applied before extracting an archive or running the package installer.
+
 ## Basic Usage
 
 ```typescript

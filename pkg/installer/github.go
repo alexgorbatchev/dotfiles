@@ -317,43 +317,11 @@ func (g *GitHubInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	if toolLog != nil {
 		toolLog.Info(logger.Message(fmt.Sprintf("Downloading release asset %s...", matched.Name)))
 	}
-	expectedSHA256 := parseAssetDigest(matched.Digest)
-	if useGhCli {
-		if err := releaseClient.downloadAssetViaGhCli(ctx, repo, release.TagName, matched.Name, destDir); err != nil {
-			return nil, fmt.Errorf("downloading release asset via gh CLI: %w", err)
-		}
-		if expectedSHA256 != "" {
-			if err := verifyFileSHA256(g.fsys, assetPath, expectedSHA256); err != nil {
-				_ = g.fsys.Remove(assetPath)
-				return nil, fmt.Errorf("verifying release asset %s: %w", matched.Name, err)
-			}
-		} else if (matched.Digest == nil || expectedSHA256 == "") && matched.Size > 0 {
-			if err := verifyFileSize(g.fsys, assetPath, matched.Size); err != nil {
-				_ = g.fsys.Remove(assetPath)
-				return nil, fmt.Errorf("verifying release asset %s: %w", matched.Name, err)
-			}
-		}
-	} else {
-		// The asset download authenticates from the same sources as the API request
-		// that resolved it, so a private release resolved with a token can also be
-		// fetched with it. The token is dropped on any redirect that leaves the
-		// release asset host.
-		opts := downloader.DownloadOptions{}
-		if authorization := githubAuthorization(githubToken(g.host(), tool.InstallParams, g.GitHub.Token)); authorization != "" {
-			opts.Headers = map[string]string{
-				"Authorization": authorization,
-			}
-			opts.HostScopedHeaders = true
-		}
-		if err := g.dl.Download(ctx, matched.BrowserDownloadURL, assetPath, expectedSHA256, opts); err != nil {
-			return nil, fmt.Errorf("downloading release asset %s: %w", matched.Name, err)
-		}
-		if (matched.Digest == nil || expectedSHA256 == "") && matched.Size > 0 {
-			if err := verifyFileSize(g.fsys, assetPath, matched.Size); err != nil {
-				_ = g.fsys.Remove(assetPath)
-				return nil, fmt.Errorf("verifying release asset %s: %w", matched.Name, err)
-			}
-		}
+	if err := releaseClient.downloadAsset(ctx, githubAssetRequest{
+		repo: repo, tag: release.TagName, destDir: destDir, token: token,
+		asset: *matched, viaGhCLI: useGhCli,
+	}, g.fsys, g.dl); err != nil {
+		return nil, err
 	}
 
 	placer := releaseAssetInstaller{fsys: g.fsys, extractor: g.extractor, log: toolLog}

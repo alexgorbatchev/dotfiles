@@ -6,6 +6,8 @@ Without `appName`, the bundle installed is the first `.app` at the root of the v
 
 The DMG source is configured via a required `source` object. Sources can be direct URLs or GitHub releases.
 
+GitHub sources share [release download authentication and integrity checks](github-release.md#downloads-and-verification), applied before extracting an archive or mounting a DMG.
+
 If the resolved source points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
 
 DMG-installed applications are externally managed: temporary files (download, mount point, optional archive extraction) use `stagingDir`, the final `.app` is installed to `/Applications`, and `.bin()` names the command-line executables inside the bundle so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).

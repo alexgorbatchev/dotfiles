@@ -582,7 +582,7 @@ func (c *CargoInstaller) tryGithubReleases(ctx context.Context, tool *config.Too
 	var notFound error
 	for _, tag := range tags {
 		url := c.githubReleaseURL(githubRepo, tag, assetName)
-		binaries, err := c.installArchive(ctx, tool, url, tool.Name+"-gh-release.tar.gz", "")
+		binaries, err := c.installArchive(ctx, tool, url, tool.Name+"-gh-release.tar.gz", getStringParam(tool.InstallParams, "sha256", ""))
 		if err == nil {
 			return &InstallResult{Binaries: binaries, Version: ver.bare()}, nil
 		}
