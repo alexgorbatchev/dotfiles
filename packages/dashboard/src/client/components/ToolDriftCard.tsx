@@ -34,25 +34,25 @@ export function ToolDriftCard({ driftItems = [] }: IToolDriftCardProps): JSX.Ele
                 key={index}
                 class={`rounded-lg border p-4 ${isSync ? "border-border bg-muted/20" : "border-amber-500/50 bg-amber-500/5"}`}
               >
-                <div class="flex items-center justify-between gap-2">
-                  <div class="flex items-center gap-2 min-w-0">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex min-w-0 flex-wrap items-center gap-2">
                     <span class="text-muted-foreground">
                       <File class="h-4 w-4 shrink-0" />
                     </span>
-                    <span class="font-medium truncate" title={title}>
+                    <span class="min-w-0 break-all font-medium" title={title}>
                       {title}
                     </span>
-                    <span class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground uppercase font-mono">
+                    <span class="rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground uppercase font-mono">
                       {item.type}
                     </span>
                   </div>
                   <div class="flex items-center gap-1.5 shrink-0 text-sm">
                     {isSync ? (
-                      <span class="flex items-center gap-1 text-green-500">
+                      <span class="flex items-center gap-1 text-green-700 dark:text-green-300">
                         <Check class="h-4 w-4" /> In-sync
                       </span>
                     ) : (
-                      <span class="flex items-center gap-1 text-amber-500 font-medium">
+                      <span class="flex items-center gap-1 text-amber-800 dark:text-amber-300 font-medium">
                         <AlertTriangle class="h-4 w-4" /> {item.state}
                       </span>
                     )}
@@ -68,14 +68,14 @@ export function ToolDriftCard({ driftItems = [] }: IToolDriftCardProps): JSX.Ele
                 )}
 
                 {item.currentContent !== undefined && item.desiredContent !== undefined && !item.diff && !isSync && (
-                  <div class="mt-2 text-xs text-muted-foreground">Content modified locally on disk.</div>
+                  <div class="mt-2 text-sm text-muted-foreground">Content modified locally on disk.</div>
                 )}
               </div>
             );
           })}
 
           {!hasDrift && (
-            <div class="text-xs text-muted-foreground text-center pt-2">
+            <div class="text-sm text-muted-foreground text-center pt-2">
               All {driftItems.length} declared artifact(s) match the current disk state.
             </div>
           )}

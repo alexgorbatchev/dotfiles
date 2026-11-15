@@ -1,10 +1,12 @@
 import { type JSX } from "preact";
 import { useLocation } from "preact-iso";
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Search } from "../icons";
 
 import type { IToolDetail } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
+import { RequestStateNotice } from "./RequestStateNotice";
+import { Button } from "./ui/Button";
 
 interface ISearchResult {
   tool: IToolDetail;
@@ -12,145 +14,182 @@ interface ISearchResult {
   matchedValue: string;
 }
 
-export function CommandPalette(): JSX.Element | null {
-  const [isOpen, setIsOpen] = useState(false);
+interface ICommandPaletteProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function CommandPalette({ isOpen, onOpenChange }: ICommandPaletteProps): JSX.Element {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeOptionRef = useRef<HTMLLIElement>(null);
+  const id = useId();
+  const listId = `${id}-results`;
   const { route } = useLocation();
-  const { data: tools } = useFetch<IToolDetail[]>("/tools");
+  const { data: tools, loading, error, refetch } = useFetch<IToolDetail[]>("/tools");
+  const searchTerm = query.trim().toLowerCase();
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setIsOpen((previousValue) => !previousValue);
-      }
-      if (event.key === "Escape" && isOpen) {
-        setIsOpen(false);
+        onOpenChange(!dialogRef.current?.open);
       }
     };
+    document.addEventListener("keydown", handleShortcut);
+    return () => document.removeEventListener("keydown", handleShortcut);
+  }, [onOpenChange]);
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setQuery("");
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!isOpen || !dialog) return;
+    const launcher = document.activeElement;
+    setQuery("");
+    setSelectedIndex(0);
+    dialog.showModal();
+    inputRef.current?.focus();
+    return () => {
+      dialog.close();
+      if (launcher instanceof HTMLElement && launcher.isConnected) launcher.focus();
+    };
   }, [isOpen]);
 
   const results = useMemo((): ISearchResult[] => {
-    if (!tools || !query.trim()) return [];
-
-    const lowerQuery = query.toLowerCase();
-    const matches: ISearchResult[] = [];
-
-    for (const tool of tools) {
-      if (tool.config.name.toLowerCase().includes(lowerQuery)) {
-        matches.push({ tool, matchType: "name", matchedValue: tool.config.name });
-        continue;
+    if (!tools || !searchTerm) return [];
+    return tools.flatMap((tool): ISearchResult[] => {
+      if (tool.config.name.toLowerCase().includes(searchTerm)) {
+        return [{ tool, matchType: "name", matchedValue: tool.config.name }];
       }
-
-      const binaries = tool.config.binaries || [];
-      for (const binary of binaries) {
-        const binaryName = typeof binary === "string" ? binary : binary.name;
-        if (binaryName.toLowerCase().includes(lowerQuery)) {
-          matches.push({ tool, matchType: "binary", matchedValue: binaryName });
-          break;
+      for (const binary of tool.config.binaries ?? []) {
+        const name = typeof binary === "string" ? binary : binary.name;
+        if (name.toLowerCase().includes(searchTerm)) {
+          return [{ tool, matchType: "binary", matchedValue: name }];
         }
       }
+      return [];
+    });
+  }, [tools, searchTerm]);
+  const activeIndex = Math.min(selectedIndex, Math.max(results.length - 1, 0));
+  const activeId = results.length > 0 ? `${id}-option-${activeIndex}` : undefined;
+
+  useEffect(() => {
+    if (isOpen) activeOptionRef.current?.scrollIntoView({ block: "nearest" });
+  }, [isOpen, activeIndex, results]);
+
+  function navigateTo(result: ISearchResult): void {
+    onOpenChange(false);
+    route(`/tools/${encodeURIComponent(result.tool.config.name)}`);
+  }
+
+  function handleKeyDown(event: KeyboardEvent): void {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setSelectedIndex(Math.max(0, Math.min(activeIndex + direction, results.length - 1)));
+    } else if (event.key === "Enter" && results[activeIndex]) {
+      event.preventDefault();
+      navigateTo(results[activeIndex]);
     }
-
-    return matches.slice(0, 10);
-  }, [tools, query]);
-
-  const navigateTo = useCallback(
-    (result: ISearchResult) => {
-      setIsOpen(false);
-      route(`/tools/${encodeURIComponent(result.tool.config.name)}`);
-    },
-    [route],
-  );
-
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setSelectedIndex((index) => Math.min(index + 1, results.length - 1));
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setSelectedIndex((index) => Math.max(index - 1, 0));
-      } else if (event.key === "Enter" && results[selectedIndex]) {
-        event.preventDefault();
-        navigateTo(results[selectedIndex]);
-      }
-    },
-    [results, selectedIndex, navigateTo],
-  );
-
-  if (!isOpen) return null;
+  }
 
   return (
-    <div data-testid="CommandPalette" class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
-      <div class="fixed inset-0 bg-black/50" onClick={() => setIsOpen(false)} />
-
-      <div class="relative w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-lg">
-        <div class="flex items-center border-b border-border px-3">
-          <Search class="h-4 w-4 text-muted-foreground" />
+    <dialog
+      ref={dialogRef}
+      data-testid="CommandPalette"
+      aria-labelledby={`${id}-title`}
+      class="fixed inset-x-0 top-0 mx-auto mt-[10dvh] max-h-[80dvh] w-[calc(100vw-2rem)] max-w-lg overflow-hidden rounded-lg border border-border bg-card p-0 text-foreground shadow-lg backdrop:bg-black/50"
+      onCancel={(event) => {
+        event.preventDefault();
+        onOpenChange(false);
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onOpenChange(false);
+      }}
+    >
+      <div class="min-w-0">
+        <div class="flex items-center justify-between gap-2 px-4 pt-3">
+          <h2 id={`${id}-title`} class="font-semibold">
+            Search tools
+          </h2>
+          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} aria-label="Close search">
+            Close
+          </Button>
+        </div>
+        <div class="flex min-w-0 items-center gap-2 border-b border-border px-4">
+          <Search class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <label for={`${id}-input`} class="sr-only">
+            Search tools by name or binary
+          </label>
           <input
             ref={inputRef}
-            type="text"
+            id={`${id}-input`}
+            type="search"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={isOpen && results.length > 0}
+            aria-controls={listId}
+            aria-activedescendant={activeId}
+            autoComplete="off"
             value={query}
             onInput={(event) => {
-              setQuery((event.target as HTMLInputElement).value);
+              setQuery(event.currentTarget.value);
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Search tools by name or binary..."
-            class="flex-1 bg-transparent px-3 py-3 focus:outline-none"
+            placeholder="Tool name or binary"
+            class="min-h-11 min-w-0 flex-1 rounded bg-transparent py-3 text-base focus-visible:outline-2 focus-visible:outline-ring"
           />
-          <kbd class="bg-muted px-1.5 py-0.5 text-xs text-muted-foreground rounded">esc</kbd>
         </div>
-
-        {query.trim() && (
-          <div class="max-h-80 overflow-y-auto">
-            {results.length === 0 ? (
-              <div class="px-4 py-8 text-center text-muted-foreground">No tools found</div>
-            ) : (
-              <ul>
-                {results.map((result, index) => (
-                  <li
-                    key={result.tool.config.name}
-                    class={`px-4 py-2 cursor-pointer flex items-center justify-between ${
-                      index === selectedIndex ? "bg-accent" : "hover:bg-accent/50"
-                    }`}
-                    onClick={() => navigateTo(result)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                  >
-                    <div>
-                      <div class="font-medium">{result.tool.config.name}</div>
-                      {result.matchType === "binary" && (
-                        <div class="text-sm text-muted-foreground">
-                          binary: <code class="bg-muted px-1 rounded">{result.matchedValue}</code>
-                        </div>
-                      )}
-                    </div>
-                    <span class="text-xs text-muted-foreground">{result.tool.config.installationMethod}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {!query.trim() && (
-          <div class="px-4 py-3 text-sm text-muted-foreground">Type to search tools by name or binary...</div>
-        )}
+        <div class="max-h-[55dvh] overflow-y-auto overscroll-contain">
+          <RequestStateNotice
+            label="Tools"
+            loading={loading}
+            error={error}
+            hasData={tools !== null}
+            onRetry={refetch}
+          />
+          {searchTerm && results.length > 0 && (
+            <p role="status" class="px-4 py-2 text-sm text-muted-foreground">
+              {results.length} {results.length === 1 ? "match" : "matches"}
+            </p>
+          )}
+          <ul id={listId} role="listbox" aria-label="Matching tools">
+            {results.map((result, index) => (
+              <li
+                key={result.tool.config.name}
+                id={`${id}-option-${index}`}
+                role="option"
+                aria-selected={index === activeIndex}
+                ref={index === activeIndex ? activeOptionRef : undefined}
+                class={`flex min-h-11 cursor-pointer flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3 ${index === activeIndex ? "bg-accent" : "hover:bg-accent/50"}`}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => navigateTo(result)}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                <span class="min-w-0 [overflow-wrap:anywhere]">
+                  <span class="block font-medium">{result.tool.config.name}</span>
+                  {result.matchType === "binary" && (
+                    <span class="block text-sm text-muted-foreground">
+                      Binary: <code>{result.matchedValue}</code>
+                    </span>
+                  )}
+                </span>
+                <span class="text-sm text-muted-foreground">{result.tool.config.installationMethod}</span>
+              </li>
+            ))}
+          </ul>
+          {!loading && !error && tools !== null && searchTerm && results.length === 0 && (
+            <p role="status" class="px-4 py-6 text-muted-foreground">
+              No tools found
+            </p>
+          )}
+          {!searchTerm && (
+            <p class="px-4 py-3 text-sm text-muted-foreground">Type to search tools by name or binary.</p>
+          )}
+        </div>
       </div>
-    </div>
+    </dialog>
   );
 }

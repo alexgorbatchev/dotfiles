@@ -1,35 +1,68 @@
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useLayoutEffect, useState } from "preact/hooks";
 import { fetchApi } from "../api";
+import { subscribeFetchInvalidation } from "../invalidateFetches";
 
 interface IUseFetchResult<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
+  stale: boolean;
+  refetch: () => void;
+}
+
+interface IFetchState<T> {
+  key: string;
   data: T | null;
   loading: boolean;
   error: Error | null;
 }
 
 export function useFetch<T>(endpoint: string, deps: unknown[] = []): IUseFetchResult<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const key = JSON.stringify([endpoint, deps]);
+  const [state, setState] = useState<IFetchState<T>>({ key, data: null, loading: true, error: null });
+  const [revision, setRevision] = useState(0);
 
-  // Create a stable dependency key from the array values
-  const depsKey = JSON.stringify(deps);
+  const refetch = useCallback((): void => {
+    setRevision((value) => value + 1);
+  }, []);
 
-  useEffect(() => {
+  useLayoutEffect(
+    () =>
+      subscribeFetchInvalidation((endpoints) => {
+        if (endpoints.length === 0 || endpoints.includes(endpoint)) refetch();
+      }),
+    [endpoint, refetch],
+  );
+
+  useLayoutEffect(() => {
+    const controller = new AbortController();
+    const isCurrent = (): boolean => !controller.signal.aborted;
+
+    setState((previous) => ({ key, data: previous.key === key ? previous.data : null, loading: true, error: null }));
     const load = async (): Promise<void> => {
-      setLoading(true);
-      setError(null);
       try {
-        const result = await fetchApi<T>(endpoint);
-        setData(result);
+        const data = await fetchApi<T>(endpoint, controller.signal);
+        if (isCurrent()) setState({ key, data, loading: false, error: null });
       } catch (error) {
-        setError(error instanceof Error ? error : new Error(String(error)));
-      } finally {
-        setLoading(false);
+        if (isCurrent())
+          setState((previous) => ({
+            key,
+            data: previous.key === key ? previous.data : null,
+            loading: false,
+            error: error instanceof Error ? error : new Error(String(error)),
+          }));
       }
     };
-    load();
-  }, [endpoint, depsKey]);
+    void load();
+    return () => controller.abort();
+  }, [endpoint, key, revision]);
 
-  return { data, loading, error };
+  const current = state.key === key ? state : { data: null, loading: true, error: null };
+  return {
+    data: current.data,
+    loading: current.loading,
+    error: current.error,
+    stale: current.data !== null && current.error !== null,
+    refetch,
+  };
 }

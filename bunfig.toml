@@ -10,6 +10,9 @@ plugins = ["bun-plugin-tailwind"]
 coverageSkipTestFiles = true
 coverageThreshold = 0.9
 coveragePathIgnorePatterns = [
+  # Test-only fixtures and DOM setup are not production coverage.
+  "**/__tests__/**",
+  "**/packages/dashboard/src/testing/**",
   "**/packages/schemas/**",
   "**/packages/testing-helpers/**",
   "**/index.ts",

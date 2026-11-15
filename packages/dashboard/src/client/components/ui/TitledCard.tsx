@@ -22,8 +22,8 @@ export function TitledCard({
   return (
     <Card class={className}>
       <CardHeader class="pb-2">
-        <div class="flex items-center justify-between">
-          <CardTitle class="flex items-center gap-2 text-lg font-semibold">
+        <div class="flex flex-wrap items-start justify-between gap-2 min-w-0">
+          <CardTitle class="flex min-w-0 items-start gap-2 text-lg font-semibold break-all [&>svg]:shrink-0">
             {icon}
             {title}
           </CardTitle>

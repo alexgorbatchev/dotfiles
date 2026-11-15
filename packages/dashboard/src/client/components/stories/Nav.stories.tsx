@@ -14,7 +14,7 @@ type Story = StoryObj<typeof meta>;
 const Default: Story = {
   render: () => (
     <LocationProvider>
-      <Nav />
+      <Nav onSearch={() => {}} />
     </LocationProvider>
   ),
 };

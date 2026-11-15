@@ -17,7 +17,7 @@ export function ExternalLinkButton({ href, children }: IExternalLinkButtonProps)
         rel="noopener noreferrer"
         class="inline-flex items-center gap-1.5 whitespace-nowrap"
       >
-        <ExternalLink class="h-4 w-4" />
+        <ExternalLink class="h-4 w-4" aria-hidden="true" />
         {children}
       </a>
     </Button>

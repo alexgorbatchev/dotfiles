@@ -5,6 +5,7 @@ import { Code } from "../icons";
 
 import { useFetch } from "../hooks/useFetch";
 import { highlightToolSource } from "../lib/highlightToolSource";
+import { RequestStateNotice } from "./RequestStateNotice";
 import { ExternalLinkButton } from "./ui/ExternalLinkButton";
 import { TitledCard } from "./ui/TitledCard";
 
@@ -13,9 +14,10 @@ type ToolSourceCardProps = {
 };
 
 export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
-  const { data, loading, error } = useFetch<IToolSourcePayload>(`/tools/${encodeURIComponent(toolName)}/source`, [
-    toolName,
-  ]);
+  const { data, loading, error, refetch } = useFetch<IToolSourcePayload>(
+    `/tools/${encodeURIComponent(toolName)}/source`,
+    [toolName],
+  );
   const sourceContent = data?.content.trim() ?? "";
   const sourceFilePath = data?.filePath ?? "";
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
@@ -47,18 +49,11 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
     };
   }, [sourceContent]);
 
-  if (loading) {
+  if (!sourceContent || !sourceFilePath) {
     return (
       <TitledCard title="Source" icon={<Code class="h-4 w-4" />}>
-        <div class="text-muted-foreground text-center py-8">Loading source...</div>
-      </TitledCard>
-    );
-  }
-
-  if (error || !sourceContent || !sourceFilePath) {
-    return (
-      <TitledCard title="Source" icon={<Code class="h-4 w-4" />}>
-        <div class="text-muted-foreground text-center py-8">Source not available</div>
+        <RequestStateNotice label="Source" loading={loading} error={error} hasData={data !== null} onRetry={refetch} />
+        {data && !loading && !error && <div class="text-muted-foreground text-center py-8">Source not available</div>}
       </TitledCard>
     );
   }
@@ -69,6 +64,7 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
       icon={<Code class="h-4 w-4" />}
       action={<ExternalLinkButton href={`vscode://file/${sourceFilePath}`}>Open in VSCode</ExternalLinkButton>}
     >
+      <RequestStateNotice label="Source" loading={loading} error={error} hasData onRetry={refetch} />
       {highlightedHtml ? (
         <div
           data-testid="ToolSourceCard--highlighted"

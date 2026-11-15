@@ -18,22 +18,22 @@ describe("StatusBadge", () => {
     render(<StatusBadge status="installed" />);
 
     const badge = screen.getByText("✓ Installed");
-    expect(badge).toHaveClass("bg-green-500/20");
-    expect(badge).toHaveClass("text-green-500");
+    expect(badge).toHaveClass("bg-green-100");
+    expect(badge).toHaveClass("text-green-900");
   });
 
   test("renders not-installed status", () => {
     render(<StatusBadge status="not-installed" />);
 
-    expect(screen.getByText("Not Installed")).toBeInTheDocument();
+    expect(screen.getByText("Not installed")).toBeInTheDocument();
   });
 
-  test("applies error variant for not-installed status", () => {
+  test("uses a neutral state for an uninstalled tool", () => {
     render(<StatusBadge status="not-installed" />);
 
-    const badge = screen.getByText("Not Installed");
-    expect(badge).toHaveClass("bg-red-500");
-    expect(badge).toHaveClass("text-white");
+    const badge = screen.getByText("Not installed");
+    expect(badge).toHaveClass("bg-secondary");
+    expect(badge).toHaveClass("text-secondary-foreground");
   });
 
   test("renders error status", () => {
@@ -46,7 +46,7 @@ describe("StatusBadge", () => {
     render(<StatusBadge status="error" />);
 
     const badge = screen.getByText("Error");
-    expect(badge).toHaveClass("bg-red-500");
-    expect(badge).toHaveClass("text-white");
+    expect(badge).toHaveClass("bg-red-100");
+    expect(badge).toHaveClass("text-red-900");
   });
 });

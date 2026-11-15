@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/preact";
 
+import { ToolActionsProvider } from "../../components/ToolActionsProvider";
 import { ToolDetail } from "../ToolDetail";
 
 const meta: Meta<typeof ToolDetail> = {
@@ -11,7 +12,11 @@ const meta: Meta<typeof ToolDetail> = {
 type Story = StoryObj<typeof meta>;
 
 const Default: Story = {
-  render: () => <ToolDetail params={{ name: "fzf" }} />,
+  render: () => (
+    <ToolActionsProvider>
+      <ToolDetail params={{ name: "fzf" }} />
+    </ToolActionsProvider>
+  ),
 };
 
 export default meta;

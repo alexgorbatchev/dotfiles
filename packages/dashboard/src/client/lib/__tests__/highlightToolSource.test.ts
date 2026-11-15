@@ -13,7 +13,7 @@ describe("highlightToolSource", () => {
     const code = `const a = "<script>&'"</script>";`;
     const result = await highlightToolSource(code);
 
-    expect(result).toContain('<pre class="shiki github-light"><code>');
+    expect(result).toContain('<pre class="shiki github-light-high-contrast"><code>');
     expect(result).toContain("&lt;script&gt;");
     expect(result).toContain("&amp;");
     expect(result).toContain("&quot;");
@@ -28,7 +28,7 @@ describe("highlightToolSource", () => {
     };
 
     const result = await highlightToolSource("const x = 1;");
-    expect(result).toBe('<span class="shiki">typescript:github-light:const x = 1;</span>');
+    expect(result).toBe('<span class="shiki">typescript:github-light-high-contrast:const x = 1;</span>');
   });
 
   test("falls back to plain escaped HTML if shiki throws", async () => {
@@ -39,6 +39,6 @@ describe("highlightToolSource", () => {
     };
 
     const result = await highlightToolSource("const y = 2;");
-    expect(result).toContain('<pre class="shiki github-light"><code>const y = 2;</code></pre>');
+    expect(result).toContain('<pre class="shiki github-light-high-contrast"><code>const y = 2;</code></pre>');
   });
 });

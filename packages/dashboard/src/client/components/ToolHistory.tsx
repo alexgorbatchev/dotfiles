@@ -30,8 +30,9 @@ const operationLabels: Record<string, string> = {
 };
 
 function getDisplayPath(filePath: string, dotfilesDir: string): string {
-  if (filePath.startsWith(dotfilesDir)) {
-    const relativePath = filePath.slice(dotfilesDir.length);
+  const rootPath = dotfilesDir.replace(/\/+$/, "");
+  if (dotfilesDir && (filePath === rootPath || filePath.startsWith(rootPath + "/"))) {
+    const relativePath = filePath.slice(rootPath.length);
     return `<dotfiles>${relativePath}`;
   }
   return filePath;
@@ -70,15 +71,18 @@ export function ToolHistory({ entries, installedAt, dotfilesDir }: IToolHistoryP
                   <div class="h-2 w-2 rounded-full bg-muted-foreground" />
                 </div>
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
                     <span class="text-muted-foreground">
                       {operationIcons[entry.operationType] || <File class="h-4 w-4" />}
                     </span>
                     <span class="font-medium">{operationLabels[entry.operationType] || entry.operationType}</span>
-                    {entry.fileType && <span class="text-xs text-muted-foreground">({entry.fileType})</span>}
-                    <span class="ml-auto text-xs text-muted-foreground">{entry.relativeTime}</span>
+                    {entry.fileType && <span class="text-sm text-muted-foreground">({entry.fileType})</span>}
+                    <span class="ml-auto text-sm text-muted-foreground">{entry.relativeTime}</span>
                   </div>
-                  <div class="mt-1 truncate text-sm text-muted-foreground" title={entry.filePath}>
+                  <div
+                    class="mt-1 break-words [overflow-wrap:anywhere] text-sm text-muted-foreground"
+                    title={entry.filePath}
+                  >
                     {getDisplayPath(entry.filePath, dotfilesDir)}
                   </div>
                 </div>

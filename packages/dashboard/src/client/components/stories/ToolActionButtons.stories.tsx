@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/preact";
 
-import type { IUseToolActions } from "../../hooks/useToolActions";
 import { ToolActionButtons } from "../ToolActionButtons";
+import { fixture_idleActions, fixture_pendingActions } from "./fixtures";
 
 const meta: Meta<typeof ToolActionButtons> = {
   title: "@dotfiles/dashboard/client/components/ToolActionButtons",
@@ -11,30 +11,17 @@ const meta: Meta<typeof ToolActionButtons> = {
 
 type Story = StoryObj<typeof meta>;
 
-const idleActions: IUseToolActions = {
-  pending: null,
-  outcome: null,
-  dismissOutcome: () => {},
-  installTool: async () => {},
-  updateTool: async () => {},
-  checkTool: async () => {},
+export const Installed: Story = {
+  render: () => <ToolActionButtons toolName="bat" isInstalled actions={fixture_idleActions} size="sm" />,
 };
-
-const checkingActions: IUseToolActions = {
-  ...idleActions,
-  pending: { toolName: "eza", kind: "check" },
+export const NotInstalled: Story = {
+  render: () => <ToolActionButtons toolName="bat" isInstalled={false} actions={fixture_idleActions} size="sm" />,
 };
-
-const Default: Story = {
-  render: () => (
-    <div class="space-y-3">
-      <ToolActionButtons toolName="eza" isInstalled actions={idleActions} size="sm" />
-      <ToolActionButtons toolName="bat" isInstalled={false} actions={idleActions} size="sm" />
-      <ToolActionButtons toolName="eza" isInstalled actions={checkingActions} size="xs" />
-      <ToolActionButtons toolName="bat" isInstalled={false} actions={idleActions} size="xs" />
-    </div>
-  ),
+export const Compact: Story = {
+  render: () => <ToolActionButtons toolName="bat" isInstalled actions={fixture_idleActions} size="xs" />,
+};
+export const Busy: Story = {
+  render: () => <ToolActionButtons toolName="bat" isInstalled={false} actions={fixture_pendingActions} size="sm" />,
 };
 
 export default meta;
-export { Default as ToolActionButtons };

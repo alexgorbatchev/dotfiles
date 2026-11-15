@@ -98,7 +98,7 @@ function renderFileLabel(item: ITreeItemData<IFileTreeNodeData>): JSX.Element {
   const isDirectory = node?.type === "directory";
 
   return (
-    <span class="flex items-center">
+    <span class="flex min-w-0 flex-wrap items-center gap-y-1 break-all">
       <span>{item.label}</span>
       {!isDirectory && node?.fileType && (
         <Badge variant="outline" class="ml-2 text-xs">

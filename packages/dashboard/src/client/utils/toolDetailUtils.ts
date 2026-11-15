@@ -16,6 +16,7 @@ interface IInstallConfigCandidate {
 }
 
 function getInstallConfigCandidates(config: ISerializableToolConfig): IInstallConfigCandidate[] {
+  if (!config.installationMethod) return [];
   const candidates: IInstallConfigCandidate[] = [
     {
       installationMethod: config.installationMethod,

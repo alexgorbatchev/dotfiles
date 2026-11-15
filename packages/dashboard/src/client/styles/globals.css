@@ -55,7 +55,7 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.46 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -113,11 +113,22 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50 text-sm;
-    font-family: var(--font-mono);
+    @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-base;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+  :focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
   }
 }
 
@@ -135,41 +146,5 @@
   img {
     display: inline;
     line-height: 24px;
-  }
-}
-
-/*
- * Tool action results render next to the buttons that produced them, in a layer that escapes the
- * card's overflow. Placement is CSS-only via anchor positioning, which is Chrome-only; browsers
- * without it keep the page-level banner instead. Exactly one outcome exists at a time, so a single
- * shared anchor name is enough.
- */
-.tool-action-anchor {
-  anchor-name: --tool-action;
-}
-
-.tool-action-popover {
-  position: fixed;
-  position-anchor: --tool-action;
-  position-area: block-start span-inline-start;
-  margin-block-end: 0.375rem;
-  width: max-content;
-  max-width: min(36rem, calc(100vw - 2rem));
-  z-index: 50;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
-  /* The tone classes tint with 10% alpha, which floats see-through; re-mix that tint over an
-     opaque base so the panel stays readable above whatever it covers. */
-  background-color: color-mix(in oklab, currentColor 10%, var(--background));
-}
-
-@supports (position-anchor: --probe) {
-  .tool-action-banner-page {
-    display: none;
-  }
-}
-
-@supports not (position-anchor: --probe) {
-  .tool-action-popover {
-    display: none;
   }
 }

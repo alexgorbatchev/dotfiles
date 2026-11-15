@@ -45,8 +45,8 @@ export interface ISerializableInstallParams {
  */
 export interface ISerializableToolConfig {
   name: string;
-  version: string;
-  installationMethod: string;
+  version?: string;
+  installationMethod?: string;
   installParams?: ISerializableInstallParams;
   binaries?: SerializableBinary[];
   dependencies?: string[];
@@ -66,7 +66,7 @@ export interface IToolRuntimeState {
   installedVersion: string | null;
   installedAt: string | null;
   installPath: string | null;
-  binaryPaths: string[];
+  binaryPaths: string[] | null;
 }
 
 /**

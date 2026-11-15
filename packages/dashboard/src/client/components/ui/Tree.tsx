@@ -1,5 +1,5 @@
 import { type ComponentChildren, type JSX } from "preact";
-import { useState } from "preact/hooks";
+import { useId, useState } from "preact/hooks";
 import { ChevronDown, ChevronRight } from "../../icons";
 
 import { cn } from "../../lib/utils";
@@ -49,6 +49,7 @@ export function TreeItem<T = unknown>({
   iconClassName,
 }: ITreeItemProps<T>): JSX.Element {
   const [isExpandedState, setIsExpandedState] = useState(defaultExpanded);
+  const childrenId = useId();
   const hasChildren = item.children && item.children.length > 0;
   const isControlled = collapsedIds !== undefined;
   const isExpanded = hasChildren ? (isControlled ? !collapsedIds.has(item.id) : isExpandedState) : false;
@@ -84,23 +85,48 @@ export function TreeItem<T = unknown>({
     );
   }
 
-  return (
-    <div data-testid="TreeItem">
-      <div
-        class="flex items-center py-1 hover:bg-accent rounded cursor-pointer text-sm group"
-        style={{ paddingLeft: `${indent}px` }}
-        onClick={handleClick}
-      >
-        {renderChevron()}
-        {item.iconDecorator && <span class="flex-shrink-0 mr-1">{item.iconDecorator}</span>}
-        {item.icon && <span class={cn("flex-shrink-0", iconClassName)}>{item.icon}</span>}
-        <span class={cn("ml-2 flex-1 min-w-0", hasChildren && "font-medium")}>
-          {renderLabel ? renderLabel(item) : item.label}
+  const content = (
+    <span class="flex min-w-0 flex-1 items-center">
+      {renderChevron()}
+      {item.iconDecorator && (
+        <span aria-hidden="true" class="flex-shrink-0 mr-1">
+          {item.iconDecorator}
         </span>
-        {renderActions && <span class="ml-2 flex-shrink-0">{renderActions(item)}</span>}
+      )}
+      {item.icon && (
+        <span aria-hidden="true" class={cn("flex-shrink-0", iconClassName)}>
+          {item.icon}
+        </span>
+      )}
+      <span class={cn("ml-2 flex-1 min-w-0 [overflow-wrap:anywhere]", hasChildren && "font-medium")}>
+        {renderLabel ? renderLabel(item) : item.label}
+      </span>
+    </span>
+  );
+
+  return (
+    <div data-testid="TreeItem" class="min-w-0">
+      <div
+        class="flex min-w-0 flex-col gap-2 py-1 rounded text-sm group sm:flex-row sm:items-center"
+        style={{ paddingLeft: `${indent}px` }}
+      >
+        {hasChildren || onItemClick ? (
+          <button
+            type="button"
+            class="flex min-h-11 min-w-0 flex-1 items-center rounded text-left hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6"
+            aria-expanded={hasChildren ? isExpanded : undefined}
+            aria-controls={hasChildren ? childrenId : undefined}
+            onClick={handleClick}
+          >
+            {content}
+          </button>
+        ) : (
+          content
+        )}
+        {renderActions && <span class="flex min-w-0 flex-wrap gap-2 sm:ml-2 sm:shrink-0">{renderActions(item)}</span>}
       </div>
       {hasChildren && isExpanded && (
-        <div>
+        <div id={childrenId}>
           {item.children?.map((child) => (
             <TreeItem
               key={child.id}

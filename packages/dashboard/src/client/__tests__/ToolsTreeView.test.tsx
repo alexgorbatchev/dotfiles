@@ -63,8 +63,9 @@ const EMPTY_TREE_RESPONSE: IToolConfigsTree = { roots: [] };
 
 const noopActions: IUseToolActions = {
   pending: null,
-  outcome: null,
-  dismissOutcome: () => {},
+  results: [],
+  dismissResult: () => {},
+  retryResult: async () => {},
   installTool: async () => {},
   updateTool: async () => {},
   checkTool: async () => {},
@@ -99,7 +100,7 @@ describe("ToolsTreeView", () => {
     globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
     renderTree([]);
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByText("Loading tool files…")).toBeInTheDocument();
   });
 
   test("renders empty state when no entries", async () => {
@@ -297,30 +298,24 @@ describe("ToolsTreeView", () => {
     expect(screen.queryByText("/")).not.toBeInTheDocument();
   });
 
-  test("navigates to tool detail on file click", async () => {
-    const originalLocation = window.location;
+  test("uses a named native link and independent action buttons", async () => {
     mockFetchWith(
       createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
+        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf with space" },
       ]),
     );
-    renderTree([createTool("fzf")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    Object.defineProperty(window, "location", {
-      value: { href: "" },
-      writable: true,
-    });
-
-    fireEvent.click(screen.getByText("fzf"));
-
-    expect(window.location.href).toBe("/tools/fzf");
-
-    Object.defineProperty(window, "location", {
-      value: originalLocation,
-      writable: true,
-    });
+    const installTool = mock(async () => {});
+    render(<ToolsTreeView tools={[createTool("fzf with space")]} actions={{ ...noopActions, installTool }} />);
+    const link = await screen.findByRole("link", { name: "View fzf with space" });
+    expect(link).toHaveAttribute("href", "/tools/fzf%20with%20space");
+    expect(link.closest("button")).toBeNull();
+    expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
+    const reinstall = screen.getByRole("button", { name: "Re-install" });
+    expect(link).not.toContainElement(reinstall);
+    fireEvent.click(reinstall);
+    expect(installTool).toHaveBeenCalledWith("fzf with space", true);
+    expect(screen.getByText("Installed")).toBeInTheDocument();
+    expect(screen.getByText("Version 1.0.0")).toBeInTheDocument();
   });
 
   test("colors installed tool files green", async () => {
@@ -370,5 +365,27 @@ describe("ToolsTreeView", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(screen.getByText("fzf")).toBeInTheDocument();
+  });
+  test("reports malformed tree data and retries instead of claiming the directory is empty", async () => {
+    mockFetchWith(null);
+    renderTree([]);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tool files could not be loaded.");
+    expect(screen.queryByText("No tool files found")).not.toBeInTheDocument();
+    mockFetchWith(EMPTY_TREE_RESPONSE);
+    fireEvent.click(screen.getByRole("button", { name: "Retry tool files" }));
+    expect(await screen.findByText("No tool files found")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  test("states missing and failed installations in text", async () => {
+    mockFetchWith(
+      createTreeResponse([
+        { name: "absent.tool.ts", path: "/tools/absent.tool.ts", type: "file", toolName: "absent" },
+        { name: "broken.tool.ts", path: "/tools/broken.tool.ts", type: "file", toolName: "broken" },
+      ]),
+    );
+    renderTree([createTool("absent", "not-installed"), createTool("broken", "error")]);
+    expect(await screen.findByText("Not installed")).toBeInTheDocument();
+    expect(screen.getByText("Installation error")).toBeInTheDocument();
   });
 });

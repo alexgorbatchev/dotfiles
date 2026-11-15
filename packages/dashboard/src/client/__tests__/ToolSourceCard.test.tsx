@@ -17,7 +17,7 @@ describe("ToolSourceCard", () => {
     globalThis.fetch = originalFetch;
   });
 
-  test("renders empty source card when fetch fails or returns error", async () => {
+  test("reports a source request failure without claiming source is absent", async () => {
     const mockFn = mock(async () => {
       return new Response(
         JSON.stringify({
@@ -34,7 +34,9 @@ describe("ToolSourceCard", () => {
 
     render(<ToolSourceCard toolName="test" />);
 
-    await screen.findByText("Source not available");
+    await screen.findByText("Source could not be loaded.");
+    expect(screen.getByRole("button", { name: "Retry source" })).toBeInTheDocument();
+    expect(screen.queryByText("Source not available")).toBeNull();
   });
 
   test("renders fetched source content with syntax highlighting", async () => {

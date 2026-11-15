@@ -21,7 +21,7 @@ const jestDomMatchers = await import("@testing-library/jest-dom/matchers");
 const testingLibrary = await import("@testing-library/preact");
 const { afterEach, beforeEach, expect } = await import("bun:test");
 
-const { cleanup, fireEvent, render, screen } = testingLibrary;
+const { act, cleanup, fireEvent, render, renderHook, screen, waitFor } = testingLibrary;
 
 // Extend expect with jest-dom matchers (exclude 'default' key from namespace import)
 const { default: _, ...matchers } = jestDomMatchers;
@@ -43,4 +43,4 @@ function setupUITests(): void {
 }
 
 // Re-export testing utilities
-export { fireEvent, render, screen, setupUITests };
+export { act, fireEvent, render, renderHook, screen, setupUITests, waitFor };

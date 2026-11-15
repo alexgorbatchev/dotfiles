@@ -1,113 +1,91 @@
-import { type JSX } from "preact";
-import { useCallback, useState } from "preact/hooks";
+import type { JSX } from "preact";
+import { useState } from "preact/hooks";
 
-import type { IToolActionOutcome, ToolActionTone } from "../hooks/useToolActions";
-import { Check, Copy, X } from "../icons";
-import { cn } from "../lib/utils";
+import type { IToolActionOutcome } from "../hooks/useToolActions";
+import { Copy, RefreshCw, X } from "../icons";
 import { formatError } from "../utils/formatError";
-
-const COPY_FEEDBACK_MS = 2000;
-
-type BannerTone = Exclude<ToolActionTone, "error">;
-
-const TONE_CLASS: Record<BannerTone, string> = {
-  success: "bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400",
-  info: "bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400",
-};
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
 
 type ToolActionBannerProps = {
   outcome: IToolActionOutcome | null;
+  elapsedSeconds?: number;
   onDismiss?: () => void;
-  /** Placement classes; the caller decides whether this renders in the page flow or beside a button. */
-  class?: string;
+  onRetry?: () => void;
+  isRetryDisabled?: boolean;
 };
 
-export function ToolActionBanner({ outcome, onDismiss, class: className }: ToolActionBannerProps): JSX.Element | null {
-  const [isCopied, setIsCopied] = useState(false);
+export function ToolActionBanner({
+  outcome,
+  elapsedSeconds,
+  onDismiss,
+  onRetry,
+  isRetryDisabled = false,
+}: ToolActionBannerProps): JSX.Element | null {
+  const [copyMessage, setCopyMessage] = useState("");
 
-  const handleCopyCommand = useCallback((command: string) => {
-    navigator.clipboard
-      .writeText(command)
-      .then(() => {
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), COPY_FEEDBACK_MS);
-      })
-      .catch(() => setIsCopied(false));
-  }, []);
+  const copy = async (text: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyMessage("Copied to clipboard");
+    } catch {
+      setCopyMessage("Clipboard unavailable. Select and copy the details below.");
+    }
+  };
 
-  if (!outcome) {
-    return null;
-  }
-
-  if (outcome.tone !== "error") {
-    return (
-      <div
-        data-testid="ToolActionBanner"
-        class={cn(
-          "flex items-center justify-between gap-3 px-4 py-2 rounded-md text-sm",
-          TONE_CLASS[outcome.tone],
-          className,
-        )}
-      >
-        <div>
-          <span class="font-medium">{outcome.toolName}</span> {outcome.message}
-        </div>
-        {onDismiss && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            class="flex-shrink-0 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 opacity-70 hover:opacity-100 transition-opacity"
-            title="Dismiss"
-            aria-label="Dismiss"
-          >
-            <X class="h-4 w-4" />
-          </button>
-        )}
-      </div>
-    );
-  }
-
+  if (!outcome) return null;
   const { message, command } = formatError(outcome.message);
+  const details = `${outcome.toolName} · ${outcome.kind}\n${outcome.message}`;
 
   return (
-    <div
-      data-testid="ToolActionBanner"
-      class={cn(
-        "bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm space-y-2",
-        className,
-      )}
-    >
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <span class="font-medium">{outcome.toolName}</span> {message}
+    <div data-testid="ToolActionBanner" class="rounded-md border bg-card p-3 text-sm space-y-3">
+      <div role={outcome.tone === "error" ? "alert" : "status"} aria-atomic="true" class="space-y-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <p class="font-medium break-words">{outcome.toolName}</p>
+          <Badge variant={outcome.tone === "error" ? "error" : outcome.tone === "success" ? "success" : "outline"}>
+            {outcome.tone === "error" ? "Failed" : outcome.tone === "success" ? "Complete" : "Information"}
+          </Badge>
         </div>
-        {onDismiss && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            class="flex-shrink-0 p-0.5 rounded hover:bg-destructive/20 opacity-70 hover:opacity-100 transition-opacity"
-            title="Dismiss"
-            aria-label="Dismiss"
-          >
-            <X class="h-4 w-4" />
-          </button>
-        )}
+        <p class="whitespace-pre-wrap break-words">{message}</p>
+        {elapsedSeconds !== undefined && <p>Completed in {elapsedSeconds}s</p>}
       </div>
       {command && (
         <div class="space-y-2">
-          <div class="text-xs text-destructive/80">Run this command to trust the tap:</div>
-          <div class="flex items-center gap-2 bg-destructive/20 px-3 py-2 rounded font-mono text-xs break-all">
-            <span class="flex-1">{command}</span>
-            <button
-              onClick={() => handleCopyCommand(command)}
-              class="flex-shrink-0 p-1 hover:bg-destructive/30 rounded transition-colors"
-              title="Copy command"
-            >
-              {isCopied ? <Check class="h-4 w-4" /> : <Copy class="h-4 w-4" />}
-            </button>
-          </div>
+          <p>Run this command to trust the tap:</p>
+          <code class="block whitespace-pre-wrap break-all">{command}</code>
+          <Button variant="outline" size="sm" onClick={() => copy(command)} title="Copy command">
+            <Copy class="size-4" /> Copy command
+          </Button>
         </div>
       )}
+      <div class="flex flex-wrap items-center gap-2">
+        {onRetry && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isRetryDisabled}
+            onClick={onRetry}
+            aria-describedby={isRetryDisabled ? "tool-operation-busy" : undefined}
+          >
+            <RefreshCw class="size-4" /> Retry
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={() => copy(details)}>
+          <Copy class="size-4" /> Copy details
+        </Button>
+        {onDismiss && (
+          <Button variant="ghost" size="sm" onClick={onDismiss}>
+            <X class="size-4" /> Dismiss
+          </Button>
+        )}
+        <span role="status" aria-live="polite">
+          {copyMessage}
+        </span>
+      </div>
+      <details>
+        <summary class="cursor-pointer py-1">Details</summary>
+        <pre class="mt-2 whitespace-pre-wrap break-words font-mono text-sm">{details}</pre>
+      </details>
     </div>
   );
 }

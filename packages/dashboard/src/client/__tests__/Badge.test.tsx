@@ -46,24 +46,24 @@ describe("Badge", () => {
     render(<Badge variant="success">Success</Badge>);
 
     const badge = screen.getByText("Success");
-    expect(badge).toHaveClass("bg-green-500/20");
-    expect(badge).toHaveClass("text-green-500");
+    expect(badge).toHaveClass("bg-green-100");
+    expect(badge).toHaveClass("text-green-900");
   });
 
   test("applies warning variant styles", () => {
     render(<Badge variant="warning">Warning</Badge>);
 
     const badge = screen.getByText("Warning");
-    expect(badge).toHaveClass("bg-yellow-500/20");
-    expect(badge).toHaveClass("text-yellow-400");
+    expect(badge).toHaveClass("bg-amber-100");
+    expect(badge).toHaveClass("text-amber-950");
   });
 
   test("applies error variant styles", () => {
     render(<Badge variant="error">Error</Badge>);
 
     const badge = screen.getByText("Error");
-    expect(badge).toHaveClass("bg-red-500");
-    expect(badge).toHaveClass("text-white");
+    expect(badge).toHaveClass("bg-red-100");
+    expect(badge).toHaveClass("text-red-900");
   });
 
   test("merges custom className", () => {

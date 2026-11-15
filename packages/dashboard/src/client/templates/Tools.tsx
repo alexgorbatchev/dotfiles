@@ -2,8 +2,8 @@ import { type JSX } from "preact";
 
 import type { IToolDetail } from "../../shared/types";
 import { RecentTools } from "../components/RecentTools";
+import { RequestStateNotice } from "../components/RequestStateNotice";
 import { StatCard } from "../components/StatCard";
-import { ToolActionBanner } from "../components/ToolActionBanner";
 import { ToolsTreeView } from "../components/ToolsTreeView";
 import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
@@ -92,10 +92,10 @@ function UsageListCard({ title, icon, items, secondary, emptyText }: UsageListCa
             <a
               key={item.name}
               href={`/tools/${encodeURIComponent(item.name)}`}
-              class="group flex cursor-pointer items-center gap-2 rounded py-1 text-sm hover:bg-accent"
+              class="group flex min-h-11 sm:min-h-6 cursor-pointer flex-wrap items-center gap-2 rounded py-1 text-sm hover:bg-accent"
             >
-              <span class="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</span>
-              <span class="flex-shrink-0 text-xs text-muted-foreground">{secondary(item)}</span>
+              <span class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-sm font-medium">{item.name}</span>
+              <span class="text-sm text-muted-foreground">{secondary(item)}</span>
             </a>
           ))}
         </div>
@@ -105,7 +105,7 @@ function UsageListCard({ title, icon, items, secondary, emptyText }: UsageListCa
 }
 
 export function Tools(): JSX.Element {
-  const { data: tools, loading } = useFetch<IToolDetail[]>("/tools");
+  const { data: tools, loading, error, refetch } = useFetch<IToolDetail[]>("/tools");
   const actions = useToolActions();
 
   useSectionHash(TOOLS_SECTION_IDS, !loading);
@@ -122,23 +122,23 @@ export function Tools(): JSX.Element {
     .toSorted((leftItem, rightItem) => rightItem.lastUsedAt - leftItem.lastUsedAt || rightItem.count - leftItem.count)
     .slice(0, 10);
 
-  if (loading) {
+  if (tools === null) {
     return (
-      <div data-testid="Tools" class="flex items-center justify-center h-64">
-        <div class="text-muted-foreground">Loading...</div>
+      <div data-testid="Tools">
+        <RequestStateNotice label="Tools" loading={loading} error={error} hasData={false} onRetry={refetch} />
       </div>
     );
   }
 
   return (
     <div data-testid="Tools" class="space-y-4">
-      <ToolActionBanner outcome={actions.outcome} onDismiss={actions.dismissOutcome} class="tool-action-banner-page" />
+      <RequestStateNotice label="Tools" loading={loading} error={error} hasData onRetry={refetch} />
 
-      <section id="overview" class="grid grid-cols-4 gap-4">
-        <StatCard value={toolsList.length} label="Total Tools" color="text-blue-400" />
-        <StatCard value={installedCount} label="Installed" color="text-green-400" />
-        <StatCard value={totalFiles} label="Files Tracked" color="text-purple-400" />
-        <StatCard value={formatBytes(binariesDiskSize)} label="Binary Size" color="text-orange-400" />
+      <section id="overview" class="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard value={toolsList.length} label="Total Tools" />
+        <StatCard value={installedCount} label="Installed" />
+        <StatCard value={totalFiles} label="Files Tracked" />
+        <StatCard value={formatBytes(binariesDiskSize)} label="Binary Size" />
       </section>
 
       <section id="activity" class="grid gap-4 lg:grid-cols-3">

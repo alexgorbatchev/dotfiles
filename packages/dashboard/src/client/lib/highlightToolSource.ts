@@ -21,14 +21,14 @@ export async function highlightToolSource(source: string): Promise<string> {
     try {
       return await window.shiki.codeToHtml(source, {
         lang: "typescript",
-        theme: "github-light",
+        theme: "github-light-high-contrast",
       });
     } catch {
       // Fall back to plain escaped HTML if the CDN-loaded highlighter is unavailable.
     }
   }
 
-  return `<pre class="shiki github-light"><code>${escapeHtml(source)}</code></pre>`;
+  return `<pre class="shiki github-light-high-contrast"><code>${escapeHtml(source)}</code></pre>`;
 }
 
 function escapeHtml(unsafe: string): string {

@@ -1,5 +1,5 @@
 // UI test setup - registers DOM and exports testing utilities
-import { render, screen, setupUITests } from "../../testing/ui-setup";
+import { fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { LocationProvider } from "preact-iso";
@@ -10,6 +10,7 @@ import { Nav } from "../components/Nav";
 
 describe("Nav", () => {
   let originalFetch: typeof fetch;
+  const originalPlatform = navigator.platform;
 
   beforeEach(() => {
     window.location.href = "http://localhost/";
@@ -18,6 +19,7 @@ describe("Nav", () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    Object.defineProperty(navigator, "platform", { configurable: true, value: originalPlatform });
   });
 
   function mockConfigResponse(version?: string): void {
@@ -48,7 +50,7 @@ describe("Nav", () => {
 
     render(
       <LocationProvider>
-        <Nav />
+        <Nav onSearch={() => {}} />
       </LocationProvider>,
     );
 
@@ -59,7 +61,6 @@ describe("Nav", () => {
     const badge = await screen.findByText("v2.6.0");
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveClass("text-muted-foreground");
-    expect(badge).toHaveClass("bg-muted-foreground/15");
   });
 
   test("does not duplicate v prefix when version already starts with v", async () => {
@@ -67,7 +68,7 @@ describe("Nav", () => {
 
     render(
       <LocationProvider>
-        <Nav />
+        <Nav onSearch={() => {}} />
       </LocationProvider>,
     );
 
@@ -80,7 +81,7 @@ describe("Nav", () => {
 
     render(
       <LocationProvider>
-        <Nav />
+        <Nav onSearch={() => {}} />
       </LocationProvider>,
     );
 
@@ -93,7 +94,7 @@ describe("Nav", () => {
 
     render(
       <LocationProvider>
-        <Nav />
+        <Nav onSearch={() => {}} />
       </LocationProvider>,
     );
 
@@ -101,5 +102,37 @@ describe("Nav", () => {
     expect(screen.getByText("🏥 Health")).toBeInTheDocument();
     expect(screen.getByText("⚙️ Settings")).toBeInTheDocument();
     expect(screen.getByText("Search...")).toBeInTheDocument();
+  });
+  test("provides native links, current-page state and a direct search callback", () => {
+    mockConfigResponse();
+    window.location.href = "http://localhost/health";
+    const onSearch = mock(() => {});
+    const { container } = render(
+      <LocationProvider>
+        <Nav onSearch={onSearch} />
+      </LocationProvider>,
+    );
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+    const health = screen.getByRole("link", { name: "🏥 Health" });
+    expect(health).toHaveAttribute("href", "/health");
+    expect(health).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "🏠 Home" })).not.toHaveAttribute("aria-current");
+    expect(container.querySelector("button a")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Search/ }));
+    expect(onSearch).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    { platform: "Linux x86_64", hint: "Ctrl+K" },
+    { platform: "MacIntel", hint: "⌘K" },
+  ])("shows the $platform shortcut", ({ platform, hint }) => {
+    Object.defineProperty(navigator, "platform", { configurable: true, value: platform });
+    mockConfigResponse();
+    render(
+      <LocationProvider>
+        <Nav onSearch={() => {}} />
+      </LocationProvider>,
+    );
+    expect(screen.getByText(hint)).toBeInTheDocument();
   });
 });

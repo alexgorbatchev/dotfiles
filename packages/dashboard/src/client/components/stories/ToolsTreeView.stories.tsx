@@ -14,8 +14,9 @@ type Story = StoryObj<typeof meta>;
 
 const noopActions: IUseToolActions = {
   pending: null,
-  outcome: null,
-  dismissOutcome: () => {},
+  results: [],
+  dismissResult: () => {},
+  retryResult: async () => {},
   installTool: async () => {},
   updateTool: async () => {},
   checkTool: async () => {},

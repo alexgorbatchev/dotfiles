@@ -81,4 +81,23 @@ describe("useRepeatedQueryParam", () => {
 
     unmount();
   });
+  test("setting and clearing a disclosure preserves unrelated URL state", () => {
+    const location = { href: "http://localhost/?query=bat#tool-files" };
+    Object.defineProperty(window, "location", { value: location, writable: true });
+    const replacements: string[] = [];
+    window.history.replaceState = (_data, _unused, url) => {
+      location.href = new URL(String(url), location.href).href;
+      replacements.push(location.href);
+    };
+    render(h(TestComponent, {}));
+    fireEvent.click(screen.getByRole("button", { name: "Set" }));
+    expect(screen.getByTestId("values")).toHaveTextContent("/tmp/dev");
+    expect(new URL(location.href).searchParams.get("treeCollapsed")).toBe("/tmp/dev");
+    expect(new URL(location.href).searchParams.get("query")).toBe("bat");
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.getByTestId("values").textContent).toBe("");
+    expect(new URL(location.href).searchParams.has("treeCollapsed")).toBe(false);
+    expect(new URL(location.href).hash).toBe("#tool-files");
+    expect(replacements).toHaveLength(2);
+  });
 });

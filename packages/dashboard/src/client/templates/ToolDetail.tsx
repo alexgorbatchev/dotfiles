@@ -4,7 +4,7 @@ import { File, History, Info, Zap } from "../icons";
 
 import type { ISerializableToolConfig, IToolDetail, IToolHistory } from "../../shared/types";
 import { InstallMethodBadge } from "../components/InstallMethodBadge";
-import { ToolActionBanner } from "../components/ToolActionBanner";
+import { RequestStateNotice } from "../components/RequestStateNotice";
 import { ToolActionButtons } from "../components/ToolActionButtons";
 import { ReadmeCard } from "../components/ReadmeCard";
 import { StatusBadge } from "../components/StatusBadge";
@@ -33,14 +33,14 @@ function getSourceDisplay(config: ISerializableToolConfig): JSX.Element | null {
   if (!sourceInfo) return null;
 
   return (
-    <div class="flex items-center gap-2">
-      <span class="text-sm text-muted-foreground w-24">Source</span>
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
+      <span class="w-24 shrink-0 text-sm text-muted-foreground">Source</span>
       {sourceInfo.url ? (
         <a
           href={sourceInfo.url}
           target="_blank"
           rel="noopener noreferrer"
-          class="text-sm text-blue-500 hover:underline break-all"
+          class="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2 break-all"
         >
           {sourceInfo.value}
         </a>
@@ -58,18 +58,24 @@ type ToolDetailProps = {
 };
 
 export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
-  const toolName = decodeURIComponent(params.name);
-  const { data: tools, loading: toolsLoading } = useFetch<IToolDetail[]>("/tools", [toolName]);
-  const { data: history, loading: historyLoading } = useFetch<IToolHistory>(
-    `/tools/${encodeURIComponent(toolName)}/history`,
-    [toolName],
-  );
+  const toolName = params.name;
+  const {
+    data: tools,
+    loading: toolsLoading,
+    error: toolsError,
+    refetch: refetchTools,
+  } = useFetch<IToolDetail[]>("/tools", [toolName]);
+  const {
+    data: history,
+    loading: historyLoading,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useFetch<IToolHistory>(`/tools/${encodeURIComponent(toolName)}/history`, [toolName]);
 
   const actions = useToolActions();
   const [collapsedFileIds, setCollapsedFileIds] = useRepeatedQueryParam("filesCollapsed");
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
-  const loading = toolsLoading || historyLoading;
 
   const binaryToToolMap = useMemo(() => buildBinaryToToolMap(tools ?? []), [tools]);
 
@@ -98,12 +104,18 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     return ids;
   }, [readmeRepo, tool]);
 
-  useSectionHash(sectionIds, !loading && tool !== null);
+  useSectionHash(sectionIds, tool !== null);
 
-  if (loading) {
+  if (!tool && (tools === null || toolsLoading || toolsError)) {
     return (
-      <div data-testid="ToolDetail" class="flex items-center justify-center h-64">
-        <div class="text-muted-foreground">Loading...</div>
+      <div data-testid="ToolDetail" class="space-y-4">
+        <RequestStateNotice
+          label="Tools"
+          loading={toolsLoading}
+          error={toolsError}
+          hasData={tools !== null}
+          onRetry={refetchTools}
+        />
       </div>
     );
   }
@@ -123,10 +135,11 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
 
   return (
     <div data-testid="ToolDetail" class="space-y-4">
+      <RequestStateNotice label="Tools" loading={toolsLoading} error={toolsError} hasData onRetry={refetchTools} />
       <section id="overview" class="space-y-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <h1 class="text-2xl font-bold">{tool.config.name}</h1>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex min-w-0 flex-wrap items-center gap-3">
+            <h1 class="min-w-0 break-words [overflow-wrap:anywhere] text-2xl font-bold">{tool.config.name}</h1>
             <StatusBadge status={tool.runtime.status} />
           </div>
           <ToolActionButtons
@@ -137,53 +150,53 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           />
         </div>
 
-        <ToolActionBanner
-          outcome={actions.outcome}
-          onDismiss={actions.dismissOutcome}
-          class="tool-action-banner-page"
-        />
-
         <div class={`grid gap-4 ${tool.usage.totalCount > 0 ? "lg:grid-cols-2" : ""}`}>
           <TitledCard title="Overview" icon={<Info class="h-4 w-4" />}>
             <div class="space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground w-24">Method</span>
+              <div class="flex min-w-0 flex-wrap items-center gap-2">
+                <span class="w-24 shrink-0 text-sm text-muted-foreground">Method</span>
                 <InstallMethodBadge method={tool.config.installationMethod} ghCli={tool.config.installParams?.ghCli} />
               </div>
               {getSourceDisplay(tool.config)}
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground w-24">Version</span>
-                <span class="font-medium">{tool.runtime.installedVersion || tool.config.version || "Unknown"}</span>
+              <div class="flex min-w-0 flex-wrap items-center gap-2">
+                <span class="w-24 shrink-0 text-sm text-muted-foreground">Version</span>
+                <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
+                  {tool.runtime.installedVersion || tool.config.version || "Unknown"}
+                </span>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground w-24">Installed</span>
-                <span class="font-medium">
+              <div class="flex min-w-0 flex-wrap items-center gap-2">
+                <span class="w-24 shrink-0 text-sm text-muted-foreground">Installed</span>
+                <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
                   {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : "Not installed"}
                 </span>
               </div>
               {tool.binaryDiskSize > 0 && (
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-muted-foreground w-24">Binary Size</span>
-                  <span class="font-medium">{formatBytes(tool.binaryDiskSize)}</span>
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Binary Size</span>
+                  <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
+                    {formatBytes(tool.binaryDiskSize)}
+                  </span>
                 </div>
               )}
               {tool.config.hostname && (
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-muted-foreground w-24">Hostname</span>
-                  <code class="text-sm font-mono bg-muted px-1.5 py-0.5 rounded">{tool.config.hostname}</code>
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Hostname</span>
+                  <code class="min-w-0 break-all text-sm font-mono bg-muted px-1.5 py-0.5 rounded">
+                    {tool.config.hostname}
+                  </code>
                 </div>
               )}
               {tool.config.dependencies && tool.config.dependencies.length > 0 && (
                 <div class="flex items-start gap-2">
-                  <span class="text-sm text-muted-foreground w-24">Depends on</span>
-                  <div class="flex flex-wrap gap-2">
+                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Depends on</span>
+                  <div class="flex min-w-0 flex-wrap gap-2 [overflow-wrap:anywhere]">
                     {tool.config.dependencies.map((binaryName, i) => {
                       const linkedToolName = binaryToToolMap.get(binaryName);
                       return (
                         <a
                           key={i}
                           href={`/tools/${encodeURIComponent(linkedToolName ?? binaryName)}`}
-                          class="text-sm text-blue-500 hover:underline"
+                          class="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2"
                         >
                           {linkedToolName ?? binaryName}
                         </a>
@@ -194,13 +207,13 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
               )}
               {dependentTools.length > 0 && (
                 <div class="flex items-start gap-2">
-                  <span class="text-sm text-muted-foreground w-24">Required by</span>
-                  <div class="flex flex-wrap gap-2">
+                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Required by</span>
+                  <div class="flex min-w-0 flex-wrap gap-2 [overflow-wrap:anywhere]">
                     {dependentTools.map((depTool, i) => (
                       <a
                         key={i}
                         href={`/tools/${encodeURIComponent(depTool.config.name)}`}
-                        class="text-sm text-blue-500 hover:underline"
+                        class="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2"
                       >
                         {depTool.config.name}
                       </a>
@@ -214,9 +227,11 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           {tool.usage.totalCount > 0 && (
             <TitledCard title="Usage" icon={<Zap class="h-4 w-4" />}>
               <div class="space-y-3">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-muted-foreground w-24">Total Runs</span>
-                  <span class="font-medium">{tool.usage.totalCount.toLocaleString()}</span>
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Total Runs</span>
+                  <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
+                    {tool.usage.totalCount.toLocaleString()}
+                  </span>
                 </div>
                 <div class="space-y-2">
                   {tool.usage.binaries.map((entry) => (
@@ -280,11 +295,20 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       {tool.runtime.status === "installed" && (
         <section id="history">
           <TitledCard title="History" icon={<History class="h-4 w-4" />}>
-            <ToolHistory
-              entries={history?.entries ?? []}
-              installedAt={history?.installedAt ?? null}
-              dotfilesDir={history?.dotfilesDir ?? ""}
+            <RequestStateNotice
+              label="History"
+              loading={historyLoading}
+              error={historyError}
+              hasData={history !== null}
+              onRetry={refetchHistory}
             />
+            {history && (
+              <ToolHistory
+                entries={history.entries}
+                installedAt={history.installedAt}
+                dotfilesDir={history.dotfilesDir}
+              />
+            )}
           </TitledCard>
         </section>
       )}

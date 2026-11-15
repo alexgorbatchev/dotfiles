@@ -5,6 +5,7 @@ import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus }
 import { useFetch } from "../hooks/useFetch";
 import type { IUseToolActions } from "../hooks/useToolActions";
 import { ToolActionButtons } from "./ToolActionButtons";
+import { RequestStateNotice } from "./RequestStateNotice";
 import { TitledCard } from "./ui/TitledCard";
 import { Tree, type ITreeItemData } from "./ui/Tree";
 
@@ -89,41 +90,53 @@ function getStatusDotClass(status?: ToolRuntimeStatus): string {
   }
 }
 
-/**
- * Custom label renderer that dims the directory path and .tool.ts extension so
- * the tool name stands out, and trails the installed version when there is one.
- */
+const statusLabels: Record<ToolRuntimeStatus, string> = {
+  installed: "Installed",
+  "not-installed": "Not installed",
+  error: "Installation error",
+};
+
+/** Keep the name, state and version readable before the row's independent actions. */
 function renderLabel(item: ITreeItemData<ToolTreeData>): ToolTreeLabel {
-  if (item.data?.isFile && item.label.endsWith(".tool.ts")) {
-    const baseName = item.label.replace(/\.tool\.ts$/, "");
-    const dirPath = item.data.dirPath ?? "";
-    const isInstalled = item.data.status === "installed";
-    const installedVersion = item.data.installedVersion;
+  if (!item.data?.isFile || !item.label.endsWith(".tool.ts")) return item.label;
+  const baseName = item.label.replace(/\.tool\.ts$/, "");
+  const dirPath = item.data.dirPath ?? "";
+  const toolName = item.data.toolName;
+  const label = (
+    <span class="min-w-0 [overflow-wrap:anywhere]">
+      {dirPath && <span class="text-muted-foreground">{dirPath}</span>}
+      {baseName}
+      <span class="text-muted-foreground">.tool.ts</span>
+    </span>
+  );
 
-    return (
-      <span class="flex flex-1 items-center justify-between gap-2">
-        <span class="min-w-0 truncate">
-          {dirPath && <span class="text-muted-foreground">{dirPath}</span>}
-          {baseName}
-          <span class="text-muted-foreground">.tool.ts</span>
+  return (
+    <span class="flex min-w-0 flex-col gap-1">
+      {toolName ? (
+        <a
+          href={`/tools/${encodeURIComponent(toolName)}`}
+          aria-label={`View ${toolName}`}
+          class="flex min-h-11 min-w-0 items-center rounded font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6"
+        >
+          {label}
+        </a>
+      ) : (
+        label
+      )}
+      {toolName && (
+        <span class="flex flex-wrap gap-x-2 text-sm text-muted-foreground">
+          <span>{item.data.status ? statusLabels[item.data.status] : "Status unavailable"}</span>
+          {item.data.status === "installed" && item.data.installedVersion && (
+            <span>Version {item.data.installedVersion}</span>
+          )}
         </span>
-        {isInstalled && installedVersion && (
-          <span class="flex-shrink-0 text-xs text-muted-foreground/70">{installedVersion}</span>
-        )}
-      </span>
-    );
-  }
-  return item.label;
-}
-
-function handleItemClick(item: ITreeItemData<ToolTreeData>): void {
-  if (item.data?.toolName) {
-    window.location.href = `/tools/${encodeURIComponent(item.data.toolName)}`;
-  }
+      )}
+    </span>
+  );
 }
 
 export function ToolsTreeView({ tools, actions }: ToolsTreeViewProps): JSX.Element {
-  const { data: treeData, loading } = useFetch<IToolConfigsTree>("/tool-configs-tree");
+  const { data: treeData, loading, error, refetch } = useFetch<IToolConfigsTree>("/tool-configs-tree");
 
   const toolsByName = new Map(tools.map((tool) => [tool.config.name, tool]));
 
@@ -135,42 +148,44 @@ export function ToolsTreeView({ tools, actions }: ToolsTreeViewProps): JSX.Eleme
     }
 
     return (
-      <span onClick={(event) => event.stopPropagation()}>
-        <ToolActionButtons
-          toolName={toolName}
-          isInstalled={item.data?.status === "installed"}
-          actions={actions}
-          size="xs"
-        />
-      </span>
+      <ToolActionButtons
+        toolName={toolName}
+        isInstalled={item.data?.status === "installed"}
+        actions={actions}
+        size="xs"
+      />
     );
   }
 
-  if (loading) {
-    return (
-      <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
-        <div class="text-muted-foreground text-sm">Loading...</div>
-      </TitledCard>
-    );
-  }
-
+  const notice = (
+    <RequestStateNotice
+      label="Tool files"
+      loading={loading}
+      error={error}
+      hasData={treeData !== null}
+      onRetry={refetch}
+    />
+  );
   const roots = treeData?.roots ?? [];
 
   if (roots.length === 0) {
     return (
       <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
-        <div class="text-muted-foreground text-sm">No tool files found</div>
+        {notice}
+        {treeData !== null && !loading && !error && (
+          <div class="text-muted-foreground text-sm">No tool files found</div>
+        )}
       </TitledCard>
     );
   }
 
   return (
-    <div data-testid="ToolsTreeView" class="space-y-4">
+    <div data-testid="ToolsTreeView" class="min-w-0 space-y-4">
+      {notice}
       {roots.map((root) => (
         <TitledCard key={root.path} title={root.label} icon={<FolderTree class="h-4 w-4" />}>
           <Tree
             items={flattenToolFiles(root.entries, toolsByName, "")}
-            onItemClick={handleItemClick}
             renderLabel={renderLabel}
             renderActions={renderActions}
             iconClassName="mr-1"

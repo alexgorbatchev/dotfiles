@@ -169,4 +169,28 @@ describe("Tree", () => {
       }),
     );
   });
+  test("exposes folder disclosure state on a focusable native button", () => {
+    render(<Tree items={nestedItems} />);
+    const folder = screen.getByRole("button", { name: "Folder" });
+    folder.focus();
+    expect(document.activeElement).toBe(folder);
+    expect(folder).toHaveAttribute("aria-expanded", "true");
+    const controlled = folder.getAttribute("aria-controls");
+    expect(controlled).toBeTruthy();
+    expect(document.getElementById(controlled ?? "")).toContainElement(screen.getByText("File 1"));
+    fireEvent.click(folder);
+    expect(folder).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("keeps item actions outside the disclosure control", () => {
+    const action = mock(() => {});
+    render(
+      <Tree items={nestedItems} renderActions={(item) => <button onClick={action}>{item.label} action</button>} />,
+    );
+    const button = screen.getByRole("button", { name: "Folder action" });
+    expect(screen.getByRole("button", { name: "Folder" })).not.toContainElement(button);
+    fireEvent.click(button);
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("File 1")).toBeInTheDocument();
+  });
 });

@@ -2,6 +2,7 @@ import { type JSX } from "preact";
 import { FolderCog } from "../icons";
 
 import type { ConfigPathValue, IConfigSummary } from "../../shared/types";
+import { RequestStateNotice } from "../components/RequestStateNotice";
 import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
 
@@ -12,12 +13,18 @@ function formatPathValue(val: ConfigPathValue): string {
 }
 
 export function Settings(): JSX.Element {
-  const { data: config, loading } = useFetch<IConfigSummary>("/config");
+  const { data: config, loading, error, refetch } = useFetch<IConfigSummary>("/config");
 
-  if (loading) {
+  if (!config) {
     return (
-      <div data-testid="Settings" class="flex items-center justify-center h-64">
-        <div class="text-muted-foreground">Loading...</div>
+      <div data-testid="Settings" class="space-y-6">
+        <RequestStateNotice
+          label="Project configuration"
+          loading={loading}
+          error={error}
+          hasData={false}
+          onRetry={refetch}
+        />
       </div>
     );
   }
@@ -32,6 +39,7 @@ export function Settings(): JSX.Element {
 
   return (
     <div data-testid="Settings" class="space-y-6">
+      <RequestStateNotice label="Project configuration" loading={loading} error={error} hasData onRetry={refetch} />
       <TitledCard title="Project Paths" icon={<FolderCog class="h-4 w-4" />}>
         <div class="space-y-4">
           {paths.map((path, index) => (

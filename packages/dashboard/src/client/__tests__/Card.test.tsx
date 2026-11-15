@@ -57,7 +57,7 @@ describe("CardHeader", () => {
     render(<CardHeader data-testid="header">Styled</CardHeader>);
 
     const header = screen.getByTestId("header");
-    expect(header).toHaveClass("px-6");
+    expect(header).toHaveClass("px-4", "sm:px-6");
   });
 });
 

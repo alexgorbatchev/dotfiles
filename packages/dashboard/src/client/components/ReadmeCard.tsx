@@ -1,8 +1,9 @@
 import { type JSX } from "preact";
 import type { IToolReadmePayload } from "../../shared/types";
-import { BookOpen, ExternalLink } from "../icons";
+import { BookOpen } from "../icons";
 
 import { useFetch } from "../hooks/useFetch";
+import { RequestStateNotice } from "./RequestStateNotice";
 import { ExternalLinkButton } from "./ui/ExternalLinkButton";
 import { TitledCard } from "./ui/TitledCard";
 
@@ -51,46 +52,18 @@ function resolveGitHubUrls(html: string, repo: string): string {
 }
 
 export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
-  const { data, loading, error } = useFetch<IToolReadmePayload>(`/tools/${encodeURIComponent(toolName)}/readme`, [
-    toolName,
-  ]);
+  const { data, loading, error, refetch } = useFetch<IToolReadmePayload>(
+    `/tools/${encodeURIComponent(toolName)}/readme`,
+    [toolName],
+  );
 
-  if (loading) {
-    return (
-      <TitledCard title="README" icon={<BookOpen class="h-4 w-4" />}>
-        <div class="text-muted-foreground text-center py-8">Loading README...</div>
-      </TitledCard>
-    );
-  }
-
-  if (error || !data?.content) {
-    return (
-      <TitledCard title="README" icon={<BookOpen class="h-4 w-4" />}>
-        <div class="text-muted-foreground text-center py-8">
-          <p class="mb-2">README not available</p>
-          <a
-            href={`https://github.com/${repo}#readme`}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
-          >
-            View on GitHub <ExternalLink class="h-3 w-3" />
-          </a>
-        </div>
-      </TitledCard>
-    );
-  }
-
-  let html = "";
+  let html: string | null = null;
   const marked = typeof window !== "undefined" ? window.marked : undefined;
   const domPurify = typeof window !== "undefined" ? window.DOMPurify : undefined;
 
-  if (marked && domPurify) {
+  if (data?.content && marked && domPurify) {
     html = domPurify.sanitize(marked.parse(data.content));
     html = dropImageReferrer(resolveGitHubUrls(html, repo));
-  } else {
-    // SSR fallback or if CDN failed
-    html = `<pre>${data.content}</pre>`;
   }
 
   return (
@@ -99,7 +72,14 @@ export function ReadmeCard({ toolName, repo }: ReadmeCardProps): JSX.Element {
       icon={<BookOpen class="h-4 w-4" />}
       action={<ExternalLinkButton href={`https://github.com/${repo}#readme`}>View on GitHub</ExternalLinkButton>}
     >
-      <div class="markdown-body p-4 text-lg" dangerouslySetInnerHTML={{ __html: html }} />
+      <RequestStateNotice label="README" loading={loading} error={error} hasData={data !== null} onRetry={refetch} />
+      {data && !data.content && !loading && !error && <p class="py-4 text-muted-foreground">README not available</p>}
+      {data?.content &&
+        (html === null ? (
+          <pre class="whitespace-pre-wrap break-words p-4 text-sm">{data.content}</pre>
+        ) : (
+          <div class="markdown-body p-4 text-lg" dangerouslySetInnerHTML={{ __html: html }} />
+        ))}
     </TitledCard>
   );
 }

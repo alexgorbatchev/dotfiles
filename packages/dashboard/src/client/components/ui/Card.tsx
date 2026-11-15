@@ -11,7 +11,7 @@ export function Card({ class: className, ...props }: CardProps): JSX.Element {
     <div
       data-testid="Card"
       data-slot="card"
-      class={cn("bg-card text-card-foreground flex flex-col gap-2 rounded-xl border py-6 shadow-sm", className)}
+      class={cn("bg-card text-card-foreground flex min-w-0 flex-col gap-2 rounded-xl border py-4 shadow-sm", className)}
       {...props}
     />
   );
@@ -23,7 +23,7 @@ export function CardHeader({ class: className, ...props }: CardProps): JSX.Eleme
       data-testid="CardHeader"
       data-slot="card-header"
       class={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "@container/card-header grid min-w-0 auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-4 sm:px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
         className,
       )}
       {...props}
@@ -43,5 +43,7 @@ export function CardTitle({ class: className, ...props }: CardProps): JSX.Elemen
 }
 
 export function CardContent({ class: className, ...props }: CardProps): JSX.Element {
-  return <div data-testid="CardContent" data-slot="card-content" class={cn("px-6", className)} {...props} />;
+  return (
+    <div data-testid="CardContent" data-slot="card-content" class={cn("min-w-0 px-4 sm:px-6", className)} {...props} />
+  );
 }

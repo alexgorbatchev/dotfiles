@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/preact";
 
 import { Tools } from "../Tools";
+import { ToolActionsProvider } from "../../components/ToolActionsProvider";
 
 const meta: Meta<typeof Tools> = {
   title: "@dotfiles/dashboard/client/templates/Tools",
@@ -11,7 +12,11 @@ const meta: Meta<typeof Tools> = {
 type Story = StoryObj<typeof meta>;
 
 const Default: Story = {
-  render: () => <Tools />,
+  render: () => (
+    <ToolActionsProvider>
+      <Tools />
+    </ToolActionsProvider>
+  ),
 };
 
 export default meta;
