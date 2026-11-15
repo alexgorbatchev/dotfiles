@@ -51,6 +51,7 @@ CLAUDE.md
 /packages/docs/public/install.sh
 /.worktrees
 /.workspaces
+/.state/
 
 # test-install runtime artifacts
 /test-install/.output/
