@@ -29,12 +29,21 @@ if [ -n "${!RECURSION_ENV_VAR:-}" ]; then
   exit 1
 fi
 
-# Record shim usage to the local append-only log.
-if [ "${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
-  usage_timestamp="$(date +%s 2>/dev/null)" || true
-  if [ -n "${usage_timestamp:-}" ]; then
+dotfiles_record_usage() {
+  local usage_timestamp
+  # Bash 4.2+ supplies the timestamp without starting another process.
+  # Older Bash versions, including macOS's Bash 3.2, use date instead.
+  if ! printf -v usage_timestamp '%(%s)T' -1 2>/dev/null; then
+    usage_timestamp="$(date +%s 2>/dev/null)" || return 0
+  fi
+  if [ -n "$usage_timestamp" ]; then
     printf 'v1\t%s\t%s\t%s\n' "$usage_timestamp" "$TOOL_NAME" "$BINARY_NAME" >> "$USAGE_LOG_PATH" 2>/dev/null || true
   fi
+}
+
+# Record shim usage without depending on interactive shell initialization.
+if [ "${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
+  dotfiles_record_usage
 fi
 
 # Check if the first argument is @update

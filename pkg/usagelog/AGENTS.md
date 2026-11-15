@@ -9,9 +9,9 @@ Shim execution usage logging, atomic log rotation, and SQLite registry usage agg
 ## Local conventions
 
 - Append-only shim format: shims record invocations as tab-delimited lines: `v1\t<unix seconds>\t<tool>\t<binary>` in `.generated/usage/shim-usage.log`.
-- Non-blocking log rotation (`rotateActiveLog`): renames active log to `<fileName>.<unix_ms>.<pid>[.<suffix>]` before processing, allowing running shims to write to a fresh log file without contention or event loss.
-- Batch import transaction (`Import`): folds rotated logs oldest-first by timestamp into `tool_usage` database records within a single transaction (`reg.WithTx`), incrementing invocation counts and updating `last_used_at`.
-- Transaction safety: rotated files are deleted from the filesystem only after database transactions commit successfully; failed imports leave logs in place for subsequent runs.
+- Current log rotation (`rotateActiveLog`) renames the active log to `<fileName>.<unix_ms>.<pid>[.<suffix>]` before processing. A writer that already opened the old file can still append to it; rename alone does not establish safe deletion or prevent event loss.
+- Batch import (`Import`) processes rotated logs oldest-first by filename. Each file is aggregated into `tool_usage` in its own transaction (`reg.WithTx`), incrementing invocation counts and retaining the maximum `last_used_at`.
+- Rotated files are deleted only after database transactions commit successfully. The current importer has no persistent consumed-byte receipts: a failed deletion or concurrent import can count records again. Preserve the commit-before-delete ordering when repairing retry accounting and writer coordination.
 
 ## Local gotchas
 

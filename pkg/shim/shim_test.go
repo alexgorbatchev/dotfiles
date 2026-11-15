@@ -1,11 +1,13 @@
 package shim
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	osexec "os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -575,6 +577,147 @@ func TestShimPreservesPathsDuringInstallAndUpdate(t *testing.T) {
 						t.Fatalf("tool arguments=%q, %v; want %q", got, err, want)
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestShimUsageFunctionPreservesToolExecution(t *testing.T) {
+	bash, err := osexec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash is unavailable")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	probe := osexec.CommandContext(ctx, bash, "--noprofile", "--norc", "-c", "printf -v timestamp '%(%s)T' -1")
+	probe.Env = []string{"BASH_ENV=/dev/null"}
+	hasBuiltinTime := probe.Run() == nil
+
+	for _, tt := range []struct {
+		name               string
+		unsupportedTime    bool
+		disabled           bool
+		unwritableLog      bool
+		dateFails          bool
+		wantDate           bool
+		wantRecord         bool
+		requireBuiltinTime bool
+	}{
+		{name: "builtin timestamp avoids date", wantRecord: true, requireBuiltinTime: true},
+		{name: "unsupported time format uses date", unsupportedTime: true, wantDate: true, wantRecord: true},
+		{name: "failed date does not stop tool", unsupportedTime: true, dateFails: true, wantDate: true},
+		{name: "opt out bypasses recording", unsupportedTime: true, disabled: true},
+		{name: "failed append does not stop tool", unsupportedTime: true, unwritableLog: true, wantDate: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.requireBuiltinTime && !hasBuiltinTime {
+				t.Skip("this Bash has no builtin timestamp support")
+			}
+			dir := t.TempDir()
+			logPath := filepath.Join(dir, "usage.log")
+			dateCalls := filepath.Join(dir, "date-calls")
+			binary := filepath.Join(dir, "target")
+			shimPath := filepath.Join(dir, "shim")
+			startup := filepath.Join(dir, "bash-env")
+			write := func(path, script string) {
+				t.Helper()
+				if err := os.WriteFile(path, []byte("#!"+bash+"\n"+script), 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			write(binary, `IFS= read -r input
+printf 'arg:<%s>\n' "$@"
+printf 'stdin:<%s>\n' "$input"
+printf 'target stderr\n' >&2
+exit 23
+`)
+			// The recursion guard is independent of the clock implementation.
+			write(filepath.Join(dir, "readlink"), "printf '%s\\n' \"$2\"\n")
+			write(filepath.Join(dir, "date"), `printf 'called\n' >> "$DOTFILES_TEST_DATE_CALLS"
+if [ "$DOTFILES_TEST_DATE_FAILS" = 1 ]; then exit 7; fi
+printf '1700000000\n'
+`)
+			startupScript := ""
+			if tt.unsupportedTime {
+				// Exercise the same capability failure returned by Bash 3.2.
+				startupScript = `printf() {
+  if [[ "${1:-}" = -v && "${3:-}" = '%(%s)T' ]]; then return 1; fi
+  builtin printf "$@"
+}
+`
+			}
+			write(startup, startupScript)
+			if tt.unwritableLog {
+				if err := os.Mkdir(logPath, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cfg := Config{ToolName: "test-tool", BinaryName: "target", BinaryPath: binary, BashPath: bash, CliArgs: []string{filepath.Join(dir, "unused-cli")}, ConfigFilePath: filepath.Join(dir, "unused-config.ts"), UsageLogPath: logPath}
+			if err := NewGenerator(fs.NewOSFS()).Generate(shimPath, cfg); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			cmd := osexec.CommandContext(ctx, shimPath, "space arg", "--flag", "quote'arg")
+			tracking := "1"
+			if tt.disabled {
+				tracking = "0"
+			}
+			dateFails := "0"
+			if tt.dateFails {
+				dateFails = "1"
+			}
+			cmd.Env = []string{"PATH=" + dir, "BASH_ENV=" + startup, "EPOCHSECONDS=42", "DOTFILES_LOCAL_USAGE_TRACKING=" + tracking, "DOTFILES_TEST_DATE_CALLS=" + dateCalls, "DOTFILES_TEST_DATE_FAILS=" + dateFails}
+			cmd.Stdin = strings.NewReader("kept input\n")
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			before := time.Now().Unix()
+			err := cmd.Run()
+			after := time.Now().Unix()
+			if exitErr, ok := err.(*osexec.ExitError); !ok || exitErr.ExitCode() != 23 {
+				t.Fatalf("target exit = %v; stderr=%q", err, stderr.String())
+			}
+			if got, want := stdout.String(), "arg:<space arg>\narg:<--flag>\narg:<quote'arg>\nstdin:<kept input>\n"; got != want {
+				t.Fatalf("stdout=%q, want %q", got, want)
+			}
+			if !strings.HasSuffix(stderr.String(), "target stderr\n") {
+				t.Fatalf("target stderr was not preserved: %q", stderr.String())
+			}
+			calls, err := os.ReadFile(dateCalls)
+			if tt.wantDate {
+				if err != nil || string(calls) != "called\n" {
+					t.Fatalf("date calls=%q, %v; want one call", calls, err)
+				}
+			} else if !os.IsNotExist(err) {
+				t.Fatalf("date unexpectedly invoked: calls=%q, err=%v", calls, err)
+			}
+			if tt.unwritableLog {
+				return
+			}
+			content, err := os.ReadFile(logPath)
+			if !tt.wantRecord {
+				if !os.IsNotExist(err) {
+					t.Fatalf("unexpected usage log=%q, err=%v", content, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			fields := strings.Split(strings.TrimSuffix(string(content), "\n"), "\t")
+			if len(fields) != 4 || fields[0] != "v1" || fields[2] != "test-tool" || fields[3] != "target" {
+				t.Fatalf("usage record=%q", content)
+			}
+			seconds, err := strconv.ParseInt(fields[1], 10, 64)
+			if err != nil {
+				t.Fatalf("timestamp=%q: %v", fields[1], err)
+			}
+			if tt.unsupportedTime {
+				if seconds != 1700000000 {
+					t.Errorf("fallback timestamp=%d, want 1700000000", seconds)
+				}
+			} else if seconds < before || seconds > after {
+				t.Errorf("builtin timestamp=%d, outside [%d,%d]", seconds, before, after)
 			}
 		})
 	}
