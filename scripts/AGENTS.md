@@ -18,6 +18,7 @@ Repository automation, build orchestration, code generation, release management,
 - Local development deployment: `scripts/dev-bootstrap/` -> `scripts/dev-bootstrap/AGENTS.md`
 - Documentation link verification: `scripts/docs-links/` -> `scripts/docs-links/AGENTS.md`
 - Hosted bootstrap installer: `scripts/managed-installer/` -> `scripts/managed-installer/AGENTS.md`
+- Test suite process supervisor: `scripts/test-runner/` -> `scripts/test-runner/AGENTS.md`
 - Go-to-TypeScript type generator: `scripts/typegen/` -> `scripts/typegen/AGENTS.md`
 
 ## Local conventions
@@ -25,7 +26,8 @@ Repository automation, build orchestration, code generation, release management,
 - TypeScript scripts use Bun runtime (`bun <script>.ts`).
 - Go scripts are standalone packages executed with `go run ./scripts/<name>`.
 - Use `.tmp/` inside the repository root for temporary build artifacts. Go test sandboxes and shared test binaries may use the OS temporary directory under the test-only exception in the root `AGENTS.md`.
-- The release builder in `scripts/build/` must meet the root's 90% statement coverage minimum with behavioral tests. Other scripts are excluded from the coverage requirement enforced on `pkg/` and `cmd/`.
+- The release builder in `scripts/build/` and test supervisor in `scripts/test-runner/` must meet the root's 90% statement coverage minimum with behavioral tests. Other scripts are excluded from the coverage requirement enforced on `pkg/` and `cmd/`.
+- The user approved a Go supervisor to replace the Bash test runner, including adding its top-level script. Keep scratch ownership, process-group cancellation, child reaping, and failure status preservation in that supervisor.
 
 ## Local gotchas
 
