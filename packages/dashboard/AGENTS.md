@@ -9,6 +9,8 @@ Dashboard Preact client and asset bundler for dotfiles state, health, and usage 
 - Dashboard dev server: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard`
 - Bundle client assets: `bun compile` (runs `go run scripts/build/main.go` from root)
 - End-to-end browser verification: `bun packages/dashboard/scripts/verify-dashboard.ts` (requires `agent-browser` CLI)
+- Browser verification builds a temporary CLI, waits for its own `--port 0` readiness URL, and uses a unique isolated browser session. It expands Source and README before checking rendered content, then closes the browser and joins child shutdown before deleting its scratch directory, including on failure or cancellation.
+- Browser verification ignores ambient browser session, connection, and profile settings. Pass launch arguments through `AGENT_BROWSER_ARGS` when the host requires them (for example, `AGENT_BROWSER_ARGS=--no-sandbox bun packages/dashboard/scripts/verify-dashboard.ts` on hosts without a usable Chrome sandbox).
 - If normal browser close fails, verify the unique session name and daemon PID through `session info` before signaling that process; wait for termination and confirm the session is inactive.
 
 ## Local conventions

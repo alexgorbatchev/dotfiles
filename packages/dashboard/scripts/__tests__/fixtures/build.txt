@@ -1,0 +1,12 @@
+#!/usr/bin/env bun
+import { chmod } from "node:fs/promises";
+const root = process.env.VERIFY_FIXTURE_DIR;
+await Bun.write(root + "/build-started", String(process.pid));
+if (process.env.VERIFY_MODE === "build-failure") {
+  process.stderr.write("fixture compiler rejected source\n");
+  process.exit(23);
+}
+if (process.env.VERIFY_MODE === "build-hang") await new Promise(() => setInterval(() => {}, 1000));
+const output = process.argv[process.argv.indexOf("-o") + 1];
+await Bun.write(output, Bun.file(root + "/server"));
+await chmod(output, 0o755);

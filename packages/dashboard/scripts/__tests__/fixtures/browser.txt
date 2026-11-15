@@ -1,0 +1,42 @@
+#!/usr/bin/env bun
+const root = process.env.VERIFY_FIXTURE_DIR;
+const args = process.argv.slice(2);
+const session = args[args.indexOf("--session") + 1];
+const command = args.slice(args.indexOf("--session") + 2);
+const previous = await Bun.file(root + "/browser-log").text().catch(() => "");
+await Bun.write(root + "/browser-log", previous + JSON.stringify({ session, command, config: args[args.indexOf("--config") + 1], environmentSession: process.env.AGENT_BROWSER_SESSION ?? null, launchArgs: args.includes("--args") ? args[args.indexOf("--args") + 1] : null }) + "\n");
+if (command[0] === "open") {
+  await Bun.write(root + "/browser-active", "true");
+  if (command[1] && command[1] !== "about:blank") {
+    const result = await fetch(command[1]);
+    if (await result.text() !== "owned dashboard") process.exit(11);
+  }
+}
+if (command[0] === "wait" && command[1] === "--fn" && ["browser-failure", "cleanup-failure", "cleanup-foreign"].includes(process.env.VERIFY_MODE)) {
+  process.stderr.write("fixture syntax highlighting missing\n");
+  process.exit(12);
+}
+if (command[0] === "wait" && ["browser-hang", "runtime-failure"].includes(process.env.VERIFY_MODE)) {
+  await Bun.write(root + "/browser-waiting", String(process.pid));
+  await new Promise(() => setInterval(() => {}, 1000));
+}
+if (command[0] === "errors" && command[1] === "--json") {
+  process.stdout.write(JSON.stringify({ success: true, data: { errors: process.env.VERIFY_MODE === "console-error" ? ["ReferenceError: broken bundle"] : [] } }));
+}
+if (command[0] === "close") {
+  if (["cleanup-failure", "cleanup-foreign"].includes(process.env.VERIFY_MODE)) {
+    process.stderr.write("fixture close failed\n");
+    process.exit(13);
+  }
+  await Bun.write(root + "/browser-active", "false");
+  if (process.env.VERIFY_MODE === "delayed-close") await Bun.write(root + "/browser-closing", "true");
+}
+if (command[0] === "session") {
+  const delayed = await Bun.file(root + "/browser-closing").text().catch(() => "false");
+  let pid = Number(await Bun.file(root + "/daemon-pid").text().catch(() => "0")) || null;
+  if (pid) {
+    try { process.kill(pid, 0); } catch { pid = null; await Bun.write(root + "/browser-active", "false"); }
+  }
+  process.stdout.write(JSON.stringify({ success: true, data: { session: process.env.VERIFY_MODE === "cleanup-foreign" ? "unrelated-user-session" : session, pid, active: delayed === "true" || await Bun.file(root + "/browser-active").text() === "true" } }));
+  if (delayed === "true") await Bun.write(root + "/browser-closing", "false");
+}

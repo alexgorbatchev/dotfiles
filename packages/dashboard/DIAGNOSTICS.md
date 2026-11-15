@@ -1,3 +1,9 @@
+---
+created_on: 2026-11-14 23:23
+last_modified: 2026-11-14 23:23
+status: current
+---
+
 # Dashboard Diagnostics
 
 This file captures the practical debugging workflow for `@dotfiles/dashboard`, especially for failures that only appear when the dashboard is used through the packaged CLI inside a real project.
@@ -55,7 +61,7 @@ Useful repo commands:
 - Uses dashboard-owned filesystem traversal in `pkg/dashboard/routes_config.go`.
 - Directories come from the loaded configuration, whose paths `ProjectConfig.ResolvePlaceholders` resolved for the CLI and the dashboard alike, so a wrong directory here usually means a wrong config path or placeholder rather than a dashboard bug.
 - Returns one `roots` entry per configured tool-configs directory, each with the absolute `path`, a `label` contracted to `~`, and its own `entries`. Roots containing no tool files are omitted.
-- Historically this failed on unreadable or broken entries and aborted the whole response.
+- Inspection failures return `success: false` with the failing path instead of a partial tree. A missing configured root is empty.
 
 `/api/recent-tools`
 
@@ -74,12 +80,11 @@ Useful repo commands:
 
 ## Known Server-Side Failure Modes
 
-### Broken entries in the tool config tree
+### Incomplete inspection of the tool config tree
 
 Symptoms:
 
-- `tool-configs-tree` returns a generic failure
-- `recent-tools` returns a generic failure
+- `tool-configs-tree` returns `success: false` with an inspection error
 - `tools` still works
 
 Likely cause:
@@ -88,12 +93,13 @@ Likely cause:
 
 Relevant files:
 
-- `pkg/dashboard/routes.go`
+- `pkg/dashboard/routes_config.go`
 
 Expected behavior:
 
-- Missing tool config dir should return an empty success response.
-- Unreadable child entries should be skipped, not treated as fatal for the whole endpoint.
+- A missing configured root returns an empty success response.
+- Unreadable roots or child entries and nested disappearance fail the response with the failing path; partial roots are not returned as a complete inventory.
+- Traversal uses the injected filesystem and does not follow directory symlinks.
 
 ### `recent-tools` git date failures
 

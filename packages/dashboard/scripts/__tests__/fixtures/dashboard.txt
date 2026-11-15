@@ -1,0 +1,24 @@
+#!/usr/bin/env bun
+const root = process.env.VERIFY_FIXTURE_DIR;
+await Bun.write(root + "/server-pid", String(process.pid));
+await Bun.write(root + "/server-args", JSON.stringify(process.argv.slice(2)));
+if (process.env.VERIFY_MODE === "startup-failure") {
+  process.stderr.write("fixture configuration is invalid\n");
+  process.exit(17);
+}
+if (process.env.VERIFY_MODE === "startup-hang") {
+  process.stderr.write("fixture still loading configuration\n");
+  await new Promise(() => setInterval(() => {}, 1000));
+}
+const server = Bun.serve({ hostname: "127.0.0.1", port: Number(process.argv[process.argv.indexOf("--port") + 1]), fetch() { return new Response("owned dashboard"); } });
+await Bun.write(root + "/server-url", server.url.href);
+process.stdout.write("Dashboard available at: " + server.url.origin + "\n");
+process.on("SIGTERM", async () => {
+  if (process.env.VERIFY_MODE === "ignore-term") return;
+  await server.stop(true);
+  await Bun.write(root + "/server-stopped", "stopped");
+  process.exit(0);
+});
+if (process.env.VERIFY_MODE === "runtime-failure") {
+  setTimeout(() => { process.stderr.write("fixture server crashed\n"); process.exit(19); }, 200);
+}
