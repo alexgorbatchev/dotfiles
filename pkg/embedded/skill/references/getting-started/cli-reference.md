@@ -267,6 +267,10 @@ An existing file or symlink, including a dangling symlink, is left untouched, so
 
 Scaffolding loads the project configuration without evaluating existing tool configurations, so a broken tool file does not prevent its repair. Errors in the project configuration still fail the command.
 
+The bundled `dotfiles.tool.ts` starter refreshes the exported skill after every installation, reinstall, or tool update. Its awaited hook runs the newly installed binary's [`skill copy`](#dotfiles-skill-copy-path) command against `.agents/skills` under the configured `paths.dotfilesDir`, independent of the current working directory. An export failure fails the installation command. Merely scaffolding or updating the CLI outside this tool does not run the hook.
+
+An older starter remains unchanged and is reported as outdated. To adopt the current starters, review the existing tool files and run `dotfiles tool scaffold --force`; edited files are backed up before replacement. Custom tool configurations only gain this behavior when you add an equivalent hook yourself.
+
 - `-f, --force`: Overwrite tool configurations that already exist.
 
 #### `dotfiles tool add <owner/repo>`

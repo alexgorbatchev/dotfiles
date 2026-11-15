@@ -475,3 +475,36 @@ func TestRunPreservesSymlinkTargets(t *testing.T) {
 		})
 	}
 }
+
+func TestRunPreservesLegacyDotfilesUntilForced(t *testing.T) {
+	fsys := fs.NewMemFS()
+	dir := "/project/tools"
+	if err := fsys.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "dotfiles.tool.ts")
+	if err := fsys.WriteFile(path, []byte(legacyDotfilesToolContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	results, err := Run(fsys, Options{Dir: dir, TargetOS: "linux"})
+	if err != nil || actionsByName(t, results)["dotfiles.tool.ts"] != ActionOutdated {
+		t.Fatalf("legacy template not reported outdated: %+v %v", results, err)
+	}
+	got, err := fsys.ReadFile(path)
+	if err != nil || string(got) != legacyDotfilesToolContent {
+		t.Fatalf("legacy tool overwritten: %q %v", got, err)
+	}
+	results, err = Run(fsys, Options{Dir: dir, TargetOS: "linux", Force: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, result := range results {
+		if result.Path == path && (result.Action != ActionOverwrote || result.BackupPath != "") {
+			t.Fatalf("legacy upgrade: %+v", result)
+		}
+	}
+	got, err = fsys.ReadFile(path)
+	if err != nil || string(got) != dotfilesToolContent {
+		t.Fatalf("force did not upgrade: %q %v", got, err)
+	}
+}

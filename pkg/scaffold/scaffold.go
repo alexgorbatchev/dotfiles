@@ -87,6 +87,23 @@ const dotfilesToolContent = `import { defineTool } from "@alexgorbatchev/dotfile
 
 export default defineTool((install) =>
   install("github-release", { repo: "alexgorbatchev/dotfiles" })
+    .bin("dotfiles")
+    .hook("after-install", async ({ $, installedDir, binaryPaths, projectConfig }) => {
+      const name = binaryPaths[0];
+      if (!name) throw new Error("The dotfiles installation reported no binary");
+      const binary = installedDir + "/" + name;
+      const skillsDir = projectConfig.paths.dotfilesDir + "/.agents/skills";
+      const quote = (value: string) => "'" + value.replace(/'/g, "'\"'\"'") + "'";
+      await $(quote(binary) + " skill copy " + quote(skillsDir));
+    }),
+);
+`
+
+// legacyDotfilesToolContent is the starter before automatic skill export.
+const legacyDotfilesToolContent = `import { defineTool } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install) =>
+  install("github-release", { repo: "alexgorbatchev/dotfiles" })
     .bin("dotfiles"),
 );
 `
@@ -173,7 +190,8 @@ export default defineTool((install, _ctx) =>
 // legacyContents lists, per template, the exact contents this project generated in the
 // past. It is how an untouched but outdated file is told apart from one the user wrote.
 var legacyContents = map[string][]string{
-	"brew.tool.ts": {legacyBrewToolContent},
+	"brew.tool.ts":     {legacyBrewToolContent},
+	"dotfiles.tool.ts": {legacyDotfilesToolContent},
 }
 
 // Templates are provisioned in this order, which is the order results are reported.
