@@ -8,6 +8,8 @@ Project and tool configuration structures, platform resolution, and context help
 
 ## Local conventions
 
+- Preserve `features.catalog.generate` and `features.catalog.filePath` for the owner-selected replacement Markdown generator. They remain accepted but unconsumed until that generator is implemented; keep the consumer-test exception explicit and do not remove the public settings.
+
 - `downloader.pruneCache` controls automatic download-cache pruning and defaults to true. Explicit `--prune-cache` values override configuration; manual `cache clear` bypasses both policies.
 
 - Accept interfaces, return concrete structs in Go functions.

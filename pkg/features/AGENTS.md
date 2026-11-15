@@ -18,6 +18,9 @@ Tool readme parsing and the on-disk readme cache.
 - Stale generated output in fixtures -> delete `.generated/` and rerun the CLI.
 - There is no catalog generator. `features.catalog` is accepted by the configuration
   loader and nothing reads it.
+- Preserve `features.catalog.generate` and `features.catalog.filePath`. The owner
+  chose a replacement Markdown generator for configured tools; specify its behavior
+  before implementation. This is separate from remote tool catalog management.
 
 ## Boundaries
 

@@ -138,12 +138,11 @@ var projectConfigConsumers = map[string]string{
 	"cargo.githubRelease.token":     "installer.CargoSettings.GitHubRelease.Token, authenticates those archive downloads",
 }
 
-// keysAwaitingRemoval are the accepted keys that change nothing today. Every one of
-// them is a documented public configuration key, so removing it is an API change
-// that the project owner has to approve; until then this set records exactly which
-// keys are in that state, and the test below fails if the set and the consumer table
-// disagree. It is expected to end up empty.
-var keysAwaitingRemoval = []string{
+// keysAwaitingImplementation are public keys intentionally retained for a
+// replacement Markdown catalog generator. They have no consumer today. The test
+// below pins that exception until the generator implements them; new inert keys
+// must not enter this list without an explicit configuration-surface decision.
+var keysAwaitingImplementation = []string{
 	"features.catalog.filePath",
 	"features.catalog.generate",
 }
@@ -151,11 +150,11 @@ var keysAwaitingRemoval = []string{
 // TestEveryAcceptedProjectKeyIsAccountedFor fails when the validator accepts a key
 // that no code honours, which is how a configuration comes to load without complaint
 // and behave exactly as before. A new key must either name its consumer in
-// projectConfigConsumers or be admitted to keysAwaitingRemoval deliberately.
+// projectConfigConsumers or be admitted to keysAwaitingImplementation deliberately.
 func TestEveryAcceptedProjectKeyIsAccountedFor(t *testing.T) {
 	accepted := acceptedProjectKeys(t)
 
-	t.Run("every accepted key names a consumer or is awaiting removal", func(t *testing.T) {
+	t.Run("every accepted key names a consumer or is awaiting implementation", func(t *testing.T) {
 		var undeclared, unconsumed []string
 		for _, key := range accepted {
 			consumer, declared := projectConfigConsumers[key]
@@ -163,7 +162,7 @@ func TestEveryAcceptedProjectKeyIsAccountedFor(t *testing.T) {
 				undeclared = append(undeclared, key)
 				continue
 			}
-			if consumer == "" && !slices.Contains(keysAwaitingRemoval, key) {
+			if consumer == "" && !slices.Contains(keysAwaitingImplementation, key) {
 				unconsumed = append(unconsumed, key)
 			}
 		}
@@ -175,7 +174,7 @@ func TestEveryAcceptedProjectKeyIsAccountedFor(t *testing.T) {
 		}
 		if len(unconsumed) > 0 {
 			sort.Strings(unconsumed)
-			t.Errorf("these accepted keys have no consumer and are not listed in keysAwaitingRemoval: %s", strings.Join(unconsumed, ", "))
+			t.Errorf("these accepted keys have no consumer and are not listed in keysAwaitingImplementation: %s", strings.Join(unconsumed, ", "))
 		}
 	})
 
@@ -187,15 +186,15 @@ func TestEveryAcceptedProjectKeyIsAccountedFor(t *testing.T) {
 		}
 	})
 
-	t.Run("keysAwaitingRemoval holds exactly the keys with no consumer", func(t *testing.T) {
-		for _, key := range keysAwaitingRemoval {
+	t.Run("keysAwaitingImplementation holds exactly the keys with no consumer", func(t *testing.T) {
+		for _, key := range keysAwaitingImplementation {
 			consumer, declared := projectConfigConsumers[key]
 			if !declared {
-				t.Errorf("keysAwaitingRemoval holds %q, which projectConfigConsumers does not describe", key)
+				t.Errorf("keysAwaitingImplementation holds %q, which projectConfigConsumers does not describe", key)
 				continue
 			}
 			if consumer != "" {
-				t.Errorf("%q now has a consumer (%s) and must be removed from keysAwaitingRemoval", key, consumer)
+				t.Errorf("%q now has a consumer (%s) and must be removed from keysAwaitingImplementation", key, consumer)
 			}
 		}
 	})
