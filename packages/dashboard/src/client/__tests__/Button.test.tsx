@@ -117,19 +117,28 @@ describe("Button", () => {
   test("renders a single native link with composed styles and event handlers", () => {
     const buttonClick = mock(() => {});
     const linkClick = mock(() => {});
+    let cancelledByComponent = true;
     const { container } = render(
-      <Button asChild variant="outline" onClick={buttonClick} class="wrapper-style">
-        <a href="/tools/bat" class="link-style" target="_blank" rel="noopener noreferrer" onClick={linkClick}>
-          Open bat
-        </a>
-      </Button>,
+      <div
+        onClick={(event) => {
+          cancelledByComponent = event.defaultPrevented;
+          event.preventDefault(); // Keep native navigation inside the test harness.
+        }}
+      >
+        <Button asChild variant="outline" onClick={buttonClick} class="wrapper-style">
+          <a href="/tools/bat" class="link-style" target="_blank" rel="noopener noreferrer" onClick={linkClick}>
+            Open bat
+          </a>
+        </Button>
+      </div>,
     );
     const link = screen.getByRole("link", { name: "Open bat" });
     expect(link).toHaveAttribute("href", "/tools/bat");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveClass("wrapper-style", "link-style", "border");
     expect(container.querySelector("button")).toBeNull();
-    expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
+    fireEvent.click(link, { ctrlKey: true });
+    expect(cancelledByComponent).toBe(false);
     expect(buttonClick).toHaveBeenCalledTimes(1);
     expect(linkClick).toHaveBeenCalledTimes(1);
   });
