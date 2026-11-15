@@ -1,6 +1,9 @@
 package fs
 
 import (
+	"bytes"
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +14,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
 // runCommonFSTests executes a suite of standard operations against any FS implementation.
@@ -1719,6 +1726,136 @@ func TestCopyTreeReportsEachFailure(t *testing.T) {
 			}
 			if !errors.Is(err, errCopyTreeFault) {
 				t.Errorf("CopyTree = %v, want %v", err, errCopyTreeFault)
+			}
+		})
+	}
+}
+
+func TestTrackedRemovalSymlinks(t *testing.T) {
+	for _, backend := range []string{"memory", "os"} {
+		for _, method := range []string{"Remove", "RemoveAll"} {
+			for _, live := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/live=%t", backend, method, live), func(t *testing.T) {
+					var filesystem FS = NewMemFS()
+					root := "/test"
+					if backend == "os" {
+						filesystem = NewOSFS()
+						root = t.TempDir()
+					}
+					if err := filesystem.MkdirAll(root, 0755); err != nil {
+						t.Fatal(err)
+					}
+					target := filepath.Join(root, "target")
+					if live {
+						if err := filesystem.MkdirAll(target, 0755); err != nil {
+							t.Fatal(err)
+						}
+						if err := filesystem.WriteFile(filepath.Join(target, "keep"), []byte("keep"), 0644); err != nil {
+							t.Fatal(err)
+						}
+					}
+					link := filepath.Join(root, "link")
+					if err := filesystem.Symlink(target, link); err != nil {
+						t.Fatal(err)
+					}
+					ctx := context.Background()
+					database, err := db.NewConnection(ctx, ":memory:")
+					if err != nil {
+						t.Fatal(err)
+					}
+					defer database.Close()
+					reg := registry.NewRegistry(database)
+					var output bytes.Buffer
+					tracked := NewTrackedFileSystem(filesystem, reg, logger.New(logger.Config{Writer: &output}), "removal-test")
+					err = reg.WithTx(ctx, func(tx *sql.Tx) error {
+						tracked = tracked.WithTx(ctx, tx)
+						if method == "Remove" {
+							return tracked.Remove(link)
+						}
+						return tracked.RemoveAll(link)
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if _, err := filesystem.Lstat(link); !errors.Is(err, os.ErrNotExist) {
+						t.Fatalf("link remains: %v", err)
+					}
+					if live {
+						if data, err := filesystem.ReadFile(filepath.Join(target, "keep")); err != nil || string(data) != "keep" {
+							t.Fatalf("target changed: %q, %v", data, err)
+						}
+					}
+					ops, err := reg.GetFileOperations(ctx, registry.FileOperationFilter{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(ops) != 1 || ops[0].OperationType != "rm" || ops[0].FilePath != link {
+						t.Fatalf("expected one rm for link, got %+v", ops)
+					}
+					if !strings.Contains(output.String(), "INFO") || !strings.Contains(output.String(), "rm "+link) {
+						t.Fatalf("missing INFO removal: %q", output.String())
+					}
+				})
+			}
+		}
+	}
+}
+
+type removalFaultFS struct {
+	FS
+	failPath    string
+	failReadDir bool
+}
+
+func (f removalFaultFS) Lstat(path string) (os.FileInfo, error) {
+	if path == f.failPath && !f.failReadDir {
+		return nil, os.ErrPermission
+	}
+	return f.FS.Lstat(path)
+}
+
+func (f removalFaultFS) ReadDir(path string) ([]string, error) {
+	if path == f.failPath && f.failReadDir {
+		return nil, os.ErrPermission
+	}
+	return f.FS.ReadDir(path)
+}
+
+func TestTrackedRemovalInspectionErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, method, path string
+		readDir            bool
+	}{
+		{"remove root", "Remove", "/tree", false},
+		{"remove all root", "RemoveAll", "/tree", false},
+		{"remove all child", "RemoveAll", "/tree/keep", false},
+		{"remove all listing", "RemoveAll", "/tree", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mem := NewMemFS()
+			if err := mem.MkdirAll("/tree", 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := mem.WriteFile("/tree/keep", []byte("keep"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			log := logger.New(logger.Config{Writer: &output, Level: logger.LogLevelVerbose})
+			tracked := NewTrackedFileSystem(removalFaultFS{mem, tc.path, tc.readDir}, nil, log, "test")
+			var err error
+			if tc.method == "Remove" {
+				err = tracked.Remove("/tree")
+			} else {
+				err = tracked.RemoveAll("/tree")
+			}
+			if !errors.Is(err, os.ErrPermission) {
+				t.Fatalf("expected permission error, got %v", err)
+			}
+			if data, err := mem.ReadFile("/tree/keep"); err != nil || string(data) != "keep" {
+				t.Fatalf("removed data after inspection error: %q, %v", data, err)
+			}
+			if strings.Contains(output.String(), "rm ") {
+				t.Fatalf("logged unsuccessful removal: %q", output.String())
 			}
 		})
 	}

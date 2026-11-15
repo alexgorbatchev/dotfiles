@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -326,10 +327,11 @@ func (t *TrackedFileSystem) OpenFile(path string, flag int, perm os.FileMode) (i
 }
 
 func (t *TrackedFileSystem) Remove(path string) error {
-	existed, err := t.fs.Exists(path)
-	if err != nil {
-		existed = false
+	_, err := t.fs.Lstat(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("inspect removal path %s: %w", path, err)
 	}
+	existed := err == nil
 	err = t.fs.Remove(path)
 	if err != nil {
 		return err
@@ -490,10 +492,11 @@ func (t *TrackedFileSystem) Stat(path string) (os.FileInfo, error) {
 func (t *TrackedFileSystem) RemoveAll(path string) error {
 	var toDelete []string
 
-	existed, err := t.fs.Exists(path)
-	if err != nil {
-		existed = false
+	info, err := t.fs.Lstat(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("inspect removal path %s: %w", path, err)
 	}
+	existed := err == nil
 
 	needsWalk := (t.tx != nil && t.reg != nil) || (t.log != nil && t.log.IsDebug())
 
@@ -501,8 +504,7 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 		toDelete = append(toDelete, path)
 
 		if needsWalk {
-			info, err := t.fs.Lstat(path)
-			if err == nil && info.IsDir() {
+			if info.IsDir() {
 				var walk func(string) error
 				walk = func(dir string) error {
 					names, err := t.fs.ReadDir(dir)
@@ -513,7 +515,10 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 						subPath := filepath.Join(dir, name)
 						toDelete = append(toDelete, subPath)
 						subInfo, err := t.fs.Lstat(subPath)
-						if err == nil && subInfo.IsDir() {
+						if err != nil {
+							return err
+						}
+						if subInfo.IsDir() {
 							if err := walk(subPath); err != nil {
 								return err
 							}
@@ -521,7 +526,9 @@ func (t *TrackedFileSystem) RemoveAll(path string) error {
 					}
 					return nil
 				}
-				_ = walk(path)
+				if err := walk(path); err != nil {
+					return fmt.Errorf("inspect removal tree %s: %w", path, err)
+				}
 			}
 		}
 	}
