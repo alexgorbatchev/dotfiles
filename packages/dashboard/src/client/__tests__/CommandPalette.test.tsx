@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:
 import { type JSX } from "preact";
 import { LocationProvider, useLocation } from "preact-iso";
 import { useState } from "preact/hooks";
+import { setupRerender, teardown } from "preact/test-utils";
 import type { IToolDetail } from "../../shared/types";
 import { CommandPalette } from "../components/CommandPalette";
 
@@ -81,19 +82,23 @@ describe("CommandPalette", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Launch search" }));
   });
 
-  test("reopens immediately after Escape before passive effects refresh the shortcut listener", async () => {
+  test("reopens immediately after Escape before passive effects refresh the shortcut listener", () => {
     openSearch();
-    await waitFor(() => expect(screen.queryByText("Loading tools…")).not.toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
-    // Native events plus one render microtask preserve the browser's gap before passive effects.
-    // fireEvent's act wrapper would flush those effects and hide the stale-listener regression.
-    dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
-    await Promise.resolve();
-    expect(dialog).not.toHaveAttribute("open");
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, cancelable: true }));
-    await Promise.resolve();
-    expect(dialog.hasAttribute("open")).toBe(true);
-    expect(document.activeElement).toBe(screen.getByRole("combobox"));
+    // Drain renders explicitly without flushing passive effects between native events.
+    // fireEvent's act wrapper would refresh the listener and hide the stale-closure regression.
+    const rerender = setupRerender();
+    try {
+      dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
+      rerender();
+      expect(dialog).not.toHaveAttribute("open");
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, cancelable: true }));
+      rerender();
+      expect(dialog.hasAttribute("open")).toBe(true);
+      expect(document.activeElement).toBe(screen.getByRole("combobox"));
+    } finally {
+      teardown();
+    }
   });
 
   test("supports Ctrl+K and Meta+K without a synthetic launcher key event", () => {
