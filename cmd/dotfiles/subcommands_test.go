@@ -5538,3 +5538,132 @@ func TestDryRunGeneratesCopiesAndTemplatesFromExistingFiles(t *testing.T) {
 		t.Fatalf("dry-run wrote files or backups: %v, %v", entries, err)
 	}
 }
+
+func TestCheckUpdatesCommand_InstalledOnly(t *testing.T) {
+	t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+	var mu sync.Mutex
+	hits := map[string]int{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		hits[r.URL.Path]++
+		mu.Unlock()
+		switch r.URL.Path {
+		case "/repos/acme/failed/releases/latest":
+			w.WriteHeader(http.StatusInternalServerError)
+		case "/repos/acme/limited/releases/latest":
+			w.WriteHeader(http.StatusTooManyRequests)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{"tag_name":"v2.0.0","assets":[{"name":"tool.tar.gz","browser_download_url":"https://example.invalid/tool.tar.gz"}]}`)
+		}
+	}))
+	t.Cleanup(server.Close)
+	u, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MOCK_SERVER_PORT", u.Port())
+
+	for _, named := range []bool{false, true} {
+		t.Run(fmt.Sprintf("named=%t", named), func(t *testing.T) {
+			mu.Lock()
+			clear(hits)
+			mu.Unlock()
+			tools := tsTools{"manual": `install("manual")`}
+			for _, name := range []string{"current", "outdated", "failed", "limited", "unused", "unreadable"} {
+				tools[name] = fmt.Sprintf(`install("github-release", {repo: "acme/%s"})`, name)
+			}
+			p := newE2EProject(t, tools)
+			p.writeConfig(t, tools, "", `"github": {"cache": {"enabled": false}}`)
+			p.seedUnreadableInstallation(t, "unreadable")
+			for _, name := range []string{"current", "outdated", "failed", "limited", "manual"} {
+				v := "v1.0.0"
+				if name == "current" {
+					v = "v2.0.0"
+				}
+				p.seedInstallation(t, name, v, filepath.Join(p.Root, "installed", name))
+			}
+			args := []string{"tool", "check", "--installed", "--json"}
+			if named {
+				args = append(args, "unused", "limited", "current", "manual", "failed", "outdated", "unreadable", "unknown")
+			}
+			out, err := p.run(args...)
+			mustFailAfterLogging(t, err, out)
+			var results []ToolUpdateResult
+			if err := json.Unmarshal([]byte(out.Stdout), &results); err != nil {
+				t.Fatalf("decoding results: %v\n%s", err, out.Stdout)
+			}
+			byName := map[string]ToolUpdateResult{}
+			for _, result := range results {
+				byName[result.ToolName] = result
+			}
+			for name, status := range map[string]orchestrator.CheckStatus{
+				"current": orchestrator.CheckStatusUpToDate, "outdated": orchestrator.CheckStatusUpdateAvailable,
+				"manual": orchestrator.CheckStatusUnsupported, "failed": checkStatusFailed,
+				"limited": checkStatusFailed, "unreadable": checkStatusFailed,
+			} {
+				if got := byName[name]; got.Status != status {
+					t.Errorf("%s = %+v, want status %s", name, got, status)
+				}
+			}
+			for name, cause := range map[string]string{"failed": "status 500", "limited": "status 429", "unreadable": unreadableInstallationCause} {
+				if got := byName[name]; !strings.Contains(got.Error, cause) || got.LatestVersion != "" {
+					t.Errorf("%s = %+v, want failure with %q and no latest version", name, got, cause)
+				}
+			}
+			if got, present := byName["unused"]; named {
+				if !present || got != (ToolUpdateResult{ToolName: "unused", Status: orchestrator.CheckStatusNotInstalled}) {
+					t.Errorf("named uninstalled = %+v (present %t)", got, present)
+				}
+				if byName["unknown"].Status != checkStatusFailed {
+					t.Errorf("unknown name must fail: %+v", byName["unknown"])
+				}
+			} else if present {
+				t.Errorf("bulk installed-only check included uninstalled tool: %+v", got)
+			}
+			mu.Lock()
+			for _, name := range []string{"unused", "unreadable"} {
+				if got := hits["/repos/acme/"+name+"/releases/latest"]; got != 0 {
+					t.Errorf("%s made %d upstream calls", name, got)
+				}
+			}
+			for _, name := range []string{"current", "outdated", "failed", "limited"} {
+				if hits["/repos/acme/"+name+"/releases/latest"] == 0 {
+					t.Errorf("installed tool %s was never checked", name)
+				}
+			}
+			mu.Unlock()
+			// The explicit option must not change the next command's default scan.
+			out, err = p.run("tool", "check", "unused", "--json")
+			if err != nil {
+				t.Fatalf("default check: %v\n%s", err, out.Combined)
+			}
+			mu.Lock()
+			queried := hits["/repos/acme/unused/releases/latest"]
+			mu.Unlock()
+			if queried == 0 {
+				t.Fatal("default scan must query configured uninstalled tools")
+			}
+			mustContain(t, "stdout", out.Stdout, "v2.0.0", "not-installed")
+		})
+	}
+
+	t.Run("no installations succeeds with an empty array", func(t *testing.T) {
+		p := newE2EProject(t, tsTools{"unused": `install("manual")`})
+		out, err := p.run("tool", "check", "--installed", "--json")
+		if err != nil || strings.TrimSpace(out.Stdout) != "[]" {
+			t.Fatalf("empty check: %v\n%s", err, out.Combined)
+		}
+	})
+	t.Run("named uninstalled remains visible in human and agent output", func(t *testing.T) {
+		p := newE2EProject(t, tsTools{"unused": `install("manual")`})
+		for mode, want := range map[string]string{"0": "unused: not installed\n", "1": "tool:unused status:not-installed current: latest: cached:false\n"} {
+			t.Setenv("AGENT", mode)
+			out, err := p.run("tool", "check", "unused", "--installed")
+			if err != nil {
+				t.Fatalf("named uninstalled: %v\n%s", err, out.Combined)
+			}
+			mustContain(t, "stdout", out.Stdout, want)
+		}
+	})
+}

@@ -14,6 +14,7 @@ import (
 )
 
 var toolCheckJSON bool
+var toolCheckInstalled bool
 
 // checkStatusFailed is the --json status of a tool whose check failed. It is not an
 // orchestrator.CheckStatus value, since those are what a check found and a failed check
@@ -48,11 +49,23 @@ var toolCheckCmd = &cobra.Command{
 		defer services.Close()
 
 		log := GetLogger("check", cmd.ErrOrStderr())
-		log.Info("Checking for updates across configured tools...")
+		if toolCheckInstalled {
+			log.Info("Checking for updates across installed tools...")
+		} else {
+			log.Info("Checking for updates across configured tools...")
+		}
 
 		instReg := services.Installers
 		jsonResults := []ToolUpdateResult{}
 		failed := false
+		report := func(tool *config.ToolConfig, result ToolUpdateResult) {
+			logCheckResult(log.WithTag(tool.Name), tool, result)
+			if toolCheckJSON {
+				jsonResults = append(jsonResults, result)
+			} else {
+				printCheckResult(cmd.OutOrStdout(), tool, result)
+			}
+		}
 
 		toolsToCheck := services.ToolConfigs
 		if len(args) > 0 {
@@ -86,6 +99,27 @@ var toolCheckCmd = &cobra.Command{
 				continue
 			}
 
+			// A tool that cannot be checked is logged with the cause, and in JSON listed
+			// as failed; the other tools are still checked, and the run then fails.
+			fail := func(msg logger.Message, installed *registry.ToolInstallationRecord, err error) {
+				toolLog.Error(msg)
+				failed = true
+				if toolCheckJSON {
+					jsonResults = append(jsonResults, failedCheck(tool, installed, err))
+				}
+			}
+			installed, err := services.Registry.GetToolInstallation(ctx, tool.Name)
+			if err != nil {
+				fail(installationReadFailed(err), nil, err)
+				continue
+			}
+			if toolCheckInstalled && installed == nil {
+				if len(args) > 0 {
+					report(tool, ToolUpdateResult{ToolName: tool.Name, Status: orchestrator.CheckStatusNotInstalled})
+				}
+				continue
+			}
+
 			// The load rejects a method no installer handles, so a lookup that fails here
 			// is an internal error, not something the configuration can cause.
 			inst, err := instReg.Get(tool.InstallationMethod)
@@ -104,20 +138,6 @@ var toolCheckCmd = &cobra.Command{
 			}
 			configureInstallerForUpdate(inst, toolDestDir, services.ProjectConfig)
 
-			// A tool that cannot be checked is logged with the cause, and in JSON listed
-			// as failed; the other tools are still checked, and the run then fails.
-			fail := func(msg logger.Message, installed *registry.ToolInstallationRecord, err error) {
-				toolLog.Error(msg)
-				failed = true
-				if toolCheckJSON {
-					jsonResults = append(jsonResults, failedCheck(tool, installed, err))
-				}
-			}
-			installed, err := services.Registry.GetToolInstallation(ctx, tool.Name)
-			if err != nil {
-				fail(installationReadFailed(err), nil, err)
-				continue
-			}
 			check, err := orchestrator.CheckTool(ctx, inst, tool, installed)
 			if err != nil {
 				fail(updateCheckFailed(err), installed, err)
@@ -132,12 +152,7 @@ var toolCheckCmd = &cobra.Command{
 				Cached:         check.Cached,
 			}
 
-			logCheckResult(toolLog, tool, result)
-			if toolCheckJSON {
-				jsonResults = append(jsonResults, result)
-			} else {
-				printCheckResult(cmd.OutOrStdout(), tool, result)
-			}
+			report(tool, result)
 		}
 
 		if toolCheckJSON {
@@ -246,5 +261,6 @@ func versionSuffix(currentVersion string, cached bool) string {
 }
 
 func init() {
+	toolCheckCmd.Flags().BoolVar(&toolCheckInstalled, "installed", false, "Check only tools recorded as installed")
 	toolCheckCmd.Flags().BoolVar(&toolCheckJSON, "json", false, "Output results in JSON format")
 }

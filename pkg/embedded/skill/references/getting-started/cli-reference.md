@@ -235,6 +235,10 @@ A tool is reported as up to date only when its installation method's query says 
 
 Exit status: 0 unless the check of a tool failed, whatever the checks found, including an available update, a tool that is not installed, and an installation method that cannot check for updates. Disabled tools, tools with no installation method, and tools whose update checks are turned off with [`updateCheck.enabled`](../api-reference/core-api.md#updatecheckconfig) are skipped, named or not. Non-zero when the check of any tool failed or a named tool is not configured, following [batch failure handling](#batch-failures). `tool check` still checks and reports every other tool first, and under `--json` prints the whole array, including failed entries for unknown tool names, before exiting.
 
+- `--installed`: Check only tools recorded as installed, excluding uninstalled tools before any upstream query. Without tool names, uninstalled tools are omitted; explicitly named uninstalled tools report `not-installed` without a latest version or a network request. Unknown names and unreadable installation records still fail. The default without this flag checks all configured tools.
+
+For routine maintenance, run `dotfiles tool check --installed --json`; omit `--installed` when inspecting upstream versions for all configured recipes. Failed queries, including rate limits, retain `status: "failed"` and their error instead of being reported as current.
+
 - `--json`: Output update status in JSON format. Each entry carries `tool`, `status`, `currentVersion`, `latestVersion`, and `cached`. `status` is one of the statuses above, or `failed` for a tool whose check failed, whose entry also carries `error`, the cause that was logged. `currentVersion` is absent for a tool that is not installed or whose installation record could not be read, and `latestVersion` when nothing upstream named one.
 
 #### `dotfiles tool validate [tool]`
