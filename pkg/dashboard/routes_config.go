@@ -20,6 +20,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	paths := s.projectConfig.Paths
 	data := map[string]any{
+		"configFilePath": s.configPath,
 		"dotfilesDir":    paths.DotfilesDir,
 		"generatedDir":   paths.GeneratedDir,
 		"binariesDir":    paths.BinariesDir,

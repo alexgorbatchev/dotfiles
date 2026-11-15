@@ -1,3 +1,4 @@
+import { fixture_health } from "./fixtures";
 import { act, fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
@@ -65,8 +66,11 @@ function InventoryHarness({ records = tools, actions = fixture_idleActions }: In
 }
 
 function mockTree(data: unknown): void {
+  const responses: Record<string, unknown> = { "/api/health": fixture_health, "/api/tool-configs-tree": data };
   globalThis.fetch = Object.assign(
-    mock(async () => new Response(JSON.stringify({ success: true, data }))),
+    mock(async (input: Parameters<typeof fetch>[0]) => {
+      return new Response(JSON.stringify({ success: true, data: responses[String(input)] }));
+    }),
     { preconnect: () => {} },
   ) as typeof fetch;
 }
@@ -134,17 +138,25 @@ describe("Tool inventory", () => {
     location.href = "http://localhost/?keep=yes&sort=name-desc#tool-files";
     render(<InventoryHarness />);
     await screen.findByText("dev/shell.tool.ts");
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["zeta", "broken", "alpha shell/100%"]);
+    expect(screen.getAllByRole("link", { name: /^View / }).map((link) => link.textContent)).toEqual([
+      "zeta",
+      "broken",
+      "alpha shell/100%",
+    ]);
     fireEvent.change(screen.getByRole("combobox", { name: "Sort" }), { target: { value: "method" } });
     expect(location.search).toBe("?keep=yes&sort=method");
     expect(location.hash).toBe("#tool-files");
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["broken", "alpha shell/100%", "zeta"]);
+    expect(screen.getAllByRole("link", { name: /^View / }).map((link) => link.textContent)).toEqual([
+      "broken",
+      "alpha shell/100%",
+      "zeta",
+    ]);
     act(() => {
       location.href = "http://localhost/?status=error&sort=status";
       window.dispatchEvent(new Event("popstate"));
     });
     expect(screen.getByRole("combobox", { name: "Installation" })).toHaveValue("error");
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["broken"]);
+    expect(screen.getAllByRole("link", { name: /^View / }).map((link) => link.textContent)).toEqual(["broken"]);
   });
 
   test("keeps native links separate from operations and encodes return context", async () => {
@@ -159,7 +171,7 @@ describe("Tool inventory", () => {
     expect(link).toHaveAttribute("href", "/tools/zeta?returnTo=%2F");
     expect(link.closest("button")).toBeNull();
     expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
-    const reinstall = screen.getByRole("button", { name: "Re-install" });
+    const reinstall = screen.getByRole("button", { name: "Force reinstall", hidden: true });
     expect(link).not.toContainElement(reinstall);
     fireEvent.click(reinstall);
     expect(installTool).toHaveBeenCalledWith("zeta", true);
@@ -171,7 +183,7 @@ describe("Tool inventory", () => {
     render(<InventoryHarness />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Tool sources could not be loaded.");
     expect(screen.getByText("3 of 3 tools")).toBeInTheDocument();
-    expect(screen.getAllByRole("link")).toHaveLength(3);
+    expect(screen.getAllByRole("link", { name: /^View / })).toHaveLength(3);
     expect(screen.getByRole("combobox", { name: "Config root" })).toBeDisabled();
     mockTree(tree);
     fireEvent.click(screen.getByRole("button", { name: "Retry tool sources" }));

@@ -1,7 +1,22 @@
 import { z } from "zod";
 import type { IFileTreeEntry } from "../shared/types";
 
+const capabilitySchema = z.object({ enabled: z.boolean(), reason: z.string() });
+
 const toolSchema = z.object({
+  metadata: z.object({
+    applicability: z.enum(["active", "disabled", "different-host", "inactive-platform"]),
+    reason: z.string(),
+    kind: z.enum(["installable", "configuration-only", "invalid"]),
+    requestedVersion: z.string(),
+    updateMode: z.enum(["update", "reinstall"]),
+    actions: z.object({
+      install: capabilitySchema,
+      check: capabilitySchema,
+      update: capabilitySchema,
+      reinstall: capabilitySchema,
+    }),
+  }),
   config: z.object({
     name: z.string(),
     version: z.string().optional(),
@@ -61,6 +76,7 @@ const treeEntrySchema: z.ZodType<IFileTreeEntry> = z.lazy(() =>
 const schemas: Record<string, z.ZodType> = {
   "/tools": z.array(toolSchema),
   "/config": z.object({
+    configFilePath: z.string(),
     dotfilesDir: z.string(),
     generatedDir: z.string(),
     binariesDir: z.string(),
@@ -73,6 +89,16 @@ const schemas: Record<string, z.ZodType> = {
     lastCheck: z.string(),
     checks: z.array(
       z.object({
+        id: z.string(),
+        findings: z.array(
+          z.object({
+            kind: z.enum(["missing-binary", "missing-installation", "unused-version"]),
+            toolName: z.string(),
+            path: z.string(),
+            severity: z.enum(["warning", "error"]),
+            configured: z.boolean(),
+          }),
+        ),
         name: z.string(),
         status: z.enum(["pass", "warn", "fail"]),
         message: z.string(),

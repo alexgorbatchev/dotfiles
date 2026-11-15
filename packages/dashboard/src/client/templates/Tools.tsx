@@ -2,6 +2,7 @@ import { type JSX } from "preact";
 
 import type { IToolDetail } from "../../shared/types";
 import { RecentTools } from "../components/RecentTools";
+import { FirstToolSetup } from "../components/FirstToolSetup";
 import { RequestStateNotice } from "../components/RequestStateNotice";
 import { ToolsTreeView } from "../components/ToolsTreeView";
 import { TitledCard } from "../components/ui/TitledCard";
@@ -124,6 +125,16 @@ export function Tools(): JSX.Element {
     return (
       <div data-testid="Tools">
         <RequestStateNotice label="Tools" loading={loading} error={error} hasData={false} onRetry={refetch} />
+      </div>
+    );
+  }
+
+  if (tools.length === 0) {
+    return (
+      <div data-testid="Tools" class="space-y-4">
+        <h1 class="text-xl font-semibold">Tools</h1>
+        <RequestStateNotice label="Tools" loading={loading} error={error} hasData onRetry={refetch} />
+        {!error && !loading && <FirstToolSetup onRecheck={refetch} />}
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import type { IDriftItem } from "../../../shared/types";
+import type { IDriftItem, IHealthStatus, IToolMetadata, IToolDetail } from "../../../shared/types";
 import type { IToolActionOutcome, IToolActionResult, IUseToolActions } from "../../hooks/useToolActions";
 
 export const fixture_idleActions: IUseToolActions = {
@@ -88,3 +88,52 @@ export const fixture_driftItems: IDriftItem[] = [
     diff: "--- current\n+++ desired\n-editor=local\n+editor=repository",
   },
 ];
+
+export const fixture_health: IHealthStatus = {
+  overall: "healthy",
+  checks: [
+    {
+      id: "tool-installations",
+      name: "Tool Installations",
+      status: "pass",
+      message: "Recorded binaries present",
+      findings: [],
+    },
+    {
+      id: "registry-integrity",
+      name: "Registry Integrity",
+      status: "pass",
+      message: "Recorded installation paths present",
+      findings: [],
+    },
+  ],
+  lastCheck: "2026-11-15T06:00:00Z",
+};
+export const fixture_toolMetadata: IToolMetadata = {
+  applicability: "active",
+  reason: "",
+  kind: "installable",
+  requestedVersion: "latest",
+  updateMode: "update",
+  actions: {
+    install: { enabled: true, reason: "" },
+    check: { enabled: true, reason: "" },
+    update: { enabled: true, reason: "" },
+    reinstall: { enabled: true, reason: "" },
+  },
+};
+
+export const fixture_tool: IToolDetail = {
+  metadata: fixture_toolMetadata,
+  config: { name: "example", version: "1", installationMethod: "github-release", binaries: ["example"] },
+  runtime: {
+    status: "installed",
+    installedVersion: "1",
+    installedAt: "2026-11-15T06:00:00Z",
+    installPath: "/bin/example",
+    binaryPaths: ["/bin/example"],
+  },
+  files: [],
+  binaryDiskSize: 0,
+  usage: { totalCount: 0, binaries: [] },
+};

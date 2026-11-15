@@ -93,6 +93,7 @@ export interface IDriftItem {
 }
 
 export interface IToolDetail {
+  metadata: IToolMetadata;
   /** Drift status and diffs */
   drift?: IDriftItem[];
   /** Static configuration from .tool.ts */
@@ -105,6 +106,20 @@ export interface IToolDetail {
   binaryDiskSize: number;
   /** Usage statistics gathered from shim executions */
   usage: IToolUsageSummary;
+}
+
+export interface IToolActionCapability {
+  enabled: boolean;
+  reason: string;
+}
+
+export interface IToolMetadata {
+  applicability: "active" | "disabled" | "different-host" | "inactive-platform";
+  reason: string;
+  kind: "installable" | "configuration-only" | "invalid";
+  requestedVersion: string;
+  updateMode: "update" | "reinstall";
+  actions: Record<"install" | "check" | "update" | "reinstall", IToolActionCapability>;
 }
 
 /**
@@ -157,10 +172,20 @@ export interface IToolConfigsTree {
  * Health check result for a single check.
  */
 export interface IHealthCheckResult {
+  id: string;
+  findings: IHealthFinding[];
   name: string;
   status: "pass" | "warn" | "fail";
   message: string;
   details?: string[];
+}
+
+export interface IHealthFinding {
+  kind: "missing-binary" | "missing-installation" | "unused-version";
+  toolName: string;
+  path: string;
+  severity: "warning" | "error";
+  configured: boolean;
 }
 
 /**
@@ -181,6 +206,8 @@ export type ConfigPathValue = string | string[] | undefined;
  * Project configuration summary for settings display.
  */
 export interface IConfigSummary {
+  /** Exact configuration loaded at startup; empty only when the server has no known path. */
+  configFilePath: string;
   dotfilesDir: string;
   generatedDir: string;
   binariesDir: string;

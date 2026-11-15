@@ -1,4 +1,5 @@
 import { type JSX } from "preact";
+import { useMemo } from "preact/hooks";
 import { AlertTriangle, CircleCheck, CircleX, HeartPulse } from "../icons";
 
 import type { IHealthCheckResult, IHealthStatus } from "../../shared/types";
@@ -6,6 +7,9 @@ import { RequestStateNotice } from "../components/RequestStateNotice";
 import { Button } from "../components/ui/Button";
 import { TitledCard } from "../components/ui/TitledCard";
 import { useFetch } from "../hooks/useFetch";
+import { useSectionHash } from "../hooks/useSectionHash";
+import { CopyButton } from "../components/CopyButton";
+import { healthFindingId, healthFindingGuidance } from "../utils/health";
 
 function getStatusIcon(status: string): JSX.Element {
   switch (status) {
@@ -31,6 +35,51 @@ function HealthCheckCard({ check }: HealthCheckCardProps): JSX.Element {
     <TitledCard title={check.name} icon={getStatusIcon(check.status)}>
       <p class="mb-2 text-sm font-semibold">{statusLabels[check.status]}</p>
       {check.message && <p class="text-sm text-foreground">{check.message}</p>}
+      <div class="space-y-3">
+        {check.findings.map((finding) => {
+          const guidance = healthFindingGuidance[finding.kind];
+          return (
+            <section
+              key={healthFindingId(check.id, finding)}
+              id={healthFindingId(check.id, finding)}
+              class="scroll-mt-4 mt-3 space-y-2 rounded-md border p-3"
+            >
+              <h3 class="font-semibold">
+                {finding.severity === "error" ? "Failure" : "Warning"}: {guidance.title}
+              </h3>
+              {finding.configured ? (
+                <a
+                  href={`/tools/${encodeURIComponent(finding.toolName)}`}
+                  class="inline-flex min-h-11 items-center rounded font-medium underline [overflow-wrap:anywhere] sm:min-h-6"
+                >
+                  {finding.toolName}
+                </a>
+              ) : (
+                <p class="font-medium [overflow-wrap:anywhere]">{finding.toolName} · no longer configured</p>
+              )}
+              <p class="text-sm">{guidance.impact}</p>
+              <code class="block text-sm [overflow-wrap:anywhere]">{finding.path}</code>
+              <CopyButton text={finding.path} label={`Copy path for ${finding.toolName}`} />
+              <p class="text-sm text-muted-foreground">
+                {finding.configured
+                  ? guidance.next
+                  : "Inspect this path and the active configuration. Restore the tool configuration if you still need it; review the directory before removing anything."}
+              </p>
+            </section>
+          );
+        })}
+      </div>
+      {check.status !== "pass" && check.findings.length === 0 && (
+        <p class="mt-2 text-sm text-muted-foreground">
+          {check.id === "tool-installations"
+            ? "No recorded installation is available to verify."
+            : "This check needs review."}{" "}
+          <a href="/" class="underline">
+            Review configured tools and setup
+          </a>{" "}
+          and the diagnostic details, then recheck.
+        </p>
+      )}
       {(check.details?.length || 0) > 0 && (
         <details class="mt-3">
           <summary class="min-h-11 cursor-pointer py-2 text-sm font-medium">Diagnostic details</summary>
@@ -47,6 +96,11 @@ function HealthCheckCard({ check }: HealthCheckCardProps): JSX.Element {
 
 export function Health(): JSX.Element {
   const { data: health, loading, error, refetch } = useFetch<IHealthStatus>("/health");
+  const findingIds = useMemo(
+    () => health?.checks.flatMap((check) => check.findings.map((finding) => healthFindingId(check.id, finding))) ?? [],
+    [health],
+  );
+  useSectionHash(findingIds, health !== null);
 
   if (health === null) {
     return (

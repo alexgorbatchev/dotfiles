@@ -1,10 +1,11 @@
 import { type JSX } from "preact";
 
-import type { IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
+import type { IHealthStatus, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
 import type { IInventoryQueryState } from "../hooks/useInventoryQuery";
 import type { IUseToolActions } from "../hooks/useToolActions";
 import { buildInventoryRows, filterInventoryRows, inventoryToolHref } from "../utils/inventoryUtils";
+import { ToolHealth } from "./ToolHealth";
 import { ToolActionButtons } from "./ToolActionButtons";
 import { RequestStateNotice } from "./RequestStateNotice";
 import { Button } from "./ui/Button";
@@ -23,6 +24,8 @@ const statusLabels: Record<ToolRuntimeStatus, string> = {
 
 export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps): JSX.Element {
   const { data: tree, loading, error, refetch } = useFetch<IToolConfigsTree>("/tool-configs-tree");
+  const health = useFetch<IHealthStatus>("/health");
+  const findingCount = health.data?.checks.reduce((count, check) => count + check.findings.length, 0) ?? 0;
   const { query, updateQuery, resetQuery, returnTo } = inventory;
   const rows = filterInventoryRows(buildInventoryRows(tools, tree), query);
   const methods = [...new Set(tools.map((tool) => tool.config.installationMethod ?? "undeclared"))].sort();
@@ -132,6 +135,22 @@ export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps)
         hasData={tree !== null}
         onRetry={refetch}
       />
+      <RequestStateNotice
+        label="Installation health"
+        loading={health.loading}
+        error={health.error}
+        hasData={health.data !== null}
+        onRetry={health.refetch}
+      />
+      {health.data && (
+        <p class="text-sm text-muted-foreground">
+          Health checked: {new Date(health.data.lastCheck).toLocaleString()} · {findingCount}{" "}
+          {findingCount === 1 ? "finding" : "findings"}.{" "}
+          <a href="/health" class="underline">
+            Review health
+          </a>
+        </p>
+      )}
       {isWaitingForSources ? (
         <p class="py-3 text-sm text-muted-foreground">Load source locations or reset filters to see tools.</p>
       ) : rows.length === 0 ? (
@@ -169,6 +188,7 @@ export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps)
                     </span>
                   )}
                 </div>
+                <ToolHealth tool={tool} health={health.data} stale={Boolean(health.error) || health.loading} />
                 {sources.map((source) => (
                   <details key={source.path} class="text-sm text-muted-foreground">
                     <summary class="min-h-11 cursor-pointer content-center rounded [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6">
@@ -188,6 +208,7 @@ export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps)
               <ToolActionButtons
                 toolName={tool.config.name}
                 isInstalled={tool.runtime.status === "installed"}
+                metadata={tool.metadata}
                 actions={actions}
                 size="xs"
               />

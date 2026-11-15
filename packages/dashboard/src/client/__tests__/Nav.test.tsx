@@ -6,6 +6,7 @@ import { LocationProvider } from "preact-iso";
 
 setupUITests();
 
+import { invalidateFetches } from "../invalidateFetches";
 import { Nav } from "../components/Nav";
 
 describe("Nav", () => {
@@ -28,6 +29,7 @@ describe("Nav", () => {
         JSON.stringify({
           success: true,
           data: {
+            configFilePath: "/test/dotfiles/custom.config.ts",
             dotfilesDir: "/test/dotfiles",
             generatedDir: "/test/generated",
             binariesDir: "/test/binaries",
@@ -135,4 +137,37 @@ describe("Nav", () => {
     );
     expect(screen.getByText(hint)).toBeInTheDocument();
   });
+});
+
+test("shows the exact startup config and keeps failed identity refresh visibly stale", async () => {
+  const original = globalThis.fetch;
+  const config = {
+    configFilePath: "/work/a long project/custom.config.ts",
+    dotfilesDir: "/work/a long project",
+    generatedDir: "/generated",
+    binariesDir: "/bin",
+    targetDir: "/target",
+    toolConfigsDir: ["/tools"],
+  };
+  const request = mock(async () => new Response(JSON.stringify({ success: true, data: config })));
+  globalThis.fetch = Object.assign(request, { preconnect: () => {} }) as typeof fetch;
+  try {
+    render(
+      <LocationProvider>
+        <Nav onSearch={() => {}} />
+      </LocationProvider>,
+    );
+    await screen.findByText("Project · a long project / custom.config.ts");
+    expect(screen.getByText(config.configFilePath)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy active configuration path", hidden: true })).toBeInTheDocument();
+    request.mockRejectedValueOnce(new Error("Offline"));
+    invalidateFetches("/config");
+    await screen.findByText(/Previously loaded/);
+    expect(screen.getByText(config.configFilePath)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry project identity", hidden: true }));
+    await screen.findByText("Project · a long project / custom.config.ts");
+    expect(screen.queryByText(/Previously loaded/)).toBeNull();
+  } finally {
+    globalThis.fetch = original;
+  }
 });

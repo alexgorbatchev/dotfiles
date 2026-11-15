@@ -2,9 +2,10 @@ import { type JSX } from "preact";
 import { useMemo } from "preact/hooks";
 import { File, History, Zap } from "../icons";
 
-import type { ISerializableToolConfig, IToolDetail, IToolHistory } from "../../shared/types";
+import type { IHealthStatus, ISerializableToolConfig, IToolDetail, IToolHistory } from "../../shared/types";
 import { InstallMethodBadge } from "../components/InstallMethodBadge";
 import { RequestStateNotice } from "../components/RequestStateNotice";
+import { ToolHealth } from "../components/ToolHealth";
 import { ToolActionButtons } from "../components/ToolActionButtons";
 import { ReadmeCard } from "../components/ReadmeCard";
 import { StatusBadge } from "../components/StatusBadge";
@@ -75,7 +76,11 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     refetch: refetchHistory,
   } = useFetch<IToolHistory>(`/tools/${encodeURIComponent(toolName)}/history`, [toolName]);
 
+  const health = useFetch<IHealthStatus>("/health", [toolName]);
   const actions = useToolActions();
+  const latest = actions.results.findLast(
+    (result) => result.outcome.toolName === toolName && result.outcome.latestVersion,
+  )?.outcome;
   const [collapsedFileIds, setCollapsedFileIds] = useRepeatedQueryParam("filesCollapsed");
 
   const tool = tools?.find((t) => t.config.name === toolName) || null;
@@ -148,14 +153,32 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         ← Back to results
       </a>
       <section id="overview" class="scroll-mt-4 space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex min-w-0 flex-wrap items-center gap-3">
-            <h1 class="min-w-0 break-words [overflow-wrap:anywhere] text-2xl font-bold">{tool.config.name}</h1>
-            <StatusBadge status={tool.runtime.status} />
+        <div class="flex flex-col items-start justify-between gap-3 md:flex-row">
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="flex min-w-0 flex-wrap items-center gap-3">
+              <h1 class="min-w-0 break-words [overflow-wrap:anywhere] text-2xl font-bold">{tool.config.name}</h1>
+              <StatusBadge status={tool.runtime.status} />
+            </div>
+            <div class="space-y-1">
+              <ToolHealth tool={tool} health={health.data} stale={Boolean(health.error) || health.loading} />
+              {health.data && (
+                <p class="text-sm text-muted-foreground">
+                  Health checked: {new Date(health.data.lastCheck).toLocaleString()}
+                </p>
+              )}
+              <RequestStateNotice
+                label="Installation health"
+                loading={health.loading}
+                error={health.error}
+                hasData={health.data !== null}
+                onRetry={health.refetch}
+              />
+            </div>
           </div>
           <ToolActionButtons
             toolName={toolName}
             isInstalled={tool.runtime.status === "installed"}
+            metadata={tool.metadata}
             actions={actions}
             size="sm"
           />
@@ -201,6 +224,19 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
             <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
               {tool.config.version ?? "Not specified"}
             </span>
+          </div>
+          <div class="flex min-w-0 flex-col gap-1">
+            <span class="text-sm text-muted-foreground">Effective requested version</span>
+            <span class="font-medium [overflow-wrap:anywhere]">
+              {tool.metadata.kind === "installable" ? tool.metadata.requestedVersion : "No package to install"}
+            </span>
+          </div>
+          <div class="flex min-w-0 flex-col gap-1">
+            <span class="text-sm text-muted-foreground">Latest known version</span>
+            <span class="font-medium [overflow-wrap:anywhere]">{latest?.latestVersion ?? "Not available"}</span>
+            {latest?.checkedAt && (
+              <span class="text-xs text-muted-foreground">Checked {new Date(latest.checkedAt).toLocaleString()}</span>
+            )}
           </div>
           <div class="flex min-w-0 flex-col gap-1">
             <span class="text-sm text-muted-foreground">Installed</span>

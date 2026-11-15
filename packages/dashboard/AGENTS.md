@@ -26,6 +26,8 @@ Dashboard Preact client and asset bundler for dotfiles state, health, and usage 
 - Home inventory query state uses `q`, `status`, `method`, `root`, and `sort`, preserves unrelated query fields, and passes a validated local `returnTo` through detail navigation. Source metadata failures must not erase the validated inventory or masquerade as zero matching roots.
 - Tool detail puts drift, files, and history before native `#source`/`#readme` disclosures. Section hashes reveal collapsed content and preserve query state. Drift is inspection-only: label the available current and desired content, never fabricate a recorded base, and preserve full paths with clipboard failure feedback.
 - Settings displays read-only paths from the configuration loaded at startup. Keep multiple tool roots separate and explain that configuration edits require a dashboard restart. Use `CopyButton` for full values with a manual-copy fallback.
+- Tool actions use server-derived capabilities and visible reasons. Keep unchecked reinstalls distinct from upgrades and place force reinstall behind an impact disclosure. Installation receipts and observed health are separate facts; link structured findings by exact tool identity, label observation time, and never infer health from an empty report.
+- Project identity uses the startup configuration path, including custom filenames. First-tool guidance uses shell-quoted commands for that exact path, explains starter generation versus installation, and requires a server restart to load new configurations.
 - Health leads with failing and warning checks, keeps passing checks in a disclosure, and reports the last completed observation time during rechecks and failures.
 
 ## Local gotchas

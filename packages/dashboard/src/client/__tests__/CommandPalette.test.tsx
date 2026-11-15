@@ -1,3 +1,4 @@
+import { fixture_toolMetadata } from "./fixtures";
 import { fireEvent, render, screen, setupUITests, waitFor } from "../../testing/ui-setup";
 
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
@@ -12,6 +13,7 @@ setupUITests();
 
 function tool(name: string, binaries?: IToolDetail["config"]["binaries"]): IToolDetail {
   return {
+    metadata: fixture_toolMetadata,
     config: { name, version: "latest", installationMethod: "github-release", binaries },
     runtime: { status: "not-installed", installedVersion: null, installedAt: null, installPath: null, binaryPaths: [] },
     files: [],

@@ -16,6 +16,8 @@ export interface IToolActionOutcome {
   kind: ToolActionKind;
   message: string;
   tone: ToolActionTone;
+  latestVersion?: string;
+  checkedAt?: string;
 }
 
 export interface IToolActionResult {

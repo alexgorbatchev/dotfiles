@@ -34,7 +34,16 @@ function mockDashboardApi(overrides: Record<string, ResponseFactory> = {}): void
     "GET /api/health": {
       overall: "healthy",
       lastCheck: "2026-11-14T12:00:00Z",
-      checks: [{ name: "Registry Integrity", status: "pass", message: "Registry is healthy", details: [] }],
+      checks: [
+        {
+          id: "registry-integrity",
+          findings: [],
+          name: "Registry Integrity",
+          status: "pass",
+          message: "Registry is healthy",
+          details: [],
+        },
+      ],
     },
     "GET /api/tools/example/history": fixture_emptyHistory,
     "GET /api/tools/example/source": { content: "defineTool('example')", filePath: "/project/tools/example.tool.ts" },
@@ -85,7 +94,8 @@ describe("App routing and persistent controls", () => {
     const install = Promise.withResolvers<Response>();
     mockDashboardApi({ "POST /api/tools/example/install": () => install.promise });
     render(<App />);
-    fireEvent.click(await screen.findByRole("button", { name: "Re-install" }));
+    fireEvent.click(await screen.findByText("More actions"));
+    fireEvent.click(screen.getByRole("button", { name: "Force reinstall", hidden: true }));
     expect(await screen.findByText("Reinstalling example. Waiting for the server.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "🏥 Health" }));
     expect(await screen.findByText("Registry is healthy")).toBeInTheDocument();

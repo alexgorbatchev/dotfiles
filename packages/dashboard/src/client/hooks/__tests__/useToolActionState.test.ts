@@ -99,6 +99,8 @@ describe("useToolActionState", () => {
     expect(result.current.results.at(-1)?.outcome).toEqual({
       toolName: "eza",
       kind: "update",
+      latestVersion: "0.2.0",
+      checkedAt: expect.any(String),
       message: "Updated 0.1.0 → 0.2.0",
       tone: "success",
     });
@@ -121,6 +123,8 @@ describe("useToolActionState", () => {
     expect(result.current.results.at(-1)?.outcome).toEqual({
       toolName: "eza",
       kind: "update",
+      latestVersion: "0.2.0",
+      checkedAt: expect.any(String),
       message: "Already up to date (0.2.0)",
       tone: "success",
     });
@@ -209,6 +213,8 @@ describe("useToolActionState", () => {
     expect(result.current.results.at(-1)?.outcome).toEqual({
       toolName: "eza",
       kind: "update",
+      latestVersion: "2.11.6",
+      checkedAt: expect.any(String),
       message: "3.0.0-alpha.2 is ahead of the latest known version (2.11.6)",
       tone: "info",
     });
@@ -237,6 +243,8 @@ describe("useToolActionState", () => {
     expect(result.current.results.at(-1)?.outcome).toEqual({
       toolName: "eza",
       kind: "check",
+      latestVersion: "0.2.0",
+      checkedAt: expect.any(String),
       message: "Update available: 0.1.0 → 0.2.0",
       tone: "info",
     });
@@ -251,6 +259,8 @@ describe("useToolActionState", () => {
     expect(result.current.results.at(-1)?.outcome).toEqual({
       toolName: "eza",
       kind: "check",
+      latestVersion: "0.2.0",
+      checkedAt: expect.any(String),
       message: "Up to date (0.2.0)",
       tone: "success",
     });
@@ -295,6 +305,8 @@ describe("useToolActionState", () => {
     expect(result.current.results.at(-1)?.outcome).toEqual({
       toolName: "eza",
       kind: "check",
+      latestVersion: "2.11.6",
+      checkedAt: expect.any(String),
       message: "3.0.0-alpha.2 is ahead of the latest known version (2.11.6)",
       tone: "info",
     });
@@ -310,6 +322,8 @@ describe("useToolActionState", () => {
     expect(result.current.results.at(-1)?.outcome).toEqual({
       toolName: "eza",
       kind: "check",
+      latestVersion: "1.6.0",
+      checkedAt: expect.any(String),
       message: "Not installed; the latest available version is 1.6.0",
       tone: "info",
     });

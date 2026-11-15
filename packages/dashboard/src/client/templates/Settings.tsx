@@ -31,6 +31,7 @@ export function Settings(): JSX.Element {
 
   const roots = pathValues(config.toolConfigsDir);
   const paths = [
+    { label: "Active configuration file", value: config.configFilePath },
     { label: "Dotfiles directory", value: config.dotfilesDir },
     { label: "Generated directory", value: config.generatedDir },
     { label: "Binaries directory", value: config.binariesDir },

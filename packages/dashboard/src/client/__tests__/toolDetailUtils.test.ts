@@ -1,3 +1,4 @@
+import { fixture_toolMetadata } from "./fixtures";
 import assert from "node:assert";
 import { describe, expect, test } from "bun:test";
 
@@ -27,6 +28,7 @@ function createMockToolDetail(overrides: ToolDetailStub): IToolDetail {
   );
 
   return {
+    metadata: fixture_toolMetadata,
     config,
     runtime: {
       status: "installed",

@@ -65,6 +65,8 @@ describe("Settings request states", () => {
     await screen.findByText("Copied to clipboard.");
     expect(write).toHaveBeenCalledWith(secondRoot);
     expect(write).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Copy active configuration file" }));
+    expect(write).toHaveBeenLastCalledWith("/project/dotfiles.config.ts");
   });
 
   test.each([{ toolConfigsDir: [] }, { toolConfigsDir: "" }])(

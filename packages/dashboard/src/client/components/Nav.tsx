@@ -6,6 +6,8 @@ import type { IConfigSummary } from "../../shared/types";
 
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
+import { CopyButton } from "./CopyButton";
+import { RequestStateNotice } from "./RequestStateNotice";
 
 interface INavProps {
   onSearch: () => void;
@@ -24,7 +26,8 @@ function getPathname(url: string): string {
 export function Nav({ onSearch }: INavProps): JSX.Element {
   const { url } = useLocation();
   const pathname = getPathname(url);
-  const { data: config } = useFetch<IConfigSummary>("/config");
+  const { data: config, loading, error, refetch } = useFetch<IConfigSummary>("/config");
+  const projectLabel = config?.configFilePath.split(/[\\/]/).slice(-2).join(" / ");
   const shortcut = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K";
   const formattedVersion = config?.version
     ? config.version.startsWith("v")
@@ -60,6 +63,32 @@ export function Nav({ onSearch }: INavProps): JSX.Element {
           <span>Search...</span>
           <kbd class="rounded bg-muted px-1.5 py-0.5 text-sm">{shortcut}</kbd>
         </Button>
+        <details class="w-full min-w-0 text-sm">
+          <summary class="min-h-8 cursor-pointer content-center rounded text-muted-foreground [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-ring">
+            Project · {projectLabel || (loading ? "Loading identity…" : "Identity unavailable")}
+            {error && config ? " · Previously loaded" : ""}
+          </summary>
+          <div class="mt-2 space-y-2">
+            <RequestStateNotice
+              label="Project identity"
+              loading={loading}
+              error={error}
+              hasData={!!config}
+              onRetry={refetch}
+            />
+            {config?.configFilePath ? (
+              <>
+                <code class="block whitespace-pre-wrap [overflow-wrap:anywhere]">{config.configFilePath}</code>
+                <CopyButton text={config.configFilePath} label="Copy active configuration path" />
+              </>
+            ) : !loading && !error ? (
+              <p>The server did not report an active configuration path.</p>
+            ) : null}
+            <a href="/settings" class="inline-block underline underline-offset-4">
+              View project configuration
+            </a>
+          </div>
+        </details>
       </div>
     </nav>
   );

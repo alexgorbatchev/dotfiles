@@ -19,7 +19,7 @@ import type {
 
 const UNSUPPORTED_CHECK_MESSAGE = "Update checking is not supported for this tool";
 
-type CheckDescription = Pick<IToolActionOutcome, "message" | "tone">;
+type CheckDescription = Pick<IToolActionOutcome, "message" | "tone" | "latestVersion" | "checkedAt">;
 
 /** Words and tone for one check-update answer, in the terms `dotfiles tool check` uses. */
 function describeCheck(response: ICheckUpdateResponse): CheckDescription {
@@ -81,11 +81,23 @@ async function executeAction(request: IToolActionRequest): Promise<CheckDescript
       const verb = response.alreadyInstalled ? "Already installed" : request.force ? "Reinstalled" : "Installed";
       return { message: `${verb} ${response.version}`, tone: "success" };
     }
-    case "update":
-      return describeUpdate(await postApi<IUpdateToolResponse>(`${endpoint}/update`, {}));
-    case "check":
-      return describeCheck(await postApi<ICheckUpdateResponse>(`${endpoint}/check-update`, {}));
+    case "update": {
+      const response = await postApi<IUpdateToolResponse>(`${endpoint}/update`, {});
+      return { ...describeUpdate(response), ...knownVersion(response) };
+    }
+    case "check": {
+      const response = await postApi<ICheckUpdateResponse>(`${endpoint}/check-update`, {});
+      return { ...describeCheck(response), ...knownVersion(response) };
+    }
   }
+}
+
+type VersionResponse = ICheckUpdateResponse | IUpdateToolResponse;
+type KnownVersion = Pick<IToolActionOutcome, "latestVersion" | "checkedAt">;
+
+function knownVersion(response: VersionResponse): KnownVersion {
+  if (response.status === "unsupported" || response.latestVersion === "unknown") return {};
+  return { latestVersion: response.latestVersion, checkedAt: new Date().toISOString() };
 }
 
 /** The provider owns requests so navigating between route children cannot discard their result. */

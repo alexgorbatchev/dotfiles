@@ -12,10 +12,31 @@ import (
 )
 
 type healthCheck struct {
-	Name    string   `json:"name"`
-	Status  string   `json:"status"`
-	Message string   `json:"message"`
-	Details []string `json:"details"`
+	ID       string          `json:"id"`
+	Name     string          `json:"name"`
+	Status   string          `json:"status"`
+	Message  string          `json:"message"`
+	Details  []string        `json:"details"`
+	Findings []healthFinding `json:"findings"`
+}
+
+type healthFinding struct {
+	Kind       string `json:"kind"`
+	ToolName   string `json:"toolName"`
+	Path       string `json:"path"`
+	Severity   string `json:"severity"`
+	Configured bool   `json:"configured"`
+}
+
+func (s *Server) healthFinding(kind, toolName, path string) healthFinding {
+	finding := healthFinding{Kind: kind, ToolName: toolName, Path: path, Severity: "warning"}
+	for _, tool := range s.toolConfigs {
+		if tool.Name == toolName {
+			finding.Configured = true
+			break
+		}
+	}
+	return finding
 }
 
 // GET /api/health
@@ -43,6 +64,8 @@ func (s *Server) checkInstallations(installs []*registry.ToolInstallationRecord)
 	installed := make(map[string]*registry.ToolInstallationRecord, len(installs))
 	unhealthyTools := []string{}
 	orphanedRecords := []string{}
+	missingBinaries := []healthFinding{}
+	missingInstallations := []healthFinding{}
 	for _, inst := range installs {
 		installed[inst.ToolName] = inst
 		if inst.InstallPath != "" {
@@ -51,6 +74,7 @@ func (s *Server) checkInstallations(installs []*registry.ToolInstallationRecord)
 				return nil, err
 			}
 			if missing {
+				missingInstallations = append(missingInstallations, s.healthFinding("missing-installation", inst.ToolName, inst.InstallPath))
 				orphanedRecords = append(orphanedRecords, fmt.Sprintf("Tool %s: install path %s does not exist on disk", inst.ToolName, inst.InstallPath))
 			}
 		}
@@ -68,6 +92,7 @@ func (s *Server) checkInstallations(installs []*registry.ToolInstallationRecord)
 				return nil, err
 			}
 			if missing {
+				missingBinaries = append(missingBinaries, s.healthFinding("missing-binary", inst.ToolName, path))
 				unhealthyTools = append(unhealthyTools, fmt.Sprintf("Tool %s: missing installed binary %s", inst.ToolName, path))
 			}
 		}
@@ -82,7 +107,7 @@ func (s *Server) checkInstallations(installs []*registry.ToolInstallationRecord)
 			toolCount++
 		}
 	}
-	installCheck := healthCheck{Name: "Tool Installations", Status: "pass", Message: fmt.Sprintf("%d tool(s) installed", toolCount), Details: unhealthyTools}
+	installCheck := healthCheck{ID: "tool-installations", Name: "Tool Installations", Status: "pass", Message: fmt.Sprintf("%d tool(s) installed", toolCount), Details: unhealthyTools, Findings: missingBinaries}
 	if len(unhealthyTools) > 0 {
 		installCheck.Status = "warn"
 		installCheck.Message = fmt.Sprintf("%d missing installed binary path(s)", len(unhealthyTools))
@@ -90,12 +115,16 @@ func (s *Server) checkInstallations(installs []*registry.ToolInstallationRecord)
 		installCheck.Status = "warn"
 		installCheck.Message = "No tools installed"
 	}
-	registryCheck := healthCheck{Name: "Registry Integrity", Status: "pass", Message: "Registry is healthy", Details: orphanedRecords}
+	registryCheck := healthCheck{ID: "registry-integrity", Name: "Registry Integrity", Status: "pass", Message: "Recorded installation paths are present", Details: orphanedRecords, Findings: missingInstallations}
 	if len(orphanedRecords) > 0 {
 		registryCheck.Status = "warn"
 		registryCheck.Message = fmt.Sprintf("Registry contains %d orphaned record(s)", len(orphanedRecords))
 	}
-	unusedCheck := healthCheck{Name: "Unused Binary Versions", Status: "pass", Message: "No unused binary versions found", Details: unusedVersions}
+	unusedPaths := make([]string, 0, len(unusedVersions))
+	for _, finding := range unusedVersions {
+		unusedPaths = append(unusedPaths, finding.Path)
+	}
+	unusedCheck := healthCheck{ID: "unused-binary-versions", Name: "Unused Binary Versions", Status: "pass", Message: "No unused binary versions found", Details: unusedPaths, Findings: unusedVersions}
 	if len(unusedVersions) > 0 {
 		unusedCheck.Status = "warn"
 		unusedCheck.Message = fmt.Sprintf("Found %d unused binary version(s)", len(unusedVersions))
@@ -114,8 +143,8 @@ func (s *Server) healthPathMissing(path string) (bool, error) {
 	return false, nil
 }
 
-func (s *Server) unusedBinaryVersions(installed map[string]*registry.ToolInstallationRecord) ([]string, error) {
-	unused := []string{}
+func (s *Server) unusedBinaryVersions(installed map[string]*registry.ToolInstallationRecord) ([]healthFinding, error) {
+	unused := []healthFinding{}
 	if s.projectConfig == nil || s.projectConfig.Paths.BinariesDir == "" {
 		return unused, nil
 	}
@@ -138,7 +167,7 @@ func (s *Server) unusedBinaryVersions(installed map[string]*registry.ToolInstall
 			if inst := installed[tool]; inst != nil && (inst.Version == version || filepath.Clean(inst.InstallPath) == path) {
 				continue
 			}
-			unused = append(unused, path)
+			unused = append(unused, s.healthFinding("unused-version", tool, path))
 		}
 	}
 	return unused, nil

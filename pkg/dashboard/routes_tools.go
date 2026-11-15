@@ -206,6 +206,7 @@ func (s *Server) getToolDetail(ctx context.Context, targetTool *config.ToolConfi
 	}
 
 	return map[string]any{
+		"metadata":       s.toolMetadata(targetTool, installRecord != nil),
 		"config":         formatToolConfigForDashboard(targetTool),
 		"runtime":        runtimeState,
 		"files":          files,

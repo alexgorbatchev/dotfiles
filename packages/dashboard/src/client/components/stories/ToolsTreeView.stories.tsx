@@ -1,3 +1,4 @@
+import { fixture_toolMetadata } from "./fixtures";
 import type { Meta, StoryObj } from "@storybook/preact";
 
 import type { IToolDetail } from "../../../shared/types";
@@ -25,6 +26,7 @@ const noopActions: IUseToolActions = {
 
 const tools: IToolDetail[] = [
   {
+    metadata: fixture_toolMetadata,
     config: {
       name: "fzf",
       version: "0.55.0",

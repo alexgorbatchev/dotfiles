@@ -2,7 +2,8 @@ import { fireEvent, render, screen, setupUITests } from "../../testing/ui-setup"
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { ToolActionsProvider } from "../components/ToolActionsProvider";
-import { fixture_tool } from "./fixtures";
+import { fixture_tool, fixture_projectConfig, fixture_health } from "./fixtures";
+import { invalidateFetches } from "../invalidateFetches";
 import { Tools } from "../templates/Tools";
 
 setupUITests();
@@ -26,6 +27,7 @@ describe("Tools request state", () => {
   test("initial failure cannot become an empty inventory and retry recovers", async () => {
     const responses: Record<string, unknown> = {
       "/api/tools": { success: true, data: [] },
+      "/api/config": { success: true, data: fixture_projectConfig },
       "/api/tool-configs-tree": { success: true, data: { roots: [] } },
       "/api/recent-tools": { success: true, data: { tools: [] } },
     };
@@ -42,17 +44,15 @@ describe("Tools request state", () => {
     expect(screen.queryByText("No tools configured")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Tools" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Retry tools" }));
-    expect(await screen.findByText("No tools configured")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Add your first tool" })).toBeTruthy();
+    await screen.findByRole("button", { name: "Copy starter command" });
     expect(screen.getByRole("heading", { name: "Tools" })).toBeTruthy();
     expect(screen.queryByText("Tools could not be loaded.")).toBeNull();
-    expect(screen.getAllByText("No usage recorded yet. Run a managed tool to start collecting activity.")).toHaveLength(
-      1,
-    );
     expect(screen.queryByText("Most Used")).toBeNull();
-    const workspace = screen.getByRole("region", { name: "Tools workspace" });
-    const activity = screen.getByText("Activity · recent additions and usage").closest("details");
-    expect(activity).not.toHaveAttribute("open");
-    expect(activity && workspace.compareDocumentPosition(activity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText("Activity · recent additions and usage")).toBeNull();
+    expect(screen.getByText("dotfiles --config '/project/dotfiles.config.ts' tool scaffold")).toBeInTheDocument();
+    expect(screen.getByText("dotfiles --config '/project/dotfiles.config.ts' dashboard")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recheck after restart" })).toBeInTheDocument();
   });
 
   test("malformed success does not render empty summaries", async () => {
@@ -82,6 +82,7 @@ describe("Tools request state", () => {
       },
     }));
     const responses: Record<string, unknown> = {
+      "/api/health": fixture_health,
       "/api/tools": [...tools, fixture_tool],
       "/api/recent-tools": { tools: [] },
       "/api/tool-configs-tree": { roots: [] },
@@ -114,4 +115,83 @@ describe("Tools request state", () => {
     );
     expect(usageLinks.some((link) => link.textContent?.includes("example"))).toBe(false);
   });
+  test.each([
+    { config: { ...fixture_projectConfig, configFilePath: "" }, expected: "Unknown — setup commands are unavailable." },
+    {
+      config: { ...fixture_projectConfig, toolConfigsDir: [] },
+      expected: "None configured. Set paths.toolConfigsDir in your configuration, then restart the dashboard.",
+    },
+  ])("does not invent setup commands for incomplete project context: $expected", async ({ config, expected }) => {
+    const responses: Record<string, unknown> = { "/api/tools": [], "/api/config": config };
+    globalThis.fetch = Object.assign(
+      mock(
+        async (input: Parameters<typeof fetch>[0]) =>
+          new Response(JSON.stringify({ success: true, data: responses[String(input)] })),
+      ),
+      { preconnect: () => {} },
+    ) as typeof fetch;
+    render(
+      <ToolActionsProvider>
+        <Tools />
+      </ToolActionsProvider>,
+    );
+    await screen.findByText(expected);
+    expect(screen.queryByRole("button", { name: "Copy starter command" })).toBeNull();
+  });
+
+  test("uses shell-safe commands and rechecks without installing anything", async () => {
+    const configPath = "/project's tools/$(never-run)/custom.config.ts";
+    const responses: Record<string, unknown> = {
+      "/api/tools": [],
+      "/api/config": { ...fixture_projectConfig, configFilePath: configPath },
+    };
+    const response = mock(
+      async (input: Parameters<typeof fetch>[0]) =>
+        new Response(JSON.stringify({ success: true, data: responses[String(input)] })),
+    );
+    globalThis.fetch = Object.assign(response, { preconnect: () => {} }) as typeof fetch;
+    render(
+      <ToolActionsProvider>
+        <Tools />
+      </ToolActionsProvider>,
+    );
+    await screen.findByRole("button", { name: "Copy starter command" });
+    expect(
+      screen.getByText("dotfiles --config '/project'\\''s tools/$(never-run)/custom.config.ts' tool scaffold"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Recheck after restart" }));
+    await screen.findByRole("heading", { name: "Add your first tool" });
+    expect(
+      response.mock.calls.map(([input]) => String(input)).every((url) => url === "/api/tools" || url === "/api/config"),
+    ).toBe(true);
+  });
+});
+
+type SetupResponse = () => Promise<Response>;
+
+test("withholds setup commands when project context fails, then recovers without losing the empty inventory", async () => {
+  const configRequest = mock(
+    async () => new Response(JSON.stringify({ success: true, data: fixture_projectConfig })),
+  ).mockRejectedValueOnce(new Error("Offline"));
+  const responses: Record<string, SetupResponse> = {
+    "/api/config": configRequest,
+    "/api/tools": async () => new Response(JSON.stringify({ success: true, data: [] })),
+  };
+  globalThis.fetch = Object.assign(
+    mock(async (input: Parameters<typeof fetch>[0]) => responses[String(input)]!()),
+    { preconnect: () => {} },
+  ) as typeof fetch;
+  render(
+    <ToolActionsProvider>
+      <Tools />
+    </ToolActionsProvider>,
+  );
+  await screen.findByText("Setup configuration could not be loaded.");
+  expect(screen.queryByRole("button", { name: "Copy starter command" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Retry setup configuration" }));
+  await screen.findByRole("button", { name: "Copy starter command" });
+  configRequest.mockRejectedValueOnce(new Error("Still offline"));
+  invalidateFetches("/config");
+  await screen.findByText("Still offline");
+  expect(screen.queryByRole("button", { name: "Copy starter command" })).toBeNull();
 });

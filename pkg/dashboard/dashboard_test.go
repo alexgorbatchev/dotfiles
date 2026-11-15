@@ -30,6 +30,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 func TestToolInstallRefreshesShellConfiguration(t *testing.T) {
@@ -2839,5 +2840,201 @@ func TestToolConfigsTreeUsesInjectedFilesystem(t *testing.T) {
 	}
 	if !reflect.DeepEqual(response.Data.Roots[0].Entries, want) {
 		t.Fatalf("tree must sort directories first, preserve file links, and skip directory links: %+v", response.Data.Roots[0].Entries)
+	}
+}
+
+func TestConfigReportsExactStartupIdentity(t *testing.T) {
+	for _, path := range []string{"/work/project's config/custom.config.ts", ""} {
+		t.Run(path, func(t *testing.T) {
+			server := NewServer(nil, "", 0, nil, testFS(), path, &config.ProjectConfig{}, nil, nil, nil)
+			recorder := httptest.NewRecorder()
+			server.handleConfig(recorder, httptest.NewRequest(http.MethodGet, "/api/config", nil))
+			var payload struct {
+				Data map[string]any `json:"data"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+				t.Fatal(err)
+			}
+			if got, ok := payload.Data["configFilePath"]; !ok || got != path {
+				t.Fatalf("configFilePath = %v (present %v), want %q", got, ok, path)
+			}
+		})
+	}
+}
+
+func TestToolMetadataCapabilities(t *testing.T) {
+	version := "2.4.0"
+	disabled := false
+	for _, method := range config.InstallMethods() {
+		t.Run(method, func(t *testing.T) {
+			server := &Server{installers: installer.DefaultRegistry()}
+			tool := &config.ToolConfig{Name: "example", InstallationMethod: method}
+			if method == "dmg" || method == "pkg" {
+				tool.InstallParams = map[string]any{"source": map[string]any{"type": "github-release", "repo": "owner/repo"}}
+			}
+			uninstalled := server.toolMetadata(tool, false)
+			if !uninstalled.Actions.Install.Enabled || uninstalled.Actions.Check.Enabled || uninstalled.Actions.Update.Enabled || uninstalled.Actions.Reinstall.Enabled {
+				t.Fatalf("uninstalled capabilities: %+v", uninstalled)
+			}
+			installed := server.toolMetadata(tool, true)
+			if installed.Actions.Install.Enabled || !installed.Actions.Update.Enabled || !installed.Actions.Reinstall.Enabled || installed.RequestedVersion != "latest" {
+				t.Fatalf("installed capabilities: %+v", installed)
+			}
+			unsupported := slices.Contains([]string{"manual", "curl-binary", "curl-tar", "curl-script", "zsh-plugin"}, method)
+			if installed.Actions.Check.Enabled == unsupported {
+				t.Fatalf("wrong check capability: %+v", installed)
+			}
+			if unsupported {
+				inst, err := installer.DefaultRegistry().Get(method)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := inst.CheckUpdate(context.Background(), tool); !errors.Is(err, installer.ErrUpdateCheckUnsupported) {
+					t.Fatalf("policy differs from installer: %v", err)
+				}
+				if installed.UpdateMode != "reinstall" || installed.Actions.Check.Reason == "" {
+					t.Fatalf("missing unsupported explanation: %+v", installed)
+				}
+			}
+			tool.Version = &version
+			pinned := server.toolMetadata(tool, true)
+			if pinned.Actions.Update.Enabled || pinned.Actions.Update.Reason == "" || pinned.RequestedVersion != version {
+				t.Fatalf("pin ignored: %+v", pinned)
+			}
+			tool.UpdateCheck = &config.ToolConfigUpdateCheck{Enabled: &disabled}
+			blocked := server.toolMetadata(tool, true)
+			if blocked.Actions.Check.Enabled || blocked.Actions.Update.Enabled || !strings.Contains(blocked.Actions.Update.Reason, "updateCheck.enabled") {
+				t.Fatalf("disabled checks ignored: %+v", blocked)
+			}
+		})
+	}
+}
+
+func TestToolMetadataApplicability(t *testing.T) {
+	for _, tc := range []struct {
+		name                        string
+		tool                        config.ToolConfig
+		applicability, kind, reason string
+	}{
+		{"configuration only", config.ToolConfig{}, "active", "configuration-only", "Configuration only"},
+		{"missing installer", config.ToolConfig{Binaries: []any{"example"}}, "active", "invalid", "without an installation method"},
+		{"disabled", config.ToolConfig{InstallationMethod: "manual", Disabled: true}, "disabled", "installable", "Disabled"},
+		{"another host", config.ToolConfig{InstallationMethod: "manual", Hostname: "never-a-real-host.invalid"}, "different-host", "installable", "Configured for host"},
+		{"inactive branch", config.ToolConfig{InactivePlatformConfigs: []config.InactivePlatformConfig{{InstallationMethod: "brew"}}}, "inactive-platform", "configuration-only", "No declarations apply"},
+		{"active common shell", config.ToolConfig{ShellConfigs: &config.ShellConfigs{Zsh: &config.ShellTypeConfig{}}, InactivePlatformConfigs: []config.InactivePlatformConfig{{InstallationMethod: "brew"}}}, "active", "configuration-only", "Configuration only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := &Server{installers: installer.DefaultRegistry()}
+			metadata := server.toolMetadata(&tc.tool, true)
+			if metadata.Applicability != tc.applicability || metadata.Kind != tc.kind || !strings.Contains(metadata.Reason, tc.reason) {
+				t.Fatalf("metadata=%+v", metadata)
+			}
+			for _, action := range []toolAction{metadata.Actions.Install, metadata.Actions.Check, metadata.Actions.Update, metadata.Actions.Reinstall} {
+				if action.Enabled || action.Reason != metadata.Reason {
+					t.Fatalf("inapplicable action=%+v", action)
+				}
+			}
+		})
+	}
+	for _, installers := range []*installer.Registry{nil, installer.NewRegistry()} {
+		metadata := (&Server{installers: installers}).toolMetadata(&config.ToolConfig{InstallationMethod: "manual"}, false)
+		if metadata.Actions.Install.Enabled || metadata.Actions.Install.Reason == "" {
+			t.Fatalf("unavailable registry: %+v", metadata)
+		}
+	}
+}
+
+func TestToolMetadataMacSourcesAndEffectiveVersion(t *testing.T) {
+	server := &Server{installers: installer.DefaultRegistry()}
+	for _, method := range []string{"dmg", "pkg"} {
+		for _, params := range []map[string]any{
+			{"source": map[string]any{"type": "url", "url": "https://example.com/app"}},
+			{"url": "https://example.com/app"},
+		} {
+			tool := &config.ToolConfig{Name: "app", InstallationMethod: method, InstallParams: params}
+			metadata := server.toolMetadata(tool, true)
+			if metadata.Actions.Check.Enabled || metadata.UpdateMode != "reinstall" || !metadata.Actions.Update.Enabled {
+				t.Fatalf("direct URL capability: %+v", metadata)
+			}
+			inst, err := installer.DefaultRegistry().Get(method)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := inst.CheckUpdate(context.Background(), tool); !errors.Is(err, installer.ErrUpdateCheckUnsupported) {
+				t.Fatalf("URL policy differs from installer: %v", err)
+			}
+		}
+	}
+	version := "latest"
+	tool := &config.ToolConfig{InstallationMethod: "npm", Version: &version, InstallParams: map[string]any{"version": "3.2.1"}}
+	metadata := server.toolMetadata(tool, true)
+	if metadata.RequestedVersion != "3.2.1" || metadata.Actions.Update.Enabled {
+		t.Fatalf("parameter pin ignored: %+v", metadata)
+	}
+	mockInstaller := &mockCheckUpdateInstaller{name: "github-release"}
+	reg := installer.NewRegistry()
+	if err := reg.Register(mockInstaller); err != nil {
+		t.Fatal(err)
+	}
+	server.installers = reg
+	server.toolMetadata(&config.ToolConfig{InstallationMethod: "github-release"}, true)
+	if mockInstaller.calls.Load() != 0 || mockInstaller.installs.Load() != 0 {
+		t.Fatal("metadata queried upstream or mutated installation")
+	}
+}
+
+func TestStructuredHealthFindingIdentity(t *testing.T) {
+	mem := newMemFS()
+	if err := mem.MkdirAll("/binaries/retired/0.1", 0755); err != nil {
+		t.Fatal(err)
+	}
+	server := &Server{fsys: mem, projectConfig: &config.ProjectConfig{Paths: config.PathsConfig{BinariesDir: "/binaries"}}, toolConfigs: []*config.ToolConfig{{Name: "tool / 100%"}}}
+	checks, err := server.checkInstallations([]*registry.ToolInstallationRecord{
+		{ToolName: "tool / 100%", InstallPath: "/missing/plugin", BinaryPaths: `["/missing/bin"]`},
+		{ToolName: "retired", InstallPath: "/missing/retired"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []struct {
+		id       string
+		findings []healthFinding
+	}{
+		{"tool-installations", []healthFinding{{Kind: "missing-binary", ToolName: "tool / 100%", Path: "/missing/bin", Severity: "warning", Configured: true}}},
+		{"registry-integrity", []healthFinding{{Kind: "missing-installation", ToolName: "tool / 100%", Path: "/missing/plugin", Severity: "warning", Configured: true}, {Kind: "missing-installation", ToolName: "retired", Path: "/missing/retired", Severity: "warning"}}},
+		{"unused-binary-versions", []healthFinding{{Kind: "unused-version", ToolName: "retired", Path: "/binaries/retired/0.1", Severity: "warning"}}},
+	}
+	for i, expected := range want {
+		if checks[i].ID != expected.id || !reflect.DeepEqual(checks[i].Findings, expected.findings) {
+			t.Errorf("check=%+v want=%+v", checks[i], expected)
+		}
+	}
+}
+
+func TestToolMetadataUsesResolvedPlatformApplicability(t *testing.T) {
+	dir := t.TempDir()
+	toolPath := filepath.Join(dir, "tools", "platform.tool.ts")
+	if err := os.MkdirAll(filepath.Dir(toolPath), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(toolPath, []byte(`import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
+ export default defineTool(install => install().platform(Platform.MacOS, install => install("manual", { binaryPath: "/opt/bin/example" })));`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(dir, "dotfiles.config.ts")
+	if err := os.WriteFile(configPath, []byte(`export default { paths: { toolConfigsDir: "./tools" } };`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, configs, _, err := vm.LoadTypeScriptConfig(logger.New(logger.Config{Writer: io.Discard}), fs.NewOSFS(), configPath, vm.WithTarget(vm.Target{OS: "linux", Arch: "amd64"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tool := configs["platform"]
+	if tool == nil || !tool.Disabled || tool.ShellConfigs == nil {
+		t.Fatalf("unexpected resolved tool: %+v", tool)
+	}
+	metadata := (&Server{installers: installer.DefaultRegistry()}).toolMetadata(tool, false)
+	if metadata.Applicability != "inactive-platform" || metadata.Actions.Install.Enabled || !strings.Contains(metadata.Reason, "No declarations apply") {
+		t.Fatalf("platform mismatch was presented as an explicit disable: %+v", metadata)
 	}
 }

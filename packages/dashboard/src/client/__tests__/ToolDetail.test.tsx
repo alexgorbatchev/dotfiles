@@ -1,3 +1,4 @@
+import { fixture_health } from "./fixtures";
 // UI test setup - registers DOM and exports testing utilities
 import { act, fireEvent, render, screen, setupUITests, waitFor } from "../../testing/ui-setup";
 
@@ -200,6 +201,7 @@ function response(data: unknown): Response {
 }
 
 function respondTo(routes: RouteResponses): void {
+  routes["/api/health"] ??= async () => response(fixture_health);
   spyOn(globalThis, "fetch").mockImplementation(
     Object.assign(
       (input: FetchInput) =>
@@ -503,4 +505,39 @@ describe("ToolDetail task layout", () => {
     ).toEqual(["Overview", "Source"]);
     expect(screen.queryByText("No files tracked")).toBeNull();
   });
+});
+
+test("separates recorded, requested and observed versions and retries optional health", async () => {
+  const routes: RouteResponses = {
+    "/api/tools": async () =>
+      response([
+        {
+          ...fixture_tool,
+          config: { ...fixture_tool.config, version: "latest" },
+          metadata: { ...fixture_tool.metadata, requestedVersion: "2.0" },
+        },
+      ]),
+    "/api/tools/example/history": async () => response(fixture_emptyHistory),
+    "/api/tools/example/source": async () => response({ content: "", filePath: "" }),
+    "/api/health": () => Promise.reject(new Error("Health unavailable")),
+    "/api/tools/example/check-update": async () =>
+      response({ status: "update-available", currentVersion: "1", latestVersion: "3" }),
+  };
+  respondTo(routes);
+  render(
+    <ToolActionsProvider>
+      <ToolDetail params={{ name: "example" }} />
+    </ToolActionsProvider>,
+  );
+  await screen.findByText("Health unavailable");
+  expect(screen.getByText("Health: unknown · recheck needed")).toBeInTheDocument();
+  expect(screen.getByText("Installed version").parentElement).toHaveTextContent("1");
+  expect(screen.getByText("Configured version").parentElement).toHaveTextContent("latest");
+  expect(screen.getByText("Effective requested version").parentElement).toHaveTextContent("2.0");
+  expect(screen.getByText("Latest known version").parentElement).toHaveTextContent("Not available");
+  fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+  await waitFor(() => expect(screen.getByText("Latest known version").parentElement).toHaveTextContent("3"));
+  routes["/api/health"] = async () => response(fixture_health);
+  fireEvent.click(screen.getByRole("button", { name: "Retry installation health" }));
+  await screen.findByText("Health: recorded paths present");
 });
