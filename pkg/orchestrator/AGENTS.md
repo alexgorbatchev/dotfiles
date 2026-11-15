@@ -46,7 +46,7 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 ## Boundaries
 
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict)
-- Always: write matching unit tests in `orchestrator_test.go` for any orchestrator modifications.
+- Always: place matching unit tests in files for the behavior they exercise, such as `install_pipeline_test.go`, `generate_pipeline_test.go`, `update_test.go`, or a focused suffix. Keep reusable fixtures in dedicated helper files and tests spanning pipelines in explicitly named integration files; do not create general orchestrator or coverage catchalls.
 - Ask first: changing tool dependency resolution order or topological sort logic.
 - Never: execute system `PATH` executables for completion script generation; spawn completion commands without process group timeouts.
 
@@ -60,4 +60,6 @@ Tool installation, shim/symlink generation, and shell script orchestration pipel
 - `pkg/orchestrator/cache.go`
 - `pkg/orchestrator/cache_retention.go`
 - `pkg/orchestrator/dependency_failures.go`
-- `pkg/orchestrator/orchestrator_test.go`
+- `pkg/orchestrator/helpers_test.go`
+- `pkg/orchestrator/install_pipeline_test.go`
+- `pkg/orchestrator/generate_pipeline_test.go`

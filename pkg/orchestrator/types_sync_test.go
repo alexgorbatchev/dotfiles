@@ -236,3 +236,61 @@ func legacyTSConfigBytes() []byte {
 	}
 	return content
 }
+
+func TestPruneSyncedPackageCoverage(t *testing.T) {
+	memFS := newMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	pkgDir := "/home/user/.generated/node_modules/@alexgorbatchev/dotfiles"
+	_ = memFS.MkdirAll(pkgDir, 0755)
+	_ = memFS.WriteFile(filepath.Join(pkgDir, "keep.d.ts"), []byte("keep"), 0644)
+	_ = memFS.WriteFile(filepath.Join(pkgDir, "obsolete.d.ts"), []byte("obsolete"), 0644)
+
+	keep := map[string][]byte{"keep.d.ts": []byte("keep")}
+	if err := orch.pruneSyncedPackage(pkgDir, keep); err != nil {
+		t.Fatalf("pruneSyncedPackage failed: %v", err)
+	}
+
+	if exists, _ := memFS.Exists(filepath.Join(pkgDir, "obsolete.d.ts")); exists {
+		t.Error("expected obsolete.d.ts to be pruned")
+	}
+	if exists, _ := memFS.Exists(filepath.Join(pkgDir, "keep.d.ts")); !exists {
+		t.Error("expected keep.d.ts to be retained")
+	}
+}
+
+func TestWriteTypeCheckProgramCoverage(t *testing.T) {
+	memFS := newMemFS()
+	orch := newTestOrchestrator(t, memFS, "")
+
+	projCfg := &config.ProjectConfig{
+		Paths: config.PathsConfig{
+			HomeDir:      "/home/user",
+			DotfilesDir:  "",
+			GeneratedDir: "/home/user/.generated",
+		},
+	}
+
+	orch.SetConfigFilePath("/home/user/my-dotfiles/dotfiles.config.ts")
+	_ = memFS.MkdirAll("/home/user/my-dotfiles", 0755)
+	_ = memFS.MkdirAll("/home/user/.generated", 0755)
+
+	// Write a legacy tsconfig.json in projectDir
+	legacyTSConfig := "{\n  \"compilerOptions\": {\n    \"target\": \"ESNext\",\n    \"module\": \"ESNext\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"noEmit\": true,\n    \"skipLibCheck\": true,\n    \"lib\": [\n      \"ESNext\"\n    ]\n  },\n  \"include\": [\n    \"dotfiles.config.ts\",\n    \"tools/**/*.ts\"\n  ]\n}\n"
+	_ = memFS.WriteFile("/home/user/my-dotfiles/tsconfig.json", []byte(legacyTSConfig), 0644)
+
+	declDir := "/home/user/.generated/node_modules/@alexgorbatchev/dotfiles"
+	_ = memFS.MkdirAll(declDir, 0755)
+	if err := orch.writeTypeCheckProgram(projCfg, declDir, ""); err != nil {
+		t.Fatalf("writeTypeCheckProgram: %v", err)
+	}
+
+	// Verify project tsconfig was updated to extends
+	updated, err := memFS.ReadFile("/home/user/my-dotfiles/tsconfig.json")
+	if err != nil {
+		t.Fatalf("reading updated tsconfig: %v", err)
+	}
+	if !strings.Contains(string(updated), "extends") {
+		t.Errorf("expected tsconfig to be updated with extends, got: %s", string(updated))
+	}
+}

@@ -74,7 +74,7 @@ func TestE2EUpdate(t *testing.T) {
 		}
 		// The fixture sets github.cache.enabled to false, so the release description
 		// is refetched rather than reused and the line carries no ", cached" suffix.
-		// The cached rendering is covered by cmd/dotfiles/subcommands_test.go.
+		// The cached rendering is covered by cmd/dotfiles/tool_update_test.go.
 		if !strings.Contains(stderr, "Already up to date (2.0.0)") {
 			t.Fatalf("expected 'Already up to date (2.0.0)' in stderr, got:\nstdout: %s\nstderr: %s", stdout, stderr)
 		}

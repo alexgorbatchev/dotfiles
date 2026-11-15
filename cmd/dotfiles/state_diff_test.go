@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -102,5 +103,38 @@ export default defineTool((i) => i("manual").copy("./app.conf", "~/.config/app/a
 	out := buf.String()
 	if !strings.Contains(out, "app") || !strings.Contains(out, "copy") {
 		t.Errorf("expected diff output to contain tool app and copy type, got:\n%s", out)
+	}
+}
+
+func TestDiffBatchContinuesAfterFailure(t *testing.T) {
+	// Direct command tests set their own streams. Inherit the root command's
+	// captured streams when exercising the complete CLI here.
+	stateDiffCmd.SetOut(nil)
+	stateDiffCmd.SetErr(nil)
+	for _, json := range []bool{false, true} {
+		t.Run(fmt.Sprintf("json=%t", json), func(t *testing.T) {
+			p := newE2EProject(t, tsTools{
+				"a-broken": `install().template("bad.tmpl", "~/broken")`,
+				"z-good":   `install().copy("good.conf", "~/healthy-copy")`,
+			})
+			for name, content := range map[string]string{"bad.tmpl": "unresolved = {missing_var}", "good.conf": "healthy-content"} {
+				if err := os.WriteFile(filepath.Join(p.Root, "tools", name), []byte(content), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			args := []string{"state", "diff"}
+			if json {
+				args = append(args, "--json")
+			}
+			out, err := p.run(args...)
+			if err == nil {
+				t.Fatalf("diff succeeded despite invalid template\n%s", out.Combined)
+			}
+			if !strings.Contains(out.Stdout, "z-good") {
+				t.Fatalf("healthy tool was not inspected: %v\n%s", err, out.Combined)
+			}
+			mustContain(t, "stdout", out.Stdout, "z-good", "healthy-copy")
+			mustContain(t, "stderr", out.Stderr, "a-broken")
+		})
 	}
 }

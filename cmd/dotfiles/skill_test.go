@@ -108,3 +108,27 @@ func TestSkillCommandReturnsOutputFailure(t *testing.T) {
 		t.Fatalf("printing skill error = %v, want %v", err, want)
 	}
 }
+
+func TestSkillPrintsEmbeddedInstructions(t *testing.T) {
+	want, err := embedded.SkillFS.ReadFile("skill/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"0", "1", "true", "yes"} {
+		t.Run("agent="+mode, func(t *testing.T) {
+			t.Setenv("AGENT", mode)
+			t.Setenv("HOME", t.TempDir())
+			enterTempDir(t)
+			out, err := runCommand("skill")
+			if err != nil {
+				t.Fatalf("printing skill: %v\n%s", err, out.Combined)
+			}
+			if out.Stdout != string(want) {
+				t.Fatal("skill output differs from embedded instructions")
+			}
+			if out.Stderr != "" {
+				t.Fatalf("printing skill emitted diagnostics: %q", out.Stderr)
+			}
+		})
+	}
+}

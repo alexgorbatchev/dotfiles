@@ -48,7 +48,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - Support dual-mode output via `pkg/cliout` (`AGENT=1`):
   - When `AGENT=1`: suppress ANSI colors in logger, format JSON as minified single-line, render directory trees as indented bullets (`*`), omit decorative dividers, and emit compact key-value lines.
   - When `AGENT=0` (or unset): render human-friendly output, pretty-printed JSON (`json.MarshalIndent`), box-drawing tree glyphs (`├─`/`└─`), and formatted lists.
-- `validate` type-checks TypeScript projects with the `tsc` binary a configured tool declares (found by binary name, run from `<binariesDir>/<tool>/current/tsc`, never from PATH); a missing or uninstalled compiler is a validation error, not a skip. Tests for it live in `validate_typecheck_test.go` and need an on-disk project (`DOTFILES_E2E_TEST=true`) with the repository's native compiler linked in via `internal/testutil.FindTypeScriptCompiler`; `Services.InMemory` (dry runs, in-memory unit tests) skips the step with a logged message.
+- `validate` type-checks TypeScript projects with the `tsc` binary a configured tool declares (found by binary name, run from `<binariesDir>/<tool>/current/tsc`, never from PATH); a missing or uninstalled compiler is a validation error, not a skip. Tests for it live in `tool_validate_typecheck_test.go` and need an on-disk project (`DOTFILES_E2E_TEST=true`) with the repository's native compiler linked in via `internal/testutil.FindTypeScriptCompiler`; `Services.InMemory` (dry runs, in-memory unit tests) skips the step with a logged message.
 - Support `--json` flag on query commands (`tool check`, `tool files`, `tool validate`, `tool list`, `tool info`, `tool which`, `path`, `path list`, `path get`, `shell audit`, `state diff`, `state log`, `venv list`). All JSON serialization must use `cliout.RenderJSON` so agent mode minifies automatically while human mode pretty-prints.
 - When `--config` is omitted and `DOTFILES_ENV_DIR` is set to a directory containing a default configuration file (`dotfiles.config.ts`, etc.), `BootstrapServices` resolves that virtual environment's configuration before checking `cwd` or an explicitly set `DOTFILES_REPO_ROOT`. A nearby `go.mod` never selects a configuration. Relative `--config` paths resolve from `cwd`; only the explicit development root enables a fallback when that path does not exist. Tests name repository fixtures by absolute path.
 - `skill` prints the single embedded `dotfiles` skill verbatim to stdout in both output modes, without loading a configuration or listing installed skills. It accepts no positional arguments or command-specific flags. `skill copy <path>` exports only the `dotfiles/` folder and its references.
@@ -62,7 +62,7 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 ## Boundaries
 
 - Always: automatically record all new instructions in the most appropriate `AGENTS.md` file immediately upon receipt (check with user if existing instructions conflict)
-- Always: write matching unit tests in `subcommands_test.go` for any subcommand modifications.
+- Always: place matching unit tests beside the command or behavior they exercise, using `<subject>_<verb>_test.go` or a focused suffix such as `tool_update_versions_test.go`. Keep shared command execution helpers in `helpers_test.go` and fixtures in dedicated helper files. Tests spanning commands belong in explicitly named workflow or contract files; do not create general subcommand or coverage catchalls.
 - Ask first: adding new CLI subcommands or changing CLI flag names.
 - Never: use global `/tmp` outside the root policy's Go test exception, or modify `~/.dotfiles` directly without sandbox overrides.
 
@@ -73,4 +73,5 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 - `cmd/dotfiles/tool.go`
 - `cmd/dotfiles/tool_which.go`
 - `cmd/dotfiles/tool_add.go`
-- `cmd/dotfiles/subcommands_test.go`
+- `cmd/dotfiles/helpers_test.go`
+- `cmd/dotfiles/ts_project_test.go`

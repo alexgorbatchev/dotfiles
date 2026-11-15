@@ -94,3 +94,10 @@ func TestMainToolBatchFailure(t *testing.T) {
 		t.Fatalf("batch stopped before healthy tool: %v", err)
 	}
 }
+
+func TestRunMain(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+	os.Args = []string{"dotfiles", "self", "version"}
+	runMain()
+}

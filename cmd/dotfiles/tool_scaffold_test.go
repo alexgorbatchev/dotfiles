@@ -88,3 +88,80 @@ func TestScaffoldCommand_RespectsPlatformFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestScaffoldCommand(t *testing.T) {
+	p := newE2EProject(t, nil)
+	toolsDir := filepath.Join(p.Root, "tools")
+	p.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, filepath.ToSlash(toolsDir)), "")
+	dotfilesTool := filepath.Join(toolsDir, "dotfiles.tool.ts")
+
+	t.Run("creates the starter files", func(t *testing.T) {
+		out, err := p.run("tool", "scaffold")
+		if err != nil {
+			t.Fatalf("tool scaffold: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Created "+dotfilesTool)
+		if _, err := os.Stat(dotfilesTool); err != nil {
+			t.Fatalf("expected %s to exist: %v", dotfilesTool, err)
+		}
+	})
+
+	t.Run("leaves existing files alone", func(t *testing.T) {
+		out, err := p.run("tool", "scaffold")
+		if err != nil {
+			t.Fatalf("tool scaffold: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, dotfilesTool+" already exists, skipping")
+	})
+
+	t.Run("force replaces an edited file and keeps a backup", func(t *testing.T) {
+		if err := os.WriteFile(dotfilesTool, []byte("// my edits\n"), 0644); err != nil {
+			t.Fatalf("editing file: %v", err)
+		}
+		out, err := p.run("tool", "scaffold", "--force")
+		if err != nil {
+			t.Fatalf("tool scaffold --force: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr,
+			"Overwrote "+dotfilesTool,
+			"Saved your previous dotfiles.tool.ts to "+dotfilesTool+".bak",
+		)
+		backup, err := os.ReadFile(dotfilesTool + ".bak")
+		if err != nil {
+			t.Fatalf("reading backup: %v", err)
+		}
+		if string(backup) != "// my edits\n" {
+			t.Fatalf("backup = %q, want the edited content", backup)
+		}
+	})
+
+	t.Run("dry run only reports", func(t *testing.T) {
+		fresh := newE2EProject(t, nil)
+		freshTools := filepath.Join(fresh.Root, "tools")
+		fresh.writeConfig(t, nil, fmt.Sprintf(`"toolConfigsDir": %q`, filepath.ToSlash(freshTools)), "")
+		out, err := fresh.run("tool", "scaffold", "--dry-run")
+		if err != nil {
+			t.Fatalf("tool scaffold --dry-run: %v\n%s", err, out.Combined)
+		}
+		mustContain(t, "stderr", out.Stderr, "Would create "+filepath.Join(freshTools, "dotfiles.tool.ts"))
+		if _, err := os.Stat(freshTools); !os.IsNotExist(err) {
+			t.Fatalf("dry run must not create %s (stat err = %v)", freshTools, err)
+		}
+	})
+}
+
+func TestScaffoldBatchContinuesAfterFailure(t *testing.T) {
+	p := newE2EProject(t, tsTools{})
+	broken := filepath.Join(p.Root, "tools", "dotfiles.tool.ts")
+	if err := os.MkdirAll(broken, 0755); err != nil {
+		t.Fatal(err)
+	}
+	out, err := p.run("tool", "scaffold")
+	if err == nil {
+		t.Fatalf("scaffold succeeded despite unreadable starter file\n%s", out.Combined)
+	}
+	if _, err := os.Stat(filepath.Join(p.Root, "tools", "typescript.tool.ts")); err != nil {
+		t.Fatalf("later starter file was not written: %v\n%s", err, out.Combined)
+	}
+	mustContain(t, "stderr", out.Stderr, "Created", "typescript.tool.ts")
+}

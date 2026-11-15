@@ -289,3 +289,17 @@ func TestValidateCommand_CrossToolConflicts(t *testing.T) {
 		}
 	})
 }
+
+func TestUpdateAndValidateCommand_FindTool(t *testing.T) {
+	repoRoot := findRepoRoot()
+	absConfig := filepath.Join(repoRoot, "test-project/dotfiles.config.ts")
+
+	// Validate with suffix 'bat' should resolve 'github-release--bat'
+	out, err := executeCommand("-c", absConfig, "tool", "validate", "bat")
+	if err != nil {
+		t.Fatalf("validate bat by binary/suffix failed: %v", err)
+	}
+	if !strings.Contains(out, "Checked 1 tool configuration") {
+		t.Errorf("expected validation success for 'bat', got: %s", out)
+	}
+}
