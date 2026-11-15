@@ -362,9 +362,10 @@ func TestInstallerDetailedBranches(t *testing.T) {
 		_ = memFS.MkdirAll("/opt/homebrew/bin", 0755)
 		_ = memFS.WriteFile("/opt/homebrew/bin/caskbin", []byte("bin"), 0755)
 		if len(c.Args) > 0 && c.Args[0] == "info" {
-			if w := c.Stdout(); w != nil {
-				_, _ = w.Write([]byte(`[{"versions":{"stable":"1.0.0"}}]`))
-			}
+			c.SetOutput([]byte(`{"casks":[{"version":"1.0.0","installed":"1.0.0","artifacts":[{"binary":["caskbin"],"target":"/opt/homebrew/bin/caskbin"}]}]}`))
+		}
+		if len(c.Args) > 0 && c.Args[0] == "--prefix" {
+			c.SetOutput([]byte("/opt/homebrew"))
 		}
 		return nil
 	})

@@ -1,0 +1,235 @@
+package installer
+
+import (
+	"context"
+	"errors"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/exec"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+)
+
+func TestBrewCaskInstalledArtifacts(t *testing.T) {
+	const app = "/Applications/OrbStack.app"
+	const docker = app + "/Contents/MacOS/xbin/docker"
+	const compose = app + "/Contents/MacOS/xbin/docker-compose"
+	cases := []struct {
+		name, artifacts string
+		files           []string
+		bins, want      []string
+		errorText       string
+	}{
+		{name: "OrbStack docker CLIs inside app without binary stanzas", artifacts: `[{"app":["OrbStack.app"],"target":"/Applications/OrbStack.app"},{"binary":["$APPDIR/OrbStack.app/Contents/MacOS/bin/orb"],"target":"$HOMEBREW_PREFIX/bin/orb"}]`, files: []string{docker, compose}, bins: []string{"docker", "docker-compose"}, want: []string{docker, compose}},
+		{name: "explicit renamed binary artifact", artifacts: `[{"binary":["$APPDIR/Code.app/Contents/Resources/bin/code.sh",{"target":"code"}]}]`, files: []string{"/opt/homebrew/bin/code"}, bins: []string{"code"}, want: []string{"/opt/homebrew/bin/code"}},
+		{name: "custom app location", artifacts: `[{"app":["OrbStack.app"],"target":"/home/test/Apps/OrbStack.app"}]`, files: []string{"/home/test/Apps/OrbStack.app/Contents/MacOS/docker"}, bins: []string{"docker"}, want: []string{"/home/test/Apps/OrbStack.app/Contents/MacOS/docker"}},
+		{name: "default app target", artifacts: `[{"app":["nested/OrbStack.app"]}]`, files: []string{docker}, bins: []string{"docker"}, want: []string{docker}},
+		{name: "stanza app target", artifacts: `[{"app":["Original.app",{"target":"OrbStack.app"}]}]`, files: []string{docker}, bins: []string{"docker"}, want: []string{docker}},
+		{name: "unrelated PATH binary is rejected", artifacts: `[{"app":["OrbStack.app"]}]`, files: []string{"/unrelated/docker"}, bins: []string{"docker"}, errorText: "0 executable matches"},
+		{name: "ambiguous app binary is rejected", artifacts: `[{"app":["OrbStack.app"]}]`, files: []string{docker, app + "/other/docker"}, bins: []string{"docker"}, errorText: "2 executable matches"},
+		{name: "binary artifact takes precedence over app duplicates", artifacts: `[{"app":["OrbStack.app"]},{"binary":["docker"],"target":"$HOMEBREW_PREFIX/bin/docker"}]`, files: []string{docker, app + "/other/docker", "/opt/homebrew/bin/docker"}, bins: []string{"docker"}, want: []string{"/opt/homebrew/bin/docker"}},
+		{name: "malformed artifact does not invent path", artifacts: `[{"app":[null]},{"binary":[{}]}]`, bins: []string{"docker"}, errorText: "0 executable matches"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PATH", "/unrelated")
+			fsys := fs.NewMemFS()
+			for _, path := range tc.files {
+				if err := fsys.MkdirAll(filepath.Dir(path), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := fsys.WriteFile(path, []byte("#!/bin/sh\n"), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			runner := exec.NewMockRunner()
+			runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+				switch c.Args[0] {
+				case "info":
+					c.SetOutput([]byte(`{"casks":[{"token":"orbstack","version":"2.2.5","installed":"2.2.5","artifacts":` + tc.artifacts + `}]}`))
+				case "--prefix":
+					if len(c.Args) != 1 {
+						t.Fatal("cask must not query a formula prefix")
+					}
+					c.SetOutput([]byte("/opt/homebrew\n"))
+				}
+				return nil
+			})
+			tool := &config.ToolConfig{Name: "orbstack", Binaries: testutil.DeclaredBinaries(tc.bins...), InstallParams: map[string]interface{}{"cask": true}}
+			got, err := NewBrewInstaller(runner, fsys, nil).Install(context.Background(), tool)
+			if tc.errorText != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.errorText) {
+					t.Fatalf("error = %v, want %s", err, tc.errorText)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(got.Binaries, tc.want) {
+				t.Fatalf("binaries = %v, want %v", got.Binaries, tc.want)
+			}
+		})
+	}
+}
+
+func TestBrewCaskRejectsInvalidAndForeignExecutables(t *testing.T) {
+	for _, kind := range []string{"plain file", "directory", "generated shim", "external symlink", "directory symlink", "broken symlink", "internal symlink"} {
+		t.Run(kind, func(t *testing.T) {
+			fsys := fs.NewMemFS()
+			const app = "/Applications/Test.app"
+			const bin = app + "/bin/tool"
+			for _, dir := range []string{app + "/bin", "/elsewhere"} {
+				if err := fsys.MkdirAll(dir, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := fsys.WriteFile("/elsewhere/tool", []byte("#!/bin/sh\n"), 0755); err != nil {
+				t.Fatal(err)
+			}
+			var err error
+			switch kind {
+			case "plain file":
+				err = fsys.WriteFile(bin, []byte("data"), 0644)
+			case "directory":
+				err = fsys.MkdirAll(bin, 0755)
+			case "generated shim":
+				err = fsys.WriteFile(bin, []byte("#!/bin/sh\n# Generated by Dotfiles Management Tool\n"), 0755)
+			case "external symlink":
+				err = fsys.Symlink("/elsewhere/tool", bin)
+			case "directory symlink":
+				err = fsys.Symlink("/elsewhere", app+"/linked")
+			case "broken symlink":
+				err = fsys.Symlink("/missing/tool", bin)
+			case "internal symlink":
+				if err = fsys.WriteFile(app+"/real", []byte("#!/bin/sh\n"), 0755); err == nil {
+					err = fsys.Symlink("../real", bin)
+				}
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := NewBrewInstaller(exec.NewMockRunner(), fsys, nil).findCaskAppBinaries(context.Background(), app, "tool")
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if kind == "internal symlink" {
+				want = 1
+			}
+			if len(got) != want {
+				t.Fatalf("matches = %v, want %d", got, want)
+			}
+		})
+	}
+}
+
+func TestBrewCaskMetadataFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name, output, prefix string
+		commandError         bool
+		want                 string
+	}{
+		{name: "info failed", commandError: true, want: "query failed"},
+		{name: "invalid json", output: "oops", want: "read cask artifacts"},
+		{name: "missing cask", output: `{"casks":[]}`, want: "no unique cask"},
+		{name: "invalid prefix", output: `{"casks":[{}]}`, prefix: "relative", want: "invalid prefix"},
+		{name: "prefix failed", output: `{"casks":[{}]}`, want: "prefix failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := exec.NewMockRunner()
+			runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+				if tc.commandError {
+					return errors.New("query failed")
+				}
+				if c.Args[0] == "info" {
+					c.SetOutput([]byte(tc.output))
+					return nil
+				}
+				if tc.prefix == "" {
+					return errors.New("prefix failed")
+				}
+				c.SetOutput([]byte(tc.prefix))
+				return nil
+			})
+			_, err := NewBrewInstaller(runner, fs.NewMemFS(), nil).caskBinaries(context.Background(), "app", &config.ToolConfig{Name: "app", Binaries: testutil.DeclaredBinaries("tool")})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestBrewCaskVersionCommandUsesInstalledArtifact(t *testing.T) {
+	const binary = "/Applications/Example.app/Contents/MacOS/tool"
+	fsys := fs.NewMemFS()
+	if err := fsys.MkdirAll(filepath.Dir(binary), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := fsys.WriteFile(binary, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	runner := exec.NewMockRunner()
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		if c.Args[0] == "info" {
+			c.SetOutput([]byte(`{"casks":[{"artifacts":[{"app":["Example.app"]}]}]}`))
+		}
+		if c.Args[0] == "--prefix" {
+			if len(c.Args) != 1 {
+				t.Fatal("cask version query used formula prefix")
+			}
+			c.SetOutput([]byte("/opt/homebrew"))
+		}
+		return nil
+	})
+	runner.Register(binary, []byte("1.2.3"), nil)
+	result, err := NewBrewInstaller(runner, fsys, nil).Install(context.Background(), &config.ToolConfig{Name: "example", Binaries: testutil.DeclaredBinaries("tool"), InstallParams: map[string]interface{}{"cask": true, "versionArgs": []string{"--version"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Version != "1.2.3" {
+		t.Fatalf("version = %q", result.Version)
+	}
+}
+
+func TestBrewCaskAppSearchReportsFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		cancel, cycle bool
+	}{
+		{name: "cancelled", cancel: true}, {name: "bundle is a file"}, {name: "bundle symlink cycle", cycle: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			fsys := fs.NewMemFS()
+			const app = "/Applications/Test.app"
+			if err := fsys.MkdirAll("/Applications", 0755); err != nil {
+				t.Fatal(err)
+			}
+			var err error
+			if tc.cancel {
+				err = fsys.MkdirAll(app, 0755)
+				cancel()
+			} else if tc.cycle {
+				err = fsys.Symlink(app, app)
+			} else {
+				err = fsys.WriteFile(app, []byte("file"), 0644)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = NewBrewInstaller(exec.NewMockRunner(), fsys, nil).findCaskAppBinaries(ctx, app, "tool")
+			if err == nil {
+				t.Fatal("expected app search failure")
+			}
+			if tc.cancel && !errors.Is(err, context.Canceled) {
+				t.Fatalf("error = %v, want cancellation", err)
+			}
+		})
+	}
+}

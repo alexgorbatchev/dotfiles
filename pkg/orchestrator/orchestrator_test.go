@@ -6312,6 +6312,45 @@ func TestInstallTool_TargetedVsBatchLogging(t *testing.T) {
 	})
 }
 
+func TestExternalInstallationHealthRequiresRecordedBinaries(t *testing.T) {
+	const recorded = "/opt/homebrew/opt/git/bin/git"
+	for _, tc := range []struct {
+		name, record string
+		create       bool
+		want         bool
+	}{
+		{name: "missing recorded binary with unrelated PATH git", record: `["` + recorded + `"]`},
+		{name: "missing binary record with unrelated PATH git"},
+		{name: "malformed record with unrelated PATH git", record: `invalid`},
+		{name: "valid installed binary", record: `["` + recorded + `"]`, create: true, want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PATH", "/unrelated")
+			fsys := fs.NewMemFS()
+			if err := fsys.MkdirAll("/unrelated", 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := fsys.WriteFile("/unrelated/git", []byte("#!/bin/sh\n"), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if tc.create {
+				if err := fsys.MkdirAll(filepath.Dir(recorded), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := fsys.WriteFile(recorded, []byte("#!/bin/sh\n"), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			orch := NewOrchestrator(logger.New(logger.Config{Writer: io.Discard}), fsys, exec.NewMockRunner(), nil, installer.NewRegistry())
+			tool := &config.ToolConfig{Name: "git", InstallationMethod: "brew", Binaries: testutil.DeclaredBinaries("git")}
+			record := &registry.ToolInstallationRecord{ToolName: "git", BinaryPaths: tc.record}
+			if got := orch.isExistingInstallationHealthy(context.Background(), "git", record, tool, &config.ProjectConfig{}); got != tc.want {
+				t.Fatalf("healthy = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestPackageIdentitySurvivesConfigurationChanges(t *testing.T) {
 	ctx := context.Background()
 	conn, err := db.NewConnection(ctx, ":memory:")
@@ -6365,6 +6404,62 @@ func TestUninstallRejectsInvalidPackageIdentity(t *testing.T) {
 				t.Fatalf("record lost on unsafe identity: %+v, %v", rec, err)
 			}
 		})
+	}
+}
+
+func TestBrewAppWithoutBinariesInstallsOnce(t *testing.T) {
+	ctx := context.Background()
+	fsys := newMemFS()
+	runner := exec.NewMockRunner()
+	installs := 0
+	runner.RegisterFunc("brew", func(c *exec.MockCmd) error {
+		if c.Args[0] == "install" {
+			installs++
+		}
+		if c.Args[0] == "info" {
+			c.SetOutput([]byte(`{"casks":[{"token":"example","version":"1.0","installed":"1.0","artifacts":[{"app":["Example.app"]}]}]}`))
+		}
+		return nil
+	})
+	database, err := db.NewConnection(ctx, "file:"+t.Name()+"?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	reg := registry.NewRegistry(database)
+	instReg := installer.NewRegistry()
+	if err := instReg.Register(installer.NewBrewInstaller(runner, fsys, &installer.SystemContext{OS: "darwin", Arch: "arm64"})); err != nil {
+		t.Fatal(err)
+	}
+	orch := NewOrchestrator(logger.New(logger.Config{Writer: io.Discard}), fsys, runner, reg, instReg)
+	project := &config.ProjectConfig{Paths: config.PathsConfig{HomeDir: "/home/test", DotfilesDir: "/home/test/dotfiles", TargetDir: "/home/test/.bin", BinariesDir: "/home/test/.binaries", GeneratedDir: "/home/test/.generated"}}
+	tool := &config.ToolConfig{Name: "example", InstallationMethod: "brew", InstallParams: map[string]interface{}{"cask": true}}
+	for range 2 {
+		if err := orch.InstallTool(ctx, tool, project); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if installs != 1 {
+		t.Fatalf("brew installs = %d, want 1", installs)
+	}
+	record, err := reg.GetToolInstallation(ctx, tool.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record == nil {
+		t.Fatal("installation not recorded")
+	}
+	var binaries []string
+	if err := json.Unmarshal([]byte(record.BinaryPaths), &binaries); err != nil {
+		t.Fatal(err)
+	}
+	if len(binaries) != 0 {
+		t.Fatalf("app-only install recorded binaries: %v", binaries)
+	}
+	for _, path := range []string{filepath.Join(project.Paths.TargetDir, tool.Name), filepath.Join(project.Paths.BinariesDir, tool.Name, "external", tool.Name)} {
+		if exists, err := fsys.Exists(path); err != nil || exists {
+			t.Fatalf("phantom binary %s: exists=%t, err=%v", path, exists, err)
+		}
 	}
 }
 

@@ -801,7 +801,7 @@ func TestBrewInstallerPrefersTheFormulasOwnBinaries(t *testing.T) {
 	}
 }
 
-// A binary the formula's prefix does not hold, such as one a cask installs, is still found on PATH.
+// A formula binary outside its keg can still be found on PATH.
 func TestBrewInstallerFindsBinariesOutsideTheFormulaPrefixOnPath(t *testing.T) {
 	const binDir = "/usr/local/bin"
 	t.Setenv("PATH", binDir)
@@ -823,7 +823,7 @@ func TestBrewInstallerFindsBinariesOutsideTheFormulaPrefixOnPath(t *testing.T) {
 	res, err := NewBrewInstaller(runner, fsys, nil).Install(context.Background(), &config.ToolConfig{
 		Name:          "code",
 		Binaries:      testutil.DeclaredBinaries("code"),
-		InstallParams: map[string]interface{}{"formula": "visual-studio-code", "cask": true},
+		InstallParams: map[string]interface{}{"formula": "visual-studio-code"},
 	})
 	if err != nil {
 		t.Fatalf("Install(...) error = %v", err)
@@ -962,8 +962,8 @@ func TestBrewInstaller_EndOfOptions(t *testing.T) {
 	if svcCmd == nil || !slices.Equal(svcCmd.Args, []string{"services", "start", "--", "mytool"}) {
 		t.Errorf("brew services args = %v, want [services start -- mytool]", svcCmd)
 	}
-	if prefixCmd == nil || !slices.Equal(prefixCmd.Args, []string{"--prefix", "--", "mytool"}) {
-		t.Errorf("brew --prefix args = %v, want [--prefix -- mytool]", prefixCmd)
+	if prefixCmd != nil {
+		t.Errorf("cask without binaries must not query a formula prefix: %v", prefixCmd)
 	}
 	if infoCmd == nil || !slices.Equal(infoCmd.Args, []string{"info", "--json=v2", "--cask", "--", "mytool"}) {
 		t.Errorf("brew info args = %v, want [info --json=v2 --cask -- mytool]", infoCmd)
@@ -988,7 +988,7 @@ func TestBrewInstaller_EndOfOptions(t *testing.T) {
 	if svcStopCmd == nil || !slices.Equal(svcStopCmd.Args, []string{"services", "stop", "--", "mytool"}) {
 		t.Errorf("brew services stop args = %v, want [services stop -- mytool]", svcStopCmd)
 	}
-	if uninstallCmd == nil || !slices.Equal(uninstallCmd.Args, []string{"uninstall", "--", "mytool"}) {
-		t.Errorf("brew uninstall args = %v, want [uninstall -- mytool]", uninstallCmd)
+	if uninstallCmd == nil || !slices.Equal(uninstallCmd.Args, []string{"uninstall", "--cask", "--", "mytool"}) {
+		t.Errorf("brew uninstall args = %v, want [uninstall --cask -- mytool]", uninstallCmd)
 	}
 }

@@ -357,11 +357,6 @@ func (o *Orchestrator) isExistingInstallationHealthy(ctx context.Context, toolNa
 			}
 		}
 		if !found {
-			if sysBin, err := o.findSystemBinary(binName, projCfg); err == nil && sysBin != "" {
-				found = true
-			}
-		}
-		if !found {
 			o.logger.WithTag(toolName).Warn(logger.Message(fmt.Sprintf("External binary missing: %s", binName)))
 			return false
 		}

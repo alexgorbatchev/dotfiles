@@ -1293,7 +1293,7 @@ func TestOrchestratorPipelineErrorsAndEdgeCases(t *testing.T) {
 	_ = memFS.WriteFile("/home/test/dotfiles/extra.ps1", []byte("# extra ps1"), 0644)
 	_ = memFS.WriteFile("/home/test/dotfiles/comp.zsh", []byte("# compdef zsh"), 0644)
 
-	err = orch.GenerateTools(ctx, []*config.ToolConfig{zshPluginTool}, projCfg)
+	err = orchAll.GenerateTools(ctx, []*config.ToolConfig{zshPluginTool}, projCfg)
 	if err != nil {
 		t.Fatalf("GenerateTools with zsh-plugin tool failed: %v", err)
 	}

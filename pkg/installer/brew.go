@@ -290,14 +290,49 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		}
 	}
 
+	var resolvedBinaries []string
+	if isCask {
+		var err error
+		resolvedBinaries, err = b.caskBinaries(ctx, formula, tool)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		binNames := GetBinaryNames(tool.Name, tool.Binaries)
+		prefix, _ := b.getBrewPrefix(ctx, formula)
+		resolvedBinaries = make([]string, 0, len(binNames))
+		for _, binName := range binNames {
+			// The formula's own binary comes first: PATH can hold another formula's binary of the same name, as Homebrew's
+			// bin directory holds the regular ffmpeg when the tool installs the keg-only ffmpeg-full.
+			if formulaBinary, ok := b.formulaBinary(ctx, prefix, binName); ok {
+				resolvedBinaries = append(resolvedBinaries, formulaBinary)
+				continue
+			}
+			resolvedBinaries = append(resolvedBinaries, ResolveBinaryPaths(ctx, b.fsys, []string{binName}, func(binName string) string {
+				if prefix != "" {
+					return filepath.Join(prefix, "bin", binName)
+				}
+				if exists, _ := b.fsys.Exists(filepath.Join("/opt/homebrew/bin", binName)); exists {
+					return filepath.Join("/opt/homebrew/bin", binName)
+				}
+				return filepath.Join("/usr/local/bin", binName)
+			})...)
+		}
+	}
+
 	// Retrieve version
 	var version string
 	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
 	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
 
-	if len(versionArgs) > 0 {
-		prefix, _ := b.getBrewPrefix(ctx, formula)
-		binPath := filepath.Join(prefix, "bin", tool.Name)
+	if len(versionArgs) > 0 && (!isCask || len(resolvedBinaries) > 0) {
+		binPath := ""
+		if isCask {
+			binPath = resolvedBinaries[0]
+		} else {
+			prefix, _ := b.getBrewPrefix(ctx, formula)
+			binPath = filepath.Join(prefix, "bin", tool.Name)
+		}
 		v, err := detectVersionViaCli(ctx, b.runner, binPath, versionArgs, versionRegex)
 		if err == nil && v != "" {
 			version = v
@@ -323,27 +358,6 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 		} else {
 			version = installed
 		}
-	}
-
-	binNames := GetBinaryNames(tool.Name, tool.Binaries)
-	prefix, _ := b.getBrewPrefix(ctx, formula)
-	resolvedBinaries := make([]string, 0, len(binNames))
-	for _, binName := range binNames {
-		// The formula's own binary comes first: PATH can hold another formula's binary of the same name, as Homebrew's
-		// bin directory holds the regular ffmpeg when the tool installs the keg-only ffmpeg-full.
-		if formulaBinary, ok := b.formulaBinary(ctx, prefix, binName); ok {
-			resolvedBinaries = append(resolvedBinaries, formulaBinary)
-			continue
-		}
-		resolvedBinaries = append(resolvedBinaries, ResolveBinaryPaths(ctx, b.fsys, []string{binName}, func(binName string) string {
-			if prefix != "" {
-				return filepath.Join(prefix, "bin", binName)
-			}
-			if exists, _ := b.fsys.Exists(filepath.Join("/opt/homebrew/bin", binName)); exists {
-				return filepath.Join("/opt/homebrew/bin", binName)
-			}
-			return filepath.Join("/usr/local/bin", binName)
-		})...)
 	}
 
 	return &InstallResult{

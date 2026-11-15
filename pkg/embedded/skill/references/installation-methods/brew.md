@@ -71,7 +71,9 @@ install("brew", {
 
 ## Binary Resolution
 
-Each declared binary is taken from the formula's own `bin` directory (`brew --prefix <formula>`) when it is there, ahead of anything on PATH. A keg-only formula such as `ffmpeg-full` therefore needs no `link` step, and another formula's binary of the same name in Homebrew's `bin` directory, such as the regular `ffmpeg` that other formulas install as a dependency, is never recorded in its place. A binary the prefix does not hold, as for a cask, is looked up on PATH.
+Each declared binary is taken from the formula's own `bin` directory (`brew --prefix <formula>`) when it is there, ahead of anything on PATH. A keg-only formula such as `ffmpeg-full` therefore needs no `link` step, and another formula's binary of the same name in Homebrew's `bin` directory, such as the regular `ffmpeg` that other formulas install as a dependency, is never recorded in its place. A formula binary the prefix does not hold is looked up on PATH.
+
+Casks resolve declared binaries from the installed artifact targets reported by `brew info --json=v2 --cask`. A declared binary artifact takes precedence; otherwise dotfiles looks for a unique executable of that name inside the cask's installed app bundle. This covers commands such as OrbStack's `docker` and `docker-compose` that live inside the app without separate Homebrew binary stanzas. Missing or ambiguous executables fail installation rather than recording a nonexistent formula path or an unrelated command from PATH. A cask with no `.bin()` declarations installs the application without inventing an executable. A cask's `versionArgs` runs against its first resolved binary.
 
 ## Update Checks
 
