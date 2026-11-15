@@ -1,6 +1,8 @@
 package dashboard
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -44,29 +46,39 @@ func (s *Server) handleToolConfigsTree(w http.ResponseWriter, r *http.Request) {
 		ToolName string      `json:"toolName,omitempty"`
 	}
 
-	var buildNode func(dirPath string) ([]*treeNode, error)
-	buildNode = func(dirPath string) ([]*treeNode, error) {
-		entries, err := os.ReadDir(dirPath)
+	var buildNode func(dirPath string, allowMissingRoot bool) ([]*treeNode, error)
+	buildNode = func(dirPath string, allowMissingRoot bool) ([]*treeNode, error) {
+		entries, err := s.fsys.ReadDir(dirPath)
 		if err != nil {
-			return nil, err
+			if allowMissingRoot && errors.Is(err, os.ErrNotExist) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("reading tool configuration directory %q: %w", dirPath, err)
 		}
 		var nodes []*treeNode
-		for _, entry := range entries {
-			fullPath := filepath.Join(dirPath, entry.Name())
+		for _, name := range entries {
+			fullPath := filepath.Join(dirPath, name)
+			entry, err := s.fsys.Lstat(fullPath)
+			if err != nil {
+				return nil, fmt.Errorf("inspecting tool configuration entry %q: %w", fullPath, err)
+			}
 			if entry.IsDir() {
-				children, err := buildNode(fullPath)
-				if err == nil && len(children) > 0 {
+				children, err := buildNode(fullPath, false)
+				if err != nil {
+					return nil, err
+				}
+				if len(children) > 0 {
 					nodes = append(nodes, &treeNode{
-						Name:     entry.Name(),
+						Name:     name,
 						Path:     fullPath,
 						Type:     "directory",
 						Children: children,
 					})
 				}
-			} else if strings.HasSuffix(entry.Name(), ".tool.ts") {
-				toolName := strings.TrimSuffix(entry.Name(), ".tool.ts")
+			} else if strings.HasSuffix(name, ".tool.ts") {
+				toolName := strings.TrimSuffix(name, ".tool.ts")
 				nodes = append(nodes, &treeNode{
-					Name:     entry.Name(),
+					Name:     name,
 					Path:     fullPath,
 					Type:     "file",
 					ToolName: toolName,
@@ -92,7 +104,11 @@ func (s *Server) handleToolConfigsTree(w http.ResponseWriter, r *http.Request) {
 
 	roots := []toolConfigsRoot{}
 	for _, resolvedDir := range toolConfigsDirs {
-		nodes, _ := buildNode(resolvedDir)
+		nodes, err := buildNode(resolvedDir, true)
+		if err != nil {
+			writeJSON(w, false, nil, err.Error())
+			return
+		}
 		if len(nodes) == 0 {
 			continue
 		}

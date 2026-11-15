@@ -2650,23 +2650,31 @@ type healthFaultFS struct {
 	statPath    string
 	readDirPath string
 	lstatPath   string
+	err         error
+}
+
+func (f healthFaultFS) failure() error {
+	if f.err != nil {
+		return f.err
+	}
+	return os.ErrPermission
 }
 
 func (f healthFaultFS) Stat(path string) (os.FileInfo, error) {
 	if path == f.statPath {
-		return nil, &os.PathError{Op: "stat", Path: path, Err: os.ErrPermission}
+		return nil, &os.PathError{Op: "stat", Path: path, Err: f.failure()}
 	}
 	return f.FS.Stat(path)
 }
 func (f healthFaultFS) ReadDir(path string) ([]string, error) {
 	if path == f.readDirPath {
-		return nil, &os.PathError{Op: "readdir", Path: path, Err: os.ErrPermission}
+		return nil, &os.PathError{Op: "readdir", Path: path, Err: f.failure()}
 	}
 	return f.FS.ReadDir(path)
 }
 func (f healthFaultFS) Lstat(path string) (os.FileInfo, error) {
 	if path == f.lstatPath {
-		return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrPermission}
+		return nil, &os.PathError{Op: "lstat", Path: path, Err: f.failure()}
 	}
 	return f.FS.Lstat(path)
 }
@@ -2729,5 +2737,107 @@ func TestHealthRejectsIncompleteInspection(t *testing.T) {
 				t.Fatalf("inspection error must not become healthy: %d %s", recorder.Code, recorder.Body.String())
 			}
 		})
+	}
+}
+
+func TestToolConfigsTreeRejectsIncompleteInspection(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		readDirPath string
+		lstatPath   string
+		err         error
+	}{
+		{name: "root permission", readDirPath: "/tree-bad"},
+		{name: "nested permission", readDirPath: "/tree-bad/nested"},
+		{name: "entry permission", lstatPath: "/tree-bad/nested/example.tool.ts"},
+		{name: "nested disappeared", readDirPath: "/tree-bad/nested", err: os.ErrNotExist},
+		{name: "entry disappeared", lstatPath: "/tree-bad/nested/example.tool.ts", err: os.ErrNotExist},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mem := fs.NewMemFS()
+			for _, path := range []string{"/tree-good/valid.tool.ts", "/tree-bad/nested/example.tool.ts"} {
+				if err := mem.MkdirAll(filepath.Dir(path), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := mem.WriteFile(path, []byte("export default {}"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			fault := healthFaultFS{FS: mem, readDirPath: tc.readDirPath, lstatPath: tc.lstatPath, err: tc.err}
+			project := &config.ProjectConfig{Paths: config.PathsConfig{ToolConfigsDir: []string{"/tree-good", "/tree-bad"}}}
+			server := NewServer(nil, "", 0, nil, fault, "", project, nil, nil, nil)
+			recorder := httptest.NewRecorder()
+			server.handleToolConfigsTree(recorder, httptest.NewRequest(http.MethodGet, "/api/tool-configs-tree", nil))
+			var response struct {
+				Success bool            `json:"success"`
+				Error   string          `json:"error"`
+				Data    json.RawMessage `json:"data"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			faultPath := tc.readDirPath
+			if faultPath == "" {
+				faultPath = tc.lstatPath
+			}
+			if response.Success || !strings.Contains(response.Error, faultPath) || len(response.Data) != 0 {
+				t.Fatalf("inspection failure must not become an empty or partial tree: %s", recorder.Body.String())
+			}
+		})
+	}
+}
+
+func TestToolConfigsTreeUsesInjectedFilesystem(t *testing.T) {
+	mem := fs.NewMemFS()
+	for _, path := range []string{"/tree/alpha/example.tool.ts", "/tree/zeta.tool.ts", "/elsewhere/hidden.tool.ts"} {
+		if err := mem.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := mem.WriteFile(path, []byte("export default {}"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for link, target := range map[string]string{
+		"/tree/linked-directory": "/elsewhere",
+		"/tree/linked.tool.ts":   "/elsewhere/hidden.tool.ts",
+		"/tree/dangling.tool.ts": "/missing.tool.ts",
+	} {
+		if err := mem.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+	}
+	project := &config.ProjectConfig{Paths: config.PathsConfig{ToolConfigsDir: []string{"/missing-root", "/tree"}}}
+	server := NewServer(nil, "", 0, nil, mem, "", project, nil, nil, nil)
+	recorder := httptest.NewRecorder()
+	server.handleToolConfigsTree(recorder, httptest.NewRequest(http.MethodGet, "/api/tool-configs-tree", nil))
+	type treeNode struct {
+		Name     string     `json:"name"`
+		Type     string     `json:"type"`
+		ToolName string     `json:"toolName"`
+		Children []treeNode `json:"children"`
+	}
+	var response struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Roots []struct {
+				Path    string     `json:"path"`
+				Entries []treeNode `json:"entries"`
+			} `json:"roots"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if !response.Success || len(response.Data.Roots) != 1 || response.Data.Roots[0].Path != "/tree" {
+		t.Fatalf("expected only the existing injected root: %s", recorder.Body.String())
+	}
+	want := []treeNode{
+		{Name: "alpha", Type: "directory", Children: []treeNode{{Name: "example.tool.ts", Type: "file", ToolName: "example"}}},
+		{Name: "dangling.tool.ts", Type: "file", ToolName: "dangling"},
+		{Name: "linked.tool.ts", Type: "file", ToolName: "linked"},
+		{Name: "zeta.tool.ts", Type: "file", ToolName: "zeta"},
+	}
+	if !reflect.DeepEqual(response.Data.Roots[0].Entries, want) {
+		t.Fatalf("tree must sort directories first, preserve file links, and skip directory links: %+v", response.Data.Roots[0].Entries)
 	}
 }
