@@ -24,6 +24,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
@@ -2565,4 +2566,168 @@ func mustUsage(t *testing.T, reg *registry.Registry, tool, binary string) *regis
 		t.Fatalf("no usage recorded for %s/%s", tool, binary)
 	}
 	return rec
+}
+
+func TestHealthUsesInstallationReceipts(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		method      string
+		installPath string
+		binaryPaths string
+		directories []string
+		files       []string
+		wantOverall string
+		wantDetails [][]string
+	}{
+		{name: "plugin has no implicit executable", method: "zsh-plugin", installPath: "/plugin", binaryPaths: "[]", directories: []string{"/plugin"}, wantOverall: "healthy", wantDetails: [][]string{{}, {}, {}}},
+		{name: "configuration only needs no installation directory", binaryPaths: "[]", wantOverall: "healthy", wantDetails: [][]string{{}, {}, {}}},
+		{name: "package manager binaries live outside generated directory", method: "brew", installPath: "/opt/pkg", binaryPaths: `["/usr/local/bin/example"]`, directories: []string{"/opt/pkg"}, files: []string{"/usr/local/bin/example"}, wantOverall: "healthy", wantDetails: [][]string{{}, {}, {}}},
+		{name: "missing recorded binary", method: "github-release", installPath: "/opt/pkg", binaryPaths: `["/opt/pkg/example"]`, directories: []string{"/opt/pkg"}, wantOverall: "warning", wantDetails: [][]string{{"Tool example: missing installed binary /opt/pkg/example"}, {}, {}}},
+		{name: "missing installation receipt path", method: "zsh-plugin", installPath: "/plugin", binaryPaths: "[]", wantOverall: "warning", wantDetails: [][]string{{}, {"Tool example: install path /plugin does not exist on disk"}, {}}},
+		{name: "unused versions exclude installed version and files", method: "github-release", installPath: "/binaries/example/1.0", binaryPaths: "[]", directories: []string{"/binaries/example/1.0", "/binaries/example/0.9", "/binaries/example/current"}, files: []string{"/binaries/example/receipt.json"}, wantOverall: "warning", wantDetails: [][]string{{}, {}, {"/binaries/example/0.9"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			database, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { database.Close() })
+			reg := registry.NewRegistry(database)
+			mem := newMemFS()
+			for _, path := range tc.directories {
+				if err := mem.MkdirAll(path, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, path := range tc.files {
+				if err := mem.MkdirAll(filepath.Dir(path), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := mem.WriteFile(path, []byte("binary"), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+				return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{ToolName: "example", Version: "1.0", InstallPath: tc.installPath, BinaryPaths: tc.binaryPaths})
+			}); err != nil {
+				t.Fatal(err)
+			}
+			server := NewServer(nil, "", 0, reg, mem, "", &config.ProjectConfig{Paths: config.PathsConfig{BinariesDir: "/binaries"}}, []*config.ToolConfig{{Name: "example", InstallationMethod: tc.method}}, nil, nil)
+			recorder := httptest.NewRecorder()
+			server.handleHealth(recorder, httptest.NewRequest(http.MethodGet, "/api/health", nil))
+			var response struct {
+				Success bool `json:"success"`
+				Data    struct {
+					Overall   string        `json:"overall"`
+					Checks    []healthCheck `json:"checks"`
+					LastCheck string        `json:"lastCheck"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.Code != http.StatusOK || !response.Success || response.Data.Overall != tc.wantOverall {
+				t.Fatalf("unexpected health response: %s", recorder.Body.String())
+			}
+			if len(response.Data.Checks) != len(tc.wantDetails) {
+				t.Fatalf("checks=%v", response.Data.Checks)
+			}
+			for i, check := range response.Data.Checks {
+				if !reflect.DeepEqual(check.Details, tc.wantDetails[i]) {
+					t.Errorf("%s details=%v want %v", check.Name, check.Details, tc.wantDetails[i])
+				}
+			}
+			if _, err := time.Parse(time.RFC3339, response.Data.LastCheck); err != nil {
+				t.Fatalf("invalid observation time: %v", err)
+			}
+		})
+	}
+}
+
+type healthFaultFS struct {
+	fs.FS
+	statPath    string
+	readDirPath string
+	lstatPath   string
+}
+
+func (f healthFaultFS) Stat(path string) (os.FileInfo, error) {
+	if path == f.statPath {
+		return nil, &os.PathError{Op: "stat", Path: path, Err: os.ErrPermission}
+	}
+	return f.FS.Stat(path)
+}
+func (f healthFaultFS) ReadDir(path string) ([]string, error) {
+	if path == f.readDirPath {
+		return nil, &os.PathError{Op: "readdir", Path: path, Err: os.ErrPermission}
+	}
+	return f.FS.ReadDir(path)
+}
+func (f healthFaultFS) Lstat(path string) (os.FileInfo, error) {
+	if path == f.lstatPath {
+		return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrPermission}
+	}
+	return f.FS.Lstat(path)
+}
+
+func TestHealthRejectsIncompleteInspection(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		closeDatabase bool
+		binaryPaths   string
+		statPath      string
+		readDirPath   string
+		lstatPath     string
+	}{
+		{name: "registry failure", closeDatabase: true},
+		{name: "malformed binary receipt", binaryPaths: "{"},
+		{name: "installation permission failure", binaryPaths: "[]", statPath: "/installation"},
+		{name: "binary permission failure", binaryPaths: `["/installation/example"]`, statPath: "/installation/example"},
+		{name: "binaries directory permission failure", binaryPaths: "[]", readDirPath: "/binaries"},
+		{name: "version directory permission failure", binaryPaths: "[]", readDirPath: "/binaries/example"},
+		{name: "tool entry permission failure", binaryPaths: "[]", lstatPath: "/binaries/example"},
+		{name: "version entry permission failure", binaryPaths: "[]", lstatPath: "/binaries/example/old"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			database, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { database.Close() })
+			reg := registry.NewRegistry(database)
+			mem := newMemFS()
+			for _, path := range []string{"/installation", "/binaries/example/old"} {
+				if err := mem.MkdirAll(path, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+				return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{ToolName: "example", Version: "1.0", InstallPath: "/installation", BinaryPaths: tc.binaryPaths})
+			}); err != nil {
+				t.Fatal(err)
+			}
+			faultFS := healthFaultFS{FS: mem, statPath: tc.statPath, readDirPath: tc.readDirPath, lstatPath: tc.lstatPath}
+			server := NewServer(nil, "", 0, reg, faultFS, "", &config.ProjectConfig{Paths: config.PathsConfig{BinariesDir: "/binaries"}}, []*config.ToolConfig{{Name: "example"}}, nil, nil)
+			if tc.closeDatabase {
+				if err := database.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			recorder := httptest.NewRecorder()
+			server.handleHealth(recorder, httptest.NewRequest(http.MethodGet, "/api/health", nil))
+			var response struct {
+				Success bool            `json:"success"`
+				Error   string          `json:"error"`
+				Data    json.RawMessage `json:"data"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.Code != http.StatusInternalServerError || response.Success || response.Error == "" || len(response.Data) != 0 {
+				t.Fatalf("inspection error must not become healthy: %d %s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
 }

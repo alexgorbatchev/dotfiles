@@ -1,147 +1,166 @@
 package dashboard
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
+
+type healthCheck struct {
+	Name    string   `json:"name"`
+	Status  string   `json:"status"`
+	Message string   `json:"message"`
+	Details []string `json:"details"`
+}
 
 // GET /api/health
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	checks := []map[string]any{}
+	installs, err := s.registry.GetAllToolInstallations(r.Context())
+	if err != nil {
+		writeJSONWithStatus(w, http.StatusInternalServerError, false, nil, fmt.Sprintf("Reading health registry: %v", err))
+		return
+	}
+	checks, err := s.checkInstallations(installs)
+	if err != nil {
+		writeJSONWithStatus(w, http.StatusInternalServerError, false, nil, fmt.Sprintf("Checking health: %v", err))
+		return
+	}
+	overall := "healthy"
+	for _, check := range checks {
+		if check.Status == "warn" {
+			overall = "warning"
+		}
+	}
+	writeJSON(w, true, map[string]any{"overall": overall, "checks": checks, "lastCheck": time.Now().UTC().Format(time.RFC3339)}, "")
+}
 
-	toolCount := 0
+func (s *Server) checkInstallations(installs []*registry.ToolInstallationRecord) ([]healthCheck, error) {
+	installed := make(map[string]*registry.ToolInstallationRecord, len(installs))
 	unhealthyTools := []string{}
 	orphanedRecords := []string{}
-	unusedVersions := []string{}
-
-	binariesDir := ""
-	if s.projectConfig != nil {
-		binariesDir = s.projectConfig.Paths.BinariesDir
-	}
-
-	installs, err := s.registry.GetAllToolInstallations(ctx)
-	if err == nil {
-		for _, inst := range installs {
-			_, err := os.Stat(inst.InstallPath)
-			if err != nil || os.IsNotExist(err) {
+	for _, inst := range installs {
+		installed[inst.ToolName] = inst
+		if inst.InstallPath != "" {
+			missing, err := s.healthPathMissing(inst.InstallPath)
+			if err != nil {
+				return nil, err
+			}
+			if missing {
 				orphanedRecords = append(orphanedRecords, fmt.Sprintf("Tool %s: install path %s does not exist on disk", inst.ToolName, inst.InstallPath))
 			}
 		}
+		// Receipts describe the actual installation, including external package-manager
+		// paths and tools with no executable at all.
+		var binaries []string
+		if inst.BinaryPaths != "" {
+			if err := json.Unmarshal([]byte(inst.BinaryPaths), &binaries); err != nil {
+				return nil, fmt.Errorf("reading binary paths for %s: %w", inst.ToolName, err)
+			}
+		}
+		for _, path := range binaries {
+			missing, err := s.healthPathMissing(path)
+			if err != nil {
+				return nil, err
+			}
+			if missing {
+				unhealthyTools = append(unhealthyTools, fmt.Sprintf("Tool %s: missing installed binary %s", inst.ToolName, path))
+			}
+		}
 	}
-
-	for _, tc := range s.toolConfigs {
-		inst, _ := s.registry.GetToolInstallation(ctx, tc.Name)
-		if inst != nil {
+	unusedVersions, err := s.unusedBinaryVersions(installed)
+	if err != nil {
+		return nil, err
+	}
+	toolCount := 0
+	for _, tool := range s.toolConfigs {
+		if installed[tool.Name] != nil {
 			toolCount++
-			binNames := config.GetBinaryNames(tc.Name, tc.Binaries)
-
-			if binariesDir != "" {
-				currentDir := filepath.Join(binariesDir, tc.Name, "current")
-				for _, name := range binNames {
-					binPath := filepath.Join(currentDir, name)
-					if _, err := os.Stat(binPath); err != nil {
-						unhealthyTools = append(unhealthyTools, fmt.Sprintf("Tool %s: missing expected binary %s", tc.Name, binPath))
-						break
-					}
-				}
-			}
 		}
 	}
-
-	if binariesDir != "" {
-		if toolDirs, err := os.ReadDir(binariesDir); err == nil {
-			for _, td := range toolDirs {
-				if !td.IsDir() {
-					continue
-				}
-				toolName := td.Name()
-				toolDirPath := filepath.Join(binariesDir, toolName)
-
-				var installedVer string
-				inst, _ := s.registry.GetToolInstallation(ctx, toolName)
-				if inst != nil {
-					installedVer = inst.Version
-				}
-
-				if versionDirs, err := os.ReadDir(toolDirPath); err == nil {
-					for _, vd := range versionDirs {
-						if !vd.IsDir() {
-							continue
-						}
-						vName := vd.Name()
-						if vName != "current" && (installedVer == "" || vName != installedVer) {
-							unusedVersions = append(unusedVersions, filepath.Join(toolDirPath, vName))
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// 1. Tool Installations Check
-	toolInstallStatus := "pass"
-	toolInstallMsg := fmt.Sprintf("%d tool(s) installed", toolCount)
+	installCheck := healthCheck{Name: "Tool Installations", Status: "pass", Message: fmt.Sprintf("%d tool(s) installed", toolCount), Details: unhealthyTools}
 	if len(unhealthyTools) > 0 {
-		toolInstallStatus = "warn"
-		toolInstallMsg = fmt.Sprintf("%d unhealthy tool(s) detected", len(unhealthyTools))
+		installCheck.Status = "warn"
+		installCheck.Message = fmt.Sprintf("%d missing installed binary path(s)", len(unhealthyTools))
 	} else if toolCount == 0 {
-		toolInstallStatus = "warn"
-		toolInstallMsg = "No tools installed"
+		installCheck.Status = "warn"
+		installCheck.Message = "No tools installed"
 	}
-	checks = append(checks, map[string]any{
-		"name":    "Tool Installations",
-		"status":  toolInstallStatus,
-		"message": toolInstallMsg,
-		"details": unhealthyTools,
-	})
-
-	// 2. Registry Integrity Check
-	registryStatus := "pass"
-	registryMsg := "Registry is healthy"
+	registryCheck := healthCheck{Name: "Registry Integrity", Status: "pass", Message: "Registry is healthy", Details: orphanedRecords}
 	if len(orphanedRecords) > 0 {
-		registryStatus = "warn"
-		registryMsg = fmt.Sprintf("Registry contains %d orphaned record(s)", len(orphanedRecords))
+		registryCheck.Status = "warn"
+		registryCheck.Message = fmt.Sprintf("Registry contains %d orphaned record(s)", len(orphanedRecords))
 	}
-	checks = append(checks, map[string]any{
-		"name":    "Registry Integrity",
-		"status":  registryStatus,
-		"message": registryMsg,
-		"details": orphanedRecords,
-	})
-
-	// 3. Unused Binary Versions Check
-	unusedStatus := "pass"
-	unusedMsg := "No unused binary versions found"
+	unusedCheck := healthCheck{Name: "Unused Binary Versions", Status: "pass", Message: "No unused binary versions found", Details: unusedVersions}
 	if len(unusedVersions) > 0 {
-		unusedStatus = "warn"
-		unusedMsg = fmt.Sprintf("Found %d unused binary version(s)", len(unusedVersions))
+		unusedCheck.Status = "warn"
+		unusedCheck.Message = fmt.Sprintf("Found %d unused binary version(s)", len(unusedVersions))
 	}
-	checks = append(checks, map[string]any{
-		"name":    "Unused Binary Versions",
-		"status":  unusedStatus,
-		"message": unusedMsg,
-		"details": unusedVersions,
-	})
+	return []healthCheck{installCheck, registryCheck, unusedCheck}, nil
+}
 
-	overall := "healthy"
-	for _, c := range checks {
-		if c["status"] == "warn" {
-			overall = "warning"
-		} else if c["status"] == "fail" {
-			overall = "unhealthy"
+func (s *Server) healthPathMissing(path string) (bool, error) {
+	_, err := s.fsys.Stat(path)
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("inspecting %s: %w", path, err)
+	}
+	return false, nil
+}
+
+func (s *Server) unusedBinaryVersions(installed map[string]*registry.ToolInstallationRecord) ([]string, error) {
+	unused := []string{}
+	if s.projectConfig == nil || s.projectConfig.Paths.BinariesDir == "" {
+		return unused, nil
+	}
+	binariesDir := s.projectConfig.Paths.BinariesDir
+	tools, err := s.healthDirectories(binariesDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, tool := range tools {
+		toolDir := filepath.Join(binariesDir, tool)
+		versions, err := s.healthDirectories(toolDir)
+		if err != nil {
+			return nil, err
+		}
+		for _, version := range versions {
+			if version == "current" {
+				continue
+			}
+			path := filepath.Join(toolDir, version)
+			if inst := installed[tool]; inst != nil && (inst.Version == version || filepath.Clean(inst.InstallPath) == path) {
+				continue
+			}
+			unused = append(unused, path)
 		}
 	}
+	return unused, nil
+}
 
-	data := map[string]any{
-		"overall":   overall,
-		"checks":    checks,
-		"lastCheck": time.Now().UTC().Format(time.RFC3339),
+func (s *Server) healthDirectories(path string) ([]string, error) {
+	names, err := s.fsys.ReadDir(path)
+	if os.IsNotExist(err) {
+		return nil, nil
 	}
-	writeJSON(w, true, data, "")
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", path, err)
+	}
+	directories := make([]string, 0, len(names))
+	for _, name := range names {
+		info, err := s.fsys.Lstat(filepath.Join(path, name))
+		if err != nil {
+			return nil, fmt.Errorf("inspecting directory entry %s: %w", filepath.Join(path, name), err)
+		}
+		if info.IsDir() {
+			directories = append(directories, name)
+		}
+	}
+	return directories, nil
 }
