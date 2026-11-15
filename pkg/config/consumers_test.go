@@ -8,11 +8,12 @@ import (
 	"testing"
 )
 
-// acceptedProjectKeys returns every key path a project configuration may set,
-// derived from the same allow-lists the validator enforces so the two cannot drift
-// apart. Keys are dotted paths as a user writes them, such as
-// "downloader.cache.ttl".
-func acceptedProjectKeys() []string {
+// acceptedProjectKeys walks the validator's section and child allow-lists. Known
+// objects are expanded explicitly; any new section or features child fails until
+// its expansion is defined, so an accepted object cannot be silently omitted.
+// Keys are dotted paths as a user writes them, such as "downloader.cache.ttl".
+func acceptedProjectKeys(t *testing.T) []string {
+	t.Helper()
 	host := func(prefix string) []string {
 		allowed := hostKeys
 		if prefix == "cargo.cratesIo" || prefix == "cargo.githubRaw" {
@@ -34,37 +35,51 @@ func acceptedProjectKeys() []string {
 	}
 
 	var keys []string
-	for _, k := range pathsKeys {
-		keys = append(keys, "paths."+k)
-	}
-	for _, k := range systemKeys {
-		keys = append(keys, "system."+k)
-	}
-	keys = append(keys, host("github")...)
-	for _, k := range cargoKeys {
-		if slices.Contains(cargoSubHosts, k) {
-			keys = append(keys, host("cargo."+k)...)
-			continue
+	appendLeaves := func(prefix string, leaves []string) {
+		for _, leaf := range leaves {
+			keys = append(keys, prefix+"."+leaf)
 		}
-		keys = append(keys, "cargo."+k)
 	}
-	for _, k := range downloaderKeys {
-		if k == "cache" {
-			for _, c := range cacheKeys {
-				keys = append(keys, "downloader.cache."+c)
+	for _, section := range projectSectionKeys {
+		switch section {
+		case "paths":
+			appendLeaves(section, pathsKeys)
+		case "system":
+			appendLeaves(section, systemKeys)
+		case "github":
+			keys = append(keys, host(section)...)
+		case "cargo":
+			for _, key := range cargoKeys {
+				if slices.Contains(cargoSubHosts, key) {
+					keys = append(keys, host(section+"."+key)...)
+					continue
+				}
+				keys = append(keys, section+"."+key)
 			}
-			continue
+		case "downloader":
+			for _, key := range downloaderKeys {
+				if key == "cache" {
+					appendLeaves(section+".cache", cacheKeys)
+					continue
+				}
+				keys = append(keys, section+"."+key)
+			}
+		case "features":
+			for _, child := range featuresKeys {
+				switch child {
+				case "catalog":
+					appendLeaves(section+"."+child, catalogKeys)
+				case "shellInstall":
+					appendLeaves(section+"."+child, shellInstallKeys)
+				default:
+					t.Fatalf("acceptedProjectKeys has no expansion for accepted configuration object %q", section+"."+child)
+				}
+			}
+		case "ai":
+			appendLeaves(section, aiKeys)
+		default:
+			t.Fatalf("acceptedProjectKeys has no expansion for accepted configuration section %q", section)
 		}
-		keys = append(keys, "downloader."+k)
-	}
-	for _, k := range catalogKeys {
-		keys = append(keys, "features.catalog."+k)
-	}
-	for _, k := range shellInstallKeys {
-		keys = append(keys, "features.shellInstall."+k)
-	}
-	for _, k := range aiKeys {
-		keys = append(keys, "ai."+k)
 	}
 	return keys
 }
@@ -138,7 +153,7 @@ var keysAwaitingRemoval = []string{
 // and behave exactly as before. A new key must either name its consumer in
 // projectConfigConsumers or be admitted to keysAwaitingRemoval deliberately.
 func TestEveryAcceptedProjectKeyIsAccountedFor(t *testing.T) {
-	accepted := acceptedProjectKeys()
+	accepted := acceptedProjectKeys(t)
 
 	t.Run("every accepted key names a consumer or is awaiting removal", func(t *testing.T) {
 		var undeclared, unconsumed []string
