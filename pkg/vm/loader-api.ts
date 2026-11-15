@@ -244,16 +244,23 @@ export type ParamResolverFn = (context: Record<string, unknown>) => unknown;
 const RESOLVABLE_INSTALL_PARAMS = ["args", "env", "assetSelector", "source.assetSelector"];
 
 /**
- * Returns the object a resolvable parameter lives on, or undefined when the parameter's
- * parent is not there at all.
+ * Returns a builder-owned object for removing a resolvable parameter. Nested parents
+ * may still belong to the caller and be shared with other platform blocks.
  */
-function resolvableParent(installParams: Record<string, unknown>, path: string): Record<string, unknown> | undefined {
+function writableResolvableParent(
+  installParams: Record<string, unknown>,
+  path: string,
+): Record<string, unknown> | undefined {
   const dot = path.indexOf(".");
   if (dot === -1) {
     return installParams;
   }
-  const parent = installParams[path.slice(0, dot)];
-  return parent && typeof parent === "object" ? (parent as Record<string, unknown>) : undefined;
+  const key = path.slice(0, dot);
+  const parent = installParams[key];
+  if (!parent || typeof parent !== "object") return undefined;
+  const ownedParent = { ...parent };
+  installParams[key] = ownedParent;
+  return ownedParent;
 }
 
 /**
@@ -271,7 +278,7 @@ function captureParamResolvers(toolName: string, installParams: Record<string, u
   const recorded: string[] = [];
 
   for (const path of RESOLVABLE_INSTALL_PARAMS) {
-    const parent = resolvableParent(installParams, path);
+    const parent = writableResolvableParent(installParams, path);
     if (!parent) continue;
     const leaf = path.slice(path.indexOf(".") + 1);
     if (typeof parent[leaf] !== "function") continue;
@@ -291,7 +298,7 @@ function captureParamResolvers(toolName: string, installParams: Record<string, u
  */
 function cleanInactiveParamResolvers(installParams: Record<string, unknown>): void {
   for (const path of RESOLVABLE_INSTALL_PARAMS) {
-    const parent = resolvableParent(installParams, path);
+    const parent = writableResolvableParent(installParams, path);
     if (!parent) continue;
     const leaf = path.slice(path.indexOf(".") + 1);
     if (typeof parent[leaf] === "function") {

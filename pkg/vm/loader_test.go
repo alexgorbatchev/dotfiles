@@ -2,6 +2,7 @@ package vm
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"maps"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/arch"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/go-sourcemap/sourcemap"
@@ -2521,4 +2523,68 @@ export default defineTool((install) => install("manual", { binaryPath: "/bin/ls"
 			t.Errorf("expected error to contain %q, got: %v", wantErr, err)
 		}
 	})
+}
+
+func TestLoaderPreservesSharedNestedResolvers(t *testing.T) {
+	tests := []struct {
+		name   string
+		blocks string
+	}{
+		{"inactive platform first", `.platform(Platform.Linux, useParams).platform(Platform.MacOS, useParams)`},
+		{"active platform first", `.platform(Platform.MacOS, useParams).platform(Platform.Linux, useParams)`},
+		{"inactive architecture first", `.arch(Architecture.X86_64, useParams).arch(Architecture.Arm64, useParams)`},
+		{"active architecture first", `.arch(Architecture.Arm64, useParams).arch(Architecture.X86_64, useParams)`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := `
+import { defineTool, Platform, Architecture } from "@alexgorbatchev/dotfiles";
+const params = {
+  source: {
+    type: "github-release",
+    repo: "example/tool",
+    assetSelector: (ctx) => ctx.release.assets[0].name,
+  },
+};
+export default defineTool((install) => {
+  const useParams = (install) => install("dmg", params);
+  return install()` + tt.blocks + `;
+});
+if (typeof params.source.assetSelector !== "function") {
+  throw new Error("the caller's nested resolver was removed");
+}`
+			target := Target{OS: "darwin", Arch: "arm64"}
+			tools, err := loadToolSource(t, source, WithTarget(target))
+			if err != nil {
+				t.Fatalf("load failed: %v", err)
+			}
+			tool := tools["probe"]
+			if !HasResolver(tool, "source.assetSelector") {
+				t.Fatal("active tool lost its nested resolver")
+			}
+			if len(tool.InactivePlatformConfigs) != 1 {
+				t.Fatalf("inactive branches = %d, want one", len(tool.InactivePlatformConfigs))
+			}
+			inactive := tool.InactivePlatformConfigs[0]
+			if HasResolver(&config.ToolConfig{InstallParams: inactive.InstallParams}, "source.assetSelector") {
+				t.Fatal("inactive branch registered its resolver")
+			}
+			value, err := ResolveInstallParam(context.Background(), ResolveRequest{
+				Log:     logger.New(logger.Config{Writer: io.Discard}),
+				FS:      fs.NewMemFS(),
+				Runner:  exec.NewMockRunner(),
+				Tool:    tool,
+				ProjCfg: hookTestProjectConfig(t),
+				Param:   "source.assetSelector",
+				Context: map[string]any{"release": map[string]any{"assets": []map[string]string{{"name": "tool.dmg"}}}},
+				Target:  target,
+			})
+			if err != nil {
+				t.Fatalf("resolve install-time asset selector: %v", err)
+			}
+			if string(value) != `"tool.dmg"` {
+				t.Fatalf("selected asset = %s, want tool.dmg", value)
+			}
+		})
+	}
 }
