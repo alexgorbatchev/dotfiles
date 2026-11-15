@@ -347,6 +347,7 @@ func runTypeTests(rootDir string) error {
 	if err := os.RemoveAll(tsdDir); err != nil {
 		return fmt.Errorf("failed to clean tsd-tests directory: %w", err)
 	}
+	defer os.RemoveAll(tsdDir)
 
 	typeTestsDir := filepath.Join(rootDir, "tests/type-tests")
 	if err := copyDirectoryRecursive(typeTestsDir, tsdDir); err != nil {
@@ -440,7 +441,6 @@ func runTypeTests(rootDir string) error {
 	}
 
 	fmt.Println("✅ tsd type tests passed successfully!")
-	_ = os.RemoveAll(tsdDir)
 	return nil
 }
 
