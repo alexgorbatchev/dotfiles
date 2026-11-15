@@ -16,9 +16,9 @@ CONFIG_EXISTS="0"
 get_term_width() {
 	local cols=0
 	if [[ -e /dev/tty && -c /dev/tty ]]; then
-		cols="$((stty size 2>/dev/null </dev/tty) 2>/dev/null | awk '{print $2}')"
+		cols="$( (stty size 2>/dev/null </dev/tty) 2>/dev/null | awk '{print $2}')"
 		if [[ -z "${cols}" || "${cols}" -eq 0 ]]; then
-			cols="$((tput cols 2>/dev/null </dev/tty) 2>/dev/null || echo 0)"
+			cols="$( (tput cols 2>/dev/null </dev/tty) 2>/dev/null || echo 0)"
 		fi
 	fi
 	if [[ -z "${cols}" || "${cols}" -eq 0 ]] && command -v tput >/dev/null 2>&1; then
@@ -111,6 +111,9 @@ cleanup() {
 }
 
 trap 'cleanup $?' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 confirm_installation() {
 	if [[ "${DOTFILES_YES}" = "1" ]]; then
@@ -118,7 +121,7 @@ confirm_installation() {
 		return 0
 	fi
 
-	if [[ ! -r /dev/tty ]]; then
+	if ! (: </dev/tty) 2>/dev/null; then
 		fail "Confirmation required but /dev/tty is not available. Re-run with DOTFILES_YES=1 to skip the prompt."
 	fi
 
@@ -139,7 +142,7 @@ confirm_installation() {
 }
 
 run_dotfiles() {
-	if [[ -r /dev/tty ]]; then
+	if (: </dev/tty) 2>/dev/null; then
 		"${DOTFILES_BIN}" "$@" </dev/tty
 	else
 		"${DOTFILES_BIN}" "$@"
@@ -213,6 +216,45 @@ detect_os_arch() {
 	echo "${os}_${arch}"
 }
 
+verify_release_archive() {
+	local archive_path="$1" archive_name="$2" manifest_path="$3"
+	local expected actual
+	if ! expected="$(awk -v name="${archive_name}" '
+		{
+			sub(/\r$/, "")
+			file = $2
+			sub(/^\*/, "", file)
+			if (file == name) {
+				count++
+				if (NF != 2 || length($1) != 64 || $1 !~ /^[0-9a-fA-F]+$/) invalid = 1
+				digest = $1
+			}
+		}
+		END {
+			if (count != 1 || invalid) exit 1
+			print tolower(digest)
+		}
+	' "${manifest_path}")"; then
+		fail "checksums.txt must contain exactly one valid SHA-256 entry for ${archive_name}; refusing to extract the archive"
+	fi
+
+	log "Verifying SHA-256 for ${archive_name}"
+	if command -v sha256sum >/dev/null 2>&1; then
+		actual="$(sha256sum <"${archive_path}")" || fail "sha256sum failed while verifying ${archive_name}; refusing to extract the archive"
+	elif command -v shasum >/dev/null 2>&1; then
+		actual="$(shasum -a 256 <"${archive_path}")" || fail "shasum failed while verifying ${archive_name}; refusing to extract the archive"
+	else
+		fail "SHA-256 verification requires sha256sum or shasum; install one and retry"
+	fi
+	actual="$(printf '%s' "${actual%%[[:space:]]*}" | tr '[:upper:]' '[:lower:]')"
+	if [[ ! "${actual}" =~ ^[0-9a-f]{64}$ ]]; then
+		fail "SHA-256 verifier returned an invalid digest for ${archive_name}; refusing to extract the archive"
+	fi
+	if [[ "${actual}" != "${expected}" ]]; then
+		fail "SHA-256 checksum mismatch for ${archive_name}; refusing to extract the archive. Retry the download or verify the release assets."
+	fi
+}
+
 ensure_dotfiles_binary() {
 	if [[ -n "${DOTFILES_BINARY_PATH}" && -x "${DOTFILES_BINARY_PATH}" ]]; then
 		log "Using specified dotfiles binary: $(format_path "${DOTFILES_BINARY_PATH}")"
@@ -228,7 +270,8 @@ ensure_dotfiles_binary() {
 
 	if [[ "${DOTFILES_VERSION}" = "latest" ]]; then
 		local latest_tag
-		latest_tag="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "${DOTFILES_BASE_URL}/releases/latest" 2>/dev/null | sed 's#.*/v##' | sed 's#.*/##')"
+		latest_tag="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "${DOTFILES_BASE_URL}/releases/latest" 2>/dev/null | sed 's#.*/v##' | sed 's#.*/##')" ||
+			fail "Failed to resolve latest release version from ${DOTFILES_BASE_URL}"
 		if [[ -n "${latest_tag}" && "${latest_tag}" != "latest" ]]; then
 			DOTFILES_VERSION="${latest_tag#v}"
 		else
@@ -237,15 +280,20 @@ ensure_dotfiles_binary() {
 	fi
 
 	local archive_name="dotfiles_${DOTFILES_VERSION}_${target_plat}.tar.gz"
-	local download_url="${DOTFILES_BASE_URL}/releases/download/v${DOTFILES_VERSION}/${archive_name}"
+	local release_url="${DOTFILES_BASE_URL}/releases/download/v${DOTFILES_VERSION}"
+	local download_url="${release_url}/${archive_name}"
 
 	log "Downloading temporary bootstrap binary from ${download_url}"
 	command -v curl >/dev/null 2>&1 || fail "curl is required to download dotfiles release archive"
 	command -v tar >/dev/null 2>&1 || fail "tar is required to extract dotfiles release archive"
 
 	local temp_tar="${TEMP_DIR}/${archive_name}"
+	local temp_checksums="${TEMP_DIR}/checksums.txt"
 
-	curl -fsSL "${download_url}" -o "${temp_tar}"
+	curl -fsSL "${download_url}" -o "${temp_tar}" || fail "Failed to download release archive from ${download_url}"
+	log "Downloading release checksums from ${release_url}/checksums.txt"
+	curl -fsSL "${release_url}/checksums.txt" -o "${temp_checksums}" || fail "Failed to download checksums.txt from ${release_url}; refusing to extract the archive"
+	verify_release_archive "${temp_tar}" "${archive_name}" "${temp_checksums}"
 	tar -xzf "${temp_tar}" -C "${TEMP_DIR}" dotfiles
 	chmod +x "${temp_bin}"
 

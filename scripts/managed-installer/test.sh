@@ -33,6 +33,7 @@ Options:
   --rebuild-dist  Rebuild .dist before running scenarios
 
 Scenarios:
+	 download-checksums
 	 fresh-empty
 	 existing-package-only
 	 existing-config-only
@@ -42,6 +43,7 @@ EOF
 
 list_scenarios() {
 	printf '%s\n' \
+		download-checksums \
 		fresh-empty \
 		existing-package-only \
 		existing-config-only \
@@ -181,14 +183,22 @@ assert_scenario() {
 	esac
 }
 
-run_scenario() {
+run_scenario() (
 	local scenario="$1"
+	if [[ "${scenario}" = "download-checksums" ]]; then
+		(cd "${REPO_ROOT}" && just _test go go test ./scripts/managed-installer -count=1)
+		return
+	fi
 
 	mkdir -p "${REPO_ROOT}/.tmp"
 	local temp_root
 	temp_root="$(mktemp -d "${REPO_ROOT}/.tmp/bootstrap-install-test.${scenario}.XXXXXX")"
 	local work_dir="${temp_root}/workspace"
 	local output_log="${temp_root}/install.log"
+	trap 'if [[ "${KEEP_WORKDIRS}" != "1" ]]; then rm -rf "${temp_root}"; fi' EXIT
+	trap 'exit 130' INT
+	trap 'exit 143' TERM
+	trap 'exit 129' HUP
 	local bun_binary
 	bun_binary="$(command -v bun)"
 
@@ -209,10 +219,8 @@ run_scenario() {
 
 	if [[ "${KEEP_WORKDIRS}" = "1" ]]; then
 		log "Kept workdir: ${work_dir}"
-	else
-		rm -rf "${temp_root}"
 	fi
-}
+)
 
 main() {
 	if [[ $# -eq 0 ]]; then
@@ -234,7 +242,7 @@ main() {
 			list_scenarios
 			return 0
 			;;
-		all | fresh-empty | existing-package-only | existing-config-only | existing-project-full)
+		all | download-checksums | fresh-empty | existing-package-only | existing-config-only | existing-project-full)
 			if [[ -n "${scenario}" ]]; then
 				fail "Only one scenario argument is allowed"
 			fi
@@ -252,7 +260,7 @@ main() {
 	done
 
 	[[ -n "${scenario}" ]] || fail "Missing scenario argument"
-	if [[ "${scenario}" != "missing-unzip" ]]; then
+	if [[ "${scenario}" != "download-checksums" ]]; then
 		command -v bun >/dev/null 2>&1 || fail "bun must be available on PATH to run the test harness"
 		ensure_dist
 	fi
