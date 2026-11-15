@@ -7,7 +7,8 @@ Release build and asset packaging pipeline for compiling cross-platform Go binar
 - Compile all release binaries and assets: `just compile` (or `go run scripts/build/main.go`)
 - Generate embedded assets only: `just prepare` (or `go run scripts/build/main.go --assets-only`)
 - Run TypeScript declaration type tests: `go run scripts/build/main.go --type-tests`
-- Run build package unit tests: `go test -v ./scripts/build/...`
+- Run build package unit tests with owned scratch: `just _test go go test -v ./scripts/build/...`
+- Measure all builder statements: `just _test go go test ./scripts/build -count=1 -coverprofile=.state/build.cover` (create `.state/` first); inspect with `go tool cover -func=.state/build.cover`. The minimum is 90%.
 - Run full release build test: `just test-build` (or `go test -count=1 -tags buildtest -run TestRunBuild ./scripts/build/`)
 
 ## Local conventions
@@ -27,6 +28,8 @@ Release build and asset packaging pipeline for compiling cross-platform Go binar
 ## Local gotchas
 
 - **Cached test invalidation:** `TestRunBuild` in `full_build_test.go` regenerates committed and embedded files, invalidating Go package test caches. It is protected behind `//go:build buildtest` and executed separately via `just test-build`.
+- **Isolated behavioral coverage:** Ordinary tests use owned temporary roots with copied generator sources and installed dependency links. They exercise real Bun bundling, Go type generation, tsd, cross-compilation, archive contents and checksums without modifying checkout outputs. Do not replace these checks with assertions that repeat target lists or configuration constants.
+- **Declaration test scratch:** `runTypeTests` removes its owned `.tmp/tsd-tests` staging directory on both success and failure; original declaration inputs and installed dependencies are preserved.
 - **The binary size budget is a tripwire, not a cap:** `maxBinarySizeBytes` exists to catch a sudden, accidental jump in binary size, such as a heavy dependency pulled in by mistake. When ordinary changes grow the binary past it, the remedy is to raise it, with the owner's approval (see Boundaries), rather than to shrink the binary. Set it to the largest release target's size plus roughly 10% headroom, rounded to a whole MiB, and record the measurement in the constant's comment. The check measures every release target's binary (`releaseTargets`), so it gives the same result on every build host. The archives are not measured, because each one holds a compressed copy of a binary that has already been measured.
 - **Dashboard rebuild:** Any frontend changes in `packages/dashboard/src/client/` require running `just prepare` or `just compile` so `pkg/dashboard/dist` embeds the updated bundle.
 

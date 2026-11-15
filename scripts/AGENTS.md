@@ -25,7 +25,7 @@ Repository automation, build orchestration, code generation, release management,
 - TypeScript scripts use Bun runtime (`bun <script>.ts`).
 - Go scripts are standalone packages executed with `go run ./scripts/<name>`.
 - Use `.tmp/` inside the repository root for temporary build artifacts. Go test sandboxes and shared test binaries may use the OS temporary directory under the test-only exception in the root `AGENTS.md`.
-- Scripts in `scripts/` are excluded from the 90% test coverage requirement enforced on `pkg/` and `cmd/`.
+- The release builder in `scripts/build/` must meet the root's 90% statement coverage minimum with behavioral tests. Other scripts are excluded from the coverage requirement enforced on `pkg/` and `cmd/`.
 
 ## Local gotchas
 
