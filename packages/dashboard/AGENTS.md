@@ -9,6 +9,7 @@ Dashboard Preact client and asset bundler for dotfiles state, health, and usage 
 - Dashboard dev server: `go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard`
 - Bundle client assets: `bun compile` (runs `go run scripts/build/main.go` from root)
 - End-to-end browser verification: `bun packages/dashboard/scripts/verify-dashboard.ts` (requires `agent-browser` CLI)
+- If normal browser close fails, verify the unique session name and daemon PID through `session info` before signaling that process; wait for termination and confirm the session is inactive.
 
 ## Local conventions
 
@@ -20,6 +21,10 @@ Dashboard Preact client and asset bundler for dotfiles state, health, and usage 
 - Use `useFetch` with `RequestStateNotice` for dashboard reads. Show empty/not-found only from validated successful data; label retained data as stale after a refresh failure and isolate optional panel failures. Retry through `refetch`. Validators preserve extra fields and match Go omission/nullability; new wire schemas still require approval.
 - `App` owns search visibility; `Nav.onSearch` opens the controlled `CommandPalette`. Keep native dialog focus containment and restoration, labelled combobox/listbox semantics, and keyboard shortcuts synchronized with the visible dialog.
 - `Nav` displays the CLI release version next to the '⚡ Dotfiles' title using a secondary `Badge` sourced from `/api/config`.
+- Home inventory query state uses `q`, `status`, `method`, `root`, and `sort`, preserves unrelated query fields, and passes a validated local `returnTo` through detail navigation. Source metadata failures must not erase the validated inventory or masquerade as zero matching roots.
+- Tool detail puts drift, files, and history before native `#source`/`#readme` disclosures. Section hashes reveal collapsed content and preserve query state. Drift is inspection-only: label the available current and desired content, never fabricate a recorded base, and preserve full paths with clipboard failure feedback.
+- Settings displays read-only paths from the configuration loaded at startup. Keep multiple tool roots separate and explain that configuration edits require a dashboard restart. Use `CopyButton` for full values with a manual-copy fallback.
+- Health leads with failing and warning checks, keeps passing checks in a disclosure, and reports the last completed observation time during rechecks and failures.
 
 ## Local gotchas
 

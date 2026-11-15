@@ -6,6 +6,7 @@ import { Code } from "../icons";
 import { useFetch } from "../hooks/useFetch";
 import { highlightToolSource } from "../lib/highlightToolSource";
 import { RequestStateNotice } from "./RequestStateNotice";
+import { CopyButton } from "./CopyButton";
 import { ExternalLinkButton } from "./ui/ExternalLinkButton";
 import { TitledCard } from "./ui/TitledCard";
 
@@ -65,6 +66,10 @@ export function ToolSourceCard({ toolName }: ToolSourceCardProps): JSX.Element {
       action={<ExternalLinkButton href={`vscode://file/${sourceFilePath}`}>Open in VSCode</ExternalLinkButton>}
     >
       <RequestStateNotice label="Source" loading={loading} error={error} hasData onRetry={refetch} />
+      <div class="mb-3 flex min-w-0 flex-wrap items-center gap-2 text-sm">
+        <code class="min-w-0 break-all">{sourceFilePath}</code>
+        <CopyButton key={sourceFilePath} text={sourceFilePath} label="Copy source path" />
+      </div>
       {highlightedHtml ? (
         <div
           data-testid="ToolSourceCard--highlighted"

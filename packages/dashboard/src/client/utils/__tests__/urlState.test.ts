@@ -45,6 +45,13 @@ describe("urlState", () => {
     expect(readHash()).toBe("section-1");
   });
 
+  test("malformed deep links do not crash the page and can be replaced by navigation", () => {
+    window.location.href = "http://localhost/tools/example?returnTo=%2F#%E0%A4%A";
+    expect(readHash()).toBe("%E0%A4%A");
+    writeHash("drift");
+    expect(window.location.href).toBe("http://localhost/tools/example?returnTo=%2F#drift");
+  });
+
   test("handles null url gracefully", () => {
     Object.defineProperty(window, "location", {
       get: () => {

@@ -1,6 +1,6 @@
 import { type JSX } from "preact";
 import { useMemo } from "preact/hooks";
-import { File, History, Info, Zap } from "../icons";
+import { File, History, Zap } from "../icons";
 
 import type { ISerializableToolConfig, IToolDetail, IToolHistory } from "../../shared/types";
 import { InstallMethodBadge } from "../components/InstallMethodBadge";
@@ -19,6 +19,7 @@ import { useRepeatedQueryParam } from "../hooks/useRepeatedQueryParam";
 import { useSectionHash } from "../hooks/useSectionHash";
 import { useToolActions } from "../hooks/useToolActions";
 import { formatBytes } from "../utils/format";
+import { inventoryReturnTo } from "../utils/inventoryReturnTo";
 import { buildTreeForTool } from "../utils/tree";
 import {
   buildBinaryToToolMap,
@@ -33,8 +34,8 @@ function getSourceDisplay(config: ISerializableToolConfig): JSX.Element | null {
   if (!sourceInfo) return null;
 
   return (
-    <div class="flex min-w-0 flex-wrap items-center gap-2">
-      <span class="w-24 shrink-0 text-sm text-muted-foreground">Source</span>
+    <div class="flex min-w-0 flex-col gap-1">
+      <span class="text-sm text-muted-foreground">Source</span>
       {sourceInfo.url ? (
         <a
           href={sourceInfo.url}
@@ -59,6 +60,8 @@ type ToolDetailProps = {
 
 export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   const toolName = params.name;
+  const returnTo = inventoryReturnTo(window.location.search);
+  const sectionPath = `${window.location.pathname}${window.location.search}`;
   const {
     data: tools,
     loading: toolsLoading,
@@ -86,25 +89,27 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
     [tools, currentToolBinaries],
   );
   const readmeRepo = tool ? getReadmeRepo(tool.config) : null;
+  const hasTool = tool !== null;
+  const installed = tool?.runtime.status === "installed";
+  const hasDrift = (tool?.drift?.length ?? 0) > 0;
+  const changedArtifacts = tool?.drift?.filter((item) => item.state !== "in-sync").length ?? 0;
   const sectionIds = useMemo(() => {
-    if (!tool) {
-      return [];
-    }
-
-    const ids = ["overview", "source"];
-
-    if (tool.runtime.status === "installed") {
-      ids.push("files", "history");
-    }
-
-    if (readmeRepo) {
-      ids.push("readme");
-    }
-
+    if (!tool) return [];
+    const ids = ["overview"];
+    if (hasDrift) ids.push("drift");
+    if (installed) ids.push("files", "history");
+    ids.push("source");
+    if (readmeRepo) ids.push("readme");
     return ids;
-  }, [readmeRepo, tool]);
+  }, [tool, hasDrift, installed, readmeRepo]);
 
-  useSectionHash(sectionIds, tool !== null);
+  const { activeSection, revealSection } = useSectionHash(sectionIds, hasTool);
+
+  function followSection(event: JSX.TargetedMouseEvent<HTMLAnchorElement>, id: string): void {
+    if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      revealSection(id);
+    }
+  }
 
   if (!tool && (tools === null || toolsLoading || toolsError)) {
     return (
@@ -125,7 +130,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
       <div data-testid="ToolDetail" class="text-center py-8">
         <div class="text-muted-foreground mb-4">Tool not found</div>
         <Button variant="link" asChild>
-          <a href="/">← Back to Home</a>
+          <a href={returnTo}>← Back to results</a>
         </Button>
       </div>
     );
@@ -136,7 +141,13 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   return (
     <div data-testid="ToolDetail" class="space-y-4">
       <RequestStateNotice label="Tools" loading={toolsLoading} error={toolsError} hasData onRetry={refetchTools} />
-      <section id="overview" class="space-y-4">
+      <a
+        href={returnTo}
+        class="inline-flex min-h-11 items-center rounded text-sm text-primary underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6"
+      >
+        ← Back to results
+      </a>
+      <section id="overview" class="scroll-mt-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="flex min-w-0 flex-wrap items-center gap-3">
             <h1 class="min-w-0 break-words [overflow-wrap:anywhere] text-2xl font-bold">{tool.config.name}</h1>
@@ -150,85 +161,114 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
           />
         </div>
 
-        <div class={`grid gap-4 ${tool.usage.totalCount > 0 ? "lg:grid-cols-2" : ""}`}>
-          <TitledCard title="Overview" icon={<Info class="h-4 w-4" />}>
-            <div class="space-y-3">
-              <div class="flex min-w-0 flex-wrap items-center gap-2">
-                <span class="w-24 shrink-0 text-sm text-muted-foreground">Method</span>
-                <InstallMethodBadge method={tool.config.installationMethod} ghCli={tool.config.installParams?.ghCli} />
-              </div>
-              {getSourceDisplay(tool.config)}
-              <div class="flex min-w-0 flex-wrap items-center gap-2">
-                <span class="w-24 shrink-0 text-sm text-muted-foreground">Version</span>
-                <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
-                  {tool.runtime.installedVersion || tool.config.version || "Unknown"}
-                </span>
-              </div>
-              <div class="flex min-w-0 flex-wrap items-center gap-2">
-                <span class="w-24 shrink-0 text-sm text-muted-foreground">Installed</span>
-                <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
-                  {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : "Not installed"}
-                </span>
-              </div>
-              {tool.binaryDiskSize > 0 && (
-                <div class="flex min-w-0 flex-wrap items-center gap-2">
-                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Binary Size</span>
-                  <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
-                    {formatBytes(tool.binaryDiskSize)}
-                  </span>
-                </div>
-              )}
-              {tool.config.hostname && (
-                <div class="flex min-w-0 flex-wrap items-center gap-2">
-                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Hostname</span>
-                  <code class="min-w-0 break-all text-sm font-mono bg-muted px-1.5 py-0.5 rounded">
-                    {tool.config.hostname}
-                  </code>
-                </div>
-              )}
-              {tool.config.dependencies && tool.config.dependencies.length > 0 && (
-                <div class="flex items-start gap-2">
-                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Depends on</span>
-                  <div class="flex min-w-0 flex-wrap gap-2 [overflow-wrap:anywhere]">
-                    {tool.config.dependencies.map((binaryName, i) => {
-                      const linkedToolName = binaryToToolMap.get(binaryName);
-                      return (
-                        <a
-                          key={i}
-                          href={`/tools/${encodeURIComponent(linkedToolName ?? binaryName)}`}
-                          class="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2"
-                        >
-                          {linkedToolName ?? binaryName}
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {dependentTools.length > 0 && (
-                <div class="flex items-start gap-2">
-                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Required by</span>
-                  <div class="flex min-w-0 flex-wrap gap-2 [overflow-wrap:anywhere]">
-                    {dependentTools.map((depTool, i) => (
-                      <a
-                        key={i}
-                        href={`/tools/${encodeURIComponent(depTool.config.name)}`}
-                        class="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2"
-                      >
-                        {depTool.config.name}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
+        <nav aria-label="Tool sections" class="flex flex-wrap gap-x-2 gap-y-1 border-y py-2">
+          {sectionIds.map((id) => (
+            <a
+              key={id}
+              href={`${sectionPath}#${id}`}
+              onClick={(event) => followSection(event, id)}
+              aria-current={activeSection === id ? "location" : undefined}
+              class="inline-flex min-h-11 items-center rounded px-2 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring aria-[current=location]:bg-accent sm:min-h-8"
+            >
+              {id === "readme" ? "README" : id.charAt(0).toUpperCase() + id.slice(1)}
+            </a>
+          ))}
+        </nav>
+        {changedArtifacts > 0 && (
+          <a
+            href={`${sectionPath}#drift`}
+            onClick={(event) => followSection(event, "drift")}
+            class="inline-flex min-h-11 items-center rounded text-sm font-medium text-primary underline underline-offset-2 sm:min-h-6"
+          >
+            Review {changedArtifacts} changed declaration(s)
+          </a>
+        )}
+        <h2 class="sr-only">Overview</h2>
+        <div class="grid min-w-0 gap-3 rounded-lg border bg-card p-3 grid-cols-2 lg:grid-cols-3">
+          <div class="flex min-w-0 flex-col gap-1">
+            <span class="text-sm text-muted-foreground">Method</span>
+            <InstallMethodBadge method={tool.config.installationMethod} ghCli={tool.config.installParams?.ghCli} />
+          </div>
+          {getSourceDisplay(tool.config)}
+          <div class="flex min-w-0 flex-col gap-1">
+            <span class="text-sm text-muted-foreground">Installed version</span>
+            <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
+              {tool.runtime.installedVersion ?? "Not installed"}
+            </span>
+          </div>
+          <div class="flex min-w-0 flex-col gap-1">
+            <span class="text-sm text-muted-foreground">Configured version</span>
+            <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
+              {tool.config.version ?? "Not specified"}
+            </span>
+          </div>
+          <div class="flex min-w-0 flex-col gap-1">
+            <span class="text-sm text-muted-foreground">Installed</span>
+            <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
+              {tool.runtime.installedAt ? new Date(tool.runtime.installedAt).toLocaleDateString() : "Not installed"}
+            </span>
+          </div>
+          {tool.binaryDiskSize > 0 && (
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-sm text-muted-foreground">Binary Size</span>
+              <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
+                {formatBytes(tool.binaryDiskSize)}
+              </span>
             </div>
-          </TitledCard>
-
-          {tool.usage.totalCount > 0 && (
+          )}
+          {tool.config.hostname && (
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-sm text-muted-foreground">Hostname</span>
+              <code class="min-w-0 break-all text-sm font-mono bg-muted px-1.5 py-0.5 rounded">
+                {tool.config.hostname}
+              </code>
+            </div>
+          )}
+          {tool.config.dependencies && tool.config.dependencies.length > 0 && (
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-sm text-muted-foreground">Depends on</span>
+              <div class="flex min-w-0 flex-wrap gap-2 [overflow-wrap:anywhere]">
+                {tool.config.dependencies.map((binaryName, i) => {
+                  const linkedToolName = binaryToToolMap.get(binaryName);
+                  return (
+                    <a
+                      key={i}
+                      href={`/tools/${encodeURIComponent(linkedToolName ?? binaryName)}${returnTo === "/" ? "" : `?returnTo=${encodeURIComponent(returnTo)}`}`}
+                      class="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2"
+                    >
+                      {linkedToolName ?? binaryName}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {dependentTools.length > 0 && (
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-sm text-muted-foreground">Required by</span>
+              <div class="flex min-w-0 flex-wrap gap-2 [overflow-wrap:anywhere]">
+                {dependentTools.map((depTool, i) => (
+                  <a
+                    key={i}
+                    href={`/tools/${encodeURIComponent(depTool.config.name)}${returnTo === "/" ? "" : `?returnTo=${encodeURIComponent(returnTo)}`}`}
+                    class="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2"
+                  >
+                    {depTool.config.name}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        {tool.usage.totalCount > 0 && (
+          <details>
+            <summary class="min-h-11 cursor-pointer content-center rounded py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6">
+              Usage · {tool.usage.totalCount.toLocaleString()} runs
+            </summary>
             <TitledCard title="Usage" icon={<Zap class="h-4 w-4" />}>
               <div class="space-y-3">
-                <div class="flex min-w-0 flex-wrap items-center gap-2">
-                  <span class="w-24 shrink-0 text-sm text-muted-foreground">Total Runs</span>
+                <div class="flex min-w-0 flex-col gap-1">
+                  <span class="text-sm text-muted-foreground">Total Runs</span>
                   <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
                     {tool.usage.totalCount.toLocaleString()}
                   </span>
@@ -250,12 +290,8 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
                 </div>
               </div>
             </TitledCard>
-          )}
-        </div>
-      </section>
-
-      <section id="source">
-        <ToolSourceCard toolName={tool.config.name} />
+          </details>
+        )}
       </section>
 
       {(tool.drift?.length || 0) > 0 && (
@@ -313,10 +349,20 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
         </section>
       )}
 
+      <details key={`${toolName}:source`} id="source" class="scroll-mt-4 rounded-lg border bg-card">
+        <summary class="min-h-11 cursor-pointer rounded p-3 font-semibold focus-visible:outline-2 focus-visible:outline-ring">
+          Source
+        </summary>
+        <ToolSourceCard toolName={tool.config.name} />
+      </details>
+
       {readmeRepo && (
-        <section id="readme">
+        <details key={`${toolName}:readme`} id="readme" class="scroll-mt-4 rounded-lg border bg-card">
+          <summary class="min-h-11 cursor-pointer rounded p-3 font-semibold focus-visible:outline-2 focus-visible:outline-ring">
+            README
+          </summary>
           <ReadmeCard toolName={tool.config.name} repo={readmeRepo} />
-        </section>
+        </details>
       )}
     </div>
   );

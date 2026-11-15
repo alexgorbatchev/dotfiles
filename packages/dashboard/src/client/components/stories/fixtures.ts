@@ -1,3 +1,4 @@
+import type { IDriftItem } from "../../../shared/types";
 import type { IToolActionOutcome, IToolActionResult, IUseToolActions } from "../../hooks/useToolActions";
 
 export const fixture_idleActions: IUseToolActions = {
@@ -43,3 +44,47 @@ export const fixture_pendingActions: IUseToolActions = {
   ...fixture_idleActions,
   pending: { toolName: "bat", kind: "install", force: false, startedAt: Date.now() },
 };
+
+export const fixture_driftItems: IDriftItem[] = [
+  {
+    toolName: "shell",
+    filePath: "/home/person/.config/shell/new.conf",
+    type: "template",
+    state: "new",
+    desiredContent: "enabled=true",
+  },
+  { toolName: "shell", filePath: "/home/person/.zshrc", blockId: "shell-init", type: "block", state: "in-sync" },
+  {
+    toolName: "shell",
+    filePath: "/home/person/.config/shell/existing.conf",
+    type: "copy",
+    state: "unmanaged",
+    currentContent: "custom=true",
+  },
+  { toolName: "shell", filePath: "/home/person/.config/shell/missing.conf", type: "symlink", state: "missing" },
+  {
+    toolName: "shell",
+    filePath: "/home/person/.config/shell/updated.conf",
+    type: "template",
+    state: "upstream-update",
+    currentContent: "enabled=false",
+    desiredContent: "enabled=true",
+  },
+  {
+    toolName: "shell",
+    filePath: "/home/person/.config/shell/local.conf",
+    type: "copy",
+    state: "local-drift",
+    currentContent: "custom=true",
+    desiredContent: "custom=false",
+  },
+  {
+    toolName: "shell",
+    filePath: "/home/person/.config/a-directory-with-a-long-name/shell/conflicting-configuration.conf",
+    type: "template",
+    state: "conflict",
+    currentContent: "editor=local",
+    desiredContent: "editor=repository",
+    diff: "--- current\n+++ desired\n-editor=local\n+editor=repository",
+  },
+];

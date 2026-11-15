@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/preact";
 
 import type { IToolDetail } from "../../../shared/types";
+import { useInventoryQuery } from "../../hooks/useInventoryQuery";
 import type { IUseToolActions } from "../../hooks/useToolActions";
 import { ToolsTreeView } from "../ToolsTreeView";
 
@@ -48,7 +49,10 @@ const tools: IToolDetail[] = [
 ];
 
 const Default: Story = {
-  render: () => <ToolsTreeView tools={tools} actions={noopActions} />,
+  render: () => {
+    const inventory = useInventoryQuery();
+    return <ToolsTreeView tools={tools} actions={noopActions} inventory={inventory} />;
+  },
 };
 
 export default meta;

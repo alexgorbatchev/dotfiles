@@ -1,5 +1,5 @@
 // UI test setup - registers DOM and exports testing utilities
-import { act, fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
+import { act, fireEvent, render, screen, setupUITests, waitFor } from "../../testing/ui-setup";
 
 import assert from "node:assert";
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
@@ -188,6 +188,7 @@ const originalLocation = window.location.href;
 afterEach(() => {
   globalThis.fetch = originalFetch;
   window.location.href = originalLocation;
+  document.querySelector("base[data-tool-detail-test]")?.remove();
 });
 
 type FetchInput = Parameters<typeof fetch>[0];
@@ -357,4 +358,149 @@ test("keeps populated details and dependency navigation after an inventory refre
   expect(screen.getByText("12 runs")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "runtime/tool" })).toBeInTheDocument();
   expect(screen.queryByText("Tool not found")).toBeNull();
+});
+
+describe("ToolDetail task layout", () => {
+  test("prioritizes drift, files and history, with labelled versions and collapsed references", async () => {
+    const tool: IToolDetail = {
+      ...fixture_tool,
+      config: {
+        ...fixture_tool.config,
+        version: "latest",
+        installationMethod: "github-release",
+        installParams: { repo: "owner/example" },
+      },
+      drift: [
+        {
+          toolName: "example",
+          filePath: "/home/test/config",
+          type: "template",
+          state: "conflict",
+          currentContent: "local",
+          desiredContent: "declared",
+        },
+      ],
+      files: [{ toolName: "example", filePath: "/home/test/config/example.conf", fileType: "config" }],
+    };
+    const returnTo = "/?q=example&status=installed&method=github-release&root=%2Ftools&sort=name";
+    window.location.href = `http://localhost/tools/example?returnTo=${encodeURIComponent(returnTo)}`;
+    const base = document.createElement("base");
+    base.href = "/";
+    base.setAttribute("data-tool-detail-test", "");
+    document.head.append(base);
+    const detailURL = window.location.href;
+    respondTo({
+      "/api/tools": async () => response([tool]),
+      "/api/tools/example/history": async () => response(fixture_emptyHistory),
+      "/api/tools/example/source": async () =>
+        response({ content: "const example = true;", filePath: "/tools/example.tool.ts" }),
+      "/api/tools/example/readme": async () => response({ content: "Reference text\n".repeat(500) }),
+    });
+    const { container } = render(
+      <ToolActionsProvider>
+        <ToolDetail params={{ name: "example" }} />
+      </ToolActionsProvider>,
+    );
+    await screen.findByRole("heading", { name: "example" });
+    expect(screen.getByRole("link", { name: "← Back to results" })).toHaveAttribute("href", returnTo);
+    expect(
+      Array.from(container.querySelectorAll("[id]"))
+        .map((node) => node.id)
+        .filter((id) => ["overview", "drift", "files", "history", "source", "readme"].includes(id)),
+    ).toEqual(["overview", "drift", "files", "history", "source", "readme"]);
+    expect(screen.getByText("Installed version").parentElement?.textContent).toBe("Installed version1");
+    expect(screen.getByText("Configured version").parentElement?.textContent).toBe("Configured versionlatest");
+    expect(
+      new URL(
+        screen.getByRole("link", { name: "Review 1 changed declaration(s)" }).getAttribute("href") ?? "",
+        base.href,
+      ).href,
+    ).toBe(`${detailURL}#drift`);
+    for (const link of screen.getByRole("navigation", { name: "Tool sections" }).querySelectorAll("a")) {
+      expect(new URL(link.getAttribute("href") ?? "", base.href).href).toBe(
+        `${detailURL}#${link.textContent?.toLowerCase()}`,
+      );
+    }
+    expect(container.querySelector("#source")?.hasAttribute("open")).toBe(false);
+    expect(container.querySelector("#readme")?.hasAttribute("open")).toBe(false);
+    expect(screen.getByRole("navigation", { name: "Tool sections" }).querySelectorAll("a").length).toBe(6);
+    fireEvent.click(screen.getByRole("link", { name: "Source", exact: true }), { ctrlKey: true });
+    expect(container.querySelector("#source")?.hasAttribute("open")).toBe(false);
+    fireEvent.click(screen.getByRole("link", { name: "Source", exact: true }));
+    expect(container.querySelector("#source")?.hasAttribute("open")).toBe(true);
+    expect(await screen.findByRole("button", { name: "Copy source path" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "README", exact: true }));
+    expect(container.querySelector("#readme")?.hasAttribute("open")).toBe(true);
+    fireEvent.click(screen.getByRole("link", { name: "Review 1 changed declaration(s)" }));
+    expect(screen.getByRole("link", { name: "Drift", exact: true })).toHaveAttribute("aria-current", "location");
+    const folder = screen.getByRole("button", { name: "config", exact: true });
+    fireEvent.click(folder);
+    expect(folder).toHaveAttribute("aria-expanded", "false");
+    expect(new URL(window.location.href).searchParams.get("returnTo")).toBe(returnTo);
+    fireEvent.click(folder);
+    expect(folder).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("restores a README deep link and follows back/forward hash events", async () => {
+    const tool: IToolDetail = {
+      ...fixture_tool,
+      config: {
+        ...fixture_tool.config,
+        installationMethod: "github-release",
+        installParams: { repo: "owner/example" },
+      },
+    };
+    window.location.href = "http://localhost/tools/example?returnTo=%2F%3Fq%3Dbat#readme";
+    respondTo({
+      "/api/tools": async () => response([tool]),
+      "/api/tools/example/history": async () => response(fixture_emptyHistory),
+      "/api/tools/example/source": async () => response({ content: "", filePath: "" }),
+      "/api/tools/example/readme": async () => response({ content: "README" }),
+    });
+    render(
+      <ToolActionsProvider>
+        <ToolDetail params={{ name: "example" }} />
+      </ToolActionsProvider>,
+    );
+    await waitFor(() => expect(document.getElementById("readme")?.hasAttribute("open")).toBe(true));
+    expect(screen.getByRole("link", { name: "README", exact: true })).toHaveAttribute("aria-current", "location");
+    window.location.hash = "#history";
+    act(() => {
+      window.dispatchEvent(new Event("popstate"));
+    });
+    expect(screen.getByRole("link", { name: "History", exact: true })).toHaveAttribute("aria-current", "location");
+    window.location.hash = "#source";
+    act(() => {
+      window.dispatchEvent(new Event("hashchange"));
+    });
+    expect(document.getElementById("source")?.hasAttribute("open")).toBe(true);
+    expect(screen.getByRole("link", { name: "← Back to results" })).toHaveAttribute("href", "/?q=bat");
+  });
+
+  test("uninstalled tools expose only available sections and reject an external return target", async () => {
+    const tool: IToolDetail = {
+      ...fixture_tool,
+      runtime: { ...fixture_tool.runtime, status: "not-installed", installedVersion: null, installedAt: null },
+    };
+    window.location.href = "http://localhost/tools/example?returnTo=https%3A%2F%2Fevil.example";
+    respondTo({
+      "/api/tools": async () => response([tool]),
+      "/api/tools/example/history": async () => response(fixture_emptyHistory),
+      "/api/tools/example/source": async () => response({ content: "", filePath: "" }),
+    });
+    render(
+      <ToolActionsProvider>
+        <ToolDetail params={{ name: "example" }} />
+      </ToolActionsProvider>,
+    );
+    await screen.findByRole("heading", { name: "example" });
+    expect(screen.getByRole("link", { name: "← Back to results" })).toHaveAttribute("href", "/");
+    expect(screen.getByText("Installed version").parentElement?.textContent).toBe("Installed versionNot installed");
+    expect(
+      Array.from(screen.getByRole("navigation", { name: "Tool sections" }).querySelectorAll("a")).map(
+        (a) => a.textContent,
+      ),
+    ).toEqual(["Overview", "Source"]);
+    expect(screen.queryByText("No files tracked")).toBeNull();
+  });
 });

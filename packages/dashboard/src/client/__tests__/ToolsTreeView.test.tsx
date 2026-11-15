@@ -1,391 +1,229 @@
-// UI test setup - registers DOM and exports testing utilities
-import { fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
+import { act, fireEvent, render, screen, setupUITests } from "../../testing/ui-setup";
 
-import assert from "node:assert";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import type { JSX } from "preact";
+import type { IToolConfigsTree, IToolDetail } from "../../shared/types";
+import type { IUseToolActions } from "../hooks/useToolActions";
+import { useInventoryQuery } from "../hooks/useInventoryQuery";
+import { ToolsTreeView } from "../components/ToolsTreeView";
+import { fixture_idleActions, fixture_tool } from "./fixtures";
 
 setupUITests();
-
-import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
-import type { IUseToolActions } from "../hooks/useToolActions";
-import { ToolsTreeView } from "../components/ToolsTreeView";
-
-const installedVersionByStatus: Record<ToolRuntimeStatus, string | null> = {
-  installed: "1.0.0",
-  "not-installed": null,
-  error: null,
-};
-
-const installedAtByStatus: Record<ToolRuntimeStatus, string | null> = {
-  installed: "2024-01-01",
-  "not-installed": null,
-  error: null,
-};
-
-const installPathByStatus: Record<ToolRuntimeStatus, string | null> = {
-  installed: "/path/to/tool",
-  "not-installed": null,
-  error: null,
-};
-
-function createTool(name: string, status: ToolRuntimeStatus = "installed"): IToolDetail {
-  return {
-    config: {
-      name,
-      version: "1.0.0",
-      installationMethod: "github-release",
-      installParams: {},
-    },
-    runtime: {
-      status,
-      installedVersion: installedVersionByStatus[status],
-      installedAt: installedAtByStatus[status],
-      installPath: installPathByStatus[status],
-      binaryPaths: [],
-    },
-    files: [],
-    binaryDiskSize: 0,
-    usage: {
-      totalCount: 0,
-      binaries: [],
-    },
-  };
-}
-
-function createTreeResponse(entries: IFileTreeEntry[]): IToolConfigsTree {
-  return {
-    roots: [{ label: "~/tools", path: "/home/user/tools", entries }],
-  };
-}
-
-// The server omits roots that contain no tool files, so an empty tree carries no roots at all.
-const EMPTY_TREE_RESPONSE: IToolConfigsTree = { roots: [] };
-
-const noopActions: IUseToolActions = {
-  pending: null,
-  results: [],
-  dismissResult: () => {},
-  retryResult: async () => {},
-  installTool: async () => {},
-  updateTool: async () => {},
-  checkTool: async () => {},
-};
-
-function renderTree(tools: IToolDetail[]): ReturnType<typeof render> {
-  return render(<ToolsTreeView tools={tools} actions={noopActions} />);
-}
-
 const originalFetch = globalThis.fetch;
+const originalLocation = window.location;
+const originalReplace = window.history.replaceState;
+let location = new URL("http://localhost/");
 
-function mockFetchWith(treeData: IToolConfigsTree | null): void {
-  const mockFn = mock(async () => {
-    return new Response(JSON.stringify({ success: true, data: treeData }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  });
-  globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
+const tools: IToolDetail[] = [
+  { ...fixture_tool, config: { ...fixture_tool.config, name: "zeta", installationMethod: "cargo", binaries: ["za"] } },
+  {
+    ...fixture_tool,
+    config: { name: "alpha shell/100%", installationMethod: "cargo", binaries: [{ name: "shell-helper" }] },
+    runtime: { ...fixture_tool.runtime, status: "not-installed", installedVersion: null, binaryPaths: null },
+  },
+  {
+    ...fixture_tool,
+    config: { name: "broken" },
+    runtime: { ...fixture_tool.runtime, status: "error", installedVersion: null, binaryPaths: null },
+  },
+];
+const tree: IToolConfigsTree = {
+  roots: [
+    {
+      label: "~/tools",
+      path: "/home/test/tools",
+      entries: [
+        {
+          name: "dev",
+          path: "/home/test/tools/dev",
+          type: "directory",
+          children: [
+            {
+              name: "shell.tool.ts",
+              path: "/home/test/tools/dev/shell.tool.ts",
+              type: "file",
+              toolName: "alpha shell/100%",
+            },
+          ],
+        },
+        { name: "broken.tool.ts", path: "/home/test/tools/broken.tool.ts", type: "file", toolName: "broken" },
+      ],
+    },
+    {
+      label: "~/work/tools",
+      path: "/home/test/work/tools",
+      entries: [{ name: "zeta.tool.ts", path: "/home/test/work/tools/zeta.tool.ts", type: "file", toolName: "zeta" }],
+    },
+  ],
+};
+
+type InventoryHarnessProps = { records?: IToolDetail[]; actions?: IUseToolActions };
+
+function InventoryHarness({ records = tools, actions = fixture_idleActions }: InventoryHarnessProps): JSX.Element {
+  const inventory = useInventoryQuery();
+  return <ToolsTreeView tools={records} actions={actions} inventory={inventory} />;
 }
 
-describe("ToolsTreeView", () => {
-  beforeEach(() => {
-    globalThis.fetch = originalFetch;
+function mockTree(data: unknown): void {
+  globalThis.fetch = Object.assign(
+    mock(async () => new Response(JSON.stringify({ success: true, data }))),
+    { preconnect: () => {} },
+  ) as typeof fetch;
+}
+
+beforeEach(() => {
+  location = new URL("http://localhost/");
+  Object.defineProperty(window, "location", { value: location, writable: true });
+  window.history.replaceState = (_data, _unused, url) => {
+    location.href = new URL(String(url), location).href;
+  };
+  mockTree(tree);
+});
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  Object.defineProperty(window, "location", { value: originalLocation, writable: true });
+  window.history.replaceState = originalReplace;
+});
+
+describe("Tool inventory", () => {
+  test("shows every configured tool while sources load, then names, textual state and readable source metadata", async () => {
+    render(<InventoryHarness />);
+    expect(screen.getByRole("link", { name: "View alpha shell/100%" })).toBeInTheDocument();
+    expect(screen.getByText("Loading tool sources…")).toBeInTheDocument();
+    expect(await screen.findByText("dev/shell.tool.ts")).toBeInTheDocument();
+    const sourceSummary = screen.getByText("dev/shell.tool.ts").closest("summary");
+    expect(sourceSummary).toHaveTextContent("~/tools / dev/shell.tool.ts");
+    const sourceDetails = sourceSummary?.closest("details");
+    expect(sourceDetails).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByText("dev/shell.tool.ts"));
+    expect(sourceDetails).toHaveAttribute("open");
+    expect(screen.getByText("/home/test/tools/dev/shell.tool.ts")).toBeVisible();
+    expect(screen.getByRole("option", { name: "~/work/tools" })).toBeInTheDocument();
+    expect(screen.getByText("Version 1")).toBeInTheDocument();
+    expect(screen.getByText("Binaries: shell-helper")).toBeInTheDocument();
+    expect(screen.getAllByText("Installation error").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not installed").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Method not declared").length).toBeGreaterThan(0);
+    expect(screen.getByText("3 of 3 tools")).toBeInTheDocument();
   });
 
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-  });
-
-  test("renders loading state initially", () => {
-    const mockFn = mock(async () => new Promise<Response>(() => {}));
-    globalThis.fetch = Object.assign(mockFn, { preconnect: () => {} }) as typeof fetch;
-    renderTree([]);
-
-    expect(screen.getByText("Loading tool files…")).toBeInTheDocument();
-  });
-
-  test("renders empty state when no entries", async () => {
-    mockFetchWith(EMPTY_TREE_RESPONSE);
-    renderTree([]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("No tool files found")).toBeInTheDocument();
-  });
-
-  test("titles the card with the contracted root path", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
-      ]),
+  test("composes binary search, installation, method and root filters and restores the full inventory", async () => {
+    render(<InventoryHarness />);
+    await screen.findByText("dev/shell.tool.ts");
+    fireEvent.input(screen.getByRole("searchbox", { name: "Search tools" }), { target: { value: "HELPER" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Installation" }), { target: { value: "not-installed" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Method" }), { target: { value: "cargo" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Config root" }), { target: { value: "/home/test/tools" } });
+    expect(screen.getByText("1 of 3 tools")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "View zeta" })).toBeNull();
+    const href = screen.getByRole("link", { name: "View alpha shell/100%" }).getAttribute("href");
+    expect(href).toBe(
+      `/tools/alpha%20shell%2F100%25?returnTo=${encodeURIComponent("/?q=HELPER&status=not-installed&method=cargo&root=%2Fhome%2Ftest%2Ftools")}`,
     );
-    renderTree([createTool("fzf")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("~/tools")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "Installation" }), { target: { value: "installed" } });
+    expect(screen.getByText("0 of 3 tools")).toBeInTheDocument();
+    expect(screen.getByText("No tools match these filters. Try another search or reset filters.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    expect(screen.getByText("3 of 3 tools")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+    expect(location.search).toBe("");
+    expect(screen.queryByRole("button", { name: "Reset filters" })).toBeNull();
   });
 
-  test("renders one card per configured tool-configs root", async () => {
-    mockFetchWith({
-      roots: [
-        {
-          label: "~/tools",
-          path: "/home/user/tools",
-          entries: [{ name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" }],
-        },
-        {
-          label: "~/extra-tools",
-          path: "/home/user/extra-tools",
-          entries: [{ name: "jq.tool.ts", path: "/home/user/extra-tools/jq.tool.ts", type: "file", toolName: "jq" }],
-        },
-      ],
+  test("sorts names and responds to browser history without resetting unrelated URL state", async () => {
+    location.href = "http://localhost/?keep=yes&sort=name-desc#tool-files";
+    render(<InventoryHarness />);
+    await screen.findByText("dev/shell.tool.ts");
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["zeta", "broken", "alpha shell/100%"]);
+    fireEvent.change(screen.getByRole("combobox", { name: "Sort" }), { target: { value: "method" } });
+    expect(location.search).toBe("?keep=yes&sort=method");
+    expect(location.hash).toBe("#tool-files");
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["broken", "alpha shell/100%", "zeta"]);
+    act(() => {
+      location.href = "http://localhost/?status=error&sort=status";
+      window.dispatchEvent(new Event("popstate"));
     });
-    renderTree([createTool("fzf"), createTool("jq")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("~/tools")).toBeInTheDocument();
-    expect(screen.getByText("~/extra-tools")).toBeInTheDocument();
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-    expect(screen.getByText("jq")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Installation" })).toHaveValue("error");
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["broken"]);
   });
 
-  test("renders tool file in tree", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
-      ]),
-    );
-    renderTree([createTool("fzf")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-    expect(screen.getByText(".tool.ts")).toBeInTheDocument();
-  });
-
-  test("sorts tools alphabetically by tool name ignoring subfolders", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "z-tool.tool.ts", path: "/home/user/tools/z-tool.tool.ts", type: "file", toolName: "z-tool" },
-        {
-          name: "dev",
-          path: "/home/user/tools/dev",
-          type: "directory",
-          children: [
-            {
-              name: "a-tool.tool.ts",
-              path: "/home/user/tools/dev/a-tool.tool.ts",
-              type: "file",
-              toolName: "a-tool",
-            },
-            {
-              name: "m-tool.tool.ts",
-              path: "/home/user/tools/dev/m-tool.tool.ts",
-              type: "file",
-              toolName: "m-tool",
-            },
-          ],
-        },
-      ]),
-    );
-    renderTree([createTool("z-tool"), createTool("a-tool"), createTool("m-tool")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    const aTool = screen.getByText("a-tool");
-    const mTool = screen.getByText("m-tool");
-    const zTool = screen.getByText("z-tool");
-
-    expect(aTool).toBeInTheDocument();
-    expect(mTool).toBeInTheDocument();
-    expect(zTool).toBeInTheDocument();
-
-    // Verify order in DOM
-    expect(aTool.compareDocumentPosition(mTool) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(mTool.compareDocumentPosition(zTool) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  test("flattens nested folders into rows prefixed with the directory path", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        {
-          name: "dev",
-          path: "/home/user/tools/dev",
-          type: "directory",
-          children: [
-            { name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" },
-            { name: "bat.tool.ts", path: "/home/user/tools/dev/bat.tool.ts", type: "file", toolName: "bat" },
-          ],
-        },
-      ]),
-    );
-    renderTree([createTool("fzf"), createTool("bat")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-    expect(screen.getByText("bat")).toBeInTheDocument();
-    expect(screen.getAllByText("dev/")).toHaveLength(2);
-    // The folder itself is no longer a row of its own.
-    expect(screen.queryByText("dev")).not.toBeInTheDocument();
-  });
-
-  test("dims the directory path prefix", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        {
-          name: "dev",
-          path: "/home/user/tools/dev",
-          type: "directory",
-          children: [{ name: "fzf.tool.ts", path: "/home/user/tools/dev/fzf.tool.ts", type: "file", toolName: "fzf" }],
-        },
-      ]),
-    );
-    renderTree([createTool("fzf")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("dev/")).toHaveClass("text-muted-foreground");
-  });
-
-  test("joins deeply nested directories into a single prefix", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        {
-          name: "dev",
-          path: "/home/user/tools/dev",
-          type: "directory",
-          children: [
-            {
-              name: "cli",
-              path: "/home/user/tools/dev/cli",
-              type: "directory",
-              children: [
-                { name: "fzf.tool.ts", path: "/home/user/tools/dev/cli/fzf.tool.ts", type: "file", toolName: "fzf" },
-              ],
-            },
-          ],
-        },
-      ]),
-    );
-    renderTree([createTool("fzf")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("dev/cli/")).toBeInTheDocument();
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-  });
-
-  test("renders root-level files without a path prefix", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
-        {
-          name: "infra",
-          path: "/home/user/tools/infra",
-          type: "directory",
-          children: [
-            {
-              name: "docker.tool.ts",
-              path: "/home/user/tools/infra/docker.tool.ts",
-              type: "file",
-              toolName: "docker",
-            },
-          ],
-        },
-      ]),
-    );
-    renderTree([createTool("fzf"), createTool("docker")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-    expect(screen.getByText("docker")).toBeInTheDocument();
-    expect(screen.getByText("infra/")).toBeInTheDocument();
-    expect(screen.queryByText("/")).not.toBeInTheDocument();
-  });
-
-  test("uses a named native link and independent action buttons", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf with space" },
-      ]),
-    );
+  test("keeps native links separate from operations and encodes return context", async () => {
     const installTool = mock(async () => {});
-    render(<ToolsTreeView tools={[createTool("fzf with space")]} actions={{ ...noopActions, installTool }} />);
-    const link = await screen.findByRole("link", { name: "View fzf with space" });
-    expect(link).toHaveAttribute("href", "/tools/fzf%20with%20space");
+    render(
+      <InventoryHarness
+        records={[{ ...fixture_tool, config: { ...fixture_tool.config, name: "zeta" } }]}
+        actions={{ ...fixture_idleActions, installTool }}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "View zeta" });
+    expect(link).toHaveAttribute("href", "/tools/zeta?returnTo=%2F");
     expect(link.closest("button")).toBeNull();
     expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
     const reinstall = screen.getByRole("button", { name: "Re-install" });
     expect(link).not.toContainElement(reinstall);
     fireEvent.click(reinstall);
-    expect(installTool).toHaveBeenCalledWith("fzf with space", true);
-    expect(screen.getByText("Installed")).toBeInTheDocument();
-    expect(screen.getByText("Version 1.0.0")).toBeInTheDocument();
+    expect(installTool).toHaveBeenCalledWith("zeta", true);
+    await screen.findByText("zeta.tool.ts");
   });
 
-  test("colors installed tool files green", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
-      ]),
-    );
-    const { container } = renderTree([createTool("fzf", "installed")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const icon = container.querySelector("svg.lucide-file-code.text-green-400");
-    assert(icon);
-    expect(icon).toBeInTheDocument();
+  test("source failure cannot erase inventory and retry restores metadata", async () => {
+    mockTree(null);
+    render(<InventoryHarness />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tool sources could not be loaded.");
+    expect(screen.getByText("3 of 3 tools")).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(3);
+    expect(screen.getByRole("combobox", { name: "Config root" })).toBeDisabled();
+    mockTree(tree);
+    fireEvent.click(screen.getByRole("button", { name: "Retry tool sources" }));
+    expect(await screen.findByText("dev/shell.tool.ts")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  test("colors not-installed tool files blue", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
-      ]),
-    );
-    const { container } = renderTree([createTool("fzf", "not-installed")]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const icon = container.querySelector("svg.lucide-file-code.text-blue-400");
-    assert(icon);
-    expect(icon).toBeInTheDocument();
+  test("an active root filter cannot claim zero matches when sources fail", async () => {
+    location.href = "http://localhost/?root=%2Fmissing";
+    mockTree(null);
+    render(<InventoryHarness />);
+    await screen.findByRole("alert");
+    expect(screen.getByText("Source locations required for root filtering")).toBeInTheDocument();
+    expect(screen.queryByText("0 of 3 tools")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    expect(screen.getByText("3 of 3 tools")).toBeInTheDocument();
   });
 
-  test("renders safely when tool installParams is undefined", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "fzf.tool.ts", path: "/home/user/tools/fzf.tool.ts", type: "file", toolName: "fzf" },
-      ]),
-    );
-    const toolWithoutInstallParams: IToolDetail = {
-      ...createTool("fzf", "installed"),
-      config: {
-        name: "fzf",
-        version: "1.0.0",
-        installationMethod: "manual",
-        installParams: undefined,
-      },
-    };
-    renderTree([toolWithoutInstallParams]);
-
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(screen.getByText("fzf")).toBeInTheDocument();
-  });
-  test("reports malformed tree data and retries instead of claiming the directory is empty", async () => {
-    mockFetchWith(null);
-    renderTree([]);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Tool files could not be loaded.");
-    expect(screen.queryByText("No tool files found")).not.toBeInTheDocument();
-    mockFetchWith(EMPTY_TREE_RESPONSE);
-    fireEvent.click(screen.getByRole("button", { name: "Retry tool files" }));
-    expect(await screen.findByText("No tool files found")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  test("missing selected method and root stay visible instead of silently widening results", async () => {
+    location.href = "http://localhost/?method=removed&root=%2Fremoved";
+    render(<InventoryHarness />);
+    await screen.findByRole("option", { name: "~/work/tools" });
+    expect(screen.getByRole("option", { name: "removed (not in inventory)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "/removed (unavailable)" })).toBeInTheDocument();
+    expect(screen.getByText("0 of 3 tools")).toBeInTheDocument();
   });
 
-  test("states missing and failed installations in text", async () => {
-    mockFetchWith(
-      createTreeResponse([
-        { name: "absent.tool.ts", path: "/tools/absent.tool.ts", type: "file", toolName: "absent" },
-        { name: "broken.tool.ts", path: "/tools/broken.tool.ts", type: "file", toolName: "broken" },
-      ]),
-    );
-    renderTree([createTool("absent", "not-installed"), createTool("broken", "error")]);
-    expect(await screen.findByText("Not installed")).toBeInTheDocument();
-    expect(screen.getByText("Installation error")).toBeInTheDocument();
+  test("valid empty source metadata does not hide a configured tool", async () => {
+    mockTree({ roots: [] });
+    render(<InventoryHarness records={[fixture_tool]} />);
+    expect(await screen.findByText("Source location not returned")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View example" })).toBeInTheDocument();
+  });
+
+  test("an empty configuration has one truthful inventory empty state", async () => {
+    mockTree({ roots: [] });
+    render(<InventoryHarness records={[]} />);
+    expect(screen.getByText("No tools configured")).toBeInTheDocument();
+    expect(screen.getByText("0 of 0 tools")).toBeInTheDocument();
+    await screen.findByRole("combobox", { name: "Config root" });
+  });
+
+  test("a labelled 180-tool synthetic catalog supports name search without truncation", async () => {
+    const synthetic = Array.from({ length: 180 }, (_, index) => ({
+      ...fixture_tool,
+      config: { ...fixture_tool.config, name: `synthetic-${String(index).padStart(3, "0")}-long-tool-name` },
+    }));
+    mockTree({ roots: [] });
+    render(<InventoryHarness records={synthetic} />);
+    expect(screen.getByText("180 of 180 tools")).toBeInTheDocument();
+    fireEvent.input(screen.getByRole("searchbox"), { target: { value: "synthetic-179" } });
+    expect(screen.getByText("1 of 180 tools")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View synthetic-179-long-tool-name" })).toBeInTheDocument();
   });
 });

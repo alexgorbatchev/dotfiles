@@ -1,94 +1,19 @@
 import { type JSX } from "preact";
-import { FileCode, FolderTree } from "../icons";
 
-import type { IFileTreeEntry, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
+import type { IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
+import type { IInventoryQueryState } from "../hooks/useInventoryQuery";
 import type { IUseToolActions } from "../hooks/useToolActions";
+import { buildInventoryRows, filterInventoryRows, inventoryToolHref } from "../utils/inventoryUtils";
 import { ToolActionButtons } from "./ToolActionButtons";
 import { RequestStateNotice } from "./RequestStateNotice";
-import { TitledCard } from "./ui/TitledCard";
-import { Tree, type ITreeItemData } from "./ui/Tree";
+import { Button } from "./ui/Button";
 
 type ToolsTreeViewProps = {
   tools: IToolDetail[];
   actions: IUseToolActions;
+  inventory: IInventoryQueryState;
 };
-
-type ToolTreeData = {
-  toolName?: string;
-  isFile?: boolean;
-  dirPath?: string;
-  status?: ToolRuntimeStatus;
-  installedVersion?: string;
-};
-
-/** Tool files get a decorated label; anything else falls back to the plain label text. */
-type ToolTreeLabel = JSX.Element | string;
-
-/**
- * Flatten the API file tree into one row per tool file, carrying the directory
- * path down as a prefix so each row can render as `dir/name`, sorted alphabetically
- * by tool name (the base name in [toolname].tool.ts), ignoring subfolder location.
- */
-function flattenToolFiles(
-  entries: IFileTreeEntry[],
-  toolsByName: Map<string, IToolDetail>,
-  dirPath: string = "",
-): ITreeItemData<ToolTreeData>[] {
-  const collect = (list: IFileTreeEntry[], currentDirPath: string): ITreeItemData<ToolTreeData>[] => {
-    return list.flatMap((entry) => {
-      if (entry.type === "directory") {
-        return entry.children ? collect(entry.children, `${currentDirPath}${entry.name}/`) : [];
-      }
-
-      const tool = entry.toolName ? toolsByName.get(entry.toolName) : undefined;
-      const status = tool?.runtime.status;
-      const statusColor =
-        status === "installed" ? "text-green-400" : status === "error" ? "text-red-400" : "text-blue-400";
-
-      return [
-        {
-          id: entry.path,
-          label: entry.name,
-          icon: <FileCode class={`h-4 w-4 ${statusColor}`} />,
-          iconDecorator: <span class={`inline-block w-2 h-2 rounded-full ${getStatusDotClass(status)}`} />,
-          data: {
-            toolName: entry.toolName,
-            isFile: true,
-            dirPath: currentDirPath,
-            status,
-            installedVersion: tool?.runtime.installedVersion ?? undefined,
-          },
-        },
-      ];
-    });
-  };
-
-  return collect(entries, dirPath).toSorted((leftItem, rightItem) => {
-    const leftName = leftItem.label.replace(/\.tool\.ts$/, "");
-    const rightName = rightItem.label.replace(/\.tool\.ts$/, "");
-    const nameComparison = leftName.localeCompare(rightName);
-    if (nameComparison !== 0) {
-      return nameComparison;
-    }
-    return (leftItem.data?.dirPath ?? "").localeCompare(rightItem.data?.dirPath ?? "");
-  });
-}
-
-/**
- * Get the status dot styling based on tool status. Uninstalled tools get an outline
- * rather than a fill so installed ones read as the solid state at a glance.
- */
-function getStatusDotClass(status?: ToolRuntimeStatus): string {
-  switch (status) {
-    case "installed":
-      return "bg-green-500";
-    case "error":
-      return "bg-red-500";
-    default:
-      return "border border-gray-300";
-  }
-}
 
 const statusLabels: Record<ToolRuntimeStatus, string> = {
   installed: "Installed",
@@ -96,102 +21,180 @@ const statusLabels: Record<ToolRuntimeStatus, string> = {
   error: "Installation error",
 };
 
-/** Keep the name, state and version readable before the row's independent actions. */
-function renderLabel(item: ITreeItemData<ToolTreeData>): ToolTreeLabel {
-  if (!item.data?.isFile || !item.label.endsWith(".tool.ts")) return item.label;
-  const baseName = item.label.replace(/\.tool\.ts$/, "");
-  const dirPath = item.data.dirPath ?? "";
-  const toolName = item.data.toolName;
-  const label = (
-    <span class="min-w-0 [overflow-wrap:anywhere]">
-      {dirPath && <span class="text-muted-foreground">{dirPath}</span>}
-      {baseName}
-      <span class="text-muted-foreground">.tool.ts</span>
-    </span>
-  );
+export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps): JSX.Element {
+  const { data: tree, loading, error, refetch } = useFetch<IToolConfigsTree>("/tool-configs-tree");
+  const { query, updateQuery, resetQuery, returnTo } = inventory;
+  const rows = filterInventoryRows(buildInventoryRows(tools, tree), query);
+  const methods = [...new Set(tools.map((tool) => tool.config.installationMethod ?? "undeclared"))].sort();
+  const roots = tree?.roots ?? [];
+  const hasFilters = Boolean(query.q || query.status || query.method || query.root || query.sort !== "name");
+  const isWaitingForSources = Boolean(query.root && tree === null);
+  const controlClass =
+    "min-h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring";
 
   return (
-    <span class="flex min-w-0 flex-col gap-1">
-      {toolName ? (
-        <a
-          href={`/tools/${encodeURIComponent(toolName)}`}
-          aria-label={`View ${toolName}`}
-          class="flex min-h-11 min-w-0 items-center rounded font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6"
-        >
-          {label}
-        </a>
-      ) : (
-        label
-      )}
-      {toolName && (
-        <span class="flex flex-wrap gap-x-2 text-sm text-muted-foreground">
-          <span>{item.data.status ? statusLabels[item.data.status] : "Status unavailable"}</span>
-          {item.data.status === "installed" && item.data.installedVersion && (
-            <span>Version {item.data.installedVersion}</span>
-          )}
-        </span>
-      )}
-    </span>
-  );
-}
-
-export function ToolsTreeView({ tools, actions }: ToolsTreeViewProps): JSX.Element {
-  const { data: treeData, loading, error, refetch } = useFetch<IToolConfigsTree>("/tool-configs-tree");
-
-  const toolsByName = new Map(tools.map((tool) => [tool.config.name, tool]));
-
-  function renderActions(item: ITreeItemData<ToolTreeData>): JSX.Element | null {
-    const toolName = item.data?.toolName;
-
-    if (!toolName) {
-      return null;
-    }
-
-    return (
-      <ToolActionButtons
-        toolName={toolName}
-        isInstalled={item.data?.status === "installed"}
-        actions={actions}
-        size="xs"
-      />
-    );
-  }
-
-  const notice = (
-    <RequestStateNotice
-      label="Tool files"
-      loading={loading}
-      error={error}
-      hasData={treeData !== null}
-      onRetry={refetch}
-    />
-  );
-  const roots = treeData?.roots ?? [];
-
-  if (roots.length === 0) {
-    return (
-      <TitledCard title="Tool Files" icon={<FolderTree class="h-4 w-4" />}>
-        {notice}
-        {treeData !== null && !loading && !error && (
-          <div class="text-muted-foreground text-sm">No tool files found</div>
-        )}
-      </TitledCard>
-    );
-  }
-
-  return (
-    <div data-testid="ToolsTreeView" class="min-w-0 space-y-4">
-      {notice}
-      {roots.map((root) => (
-        <TitledCard key={root.path} title={root.label} icon={<FolderTree class="h-4 w-4" />}>
-          <Tree
-            items={flattenToolFiles(root.entries, toolsByName, "")}
-            renderLabel={renderLabel}
-            renderActions={renderActions}
-            iconClassName="mr-1"
+    <div data-testid="ToolsTreeView" class="min-w-0 space-y-3">
+      <div
+        role="search"
+        aria-label="Filter tools"
+        class="grid min-w-0 grid-cols-2 items-end gap-2 lg:grid-cols-[minmax(12rem,1fr)_minmax(8rem,0.65fr)_minmax(8rem,0.65fr)_minmax(10rem,0.9fr)_minmax(8rem,0.6fr)]"
+      >
+        <label class="col-span-2 min-w-0 space-y-1 text-sm lg:col-span-1">
+          <span>Search tools</span>
+          <input
+            type="search"
+            value={query.q}
+            placeholder="Name or binary"
+            class={controlClass}
+            onInput={(event) => updateQuery({ q: event.currentTarget.value })}
           />
-        </TitledCard>
-      ))}
+        </label>
+        <label class="min-w-0 space-y-1 text-sm">
+          <span>Installation</span>
+          <select
+            value={query.status}
+            class={controlClass}
+            onChange={(event) => updateQuery({ status: event.currentTarget.value })}
+          >
+            <option value="">All states</option>
+            <option value="installed">Installed</option>
+            <option value="not-installed">Not installed</option>
+            <option value="error">Installation error</option>
+          </select>
+        </label>
+        <label class="min-w-0 space-y-1 text-sm">
+          <span>Method</span>
+          <select
+            value={query.method}
+            class={controlClass}
+            onChange={(event) => updateQuery({ method: event.currentTarget.value })}
+          >
+            <option value="">All methods</option>
+            {query.method && !methods.includes(query.method) && (
+              <option value={query.method}>{query.method} (not in inventory)</option>
+            )}
+            {methods.map((method) => (
+              <option key={method} value={method}>
+                {method === "undeclared" ? "Method not declared" : method}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label class="min-w-0 space-y-1 text-sm">
+          <span>Config root</span>
+          <select
+            value={query.root}
+            disabled={tree === null}
+            class={controlClass}
+            onChange={(event) => updateQuery({ root: event.currentTarget.value })}
+          >
+            <option value="">All roots</option>
+            {query.root && !roots.some((root) => root.path === query.root) && (
+              <option value={query.root}>{query.root} (unavailable)</option>
+            )}
+            {roots.map((root) => (
+              <option key={root.path} value={root.path}>
+                {root.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label class="min-w-0 space-y-1 text-sm">
+          <span>Sort</span>
+          <select
+            value={query.sort}
+            class={controlClass}
+            onChange={(event) => updateQuery({ sort: event.currentTarget.value })}
+          >
+            <option value="name">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="status">Installation</option>
+            <option value="method">Method</option>
+          </select>
+        </label>
+      </div>
+      <div class="flex min-h-8 flex-wrap items-center justify-between gap-2">
+        <p role="status" aria-live="polite" class="text-sm text-muted-foreground">
+          {isWaitingForSources
+            ? "Source locations required for root filtering"
+            : `${rows.length} of ${tools.length} tools`}
+        </p>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={resetQuery}>
+            Reset filters
+          </Button>
+        )}
+      </div>
+      <RequestStateNotice
+        label="Tool sources"
+        loading={loading}
+        error={error}
+        hasData={tree !== null}
+        onRetry={refetch}
+      />
+      {isWaitingForSources ? (
+        <p class="py-3 text-sm text-muted-foreground">Load source locations or reset filters to see tools.</p>
+      ) : rows.length === 0 ? (
+        <p class="py-6 text-sm text-muted-foreground">
+          {tools.length === 0
+            ? "No tools configured"
+            : "No tools match these filters. Try another search or reset filters."}
+        </p>
+      ) : (
+        <ul aria-label="Tool inventory" class="divide-y rounded-lg border bg-card">
+          {rows.map(({ tool, binaries, sources }) => (
+            <li
+              key={tool.config.name}
+              class="flex min-w-0 flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between"
+            >
+              <div class="min-w-0 flex-1 space-y-1">
+                <a
+                  href={inventoryToolHref(tool.config.name, returnTo)}
+                  aria-label={`View ${tool.config.name}`}
+                  class="inline-flex min-h-11 min-w-0 max-w-full items-center rounded font-semibold [overflow-wrap:anywhere] hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6"
+                >
+                  {tool.config.name}
+                </a>
+                <div class="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                  <span class={tool.runtime.status === "error" ? "font-medium text-destructive" : "font-medium"}>
+                    {statusLabels[tool.runtime.status]}
+                  </span>
+                  {tool.runtime.status === "installed" && tool.runtime.installedVersion && (
+                    <span class="text-muted-foreground">Version {tool.runtime.installedVersion}</span>
+                  )}
+                  <span class="text-muted-foreground">{tool.config.installationMethod ?? "Method not declared"}</span>
+                  {binaries.length > 0 && (
+                    <span class="min-w-0 text-muted-foreground [overflow-wrap:anywhere]">
+                      Binaries: {binaries.join(", ")}
+                    </span>
+                  )}
+                </div>
+                {sources.map((source) => (
+                  <details key={source.path} class="text-sm text-muted-foreground">
+                    <summary class="min-h-11 cursor-pointer content-center rounded [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6">
+                      <span>{source.rootLabel}</span>
+                      <span aria-hidden="true"> / </span>
+                      <span>{source.relativePath}</span>
+                    </summary>
+                    <p class="py-1 [overflow-wrap:anywhere]">{source.path}</p>
+                  </details>
+                ))}
+                {sources.length === 0 && (
+                  <p class="text-sm text-muted-foreground">
+                    {tree === null ? "Source location unavailable" : "Source location not returned"}
+                  </p>
+                )}
+              </div>
+              <ToolActionButtons
+                toolName={tool.config.name}
+                isInstalled={tool.runtime.status === "installed"}
+                actions={actions}
+                size="xs"
+              />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

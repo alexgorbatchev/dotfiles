@@ -61,7 +61,10 @@ describe("App routing and persistent controls", () => {
   test("routes native navigation and search through the same application", async () => {
     render(<App />);
     expect(screen.getByRole("main", { name: "Dashboard content" })).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "View example" })).toHaveAttribute("href", "/tools/example");
+    expect(await screen.findByRole("link", { name: "View example" })).toHaveAttribute(
+      "href",
+      "/tools/example?returnTo=%2F",
+    );
     fireEvent.click(screen.getByRole("link", { name: "⚙️ Settings" }));
     expect(await screen.findByText("Project Paths")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "⚙️ Settings" })).toHaveAttribute("aria-current", "page");

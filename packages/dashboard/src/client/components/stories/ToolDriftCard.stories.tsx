@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/preact";
 
 import { ToolDriftCard } from "../ToolDriftCard";
 
-import type { IDriftItem } from "../../../shared/types";
+import { fixture_driftItems } from "./fixtures";
 
 const meta: Meta<typeof ToolDriftCard> = {
   title: "@dotfiles/dashboard/client/components/ToolDriftCard",
@@ -12,25 +12,8 @@ const meta: Meta<typeof ToolDriftCard> = {
 
 type Story = StoryObj<typeof meta>;
 
-const driftItems: IDriftItem[] = [
-  {
-    toolName: "ssh",
-    filePath: "~/.ssh/config",
-    blockId: "includes",
-    type: "block",
-    state: "in-sync",
-  },
-  {
-    toolName: "git",
-    filePath: "~/.gitconfig",
-    type: "template",
-    state: "local-drift",
-    diff: "--- ~/.gitconfig (current)\n+++ ~/.gitconfig (desired)\n-email = custom@example.com\n+email = alex@example.com\n",
-  },
-];
-
 const Default: Story = {
-  render: () => <ToolDriftCard driftItems={driftItems} />,
+  render: () => <ToolDriftCard driftItems={fixture_driftItems} />,
 };
 
 export default meta;

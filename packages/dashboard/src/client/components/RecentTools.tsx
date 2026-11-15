@@ -2,6 +2,7 @@ import { type JSX } from "preact";
 import { Clock, FileCode, GitBranch, HardDrive } from "../icons";
 
 import type { IRecentTools, TimestampSource } from "../../shared/types";
+import { inventoryToolHref } from "../utils/inventoryUtils";
 import { useFetch } from "../hooks/useFetch";
 import { RequestStateNotice } from "./RequestStateNotice";
 import { TitledCard } from "./ui/TitledCard";
@@ -17,7 +18,11 @@ function TimestampSourceIcon({ source }: TimestampSourceIconProps): JSX.Element 
   return <HardDrive class="h-3 w-3 text-amber-500" title="From file modification time" />;
 }
 
-export function RecentTools(): JSX.Element {
+type RecentToolsProps = {
+  returnTo?: string;
+};
+
+export function RecentTools({ returnTo }: RecentToolsProps): JSX.Element {
   const { data, loading, error, refetch } = useFetch<IRecentTools>("/recent-tools");
 
   const tools = data?.tools || [];
@@ -26,7 +31,6 @@ export function RecentTools(): JSX.Element {
     <TitledCard
       title="Recently Added"
       icon={<Clock class="h-4 w-4 text-muted-foreground" />}
-      class="h-full"
       contentClass="flex-1 overflow-auto"
     >
       <RequestStateNotice
@@ -43,7 +47,7 @@ export function RecentTools(): JSX.Element {
           {tools.map((tool) => (
             <a
               key={tool.configFilePath}
-              href={`/tools/${encodeURIComponent(tool.name)}`}
+              href={inventoryToolHref(tool.name, returnTo)}
               class="flex min-h-11 sm:min-h-6 flex-wrap items-center gap-2 py-1 rounded hover:bg-accent cursor-pointer text-sm group"
             >
               <FileCode class="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />

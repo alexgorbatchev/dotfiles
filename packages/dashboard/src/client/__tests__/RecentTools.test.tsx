@@ -42,9 +42,9 @@ test("keeps recent tool links and timestamp provenance visible when a refresh fa
   const fetchMock = spyOn(globalThis, "fetch").mockResolvedValueOnce(
     new Response(JSON.stringify({ success: true, data })),
   );
-  render(<RecentTools />);
+  render(<RecentTools returnTo="/?q=shell&status=installed" />);
   const themeLink = await screen.findByRole("link", { name: /shell\/theme/ });
-  expect(themeLink.getAttribute("href")).toBe("/tools/shell%2Ftheme");
+  expect(themeLink.getAttribute("href")).toBe("/tools/shell%2Ftheme?returnTo=%2F%3Fq%3Dshell%26status%3Dinstalled");
   expect(screen.getByTitle("From git commit date")).toBeInTheDocument();
   expect(screen.getByTitle("From file modification time")).toBeInTheDocument();
   fetchMock.mockRejectedValueOnce(new Error("Refresh unavailable"));
@@ -52,6 +52,8 @@ test("keeps recent tool links and timestamp provenance visible when a refresh fa
   await screen.findByRole("alert");
   expect(screen.getByText("Showing previously loaded data. It may be out of date.")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /shell\/theme/ })).toBe(themeLink);
-  expect(screen.getByRole("link", { name: /editor/ }).getAttribute("href")).toBe("/tools/editor");
+  expect(screen.getByRole("link", { name: /editor/ }).getAttribute("href")).toBe(
+    "/tools/editor?returnTo=%2F%3Fq%3Dshell%26status%3Dinstalled",
+  );
   expect(screen.queryByText("No tools added yet")).toBeNull();
 });

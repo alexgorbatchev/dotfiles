@@ -44,7 +44,12 @@ export function readHash(): string {
     return "";
   }
 
-  return decodeURIComponent(window.location.hash.replace(/^#/, ""));
+  const hash = window.location.hash.replace(/^#/, "");
+  try {
+    return decodeURIComponent(hash);
+  } catch {
+    return hash;
+  }
 }
 
 export function writeHash(hash: string): void {
