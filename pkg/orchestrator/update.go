@@ -109,9 +109,10 @@ func PlanUpdate(tool *config.ToolConfig, installedVersion string, res *installer
 // version or a fresh timestamp instead.
 func updateTarget(tool *config.ToolConfig, check CheckResult) string {
 	latest, installed := check.LatestVersion, check.InstalledVersion
-	// "unknown" and "latest" are placeholders rather than versions, and a release the
-	// tool's constraint excludes is not one an update may install onto the machine.
-	installable := latest != "" && latest != "unknown" && latest != "latest" && version.MatchesConstraint(latest, tool.UpdateCheckConstraint())
+	// "latest" may be the upstream rolling release tag. Preserve it as the
+	// install request instead of substituting an installation receipt timestamp.
+	// Unknown releases and those outside the tool's constraint remain excluded.
+	installable := latest != "" && latest != "unknown" && version.MatchesConstraint(latest, tool.UpdateCheckConstraint())
 	switch {
 	case check.Status == CheckStatusUnsupported:
 		// Nothing upstream answered, so the installation decides what it records.

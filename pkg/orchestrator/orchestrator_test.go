@@ -4715,6 +4715,20 @@ func TestPlanUpdate_TargetVersion(t *testing.T) {
 			want:      "v2.0.0",
 		},
 		{
+			name:      "a rolling latest release does not reuse the receipt timestamp",
+			tool:      &config.ToolConfig{Name: "rolling"},
+			installed: "2000-01-01-00-00-00",
+			res:       &installer.UpdateCheckResult{LatestVersion: "latest"},
+			want:      "latest",
+		},
+		{
+			name:      "a named rolling release preserves its upstream tag",
+			tool:      &config.ToolConfig{Name: "nightly"},
+			installed: "2000-01-01-00-00-00",
+			res:       &installer.UpdateCheckResult{LatestVersion: "nightly"},
+			want:      "nightly",
+		},
+		{
 			name:      "a release the constraint excludes reinstalls the installed one",
 			tool:      &config.ToolConfig{Name: "gh", UpdateCheck: &config.ToolConfigUpdateCheck{Constraint: &constraint}},
 			installed: "v1.0.0",

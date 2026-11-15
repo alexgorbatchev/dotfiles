@@ -5667,3 +5667,45 @@ func TestCheckUpdatesCommand_InstalledOnly(t *testing.T) {
 		}
 	})
 }
+
+func TestUpdateCommand_PreservesRollingRelease(t *testing.T) {
+	for _, force := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force=%t", force), func(t *testing.T) {
+			t.Setenv("DOTFILES_E2E_USE_REAL_INSTALLERS", "true")
+			const repo = "acme/rolling"
+			newReleaseServer(t, map[string]mockRelease{repo: {Tag: "latest", Binaries: []string{"rolling"}}})
+			p := newE2EProject(t, tsTools{
+				"rolling": `install("github-release", {repo: "acme/rolling", assetPattern: "tool.tar.gz"}).bin("rolling")`,
+			})
+			const previous = "2000-01-01-00-00-00"
+			p.seedInstallation(t, "rolling", previous, filepath.Join(p.Root, "installed", "rolling"))
+			out, err := p.run("tool", "check", "rolling", "--json")
+			if err != nil {
+				t.Fatalf("checking rolling release: %v\n%s", err, out.Combined)
+			}
+			var checks []ToolUpdateResult
+			if err := json.Unmarshal([]byte(out.Stdout), &checks); err != nil || len(checks) != 1 || checks[0].LatestVersion != "latest" {
+				t.Fatalf("check did not preserve upstream identity: %v\n%s", err, out.Stdout)
+			}
+			args := []string{"tool", "update", "rolling"}
+			if force {
+				args = append(args, "--force")
+			}
+			out, err = p.run(args...)
+			if err != nil {
+				t.Fatalf("updating rolling release: %v\n%s", err, out.Combined)
+			}
+			mustContain(t, "stderr", out.Stderr, "New version available: "+previous+" -> latest", "Successfully updated")
+			mustNotContain(t, "output", out.Combined, "("+previous+")", "status 404")
+			rec := p.installation(t, "rolling")
+			if rec == nil || rec.Version == "" || rec.Version == previous || rec.Version == "latest" {
+				t.Fatalf("expected fresh installation receipt, got %+v", rec)
+			}
+			binary := filepath.Join(p.GeneratedDir, "binaries", "rolling", "current", "rolling")
+			contents, err := os.ReadFile(binary)
+			if err != nil || !strings.Contains(string(contents), "rolling latest") {
+				t.Fatalf("rolling release payload not installed: %v\n%s", err, contents)
+			}
+		})
+	}
+}
