@@ -162,9 +162,8 @@ func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolCo
 	return nil
 }
 
-// ensureShimDirs provisions the two directories every shim needs: the target
-// directory the shims live in and the directory the shims append their usage log to.
-// Both hold artifacts of every tool, so they are recorded under the "system" owner;
+// ensureShimDirs provisions the target directory and shared usage directories.
+// They hold artifacts of every tool, so they are recorded under the "system" owner;
 // recorded against a tool they would look like that tool's stale shims to
 // CleanupStaleShims the next time it is generated. It is the single place either
 // pipeline creates them, which is why shim.Generator no longer creates them itself.
@@ -173,7 +172,7 @@ func (o *Orchestrator) ensureShimDirs(ctx context.Context, projCfg *config.Proje
 		return fmt.Errorf("project configuration is nil")
 	}
 
-	dirs := []string{projCfg.Paths.TargetDir, usagelog.Dir(projCfg.Paths.GeneratedDir)}
+	dirs := []string{projCfg.Paths.TargetDir, usagelog.Dir(projCfg.Paths.GeneratedDir), usagelog.MarkerDir(projCfg.Paths.GeneratedDir)}
 
 	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
 		sysFS := o.getTrackedFS(ctx, tx, "system", "shim")
@@ -234,15 +233,15 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 		binaryPath, _ := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, recordedBinaryPaths[binName], installed)
 
 		shimCfg := shim.Config{
-			ToolName:       tool.Name,
-			BinaryName:     binName,
-			BinaryPath:     binaryPath,
-			BashPath:       bashPath,
-			Sudo:           tool.Sudo,
-			CliArgs:        o.getCliArgs(),
-			CliEnv:         o.getCliEnvironment(),
-			ConfigFilePath: o.getConfigFilePath(),
-			UsageLogPath:   usagelog.Path(projCfg.Paths.GeneratedDir),
+			ToolName:        tool.Name,
+			BinaryName:      binName,
+			BinaryPath:      binaryPath,
+			BashPath:        bashPath,
+			Sudo:            tool.Sudo,
+			CliArgs:         o.getCliArgs(),
+			CliEnv:          o.getCliEnvironment(),
+			ConfigFilePath:  o.getConfigFilePath(),
+			UsageMarkerPath: usagelog.MarkerPath(projCfg.Paths.GeneratedDir, tool.Name, binName),
 		}
 
 		// Check for conflict

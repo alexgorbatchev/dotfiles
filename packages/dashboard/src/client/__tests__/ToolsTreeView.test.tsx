@@ -239,3 +239,31 @@ describe("Tool inventory", () => {
     expect(screen.getByRole("link", { name: "View synthetic-179-long-tool-name" })).toBeInTheDocument();
   });
 });
+
+test("recency sort preserves filter navigation and exposes recorded and missing activity", async () => {
+  location.href = "http://localhost/?keep=yes&status=installed#tool-files";
+  const records: IToolDetail[] = [
+    {
+      ...fixture_tool,
+      config: { name: "recorded" },
+      usage: { totalCount: 0, binaries: [{ binaryName: "recorded", count: 0, lastUsedAt: "2026-01-01T00:00:00Z" }] },
+    },
+    { ...fixture_tool, config: { name: "unobserved" } },
+  ];
+  const { container } = render(<InventoryHarness records={records} />);
+  await screen.findByText("2 of 2 tools");
+  fireEvent.change(screen.getByRole("combobox", { name: "Sort" }), { target: { value: "last-used" } });
+  expect(location.search).toBe("?keep=yes&status=installed&sort=last-used");
+  expect(location.hash).toBe("#tool-files");
+  expect(screen.getAllByRole("link", { name: /^View / }).map((link) => link.textContent)).toEqual([
+    "unobserved",
+    "recorded",
+  ]);
+  expect(screen.getByText("No usage recorded")).toBeVisible();
+  expect(screen.getByText(/No usage recorded comes first/)).toBeVisible();
+  expect(container.querySelector('time[datetime="2026-01-01T00:00:00.000Z"]')).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "View recorded" })).toHaveAttribute(
+    "href",
+    `/tools/recorded?returnTo=${encodeURIComponent("/?keep=yes&status=installed&sort=last-used")}`,
+  );
+});

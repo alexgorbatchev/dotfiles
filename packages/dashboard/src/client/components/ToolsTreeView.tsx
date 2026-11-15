@@ -1,10 +1,12 @@
 import { type JSX } from "preact";
+import { useState } from "preact/hooks";
 
 import type { IHealthStatus, IToolConfigsTree, IToolDetail, ToolRuntimeStatus } from "../../shared/types";
 import { useFetch } from "../hooks/useFetch";
 import type { IInventoryQueryState } from "../hooks/useInventoryQuery";
 import type { IUseToolActions } from "../hooks/useToolActions";
 import { buildInventoryRows, filterInventoryRows, inventoryToolHref } from "../utils/inventoryUtils";
+import { formatRelativeTime, getLastUsedAt } from "../utils/usageUtils";
 import { ToolHealth } from "./ToolHealth";
 import { ToolActionButtons } from "./ToolActionButtons";
 import { RequestStateNotice } from "./RequestStateNotice";
@@ -23,6 +25,7 @@ const statusLabels: Record<ToolRuntimeStatus, string> = {
 };
 
 export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps): JSX.Element {
+  const [now] = useState(Date.now);
   const { data: tree, loading, error, refetch } = useFetch<IToolConfigsTree>("/tool-configs-tree");
   const health = useFetch<IHealthStatus>("/health");
   const findingCount = health.data?.checks.reduce((count, check) => count + check.findings.length, 0) ?? 0;
@@ -113,6 +116,7 @@ export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps)
             <option value="name-desc">Name Z–A</option>
             <option value="status">Installation</option>
             <option value="method">Method</option>
+            <option value="last-used">Last used: oldest</option>
           </select>
         </label>
       </div>
@@ -128,6 +132,12 @@ export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps)
           </Button>
         )}
       </div>
+      {query.sort === "last-used" && (
+        <p class="text-sm text-muted-foreground">
+          No usage recorded comes first, then oldest activity. Direct calls and disabled tracking are not observed;
+          missing activity does not prove a tool is unused.
+        </p>
+      )}
       <RequestStateNotice
         label="Tool sources"
         loading={loading}
@@ -161,59 +171,77 @@ export function ToolsTreeView({ tools, actions, inventory }: ToolsTreeViewProps)
         </p>
       ) : (
         <ul aria-label="Tool inventory" class="divide-y rounded-lg border bg-card">
-          {rows.map(({ tool, binaries, sources }) => (
-            <li
-              key={tool.config.name}
-              class="flex min-w-0 flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between"
-            >
-              <div class="min-w-0 flex-1 space-y-1">
-                <a
-                  href={inventoryToolHref(tool.config.name, returnTo)}
-                  aria-label={`View ${tool.config.name}`}
-                  class="inline-flex min-h-11 min-w-0 max-w-full items-center rounded font-semibold [overflow-wrap:anywhere] hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6"
-                >
-                  {tool.config.name}
-                </a>
-                <div class="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                  <span class={tool.runtime.status === "error" ? "font-medium text-destructive" : "font-medium"}>
-                    {statusLabels[tool.runtime.status]}
-                  </span>
-                  {tool.runtime.status === "installed" && tool.runtime.installedVersion && (
-                    <span class="text-muted-foreground">Version {tool.runtime.installedVersion}</span>
-                  )}
-                  <span class="text-muted-foreground">{tool.config.installationMethod ?? "Method not declared"}</span>
-                  {binaries.length > 0 && (
-                    <span class="min-w-0 text-muted-foreground [overflow-wrap:anywhere]">
-                      Binaries: {binaries.join(", ")}
+          {rows.map(({ tool, binaries, sources }) => {
+            const lastUsedAt = getLastUsedAt(tool.usage);
+            return (
+              <li
+                key={tool.config.name}
+                class="flex min-w-0 flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between"
+              >
+                <div class="min-w-0 flex-1 space-y-1">
+                  <a
+                    href={inventoryToolHref(tool.config.name, returnTo)}
+                    aria-label={`View ${tool.config.name}`}
+                    class="inline-flex min-h-11 min-w-0 max-w-full items-center rounded font-semibold [overflow-wrap:anywhere] hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6"
+                  >
+                    {tool.config.name}
+                  </a>
+                  <div class="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                    <span class={tool.runtime.status === "error" ? "font-medium text-destructive" : "font-medium"}>
+                      {statusLabels[tool.runtime.status]}
                     </span>
+                    {tool.runtime.status === "installed" && tool.runtime.installedVersion && (
+                      <span class="text-muted-foreground">Version {tool.runtime.installedVersion}</span>
+                    )}
+                    <span class="text-muted-foreground">{tool.config.installationMethod ?? "Method not declared"}</span>
+                    {binaries.length > 0 && (
+                      <span class="min-w-0 text-muted-foreground [overflow-wrap:anywhere]">
+                        Binaries: {binaries.join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  <p class="text-sm text-muted-foreground">
+                    {lastUsedAt === null ? (
+                      "No usage recorded"
+                    ) : (
+                      <>
+                        Last used{" "}
+                        <time
+                          dateTime={new Date(lastUsedAt).toISOString()}
+                          title={new Date(lastUsedAt).toLocaleString()}
+                        >
+                          {formatRelativeTime(lastUsedAt, now)}
+                        </time>
+                      </>
+                    )}
+                  </p>
+                  <ToolHealth tool={tool} health={health.data} stale={Boolean(health.error) || health.loading} />
+                  {sources.map((source) => (
+                    <details key={source.path} class="text-sm text-muted-foreground">
+                      <summary class="min-h-11 cursor-pointer content-center rounded [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6">
+                        <span>{source.rootLabel}</span>
+                        <span aria-hidden="true"> / </span>
+                        <span>{source.relativePath}</span>
+                      </summary>
+                      <p class="py-1 [overflow-wrap:anywhere]">{source.path}</p>
+                    </details>
+                  ))}
+                  {sources.length === 0 && (
+                    <p class="text-sm text-muted-foreground">
+                      {tree === null ? "Source location unavailable" : "Source location not returned"}
+                    </p>
                   )}
                 </div>
-                <ToolHealth tool={tool} health={health.data} stale={Boolean(health.error) || health.loading} />
-                {sources.map((source) => (
-                  <details key={source.path} class="text-sm text-muted-foreground">
-                    <summary class="min-h-11 cursor-pointer content-center rounded [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6">
-                      <span>{source.rootLabel}</span>
-                      <span aria-hidden="true"> / </span>
-                      <span>{source.relativePath}</span>
-                    </summary>
-                    <p class="py-1 [overflow-wrap:anywhere]">{source.path}</p>
-                  </details>
-                ))}
-                {sources.length === 0 && (
-                  <p class="text-sm text-muted-foreground">
-                    {tree === null ? "Source location unavailable" : "Source location not returned"}
-                  </p>
-                )}
-              </div>
-              <ToolActionButtons
-                toolName={tool.config.name}
-                isInstalled={tool.runtime.status === "installed"}
-                metadata={tool.metadata}
-                actions={actions}
-                size="xs"
-              />
-            </li>
-          ))}
+                <ToolActionButtons
+                  toolName={tool.config.name}
+                  isInstalled={tool.runtime.status === "installed"}
+                  metadata={tool.metadata}
+                  actions={actions}
+                  size="xs"
+                />
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

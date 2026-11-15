@@ -398,15 +398,15 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 		}
 
 		shimCfg := shim.Config{
-			ToolName:       tool.Name,
-			BinaryName:     binName,
-			BinaryPath:     binaryPath,
-			BashPath:       bashPath,
-			Sudo:           tool.Sudo,
-			CliArgs:        o.getCliArgs(),
-			CliEnv:         o.getCliEnvironment(),
-			ConfigFilePath: o.getConfigFilePath(),
-			UsageLogPath:   usagelog.Path(projCfg.Paths.GeneratedDir),
+			ToolName:        tool.Name,
+			BinaryName:      binName,
+			BinaryPath:      binaryPath,
+			BashPath:        bashPath,
+			Sudo:            tool.Sudo,
+			CliArgs:         o.getCliArgs(),
+			CliEnv:          o.getCliEnvironment(),
+			ConfigFilePath:  o.getConfigFilePath(),
+			UsageMarkerPath: usagelog.MarkerPath(projCfg.Paths.GeneratedDir, tool.Name, binName),
 		}
 
 		// Check for conflict

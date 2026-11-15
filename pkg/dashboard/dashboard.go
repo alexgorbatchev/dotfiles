@@ -192,7 +192,7 @@ func (s *Server) Host() string {
 	return s.host
 }
 
-// Start imports the shim usage log and launches the HTTP server for serving the dashboard.
+// Start refreshes observed tool usage and launches the dashboard HTTP server.
 func (s *Server) Start() error {
 	s.importShimUsage()
 	s.configureInstallers()
@@ -246,19 +246,29 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// importShimUsage folds the log that shims append to into the registry so the
-// usage views serve data from invocations made while no dashboard was running.
-// The import is best-effort: a failure is reported and the dashboard still starts.
+// importShimUsage refreshes persistent last-use markers and consumes legacy logs.
+// A failure is reported without preventing dashboard startup.
 func (s *Server) importShimUsage() {
 	if s.registry == nil || s.fsys == nil || s.projectConfig == nil {
 		return
 	}
-	res, err := usagelog.Import(context.Background(), s.fsys, s.registry, s.projectConfig.Paths.GeneratedDir)
+	res, err := usagelog.Import(context.Background(), s.fsys, s.registry, s.projectConfig.Paths.GeneratedDir, s.toolConfigs...)
 	if err != nil {
-		s.logger.Warn(logger.Message(fmt.Sprintf("Failed to import shim usage log: %v", err)))
+		s.logger.Warn(logger.Message(fmt.Sprintf("Failed to refresh tool usage: %v", err)))
 		return
 	}
-	s.logger.Debug(logger.Message(fmt.Sprintf("Imported shim usage log: files=%d events=%d invalid=%d", res.Files, res.Events, res.InvalidLines)))
+	if res.Files > 0 {
+		s.logger.Info(logger.Message(fmt.Sprintf("Imported last-use history from %d usage log file(s).", res.Files)))
+	}
+	s.logger.Debug(logger.Message(fmt.Sprintf("Refreshed tool usage: legacy_files=%d observations=%d invalid=%d", res.Files, res.Events, res.InvalidLines)))
+}
+
+func (s *Server) refreshUsageMarkers(ctx context.Context, tools ...*config.ToolConfig) error {
+	if s.registry == nil || s.fsys == nil || s.projectConfig == nil {
+		return nil
+	}
+	_, err := usagelog.RefreshMarkers(ctx, s.fsys, s.registry, s.projectConfig.Paths.GeneratedDir, tools...)
+	return err
 }
 
 // Stop shuts down the running dashboard server.

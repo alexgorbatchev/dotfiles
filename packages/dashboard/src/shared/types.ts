@@ -123,10 +123,11 @@ export interface IToolMetadata {
 }
 
 /**
- * Per-binary usage stats for a tool.
+ * Per-binary last-used activity and retained historical counts.
  */
 export interface IToolBinaryUsage {
   binaryName: string;
+  /** Historical event count; last-used observations do not increment it. */
   count: number;
   lastUsedAt: string | null;
 }
@@ -135,6 +136,7 @@ export interface IToolBinaryUsage {
  * Usage summary for a tool.
  */
 export interface IToolUsageSummary {
+  /** Sum of retained historical counts, not a current invocation total. */
   totalCount: number;
   binaries: IToolBinaryUsage[];
 }

@@ -1,4 +1,5 @@
 import { type JSX } from "preact";
+import { useState } from "preact/hooks";
 
 import type { IToolDetail } from "../../shared/types";
 import { RecentTools } from "../components/RecentTools";
@@ -11,79 +12,33 @@ import { useInventoryQuery } from "../hooks/useInventoryQuery";
 import { inventoryToolHref } from "../utils/inventoryUtils";
 import { useSectionHash } from "../hooks/useSectionHash";
 import { useToolActions } from "../hooks/useToolActions";
-import { History, Zap } from "../icons";
+import { History } from "../icons";
 import { formatBytes } from "../utils/format";
+import { formatRelativeTime, getLastUsedAt } from "../utils/usageUtils";
 
 const TOOLS_SECTION_IDS = ["overview", "tool-files", "activity"] as const;
 
 interface IUsageListItem {
   name: string;
-  count: number;
   lastUsedAt: number;
 }
 
-function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) {
-    return "just now";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) {
-    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  }
-
-  const days = Math.floor(hours / 24);
-  if (days < 30) {
-    return `${days} day${days === 1 ? "" : "s"} ago`;
-  }
-
-  const months = Math.floor(days / 30);
-  return `${months} month${months === 1 ? "" : "s"} ago`;
-}
-
-function getToolLastUsedAt(tool: IToolDetail): number {
-  return tool.usage.binaries.reduce((latest, item) => {
-    if (!item.lastUsedAt) {
-      return latest;
-    }
-
-    const timestamp = Date.parse(item.lastUsedAt);
-    if (Number.isNaN(timestamp)) {
-      return latest;
-    }
-
-    return Math.max(latest, timestamp);
-  }, 0);
-}
-
 function buildUsageItems(tools: IToolDetail[]): IUsageListItem[] {
-  return tools
-    .map((tool) => ({
-      name: tool.config.name,
-      count: tool.usage.totalCount,
-      lastUsedAt: getToolLastUsedAt(tool),
-    }))
-    .filter((tool) => tool.count > 0);
+  return tools.flatMap((tool) => {
+    const lastUsedAt = getLastUsedAt(tool.usage);
+    return lastUsedAt === null ? [] : [{ name: tool.config.name, lastUsedAt }];
+  });
 }
 
 type UsageListCardProps = {
   title: string;
   icon: JSX.Element;
   items: IUsageListItem[];
-  secondary: (item: IUsageListItem) => string;
   returnTo: string;
 };
 
-function UsageListCard({ title, icon, items, secondary, returnTo }: UsageListCardProps): JSX.Element {
+function UsageListCard({ title, icon, items, returnTo }: UsageListCardProps): JSX.Element {
+  const [now] = useState(Date.now);
   return (
     <TitledCard title={title} icon={icon} class="h-full" contentClass="flex-1 overflow-auto">
       <div class="space-y-0">
@@ -94,7 +49,13 @@ function UsageListCard({ title, icon, items, secondary, returnTo }: UsageListCar
             class="group flex min-h-11 sm:min-h-6 cursor-pointer flex-wrap items-center gap-2 rounded py-1 text-sm hover:bg-accent"
           >
             <span class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-sm font-medium">{item.name}</span>
-            <span class="text-sm text-muted-foreground">{secondary(item)}</span>
+            <time
+              dateTime={new Date(item.lastUsedAt).toISOString()}
+              title={new Date(item.lastUsedAt).toLocaleString()}
+              class="text-sm text-muted-foreground"
+            >
+              {formatRelativeTime(item.lastUsedAt, now)}
+            </time>
           </a>
         ))}
       </div>
@@ -114,11 +75,11 @@ export function Tools(): JSX.Element {
   const installedCount = toolsList.filter((tool) => tool.runtime.status === "installed").length;
   const binariesDiskSize = toolsList.reduce((sum, tool) => sum + (tool.binaryDiskSize || 0), 0);
   const usageItems = buildUsageItems(toolsList);
-  const mostUsed = usageItems
-    .toSorted((leftItem, rightItem) => rightItem.count - leftItem.count || rightItem.lastUsedAt - leftItem.lastUsedAt)
-    .slice(0, 10);
   const mostRecentlyUsed = usageItems
-    .toSorted((leftItem, rightItem) => rightItem.lastUsedAt - leftItem.lastUsedAt || rightItem.count - leftItem.count)
+    .toSorted(
+      (leftItem, rightItem) =>
+        rightItem.lastUsedAt - leftItem.lastUsedAt || leftItem.name.localeCompare(rightItem.name),
+    )
     .slice(0, 10);
 
   if (tools === null) {
@@ -161,29 +122,19 @@ export function Tools(): JSX.Element {
         <summary class="min-h-11 cursor-pointer content-center rounded font-medium focus-visible:outline-2 focus-visible:outline-ring">
           Activity · recent additions and usage
         </summary>
-        <div class="mt-3 grid items-start gap-4 lg:grid-cols-3">
+        <div class="mt-3 grid items-start gap-4 lg:grid-cols-2">
           <RecentTools returnTo={inventory.returnTo} />
           {usageItems.length === 0 ? (
-            <p class="text-sm text-muted-foreground lg:col-span-2">
+            <p class="text-sm text-muted-foreground">
               No usage recorded yet. Run a managed tool to start collecting activity.
             </p>
           ) : (
-            <>
-              <UsageListCard
-                title="Most Recently Used"
-                icon={<History class="h-4 w-4 text-muted-foreground" />}
-                items={mostRecentlyUsed}
-                secondary={(item) => formatRelativeTime(item.lastUsedAt)}
-                returnTo={inventory.returnTo}
-              />
-              <UsageListCard
-                title="Most Used"
-                icon={<Zap class="h-4 w-4 text-muted-foreground" />}
-                items={mostUsed}
-                secondary={(item) => `${item.count.toLocaleString()} runs`}
-                returnTo={inventory.returnTo}
-              />
-            </>
+            <UsageListCard
+              title="Most Recently Used"
+              icon={<History class="h-4 w-4 text-muted-foreground" />}
+              items={mostRecentlyUsed}
+              returnTo={inventory.returnTo}
+            />
           )}
         </div>
       </details>

@@ -22,7 +22,7 @@ import (
 // completion honours --config, --platform and --arch, and releases the registry
 // handle immediately since completion only needs the parsed configuration.
 func loadToolConfigsForCompletion(cmd *cobra.Command) ([]*config.ToolConfig, error) {
-	services, err := BootstrapServices(cmd.Context(), cfgFile)
+	services, err := BootstrapServices(withoutStartupUsage(cmd.Context()), cfgFile)
 	if err != nil {
 		return nil, fmt.Errorf("loading configuration for completion: %w", err)
 	}

@@ -115,13 +115,15 @@ Externally-managed installers (`apt`, `brew`, `dnf`, `dmg`, `npm`, `pacman`, `pk
 
 - Running the shim auto-installs the tool on first use (if needed)
 - Running `{binary} @update` triggers a shim-driven update flow
-- Shim executions append usage events to a local log for dashboard analytics
+- Shim invocations record best-effort last-used activity to help identify forgotten tools
 - A shim names the bash that runs it by absolute path: `dotfiles generate` writes the first `bash` on PATH (or in `/usr/bin`, `/usr/local/bin`, `/bin` or `/opt/homebrew/bin`) that is not one of its own shims, so the shim starts even under a PATH without bash, as from launchd or cron. Generation fails when it finds no bash. That path belongs to the machine that ran `generate`, so a dotfiles directory shared between machines needs `dotfiles generate` on each of them; copying `.generated/` to a machine whose bash lives elsewhere leaves every shim unable to start
 - Removing a `.bin(name)` declaration and rerunning `dotfiles generate` cleans up the stale shim automatically
 - `.bin(name, { shim: false })` declares the binary without a shim: it is installed under the tool's `current` directory and remains a `dependsOn()` target, but nothing is written to `paths.targetDir` (this is how the scaffolded `typescript.tool.ts` keeps `tsc` off PATH)
 - During `dotfiles generate`, declared binaries, aliases, and functions are checked for shadowing against external system commands on PATH and shell builtins; see [Troubleshooting](../configuration/troubleshooting.md#shadow-warnings-during-generate)
 
-Usage tracking is enabled by default. The dashboard imports and compacts the local usage log into SQLite on startup. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable tracking.
+Usage tracking is enabled by default. Each shim invocation updates the modification time of one zero-byte marker per tool/binary using a shell builtin. Repeated invocations do not grow a log or start a logging process. Project-aware commands and dashboard reads refresh the recorded last-used time; occasional missed observations are acceptable. Existing event logs are imported for their latest timestamps and removed only after that import commits. Regenerate existing shims with `dotfiles generate` to switch them to markers.
+
+The dashboard shows last-used activity rather than invocation counts. “No usage recorded” is a prompt to investigate, not proof a tool was never used: direct binary calls and binaries without shims are not observed. Tracking never removes tools automatically. Set `DOTFILES_LOCAL_USAGE_TRACKING=0` to disable new observations; existing history remains.
 
 #### Binary patterns
 

@@ -44,13 +44,13 @@ type Config struct {
 	// CliEnv is an optional NAME=value assignment for explicit source invocation.
 	CliEnv               string
 	ConfigFilePath       string
-	UsageLogPath         string
+	UsageMarkerPath      string
 	MissingBinaryMessage string
 }
 
 // Generate creates an executable shell wrapper shim script at the given path.
 //
-// The directory holding the shim and the directory holding cfg.UsageLogPath must
+// The directory holding the shim and the directory holding cfg.UsageMarkerPath must
 // already exist: both are shared by every tool, so creating them here would record
 // them, through a caller's tool-scoped tracked filesystem, as shims owned by whichever
 // tool was written first. Provisioning them is the caller's job.

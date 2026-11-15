@@ -470,8 +470,8 @@ func TestOrchestrator_InstallTool_ShimsOnlyDeclaredBinaries(t *testing.T) {
 	}
 }
 
-// The target directory and the usage-log directory belong to the project, not to
-// whichever tool happened to be installed first: both hold artifacts of every tool.
+// The target directory and the usage directories belong to the project, not to
+// whichever tool happened to be installed first: they hold artifacts of every tool.
 // Recorded as one tool's shims they become stale shims of that tool the moment it is
 // generated, and the cleanup deletes them, taking the usage log with them as soon as
 // the directory is empty enough for Remove to succeed.
@@ -530,13 +530,25 @@ func TestInstallThenGenerate_SystemDirectoriesAreNotToolOwnedShims(t *testing.T)
 	}
 
 	usageDir := usagelog.Dir(projCfg.Paths.GeneratedDir)
+	markerDir := usagelog.MarkerDir(projCfg.Paths.GeneratedDir)
+	markerPath := usagelog.MarkerPath(projCfg.Paths.GeneratedDir, tool.Name, "probe")
+	if exists, _ := fsys.Exists(markerPath); exists {
+		t.Fatal("installation created a usage marker before any shim invocation")
+	}
+	shimContent, err := fsys.ReadFile(filepath.Join(projCfg.Paths.TargetDir, "probe"))
+	if err != nil || !strings.Contains(string(shimContent), "USAGE_MARKER_PATH="+shell.Quote(markerPath)) {
+		t.Fatalf("installed shim does not record its own marker: %v\n%s", err, shimContent)
+	}
+	if err := fsys.WriteFile(markerPath, nil, 0644); err != nil {
+		t.Fatalf("writing usage marker: %v", err)
+	}
 	usageLogPath := usagelog.Path(projCfg.Paths.GeneratedDir)
 	if err := fsys.WriteFile(usageLogPath, []byte("v1\t1700000000\tprobe\tprobe\n"), 0644); err != nil {
 		t.Fatalf("writing usage log: %v", err)
 	}
 
 	systemDirs := map[string]bool{}
-	for _, dir := range []string{projCfg.Paths.TargetDir, usageDir} {
+	for _, dir := range []string{projCfg.Paths.TargetDir, usageDir, markerDir} {
 		systemDirs[dir] = true
 		systemDirs[orch.formatPath(projCfg, dir)] = true
 	}
@@ -569,6 +581,13 @@ func TestInstallThenGenerate_SystemDirectoriesAreNotToolOwnedShims(t *testing.T)
 
 	if exists, _ := fsys.Exists(usageLogPath); !exists {
 		t.Error("expected the usage log written before generate to survive it")
+	}
+	if exists, _ := fsys.Exists(markerPath); !exists {
+		t.Error("expected the usage marker written before generate to survive it")
+	}
+	shimContent, err = fsys.ReadFile(filepath.Join(projCfg.Paths.TargetDir, "probe"))
+	if err != nil || !strings.Contains(string(shimContent), "USAGE_MARKER_PATH="+shell.Quote(markerPath)) {
+		t.Fatalf("generated shim does not record its own marker: %v\n%s", err, shimContent)
 	}
 	for dir := range systemDirs {
 		if strings.HasPrefix(dir, "~") {

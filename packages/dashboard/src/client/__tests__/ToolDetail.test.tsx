@@ -350,14 +350,14 @@ test("keeps populated details and dependency navigation after an inventory refre
   expect(screen.getByRole("link", { name: "dependent/tool" }).getAttribute("href")).toBe("/tools/dependent%2Ftool");
   expect(screen.getByText("workstation")).toBeInTheDocument();
   expect(screen.getByText("2.0 KB")).toBeInTheDocument();
-  expect(screen.getByText("12 runs")).toBeInTheDocument();
-  expect(screen.getByText(/Last used/)).toBeInTheDocument();
+  expect(screen.queryByText("12 runs")).toBeNull();
+  expect(screen.getAllByText(/Last used/)).toHaveLength(2);
   routes["/api/tools"] = () => Promise.reject(new Error("Refresh unavailable"));
   act(() => invalidateFetches("/tools"));
   await screen.findByText("Refresh unavailable");
   expect(screen.getByText("Showing previously loaded data. It may be out of date.")).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "example" })).toBeInTheDocument();
-  expect(screen.getByText("12 runs")).toBeInTheDocument();
+  expect(screen.queryByText("12 runs")).toBeNull();
   expect(screen.getByRole("link", { name: "runtime/tool" })).toBeInTheDocument();
   expect(screen.queryByText("Tool not found")).toBeNull();
 });
@@ -540,4 +540,38 @@ test("separates recorded, requested and observed versions and retries optional h
   routes["/api/health"] = async () => response(fixture_health);
   fireEvent.click(screen.getByRole("button", { name: "Retry installation health" }));
   await screen.findByText("Health: recorded paths present");
+});
+
+test("shows zero-count observations and unobserved binaries without claiming they are unused", async () => {
+  const tool: IToolDetail = {
+    ...fixture_tool,
+    usage: {
+      totalCount: 0,
+      binaries: [
+        { binaryName: "observed", count: 0, lastUsedAt: "2026-11-12T06:00:00Z" },
+        { binaryName: "unobserved", count: 0, lastUsedAt: null },
+        { binaryName: "invalid-date", count: 10, lastUsedAt: "invalid" },
+      ],
+    },
+  };
+  respondTo({
+    "/api/tools": async () => response([tool]),
+    "/api/tools/example/history": async () => response(fixture_emptyHistory),
+    "/api/tools/example/source": async () => response({ content: "", filePath: "" }),
+    "/api/tools/example/readme": async () => response({ content: "" }),
+  });
+  const { container } = render(
+    <ToolActionsProvider>
+      <ToolDetail params={{ name: "example" }} />
+    </ToolActionsProvider>,
+  );
+  await screen.findByRole("heading", { name: "example" });
+  const summary = screen.getByText(/^Usage · Last used/);
+  fireEvent.click(summary);
+  expect(screen.getByText("observed")).toBeVisible();
+  expect(screen.getAllByText("No usage recorded")).toHaveLength(2);
+  expect(container.querySelector('time[datetime="2026-11-12T06:00:00.000Z"]')).toBeInTheDocument();
+  expect(screen.getByText(/Direct calls and disabled tracking are not observed/)).toBeVisible();
+  expect(screen.queryByText(/\d+ runs/)).toBeNull();
+  expect(screen.queryByText("Never used")).toBeNull();
 });

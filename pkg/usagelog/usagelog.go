@@ -1,16 +1,12 @@
-// Package usagelog imports the append-only log that generated shims write on every
-// invocation into the registry's tool_usage table.
-//
-// Each shim appends one tab-separated line, "v1\t<unix seconds>\t<tool>\t<binary>",
-// to the active log under paths.generatedDir. Import rotates that file aside so
-// shims keep appending to a fresh one, folds every rotated file into per-binary
-// counters and deletes it. The dashboard runs Import when it starts, which is where
-// the usage views get their data.
+// Package usagelog records best-effort last-used observations from shim markers
+// and migrates legacy invocation logs without accumulating invocation counts.
 package usagelog
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
@@ -27,7 +24,7 @@ const (
 	dirName  = "usage"
 	fileName = "shim-usage.log"
 
-	// Version is the first field of every line the shim template writes. Lines
+	// Version is the first field of legacy event lines. Lines
 	// carrying any other version are counted as invalid and skipped.
 	Version = "v1"
 
@@ -35,12 +32,12 @@ const (
 	maxRotationSuffix = 1000
 )
 
-// Dir returns the directory holding the active and rotated usage logs.
+// Dir returns the directory holding activity markers and legacy usage logs.
 func Dir(generatedDir string) string {
 	return filepath.Join(generatedDir, dirName)
 }
 
-// Path returns the active usage log that shims append to.
+// Path returns the legacy active usage log written by older generated shims.
 func Path(generatedDir string) string {
 	return filepath.Join(Dir(generatedDir), fileName)
 }
@@ -90,38 +87,45 @@ type Result struct {
 	Events int
 	// InvalidLines is how many non-blank lines were skipped as unparseable.
 	InvalidLines int
+	// Markers is how many binary timestamps were refreshed from marker metadata.
+	Markers int
 }
 
-// Import rotates the active usage log aside, folds every rotated log under Dir
-// into the registry and deletes each file once its events are recorded. Files are
-// processed oldest first by name. A missing log directory or active log is not an
-// error: the result is simply empty.
-func Import(ctx context.Context, fsys fs.FS, reg *registry.Registry, generatedDir string) (Result, error) {
+// Import refreshes configured last-used markers and migrates remaining legacy
+// logs. Timestamps merge monotonically with zero count increments, so retrying
+// after failed cleanup or running concurrent imports is idempotent.
+func Import(ctx context.Context, fsys fs.FS, reg *registry.Registry, generatedDir string, tools ...*config.ToolConfig) (Result, error) {
+	markers, markerErr := RefreshMarkers(ctx, fsys, reg, generatedDir, tools...)
+	total := Result{Markers: markers}
 	if err := rotateActiveLog(fsys, generatedDir, time.Now(), os.Getpid()); err != nil {
-		return Result{}, err
+		return total, errors.Join(markerErr, err)
 	}
 
 	rotated, err := rotatedLogs(fsys, generatedDir)
 	if err != nil {
-		return Result{}, err
+		return total, errors.Join(markerErr, err)
 	}
 
-	var total Result
+	importErr := markerErr
 	for _, logPath := range rotated {
+		if err := ctx.Err(); err != nil {
+			return total, errors.Join(importErr, err)
+		}
 		res, err := importFile(ctx, fsys, reg, logPath)
 		if err != nil {
-			return total, err
+			importErr = errors.Join(importErr, err)
+			continue
 		}
 		total.Files += res.Files
 		total.Events += res.Events
 		total.InvalidLines += res.InvalidLines
 	}
-	return total, nil
+	return total, importErr
 }
 
-// rotateActiveLog renames the active log to a name no shim writes to, so events
-// appended while the import runs land in a fresh active log instead of being lost
-// when the imported file is deleted.
+// rotateActiveLog isolates a legacy snapshot. A legacy writer already holding
+// its descriptor can still append afterward; occasional missed observations are
+// acceptable, and new shims use persistent markers instead.
 func rotateActiveLog(fsys fs.FS, generatedDir string, now time.Time, pid int) error {
 	active := Path(generatedDir)
 	exists, err := fsys.Exists(active)
@@ -142,6 +146,9 @@ func rotateActiveLog(fsys fs.FS, generatedDir string, now time.Time, pid int) er
 			continue
 		}
 		if err := fsys.Rename(active, rotatedPath); err != nil {
+			if os.IsNotExist(err) {
+				return nil // Another importer already moved the active log.
+			}
 			return fmt.Errorf("rotating usage log %s: %w", active, err)
 		}
 		return nil
@@ -190,12 +197,10 @@ func rotatedLogs(fsys fs.FS, generatedDir string) ([]string, error) {
 	return paths, nil
 }
 
-// aggregate is the per-binary fold of one log file: how many events and the
-// latest one, which is what the registry stores.
+// aggregate retains the latest legacy observation for each binary.
 type aggregate struct {
 	toolName   string
 	binaryName string
-	count      int
 	lastUsedAt time.Time
 }
 
@@ -203,15 +208,27 @@ type aggregate struct {
 // the file only after the transaction committed, so a failure leaves the file in
 // place for the next run.
 func importFile(ctx context.Context, fsys fs.FS, reg *registry.Registry, logPath string) (Result, error) {
-	content, err := fsys.ReadFile(logPath)
+	reader, err := fsys.Open(logPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return Result{}, nil // A concurrent importer completed cleanup.
+		}
 		return Result{}, fmt.Errorf("reading usage log %s: %w", logPath, err)
 	}
+
+	defer reader.Close()
 
 	res := Result{Files: 1}
 	aggregates := make(map[string]*aggregate)
 	var order []string
-	for _, line := range strings.Split(string(content), "\n") {
+	scanner := bufio.NewScanner(reader)
+	// Legacy logs can be large; retain only a bounded line and the latest per binary.
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		if err := ctx.Err(); err != nil {
+			return Result{}, err
+		}
+		line := scanner.Text()
 		entry, ok := ParseLine(line)
 		if !ok {
 			if strings.TrimSpace(line) != "" {
@@ -228,10 +245,13 @@ func importFile(ctx context.Context, fsys fs.FS, reg *registry.Registry, logPath
 			aggregates[key] = agg
 			order = append(order, key)
 		}
-		agg.count++
 		if entry.UsedAt.After(agg.lastUsedAt) {
 			agg.lastUsedAt = entry.UsedAt
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return Result{}, fmt.Errorf("reading usage log %s: %w", logPath, err)
 	}
 
 	err = reg.WithTx(ctx, func(tx *sql.Tx) error {
@@ -240,7 +260,7 @@ func importFile(ctx context.Context, fsys fs.FS, reg *registry.Registry, logPath
 			record := &registry.ToolUsageRecord{
 				ToolName:   agg.toolName,
 				BinaryName: agg.binaryName,
-				UsageCount: agg.count,
+				UsageCount: 0,
 				LastUsedAt: agg.lastUsedAt.UnixMilli(),
 			}
 			if err := reg.RecordToolUsage(ctx, tx, record); err != nil {
@@ -253,7 +273,7 @@ func importFile(ctx context.Context, fsys fs.FS, reg *registry.Registry, logPath
 		return Result{}, fmt.Errorf("recording usage from %s: %w", logPath, err)
 	}
 
-	if err := fsys.Remove(logPath); err != nil {
+	if err := fsys.Remove(logPath); err != nil && !os.IsNotExist(err) {
 		return Result{}, fmt.Errorf("removing imported usage log %s: %w", logPath, err)
 	}
 	return res, nil

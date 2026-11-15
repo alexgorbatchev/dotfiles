@@ -122,3 +122,35 @@ describe("inventory transformations", () => {
     expect(inventoryToolHref("plain")).toBe("/tools/plain");
   });
 });
+
+test("oldest usage sorting puts unobserved tools first and ignores historical counts", () => {
+  const records: IToolDetail[] = [
+    {
+      ...fixture_inventoryTool,
+      config: { name: "recent-zero-count" },
+      usage: { totalCount: 0, binaries: [{ binaryName: "a", count: 0, lastUsedAt: "2026-11-14T00:00:00Z" }] },
+    },
+    {
+      ...fixture_inventoryTool,
+      config: { name: "old-high-count" },
+      usage: { totalCount: 1000, binaries: [{ binaryName: "a", count: 1000, lastUsedAt: "2025-01-01T00:00:00Z" }] },
+    },
+    { ...fixture_inventoryTool, config: { name: "unobserved-z" } },
+    { ...fixture_inventoryTool, config: { name: "unobserved-a" } },
+    {
+      ...fixture_inventoryTool,
+      config: { name: "recent-tie" },
+      usage: { totalCount: 99, binaries: [{ binaryName: "a", count: 99, lastUsedAt: "2026-11-14T00:00:00Z" }] },
+    },
+  ];
+  const query = readInventoryQuery("?sort=last-used&status=installed");
+  expect(query.sort).toBe("last-used");
+  expect(readInventoryQuery(writeInventoryQuery("?keep=yes", query))).toEqual(query);
+  expect(filterInventoryRows(buildInventoryRows(records, null), query).map((row) => row.tool.config.name)).toEqual([
+    "unobserved-a",
+    "unobserved-z",
+    "old-high-count",
+    "recent-tie",
+    "recent-zero-count",
+  ]);
+});

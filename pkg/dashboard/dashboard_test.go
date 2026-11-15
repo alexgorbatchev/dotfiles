@@ -2419,9 +2419,7 @@ func TestResponsesDeclareOnlyWhatTheClientReads(t *testing.T) {
 	})
 }
 
-// TestServerStart_ImportsShimUsageLog covers the wiring in Start: the log that
-// shims append to is folded into the registry before the first request is served,
-// so the tool detail's usage reflects invocations made while no dashboard ran.
+// Legacy logs update recency before the first request without recounting history.
 func TestServerStart_ImportsShimUsageLog(t *testing.T) {
 	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
 	ctx := context.Background()
@@ -2432,6 +2430,13 @@ func TestServerStart_ImportsShimUsageLog(t *testing.T) {
 	}
 	defer sqlDB.Close()
 	reg := registry.NewRegistry(sqlDB)
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordToolUsage(ctx, tx, &registry.ToolUsageRecord{
+			ToolName: "bat", BinaryName: "bat", UsageCount: 7, LastUsedAt: 1700000000000,
+		})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	root := t.TempDir()
 	generatedDir := filepath.Join(root, ".generated")
@@ -2470,8 +2475,8 @@ func TestServerStart_ImportsShimUsageLog(t *testing.T) {
 	defer server.Stop()
 
 	usage := mustUsage(t, reg, "bat", "bat")
-	if usage.UsageCount != 3 || usage.LastUsedAt != time.Unix(latestUse, 0).UnixMilli() {
-		t.Fatalf("registry usage = %+v, want 3 invocations with the latest one as lastUsedAt", usage)
+	if usage.UsageCount != 7 || usage.LastUsedAt != time.Unix(latestUse, 0).UnixMilli() {
+		t.Fatalf("registry usage = %+v, want preserved count 7 with the latest observation", usage)
 	}
 
 	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/tools/bat", server.Port()))
@@ -2495,11 +2500,11 @@ func TestServerStart_ImportsShimUsageLog(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decoding tool detail: %v", err)
 	}
-	if !body.Success || body.Data.Usage.TotalCount != 3 {
-		t.Fatalf("tool detail usage = %+v, want totalCount 3 from the imported log", body.Data.Usage)
+	if !body.Success || body.Data.Usage.TotalCount != 7 {
+		t.Fatalf("tool detail usage = %+v, want preserved totalCount 7", body.Data.Usage)
 	}
-	if len(body.Data.Usage.Binaries) != 1 || body.Data.Usage.Binaries[0].BinaryName != "bat" || body.Data.Usage.Binaries[0].Count != 3 {
-		t.Fatalf("binaries = %+v, want bat with count 3", body.Data.Usage.Binaries)
+	if len(body.Data.Usage.Binaries) != 1 || body.Data.Usage.Binaries[0].BinaryName != "bat" || body.Data.Usage.Binaries[0].Count != 7 {
+		t.Fatalf("binaries = %+v, want bat with preserved count 7", body.Data.Usage.Binaries)
 	}
 	wantLastUsed := time.Unix(latestUse, 0).UTC().Format(time.RFC3339)
 	if got := body.Data.Usage.Binaries[0].LastUsedAt; got == nil || *got != wantLastUsed {
@@ -2552,9 +2557,131 @@ func TestServerStart_ReportsFailedUsageImport(t *testing.T) {
 		t.Fatalf("Stop failed: %v", err)
 	}
 
-	if !strings.Contains(logs.String(), "Failed to import shim usage log") || !strings.Contains(logs.String(), bogus) {
+	if !strings.Contains(logs.String(), "Failed to refresh tool usage") || !strings.Contains(logs.String(), bogus) {
 		t.Fatalf("logs do not report the failed import naming %s:\n%s", bogus, logs.String())
 	}
+}
+
+func TestUsageMarkersRefreshAtStartupAndOnToolReads(t *testing.T) {
+	for _, trigger := range []string{"startup", "/api/tools", "/api/tools/bat"} {
+		t.Run(trigger, func(t *testing.T) {
+			server, generated := usageMarkerServer(t)
+			marker := usagelog.MarkerPath(generated, "bat", "bat")
+			if err := os.MkdirAll(filepath.Dir(marker), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(marker, nil, 0644); err != nil {
+				t.Fatal(err)
+			}
+			observed := time.Unix(1700000600, 0)
+			if err := os.Chtimes(marker, observed, observed); err != nil {
+				t.Fatal(err)
+			}
+			if trigger == "startup" {
+				if err := server.Start(); err != nil {
+					t.Fatal(err)
+				}
+				defer server.Stop()
+			} else {
+				response := httptest.NewRecorder()
+				server.handleToolsRouter(response, httptest.NewRequest(http.MethodGet, trigger, nil))
+				var envelope struct {
+					Success bool `json:"success"`
+				}
+				if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil || !envelope.Success {
+					t.Fatalf("usage refresh request failed: %s (%v)", response.Body.String(), err)
+				}
+				if !strings.Contains(response.Body.String(), observed.UTC().Format(time.RFC3339)) {
+					t.Fatalf("tool response omitted observed use: %s", response.Body.String())
+				}
+			}
+			usage := mustUsage(t, server.registry, "bat", "bat")
+			if usage.UsageCount != 0 || usage.LastUsedAt != observed.UnixMilli() {
+				t.Fatalf("usage = %+v, want marker timestamp without a counter", usage)
+			}
+			if _, err := os.Stat(marker); err != nil {
+				t.Fatalf("refresh removed persistent marker: %v", err)
+			}
+			if trigger != "startup" {
+				later := observed.Add(time.Hour)
+				if err := os.Chtimes(marker, later, later); err != nil {
+					t.Fatal(err)
+				}
+				response := httptest.NewRecorder()
+				server.handleToolsRouter(response, httptest.NewRequest(http.MethodGet, trigger, nil))
+				if !strings.Contains(response.Body.String(), later.UTC().Format(time.RFC3339)) {
+					t.Fatalf("reloading tools did not observe newer use: %s", response.Body.String())
+				}
+			}
+		})
+	}
+}
+
+func TestToolReadsRemainAvailableAfterUsageMarkerFailure(t *testing.T) {
+	for _, endpoint := range []string{"/api/tools", "/api/tools/bat"} {
+		t.Run(endpoint, func(t *testing.T) {
+			server, generated := usageMarkerServer(t)
+			marker := usagelog.MarkerPath(generated, "bat", "bat")
+			server.fsys = usageMarkerInspectionFailure{FS: server.fsys, path: marker}
+			var diagnostics bytes.Buffer
+			server.logger = logger.New(logger.Config{Writer: &diagnostics})
+			stamp := time.Unix(1700000000, 0)
+			if err := server.registry.WithTx(context.Background(), func(tx *sql.Tx) error {
+				return server.registry.RecordToolUsage(context.Background(), tx, &registry.ToolUsageRecord{ToolName: "bat", BinaryName: "bat", LastUsedAt: stamp.UnixMilli()})
+			}); err != nil {
+				t.Fatal(err)
+			}
+			response := httptest.NewRecorder()
+			server.handleToolsRouter(response, httptest.NewRequest(http.MethodGet, endpoint, nil))
+			var envelope struct {
+				Success bool   `json:"success"`
+				Error   string `json:"error"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+				t.Fatal(err)
+			}
+			if !envelope.Success || envelope.Error != "" || !strings.Contains(response.Body.String(), stamp.UTC().Format(time.RFC3339)) {
+				t.Fatalf("optional activity failure hid tool history: %s", response.Body.String())
+			}
+			if !strings.Contains(diagnostics.String(), "permission denied") || !strings.Contains(diagnostics.String(), marker) {
+				t.Fatalf("marker inspection failure was concealed: %s", diagnostics.String())
+			}
+		})
+	}
+}
+
+type usageMarkerInspectionFailure struct {
+	fs.FS
+	path string
+}
+
+func (f usageMarkerInspectionFailure) Lstat(path string) (os.FileInfo, error) {
+	if path == f.path {
+		return nil, os.ErrPermission
+	}
+	return f.FS.Lstat(path)
+}
+
+func usageMarkerServer(t *testing.T) (*Server, string) {
+	t.Helper()
+	database, err := db.NewConnection(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	root := t.TempDir()
+	generated := filepath.Join(root, ".generated")
+	toolPath := filepath.Join(root, "bat.tool.ts")
+	if err := os.WriteFile(toolPath, []byte("// bat"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	project := &config.ProjectConfig{Paths: config.PathsConfig{
+		DotfilesDir: root, GeneratedDir: generated, BinariesDir: filepath.Join(generated, "binaries"),
+		TargetDir: filepath.Join(root, "bin"), ToolConfigsDir: root,
+	}}
+	tools := []*config.ToolConfig{{Name: "bat", InstallationMethod: "manual", ConfigFilePath: toolPath, Binaries: testutil.DeclaredBinaries("bat")}}
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+	return NewServer(log, "127.0.0.1", 0, registry.NewRegistry(database), testFS(), "", project, tools, nil, nil), generated
 }
 
 func mustUsage(t *testing.T, reg *registry.Registry, tool, binary string) *registry.ToolUsageRecord {

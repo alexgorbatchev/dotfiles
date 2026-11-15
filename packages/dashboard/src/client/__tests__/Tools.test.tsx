@@ -67,17 +67,17 @@ describe("Tools request state", () => {
     expect(screen.queryByText("No tools configured")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Tools" })).toBeNull();
   });
-  test("usage lists order recorded activity and exclude never-used tools", async () => {
+  test("recent usage follows timestamps, including zero-count observations, without count rankings", async () => {
     const ages = [10_000, 120_000, 7_200_000, 172_800_000, 5_184_000_000];
     const tools = ages.map((age, index) => ({
       ...fixture_tool,
       config: { ...fixture_tool.config, name: `used-${index}` },
       usage: {
-        totalCount: index + 1,
+        totalCount: index,
         binaries: [
           { binaryName: "unknown-time", count: 0, lastUsedAt: null },
           { binaryName: "bad-time", count: 0, lastUsedAt: "invalid" },
-          { binaryName: "example", count: index + 1, lastUsedAt: new Date(Date.now() - age).toISOString() },
+          { binaryName: "example", count: index, lastUsedAt: new Date(Date.now() - age).toISOString() },
         ],
       },
     }));
@@ -103,16 +103,15 @@ describe("Tools request state", () => {
     fireEvent.click(screen.getByText("Activity · recent additions and usage"));
     expect(screen.getByText("Most Recently Used")).toBeTruthy();
     for (const label of ["just now", "2 minutes ago", "2 hours ago", "2 days ago", "2 months ago"])
-      expect(screen.getByText(label)).toBeTruthy();
+      expect(screen.getAllByText(label)).not.toHaveLength(0);
     const usageLinks = screen
       .getAllByRole("link")
       .filter((link) => link.textContent?.startsWith("used-") && !link.getAttribute("aria-label"));
-    expect(usageLinks.slice(0, 5).map((link) => link.getAttribute("href"))).toEqual(
+    expect(usageLinks.map((link) => link.getAttribute("href"))).toEqual(
       ages.map((_, index) => `/tools/used-${index}?returnTo=%2F`),
     );
-    expect(usageLinks.slice(5).map((link) => link.getAttribute("href"))).toEqual(
-      ages.map((_, index) => `/tools/used-${4 - index}?returnTo=%2F`),
-    );
+    expect(screen.queryByText("Most Used")).toBeNull();
+    expect(screen.queryByText(/\d+ runs/)).toBeNull();
     expect(usageLinks.some((link) => link.textContent?.includes("example"))).toBe(false);
   });
   test.each([

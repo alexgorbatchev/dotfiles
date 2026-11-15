@@ -10,7 +10,7 @@ TOOL_EXECUTABLE={{quote .BinaryPath}}
 TOOL_REQUIRES_SUDO="{{if .Sudo}}1{{else}}0{{end}}"
 GENERATOR_CLI=({{if .CliEnv}}env {{quote .CliEnv}} {{end}}{{range .CliArgs}}{{quote .}} {{end}})
 CONFIG_PATH={{quote .ConfigFilePath}}
-USAGE_LOG_PATH={{quote .UsageLogPath}}
+USAGE_MARKER_PATH={{quote .UsageMarkerPath}}
 
 # Prevent self-referential infinite loops
 shim_self_path="${BASH_SOURCE[0]:-$0}"
@@ -29,21 +29,9 @@ if [ -n "${!RECURSION_ENV_VAR:-}" ]; then
   exit 1
 fi
 
-dotfiles_record_usage() {
-  local usage_timestamp
-  # Bash 4.2+ supplies the timestamp without starting another process.
-  # Older Bash versions, including macOS's Bash 3.2, use date instead.
-  if ! printf -v usage_timestamp '%(%s)T' -1 2>/dev/null; then
-    usage_timestamp="$(date +%s 2>/dev/null)" || return 0
-  fi
-  if [ -n "$usage_timestamp" ]; then
-    printf 'v1\t%s\t%s\t%s\n' "$usage_timestamp" "$TOOL_NAME" "$BINARY_NAME" >> "$USAGE_LOG_PATH" 2>/dev/null || true
-  fi
-}
-
-# Record shim usage without depending on interactive shell initialization.
+# The empty marker's modification time records the latest shim invocation.
 if [ "${DOTFILES_LOCAL_USAGE_TRACKING:-1}" != "0" ]; then
-  dotfiles_record_usage
+  : 2>/dev/null >| "$USAGE_MARKER_PATH" || true
 fi
 
 # Check if the first argument is @update

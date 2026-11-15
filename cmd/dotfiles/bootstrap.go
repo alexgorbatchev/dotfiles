@@ -19,9 +19,11 @@ import (
 	execRunner "github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
+	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/proxy"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
 	"github.com/alexgorbatchev/dotfiles/pkg/venv"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
@@ -59,6 +61,14 @@ type Services struct {
 	InMemory bool
 
 	devProxy *proxy.Server
+}
+
+type skipStartupUsageKey struct{}
+
+// withoutStartupUsage keeps completion read-only and lets dashboard startup own
+// its refresh without doing the same work during bootstrap.
+func withoutStartupUsage(ctx context.Context) context.Context {
+	return context.WithValue(ctx, skipStartupUsageKey{}, true)
 }
 
 // Close releases what BootstrapServices opened: the registry database and the
@@ -297,6 +307,16 @@ func BootstrapServices(ctx context.Context, configPath string, loadOpts ...vm.Op
 			} else if len(matchingProviders) == 1 {
 				tc.Dependencies[idx] = matchingProviders[0]
 			}
+		}
+	}
+
+	if !inMemory && ctx.Value(skipStartupUsageKey{}) != true {
+		log := GetLogger("usage", os.Stderr)
+		result, importErr := usagelog.Import(ctx, fsys, reg, projCfg.Paths.GeneratedDir, toolConfigs...)
+		if importErr != nil {
+			log.Warn(logger.Message(fmt.Sprintf("Failed to refresh tool usage: %v", importErr)))
+		} else if result.Files > 0 {
+			log.Info(logger.Message(fmt.Sprintf("Imported last-use history from %d usage log file(s).", result.Files)))
 		}
 	}
 

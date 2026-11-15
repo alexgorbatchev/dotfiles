@@ -1,5 +1,5 @@
 import { type JSX } from "preact";
-import { useMemo } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
 import { File, History, Zap } from "../icons";
 
 import type { IHealthStatus, ISerializableToolConfig, IToolDetail, IToolHistory } from "../../shared/types";
@@ -20,6 +20,7 @@ import { useRepeatedQueryParam } from "../hooks/useRepeatedQueryParam";
 import { useSectionHash } from "../hooks/useSectionHash";
 import { useToolActions } from "../hooks/useToolActions";
 import { formatBytes } from "../utils/format";
+import { formatRelativeTime, getLastUsedAt, parseUsageTimestamp } from "../utils/usageUtils";
 import { inventoryReturnTo } from "../utils/inventoryReturnTo";
 import { buildTreeForTool } from "../utils/tree";
 import {
@@ -60,6 +61,7 @@ type ToolDetailProps = {
 };
 
 export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
+  const [now] = useState(Date.now);
   const toolName = params.name;
   const returnTo = inventoryReturnTo(window.location.search);
   const sectionPath = `${window.location.pathname}${window.location.search}`;
@@ -142,6 +144,7 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
   }
 
   const fileRoots = buildTreeForTool(tool.files || []);
+  const lastUsedAt = getLastUsedAt(tool.usage);
 
   return (
     <div data-testid="ToolDetail" class="space-y-4">
@@ -296,38 +299,46 @@ export function ToolDetail({ params }: ToolDetailProps): JSX.Element {
             </div>
           )}
         </div>
-        {tool.usage.totalCount > 0 && (
-          <details>
-            <summary class="min-h-11 cursor-pointer content-center rounded py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6">
-              Usage · {tool.usage.totalCount.toLocaleString()} runs
-            </summary>
-            <TitledCard title="Usage" icon={<Zap class="h-4 w-4" />}>
-              <div class="space-y-3">
-                <div class="flex min-w-0 flex-col gap-1">
-                  <span class="text-sm text-muted-foreground">Total Runs</span>
-                  <span class="min-w-0 break-words [overflow-wrap:anywhere] font-medium">
-                    {tool.usage.totalCount.toLocaleString()}
-                  </span>
-                </div>
-                <div class="space-y-2">
-                  {tool.usage.binaries.map((entry) => (
-                    <div key={entry.binaryName} class="rounded-md border border-border p-2">
-                      <div class="flex items-center justify-between gap-2">
-                        <code class="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{entry.binaryName}</code>
-                        <span class="text-sm font-medium">{entry.count.toLocaleString()} runs</span>
+        <details>
+          <summary class="min-h-11 cursor-pointer content-center rounded py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring sm:min-h-6">
+            Usage · {lastUsedAt === null ? "No usage recorded" : `Last used ${formatRelativeTime(lastUsedAt, now)}`}
+          </summary>
+          <TitledCard title="Usage" icon={<Zap class="h-4 w-4" />}>
+            <div class="space-y-3">
+              <p class="text-sm text-muted-foreground">
+                Best-effort activity from managed shims. Direct calls and disabled tracking are not observed; missing
+                activity does not prove a tool is unused.
+              </p>
+              {tool.usage.binaries.length === 0 && (
+                <p class="text-sm text-muted-foreground">No managed binaries to track.</p>
+              )}
+              <div class="space-y-2">
+                {tool.usage.binaries.map((entry) => {
+                  const timestamp = parseUsageTimestamp(entry.lastUsedAt);
+                  return (
+                    <div key={entry.binaryName} class="min-w-0 rounded-md border border-border p-2">
+                      <code class="text-xs font-mono bg-muted px-1.5 py-0.5 rounded [overflow-wrap:anywhere]">
+                        {entry.binaryName}
+                      </code>
+                      <div class="mt-1 text-sm text-muted-foreground">
+                        {timestamp === null ? (
+                          "No usage recorded"
+                        ) : (
+                          <>
+                            Last used{" "}
+                            <time dateTime={new Date(timestamp).toISOString()}>
+                              {new Date(timestamp).toLocaleString()}
+                            </time>
+                          </>
+                        )}
                       </div>
-                      {entry.lastUsedAt && (
-                        <div class="mt-1 text-xs text-muted-foreground">
-                          Last used {new Date(entry.lastUsedAt).toLocaleString()}
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            </TitledCard>
-          </details>
-        )}
+            </div>
+          </TitledCard>
+        </details>
       </section>
 
       {(tool.drift?.length || 0) > 0 && (

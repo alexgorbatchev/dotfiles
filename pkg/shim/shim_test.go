@@ -7,7 +7,6 @@ import (
 	"os"
 	osexec "os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -35,7 +34,7 @@ func TestGenerator_Generate(t *testing.T) {
 				Sudo:                 false,
 				CliArgs:              []string{"dotfiles"},
 				ConfigFilePath:       "dotfiles.config.ts",
-				UsageLogPath:         "usage.log",
+				UsageMarkerPath:      "last-used.used",
 				MissingBinaryMessage: "Custom missing msg",
 			},
 			setupFS: func() fs.FS {
@@ -56,7 +55,7 @@ TOOL_EXECUTABLE=/opt/mytool/bin/mytool
 TOOL_REQUIRES_SUDO="0"
 GENERATOR_CLI=(dotfiles )
 CONFIG_PATH=dotfiles.config.ts
-USAGE_LOG_PATH=usage.log
+USAGE_MARKER_PATH=last-used.used
 
 # Prevent self-referential infinite loops
 shim_self_path="${BASH_SOURCE[0]:-$0}"
@@ -206,13 +205,13 @@ func TestGenerator_GenerateUpdateDelegatesReporting(t *testing.T) {
 		t.Fatalf("creating shim directory: %v", err)
 	}
 	cfg := Config{
-		ToolName:       "mytool",
-		BinaryName:     "mytool",
-		BinaryPath:     "/opt/mytool/bin/mytool",
-		BashPath:       "/opt/bash/bin/bash",
-		CliArgs:        []string{"dotfiles"},
-		ConfigFilePath: "dotfiles.config.ts",
-		UsageLogPath:   "usage.log",
+		ToolName:        "mytool",
+		BinaryName:      "mytool",
+		BinaryPath:      "/opt/mytool/bin/mytool",
+		BashPath:        "/opt/bash/bin/bash",
+		CliArgs:         []string{"dotfiles"},
+		ConfigFilePath:  "dotfiles.config.ts",
+		UsageMarkerPath: "last-used.used",
 	}
 	if err := NewGenerator(mem).Generate("/home/user/bin/mytool", cfg); err != nil {
 		t.Fatalf("Generate() error = %v", err)
@@ -362,19 +361,19 @@ func (e *ErroringFS) WriteFile(path string, data []byte, perm os.FileMode) error
 	return e.FS.WriteFile(path, data, perm)
 }
 
-// The shim directory and the usage-log directory are shared by every tool, so
+// The shim directory and the usage-marker directory are shared by every tool, so
 // Generate must not create either: a caller writing through a tool-scoped tracked
 // filesystem would have the directories recorded as that tool's own shims.
 func TestGenerator_GenerateCreatesNoDirectories(t *testing.T) {
 	cfg := Config{
-		ToolName:     "mytool",
-		BinaryName:   "mytool",
-		BinaryPath:   "/opt/mytool/bin/mytool",
-		BashPath:     "/opt/bash/bin/bash",
-		UsageLogPath: "/home/user/.generated/usage/shim-usage.log",
+		ToolName:        "mytool",
+		BinaryName:      "mytool",
+		BinaryPath:      "/opt/mytool/bin/mytool",
+		BashPath:        "/opt/bash/bin/bash",
+		UsageMarkerPath: "/home/user/.generated/usage/last-used/mytool.used",
 	}
 
-	t.Run("leaves the usage log directory alone", func(t *testing.T) {
+	t.Run("leaves the usage marker directory alone", func(t *testing.T) {
 		mem := fs.NewMemFS()
 		_ = mem.MkdirAll("/home/user/.generated/bin", 0755)
 
@@ -382,7 +381,7 @@ func TestGenerator_GenerateCreatesNoDirectories(t *testing.T) {
 			t.Fatalf("Generate: %v", err)
 		}
 		if exists, _ := mem.Exists("/home/user/.generated/usage"); exists {
-			t.Error("Generate created the usage log directory; provisioning it is the caller's job")
+			t.Error("Generate created the usage marker directory; provisioning it is the caller's job")
 		}
 	})
 
@@ -474,13 +473,13 @@ func TestGenerator_GenerateLeavesIdenticalShimAlone(t *testing.T) {
 	}
 	gen := NewGenerator(fs.NewOSFS())
 	cfg := Config{
-		ToolName:       "mytool",
-		BinaryName:     "mytool",
-		BinaryPath:     filepath.Join(dir, "binaries", "mytool", "current", "mytool"),
-		BashPath:       "/bin/bash",
-		CliArgs:        []string{"dotfiles"},
-		ConfigFilePath: filepath.Join(dir, "dotfiles.config.ts"),
-		UsageLogPath:   filepath.Join(dir, "usage", "shim-usage.log"),
+		ToolName:        "mytool",
+		BinaryName:      "mytool",
+		BinaryPath:      filepath.Join(dir, "binaries", "mytool", "current", "mytool"),
+		BashPath:        "/bin/bash",
+		CliArgs:         []string{"dotfiles"},
+		ConfigFilePath:  filepath.Join(dir, "dotfiles.config.ts"),
+		UsageMarkerPath: filepath.Join(dir, "usage", "last-used.used"),
 	}
 
 	if err := gen.Generate(shimPath, cfg); err != nil {
@@ -543,27 +542,38 @@ func TestShimPreservesPathsDuringInstallAndUpdate(t *testing.T) {
 			if err := os.WriteFile(tool, []byte(toolScript), 0755); err != nil {
 				t.Fatal(err)
 			}
-			cliScript := "#!" + bash + "\nprintf '%s\\000' \"$@\" \"$DOTFILES_TEST_CLI_ENV\" > \"$DOTFILES_TEST_CLI_ARGS\"\nif [[ \"$3\" == install ]]; then cp -- \"$DOTFILES_TEST_TEMPLATE\" \"$DOTFILES_TEST_BINARY\"; fi\n"
+			cliScript := "#!" + bash + "\n[[ -f \"$DOTFILES_TEST_USAGE_MARKER\" && ! -s \"$DOTFILES_TEST_USAGE_MARKER\" ]] || exit 61\nprintf '%s\\000' \"$@\" \"$DOTFILES_TEST_CLI_ENV\" > \"$DOTFILES_TEST_CLI_ARGS\"\nif [[ \"$3\" == install ]]; then cp -- \"$DOTFILES_TEST_TEMPLATE\" \"$DOTFILES_TEST_BINARY\"; fi\n"
 			if err := os.WriteFile(cli, []byte(cliScript), 0755); err != nil {
 				t.Fatal(err)
 			}
-			cfg := Config{ToolName: "tool-" + special, BinaryName: "binary-" + special, BinaryPath: binary, BashPath: bash, CliArgs: []string{cli, "fixed argument"}, CliEnv: "DOTFILES_TEST_CLI_ENV=" + special, ConfigFilePath: filepath.Join(dir, "config-"+special+".ts"), UsageLogPath: filepath.Join(dir, "usage-"+special)}
+			cfg := Config{ToolName: "tool-" + special, BinaryName: "binary-" + special, BinaryPath: binary, BashPath: bash, CliArgs: []string{cli, "fixed argument"}, CliEnv: "DOTFILES_TEST_CLI_ENV=" + special, ConfigFilePath: filepath.Join(dir, "config-"+special+".ts"), UsageMarkerPath: filepath.Join(dir, "usage-"+special)}
 			shimPath := filepath.Join(dir, "shim-"+special)
 			if err := NewGenerator(fs.NewOSFS()).Generate(shimPath, cfg); err != nil {
 				t.Fatal(err)
 			}
+			if _, err := os.Stat(cfg.UsageMarkerPath); !os.IsNotExist(err) {
+				t.Fatalf("generation created a usage marker: %v", err)
+			}
+			past := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
 			for _, action := range []string{"install", "update"} {
 				args := []string{"tool argument", special}
 				if action == "update" {
 					args = []string{"@update"}
+					if err := os.Chtimes(cfg.UsageMarkerPath, past, past); err != nil {
+						t.Fatal(err)
+					}
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 				cmd := osexec.CommandContext(ctx, bash, append([]string{shimPath}, args...)...)
-				cmd.Env = append(os.Environ(), "DOTFILES_LOCAL_USAGE_TRACKING=0", "DOTFILES_TEST_CLI_ENV=caller value", "DOTFILES_TEST_CLI_ARGS="+calls, "DOTFILES_TEST_TOOL_ARGS="+actual, "DOTFILES_TEST_TEMPLATE="+tool, "DOTFILES_TEST_BINARY="+binary)
+				cmd.Env = append(os.Environ(), "DOTFILES_LOCAL_USAGE_TRACKING=1", "DOTFILES_TEST_CLI_ENV=caller value", "DOTFILES_TEST_CLI_ARGS="+calls, "DOTFILES_TEST_TOOL_ARGS="+actual, "DOTFILES_TEST_TEMPLATE="+tool, "DOTFILES_TEST_BINARY="+binary, "DOTFILES_TEST_USAGE_MARKER="+cfg.UsageMarkerPath)
 				out, err := cmd.CombinedOutput()
 				if err != nil {
 					t.Fatalf("%s: %v\n%s", action, err, out)
+				}
+				info, err := os.Stat(cfg.UsageMarkerPath)
+				if err != nil || info.Size() != 0 || !info.ModTime().After(past) {
+					t.Fatalf("%s did not update an empty usage marker: %v, %v", action, info, err)
 				}
 				got, err := os.ReadFile(calls)
 				want := strings.Join([]string{"fixed argument", "tool", action, "--shim-mode", "--config", cfg.ConfigFilePath, cfg.ToolName, special, ""}, "\x00")
@@ -582,43 +592,34 @@ func TestShimPreservesPathsDuringInstallAndUpdate(t *testing.T) {
 	}
 }
 
-func TestShimUsageFunctionPreservesToolExecution(t *testing.T) {
+func TestShimUsageMarkerPreservesToolExecution(t *testing.T) {
 	bash, err := osexec.LookPath("bash")
 	if err != nil {
 		t.Skip("bash is unavailable")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	probe := osexec.CommandContext(ctx, bash, "--noprofile", "--norc", "-c", "printf -v timestamp '%(%s)T' -1")
-	probe.Env = []string{"BASH_ENV=/dev/null"}
-	hasBuiltinTime := probe.Run() == nil
-
 	for _, tt := range []struct {
-		name               string
-		unsupportedTime    bool
-		disabled           bool
-		unwritableLog      bool
-		dateFails          bool
-		wantDate           bool
-		wantRecord         bool
-		requireBuiltinTime bool
+		name           string
+		disabled       bool
+		existingMarker bool
+		missingDir     bool
+		unwritable     bool
+		noclobber      bool
 	}{
-		{name: "builtin timestamp avoids date", wantRecord: true, requireBuiltinTime: true},
-		{name: "unsupported time format uses date", unsupportedTime: true, wantDate: true, wantRecord: true},
-		{name: "failed date does not stop tool", unsupportedTime: true, dateFails: true, wantDate: true},
-		{name: "opt out bypasses recording", unsupportedTime: true, disabled: true},
-		{name: "failed append does not stop tool", unsupportedTime: true, unwritableLog: true, wantDate: true},
+		{name: "repeated invocations update one empty marker"},
+		{name: "noclobber still updates an existing marker", existingMarker: true, noclobber: true},
+		{name: "opt out creates no marker", disabled: true},
+		{name: "opt out leaves existing marker unchanged", disabled: true, existingMarker: true},
+		{name: "missing directory does not stop tool", missingDir: true},
+		{name: "unwritable marker does not stop tool", unwritable: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.requireBuiltinTime && !hasBuiltinTime {
-				t.Skip("this Bash has no builtin timestamp support")
-			}
 			dir := t.TempDir()
-			logPath := filepath.Join(dir, "usage.log")
-			dateCalls := filepath.Join(dir, "date-calls")
+			markerDir := filepath.Join(dir, "usage")
+			markerPath := filepath.Join(markerDir, "last-used.used")
+			commandCalls := filepath.Join(dir, "unexpected-commands")
 			binary := filepath.Join(dir, "target")
 			shimPath := filepath.Join(dir, "shim")
-			startup := filepath.Join(dir, "bash-env")
+			startup := "/dev/null"
 			write := func(path, script string) {
 				t.Helper()
 				if err := os.WriteFile(path, []byte("#!"+bash+"\n"+script), 0700); err != nil {
@@ -631,93 +632,102 @@ printf 'stdin:<%s>\n' "$input"
 printf 'target stderr\n' >&2
 exit 23
 `)
-			// The recursion guard is independent of the clock implementation.
+			// The recursion guard is independent of usage recording.
 			write(filepath.Join(dir, "readlink"), "printf '%s\\n' \"$2\"\n")
-			write(filepath.Join(dir, "date"), `printf 'called\n' >> "$DOTFILES_TEST_DATE_CALLS"
-if [ "$DOTFILES_TEST_DATE_FAILS" = 1 ]; then exit 7; fi
-printf '1700000000\n'
-`)
-			startupScript := ""
-			if tt.unsupportedTime {
-				// Exercise the same capability failure returned by Bash 3.2.
-				startupScript = `printf() {
-  if [[ "${1:-}" = -v && "${3:-}" = '%(%s)T' ]]; then return 1; fi
-  builtin printf "$@"
-}
-`
+			for _, command := range []string{"date", "touch", "stat"} {
+				write(filepath.Join(dir, command), "printf 'called\\n' >> \"$DOTFILES_TEST_COMMAND_CALLS\"\nexit 99\n")
 			}
-			write(startup, startupScript)
-			if tt.unwritableLog {
-				if err := os.Mkdir(logPath, 0700); err != nil {
+			if tt.noclobber {
+				startup = filepath.Join(dir, "bash-env")
+				write(startup, "set -C\n")
+			}
+			if !tt.missingDir {
+				if err := os.Mkdir(markerDir, 0700); err != nil {
 					t.Fatal(err)
 				}
 			}
-			cfg := Config{ToolName: "test-tool", BinaryName: "target", BinaryPath: binary, BashPath: bash, CliArgs: []string{filepath.Join(dir, "unused-cli")}, ConfigFilePath: filepath.Join(dir, "unused-config.ts"), UsageLogPath: logPath}
+			if tt.unwritable {
+				if err := os.Mkdir(markerPath, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tt.existingMarker {
+				if err := os.WriteFile(markerPath, nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cfg := Config{ToolName: "test-tool", BinaryName: "target", BinaryPath: binary, BashPath: bash, CliArgs: []string{filepath.Join(dir, "unused-cli")}, ConfigFilePath: filepath.Join(dir, "unused-config.ts"), UsageMarkerPath: markerPath}
 			if err := NewGenerator(fs.NewOSFS()).Generate(shimPath, cfg); err != nil {
 				t.Fatal(err)
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			cmd := osexec.CommandContext(ctx, shimPath, "space arg", "--flag", "quote'arg")
-			tracking := "1"
-			if tt.disabled {
-				tracking = "0"
-			}
-			dateFails := "0"
-			if tt.dateFails {
-				dateFails = "1"
-			}
-			cmd.Env = []string{"PATH=" + dir, "BASH_ENV=" + startup, "EPOCHSECONDS=42", "DOTFILES_LOCAL_USAGE_TRACKING=" + tracking, "DOTFILES_TEST_DATE_CALLS=" + dateCalls, "DOTFILES_TEST_DATE_FAILS=" + dateFails}
-			cmd.Stdin = strings.NewReader("kept input\n")
-			var stdout, stderr bytes.Buffer
-			cmd.Stdout, cmd.Stderr = &stdout, &stderr
-			before := time.Now().Unix()
-			err := cmd.Run()
-			after := time.Now().Unix()
-			if exitErr, ok := err.(*osexec.ExitError); !ok || exitErr.ExitCode() != 23 {
-				t.Fatalf("target exit = %v; stderr=%q", err, stderr.String())
-			}
-			if got, want := stdout.String(), "arg:<space arg>\narg:<--flag>\narg:<quote'arg>\nstdin:<kept input>\n"; got != want {
-				t.Fatalf("stdout=%q, want %q", got, want)
-			}
-			if !strings.HasSuffix(stderr.String(), "target stderr\n") {
-				t.Fatalf("target stderr was not preserved: %q", stderr.String())
-			}
-			calls, err := os.ReadFile(dateCalls)
-			if tt.wantDate {
-				if err != nil || string(calls) != "called\n" {
-					t.Fatalf("date calls=%q, %v; want one call", calls, err)
+			if !tt.existingMarker && !tt.unwritable {
+				if _, err := os.Stat(markerPath); !os.IsNotExist(err) {
+					t.Fatalf("generation created a usage marker: %v", err)
 				}
-			} else if !os.IsNotExist(err) {
-				t.Fatalf("date unexpectedly invoked: calls=%q, err=%v", calls, err)
 			}
-			if tt.unwritableLog {
-				return
-			}
-			content, err := os.ReadFile(logPath)
-			if !tt.wantRecord {
-				if !os.IsNotExist(err) {
-					t.Fatalf("unexpected usage log=%q, err=%v", content, err)
+
+			past := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+			for i := range 3 {
+				if tt.existingMarker || (i > 0 && !tt.disabled && !tt.missingDir && !tt.unwritable) {
+					if err := os.Chtimes(markerPath, past, past); err != nil {
+						t.Fatal(err)
+					}
 				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			fields := strings.Split(strings.TrimSuffix(string(content), "\n"), "\t")
-			if len(fields) != 4 || fields[0] != "v1" || fields[2] != "test-tool" || fields[3] != "target" {
-				t.Fatalf("usage record=%q", content)
-			}
-			seconds, err := strconv.ParseInt(fields[1], 10, 64)
-			if err != nil {
-				t.Fatalf("timestamp=%q: %v", fields[1], err)
-			}
-			if tt.unsupportedTime {
-				if seconds != 1700000000 {
-					t.Errorf("fallback timestamp=%d, want 1700000000", seconds)
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				cmd := osexec.CommandContext(ctx, shimPath, "space arg", "--flag", "quote'arg")
+				tracking := "1"
+				if tt.disabled {
+					tracking = "0"
 				}
-			} else if seconds < before || seconds > after {
-				t.Errorf("builtin timestamp=%d, outside [%d,%d]", seconds, before, after)
+				cmd.Env = []string{"PATH=" + dir, "BASH_ENV=" + startup, "DOTFILES_LOCAL_USAGE_TRACKING=" + tracking, "DOTFILES_TEST_COMMAND_CALLS=" + commandCalls}
+				cmd.Stdin = strings.NewReader("kept input\n")
+				var stdout, stderr bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				before := time.Now()
+				err := cmd.Run()
+				after := time.Now()
+				cancel()
+				if exitErr, ok := err.(*osexec.ExitError); !ok || exitErr.ExitCode() != 23 {
+					t.Fatalf("target exit = %v; stderr=%q", err, stderr.String())
+				}
+				if got, want := stdout.String(), "arg:<space arg>\narg:<--flag>\narg:<quote'arg>\nstdin:<kept input>\n"; got != want {
+					t.Fatalf("stdout=%q, want %q", got, want)
+				}
+				if got := stderr.String(); got != "target stderr\n" {
+					t.Fatalf("stderr=%q, want target stderr only", got)
+				}
+				if calls, err := os.ReadFile(commandCalls); !os.IsNotExist(err) {
+					t.Fatalf("recording invoked an external command: %q, %v", calls, err)
+				}
+				if tt.unwritable {
+					continue
+				}
+				info, err := os.Stat(markerPath)
+				if tt.missingDir || (tt.disabled && !tt.existingMarker) {
+					if !os.IsNotExist(err) {
+						t.Fatalf("unexpected usage marker: %v", err)
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if info.Size() != 0 || !info.Mode().IsRegular() {
+					t.Fatalf("marker size=%d, mode=%v; want empty regular file", info.Size(), info.Mode())
+				}
+				if tt.disabled {
+					if !info.ModTime().Equal(past) {
+						t.Errorf("opt out changed marker mtime: %s", info.ModTime())
+					}
+				} else if info.ModTime().Before(before.Truncate(time.Second)) || info.ModTime().After(after.Add(time.Second)) {
+					t.Errorf("marker mtime=%s, outside invocation [%s,%s]", info.ModTime(), before, after)
+				}
+			}
+			if !tt.disabled && !tt.missingDir && !tt.unwritable {
+				entries, err := os.ReadDir(markerDir)
+				if err != nil || len(entries) != 1 || entries[0].Name() != filepath.Base(markerPath) {
+					t.Fatalf("repeated invocations must retain only one marker: %v, %v", entries, err)
+				}
 			}
 		})
 	}

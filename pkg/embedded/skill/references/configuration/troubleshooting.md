@@ -47,12 +47,7 @@ The shim refuses to run while an installation of the same tool is already in pro
 
 ### Disable Shim Usage Tracking
 
-Shim usage tracking is enabled by default: every run of a shim appends a line to `usage/shim-usage.log` under `paths.generatedDir`. See `.bin()` in [Core API](../api-reference/core-api.md).
-
-- Disable temporarily for a single command:
-  `DOTFILES_LOCAL_USAGE_TRACKING=0 rg --version`
-- Disable for the current shell session:
-  `export DOTFILES_LOCAL_USAGE_TRACKING=0`
+See [shim activity tracking](../api-reference/core-api.md#binname-runtime-behavior) for the opt-out setting, what last-used activity measures, and why missing observations do not prove a tool was never used.
 
 ### Dependency Errors
 

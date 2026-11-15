@@ -9,7 +9,7 @@ Tool installation and file operation state registry.
 ## Local conventions
 
 - Record file operations (`writeFile`, `rm`, `chmod`, `symlink`) in SQLite transaction batches.
-- Usage aggregation adds invocation counts and preserves the maximum existing/incoming `last_used_at`, including when older logs arrive after newer ones.
+- `RecordToolUsage` preserves maximum existing/incoming `last_used_at`. Current last-used observations pass a zero count increment; retained invocation counts are historical compatibility data, not a live usage metric.
 
 ## Local gotchas
 

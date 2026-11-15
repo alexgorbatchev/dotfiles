@@ -226,6 +226,9 @@ func (s *Server) handleGetTools(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, false, nil, "Registry is not initialized")
 		return
 	}
+	if err := s.refreshUsageMarkers(ctx, s.toolConfigs...); err != nil {
+		s.logger.Warn(logger.Message(fmt.Sprintf("Failed to refresh tool usage: %v", err)))
+	}
 
 	tools := []map[string]any{}
 	for _, tc := range s.toolConfigs {
@@ -259,6 +262,9 @@ func (s *Server) handleGetToolDetail(w http.ResponseWriter, r *http.Request, too
 	if targetTool == nil {
 		writeJSON(w, false, nil, "Tool not found")
 		return
+	}
+	if err := s.refreshUsageMarkers(ctx, targetTool); err != nil {
+		s.logger.Warn(logger.Message(fmt.Sprintf("Failed to refresh tool usage: %v", err)))
 	}
 
 	detail, err := s.getToolDetail(ctx, targetTool)

@@ -1,5 +1,6 @@
 import type { IFileTreeEntry, IToolConfigsTree, IToolDetail } from "../../shared/types";
 import type { IInventoryQuery, IInventoryRow, IInventorySource } from "../inventory/types";
+import { getLastUsedAt } from "./usageUtils";
 
 export function readInventoryQuery(search: string): IInventoryQuery {
   const params = new URLSearchParams(search);
@@ -10,7 +11,7 @@ export function readInventoryQuery(search: string): IInventoryQuery {
     status: ["installed", "not-installed", "error"].includes(status) ? status : "",
     method: params.get("method") ?? "",
     root: params.get("root") ?? "",
-    sort: ["name", "name-desc", "status", "method"].includes(sort) ? sort : "name",
+    sort: ["name", "name-desc", "status", "method", "last-used"].includes(sort) ? sort : "name",
   };
 }
 
@@ -75,6 +76,13 @@ export function filterInventoryRows(rows: IInventoryRow[], query: IInventoryQuer
     )
     .toSorted((left, right) => {
       const name = left.tool.config.name.localeCompare(right.tool.config.name);
+      if (query.sort === "last-used") {
+        const leftUsed = getLastUsedAt(left.tool.usage);
+        const rightUsed = getLastUsedAt(right.tool.usage);
+        if (leftUsed === null && rightUsed !== null) return -1;
+        if (rightUsed === null && leftUsed !== null) return 1;
+        return (leftUsed ?? 0) - (rightUsed ?? 0) || name;
+      }
       if (query.sort === "name-desc") return -name;
       if (query.sort === "status") return left.tool.runtime.status.localeCompare(right.tool.runtime.status) || name;
       if (query.sort === "method")

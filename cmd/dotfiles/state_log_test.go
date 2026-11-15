@@ -322,21 +322,24 @@ func TestLogCommand_DiskLogFallback(t *testing.T) {
 		}
 	})
 
-	t.Run("shim usage log wins over the generated log", func(t *testing.T) {
+	t.Run("legacy usage is imported before reading the generated log", func(t *testing.T) {
 		usagePath := filepath.Join(p.GeneratedDir, "usage", "shim-usage.log")
 		if err := os.MkdirAll(filepath.Dir(usagePath), 0755); err != nil {
 			t.Fatalf("creating usage dir: %v", err)
 		}
-		if err := os.WriteFile(usagePath, []byte("bat used\n"), 0644); err != nil {
+		if err := os.WriteFile(usagePath, []byte("v1\t1700000000\tbat\tbat\n"), 0644); err != nil {
 			t.Fatalf("writing usage log: %v", err)
 		}
 		out, err := p.run("state", "log")
 		if err != nil {
 			t.Fatalf("state log: %v\n%s", err, out.Combined)
 		}
-		if out.Stdout != "bat used\n" {
-			t.Fatalf("stdout = %q, want the shim usage log", out.Stdout)
+		if out.Stdout != "one\ntwo\nthree\n" {
+			t.Fatalf("stdout = %q, want the generated log after legacy import", out.Stdout)
 		}
-		mustContain(t, "stderr", out.Stderr, "Reading log file: "+usagePath)
+		mustContain(t, "stderr", out.Stderr, "Reading log file: "+logPath)
+		if _, err := os.Stat(usagePath); !os.IsNotExist(err) {
+			t.Fatalf("legacy usage log remains after import: %v", err)
+		}
 	})
 }

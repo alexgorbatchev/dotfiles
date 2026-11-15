@@ -17,7 +17,7 @@ var (
 
 func runDashboard(cmd *cobra.Command) error {
 	ctx := cmd.Context()
-	services, err := BootstrapServices(ctx, cfgFile)
+	services, err := BootstrapServices(withoutStartupUsage(ctx), cfgFile)
 	if err != nil {
 		return err
 	}

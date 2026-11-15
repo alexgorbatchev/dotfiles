@@ -1,6 +1,6 @@
 # pkg/usagelog
 
-Shim execution usage logging, atomic log rotation, and SQLite registry usage aggregation.
+Best-effort tool activity for identifying forgotten tools by their last recorded use.
 
 ## Commands
 
@@ -8,10 +8,11 @@ Shim execution usage logging, atomic log rotation, and SQLite registry usage agg
 
 ## Local conventions
 
-- Append-only shim format: shims record invocations as tab-delimited lines: `v1\t<unix seconds>\t<tool>\t<binary>` in `.generated/usage/shim-usage.log`.
-- Current log rotation (`rotateActiveLog`) renames the active log to `<fileName>.<unix_ms>.<pid>[.<suffix>]` before processing. A writer that already opened the old file can still append to it; rename alone does not establish safe deletion or prevent event loss.
-- Batch import (`Import`) processes rotated logs oldest-first by filename. Each file is aggregated into `tool_usage` in its own transaction (`reg.WithTx`), incrementing invocation counts and retaining the maximum `last_used_at`.
-- Rotated files are deleted only after database transactions commit successfully. The current importer has no persistent consumed-byte receipts: a failed deletion or concurrent import can count records again. Preserve the commit-before-delete ordering when repairing retry accounting and writer coordination.
+- The product signal is whether a tool has recorded activity and how recently, not invocation counts. Occasional missed observations are acceptable; do not introduce exact-count receipts, synchronous logging helpers, or locking protocols to turn this into an audit ledger.
+- Each shim updates a zero-byte marker under `usage/last-used/` with a shell builtin. The filesystem modification time supplies the observation timestamp. Generate the stable tool/binary marker path ahead of time; never create a marker during generation or installation, which would falsely record use.
+- Refresh configured markers without deleting them, and merge timestamps into the existing registry with zero count increments and `MAX(last_used_at)`. Historical counts remain unchanged for compatibility and are not the current usage signal.
+- Legacy `v1\t<unix seconds>\t<tool>\t<binary>` logs are read only for their latest timestamps. Commit those observations before removing consumed logs. Repeated or concurrent imports must not increase counts or move timestamps backward. Late legacy writes can be missed under the best-effort contract.
+- “No usage recorded” does not prove a tool was never used: direct binary calls, disabled tracking, and tools without shims are not observed. Usage evidence informs human cleanup decisions; it never authorizes automatic removal.
 
 ## Local gotchas
 

@@ -2,12 +2,17 @@ package usagelog
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
@@ -20,6 +25,220 @@ func TestPaths(t *testing.T) {
 	}
 	if got, want := Path(gen), filepath.Join(gen, "usage", "shim-usage.log"); got != want {
 		t.Fatalf("Path = %q, want %q", got, want)
+	}
+}
+
+func TestLastUsedMarkers(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	fsys := fs.NewOSFS()
+	reg := newRegistry(t)
+	tool := &config.ToolConfig{Name: "tools--bat", Binaries: []any{config.BinaryConfig{Name: "bat"}, config.BinaryConfig{Name: "bat-extra"}, config.BinaryConfig{Name: "unobserved"}}}
+	if err := fsys.MkdirAll(MarkerDir(root), 0755); err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Unix(1700000000, 0)
+	for _, binary := range []string{"bat", "bat-extra"} {
+		path := MarkerPath(root, tool.Name, binary)
+		if err := fsys.WriteFile(path, nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, stamp, stamp); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordToolUsage(ctx, tx, &registry.ToolUsageRecord{ToolName: tool.Name, BinaryName: "bat", UsageCount: 12, LastUsedAt: stamp.Add(-time.Hour).UnixMilli()})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Import(ctx, fsys, reg, root, nil, tool)
+	if err != nil || res.Markers != 2 || res.Files != 0 {
+		t.Fatalf("Import = %+v, %v; want two marker observations", res, err)
+	}
+	for _, binary := range []string{"bat", "bat-extra"} {
+		got := mustUsage(t, reg, tool.Name, binary)
+		wantCount := 0
+		if binary == "bat" {
+			wantCount = 12
+		}
+		if got.LastUsedAt != stamp.UnixMilli() || got.UsageCount != wantCount {
+			t.Fatalf("%s = %+v, want timestamp %d and historical count %d", binary, got, stamp.UnixMilli(), wantCount)
+		}
+		info, err := fsys.Stat(MarkerPath(root, tool.Name, binary))
+		if err != nil || info.Size() != 0 {
+			t.Fatalf("marker removed or changed: %v, %v", info, err)
+		}
+	}
+	if got, err := reg.GetToolUsage(ctx, tool.Name, "unobserved"); err != nil || got != nil {
+		t.Fatalf("missing marker fabricated usage: %+v, %v", got, err)
+	}
+	for _, observedTime := range []time.Time{stamp, stamp.Add(-time.Hour)} {
+		if err := os.Chtimes(MarkerPath(root, tool.Name, "bat"), observedTime, observedTime); err != nil {
+			t.Fatal(err)
+		}
+		if n, err := RefreshMarkers(ctx, fsys, reg, root, tool); err != nil || n != 0 {
+			t.Fatalf("repeated/older marker changed history: %d, %v", n, err)
+		}
+	}
+	if got := mustUsage(t, reg, tool.Name, "bat"); got.UsageCount != 12 || got.LastUsedAt != stamp.UnixMilli() {
+		t.Fatalf("history changed: %+v", got)
+	}
+}
+
+func TestMarkerPathsSeparateIdentities(t *testing.T) {
+	root := filepath.Join(string(filepath.Separator), "generated")
+	paths := map[string]bool{}
+	for _, pair := range [][2]string{{"a/b", "c"}, {"a", "b/c"}, {"a", "c"}, {"../../outside", "binary"}} {
+		path := MarkerPath(root, pair[0], pair[1])
+		if paths[path] || filepath.Dir(path) != MarkerDir(root) || len(filepath.Base(path)) != 69 {
+			t.Fatalf("unsafe or ambiguous marker path: %s", path)
+		}
+		paths[path] = true
+	}
+}
+
+type markerFailureFS struct {
+	fs.FS
+	path string
+}
+
+func (f markerFailureFS) Lstat(path string) (os.FileInfo, error) {
+	if path == f.path {
+		return nil, os.ErrPermission
+	}
+	return f.FS.Lstat(path)
+}
+
+func TestMarkerRefreshFailures(t *testing.T) {
+	ctx := context.Background()
+	root := filepath.Join(string(filepath.Separator), "generated")
+	tool := &config.ToolConfig{Name: "tool", Binaries: []any{config.BinaryConfig{Name: "good"}, config.BinaryConfig{Name: "bad"}}}
+	newMarkers := func(t *testing.T) fs.FS {
+		t.Helper()
+		mem := fs.NewMemFS()
+		if err := mem.MkdirAll(MarkerDir(root), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := mem.WriteFile(MarkerPath(root, tool.Name, "good"), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+		return mem
+	}
+	t.Run("continues after an unreadable marker", func(t *testing.T) {
+		reg := newRegistry(t)
+		fsys := markerFailureFS{FS: newMarkers(t), path: MarkerPath(root, tool.Name, "bad")}
+		n, err := RefreshMarkers(ctx, fsys, reg, root, tool)
+		if n != 1 || !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("RefreshMarkers = %d, %v", n, err)
+		}
+		mustUsage(t, reg, tool.Name, "good")
+	})
+	t.Run("rejects a directory and does not invent use", func(t *testing.T) {
+		reg := newRegistry(t)
+		fsys := newMarkers(t)
+		if err := fsys.MkdirAll(MarkerPath(root, tool.Name, "bad"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		n, err := RefreshMarkers(ctx, fsys, reg, root, tool)
+		if n != 1 || err == nil || !strings.Contains(err.Error(), "not a regular file") {
+			t.Fatalf("RefreshMarkers = %d, %v", n, err)
+		}
+	})
+	t.Run("cancellation stops metadata refresh", func(t *testing.T) {
+		cancelled, cancel := context.WithCancel(ctx)
+		cancel()
+		if n, err := RefreshMarkers(cancelled, newMarkers(t), newRegistry(t), root, tool); n != 0 || !errors.Is(err, context.Canceled) {
+			t.Fatalf("RefreshMarkers = %d, %v", n, err)
+		}
+	})
+	t.Run("failed transaction retains markers for retry", func(t *testing.T) {
+		conn, err := db.NewConnection(ctx, ":memory:")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { conn.Close() })
+		if _, err := conn.ExecContext(ctx, `CREATE TRIGGER fail_usage BEFORE INSERT ON tool_usage BEGIN SELECT RAISE(ABORT, 'probe'); END;`); err != nil {
+			t.Fatal(err)
+		}
+		fsys := newMarkers(t)
+		reg := registry.NewRegistry(conn)
+		if n, err := RefreshMarkers(ctx, fsys, reg, root, tool); n != 0 || err == nil || !strings.Contains(err.Error(), "recording last-used") {
+			t.Fatalf("RefreshMarkers = %d, %v", n, err)
+		}
+		if _, err := conn.ExecContext(ctx, "DROP TRIGGER fail_usage"); err != nil {
+			t.Fatal(err)
+		}
+		if n, err := RefreshMarkers(ctx, fsys, reg, root, tool); n != 1 || err != nil {
+			t.Fatalf("retry = %d, %v", n, err)
+		}
+	})
+}
+
+type failedCleanupFS struct{ fs.FS }
+
+func (f failedCleanupFS) Remove(string) error { return os.ErrPermission }
+
+func TestLegacyCleanupRetryPreservesHistory(t *testing.T) {
+	ctx := context.Background()
+	root := filepath.Join(string(filepath.Separator), "generated")
+	reg := newRegistry(t)
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+		return reg.RecordToolUsage(ctx, tx, &registry.ToolUsageRecord{ToolName: "bat", BinaryName: "bat", UsageCount: 7, LastUsedAt: 1})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	fsys := failedCleanupFS{fs.NewMemFS()}
+	writeLog(t, fsys, root, "v1\t1700000000\tbat\tbat\n")
+	for range 2 {
+		if _, err := Import(ctx, fsys, reg, root); !errors.Is(err, os.ErrPermission) {
+			t.Fatalf("Import = %v, want failed cleanup", err)
+		}
+		got := mustUsage(t, reg, "bat", "bat")
+		if got.UsageCount != 7 || got.LastUsedAt != 1700000000000 {
+			t.Fatalf("retry changed historical counts or recency: %+v", got)
+		}
+	}
+}
+
+type interruptedLogFS struct {
+	fs.FS
+	reader io.ReadCloser
+}
+
+func (f interruptedLogFS) Open(string) (io.ReadCloser, error) { return f.reader, nil }
+
+func TestLegacyStreamingFailurePreservesSource(t *testing.T) {
+	for _, oversized := range []bool{false, true} {
+		name := "interrupted read"
+		if oversized {
+			name = "oversized line"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			mem := fs.NewMemFS()
+			reg := newRegistry(t)
+			valid := "v1\t1700000000\tbat\tbat\n"
+			writeLog(t, mem, root, valid)
+			var reader io.Reader = io.MultiReader(strings.NewReader(valid), iotest.ErrReader(io.ErrUnexpectedEOF))
+			if oversized {
+				reader = strings.NewReader(valid + strings.Repeat("x", 1024*1024+1) + "\n")
+			}
+			fsys := interruptedLogFS{FS: mem, reader: io.NopCloser(reader)}
+			result, err := Import(context.Background(), fsys, reg, root)
+			if err == nil || result.Files != 0 {
+				t.Fatalf("Import = %+v, %v; want retained failed input", result, err)
+			}
+			if record, err := reg.GetToolUsage(context.Background(), "bat", "bat"); err != nil || record != nil {
+				t.Fatalf("partial read committed history: %+v, %v", record, err)
+			}
+			if paths, err := rotatedLogs(mem, root); err != nil || len(paths) != 1 {
+				t.Fatalf("failed input was removed: %v, %v", paths, err)
+			}
+			if result, err := Import(context.Background(), mem, reg, root); err != nil || result.Files != 1 {
+				t.Fatalf("retry after reader repair = %+v, %v", result, err)
+			}
+		})
 	}
 }
 
@@ -133,12 +352,12 @@ func TestImport(t *testing.T) {
 		}
 
 		bat := mustUsage(t, reg, "bat", "bat")
-		if bat.UsageCount != 3 || bat.LastUsedAt != time.Unix(1700000300, 0).UnixMilli() {
-			t.Fatalf("bat usage = %+v, want count 3 and lastUsedAt of the latest event in ms", bat)
+		if bat.UsageCount != 0 || bat.LastUsedAt != time.Unix(1700000300, 0).UnixMilli() {
+			t.Fatalf("bat usage = %+v, want unchanged count 0 and lastUsedAt of the latest event in ms", bat)
 		}
 		rg := mustUsage(t, reg, "ripgrep", "rg")
-		if rg.UsageCount != 1 || rg.LastUsedAt != time.Unix(1700000200, 0).UnixMilli() {
-			t.Fatalf("rg usage = %+v, want count 1", rg)
+		if rg.UsageCount != 0 || rg.LastUsedAt != time.Unix(1700000200, 0).UnixMilli() {
+			t.Fatalf("rg usage = %+v, want unchanged count 0", rg)
 		}
 
 		if exists, _ := memFS.Exists(Path(generatedDir)); exists {
@@ -153,7 +372,7 @@ func TestImport(t *testing.T) {
 		}
 	})
 
-	t.Run("accumulates across runs and picks up leftover rotated logs", func(t *testing.T) {
+	t.Run("merges recency across runs and picks up leftover rotated logs", func(t *testing.T) {
 		memFS := fs.NewMemFS()
 		reg := newRegistry(t)
 
@@ -174,8 +393,8 @@ func TestImport(t *testing.T) {
 		if res != (Result{Files: 2, Events: 2}) {
 			t.Fatalf("result = %+v, want both files imported", res)
 		}
-		if bat := mustUsage(t, reg, "bat", "bat"); bat.UsageCount != 2 {
-			t.Fatalf("bat usage = %+v, want count 2", bat)
+		if bat := mustUsage(t, reg, "bat", "bat"); bat.UsageCount != 0 {
+			t.Fatalf("bat usage = %+v, want unchanged count 0", bat)
 		}
 
 		writeLog(t, memFS, generatedDir, "v1\t1700000600\tbat\tbat\n")
@@ -183,8 +402,8 @@ func TestImport(t *testing.T) {
 			t.Fatalf("second Import: %v", err)
 		}
 		bat := mustUsage(t, reg, "bat", "bat")
-		if bat.UsageCount != 3 || bat.LastUsedAt != time.Unix(1700000600, 0).UnixMilli() {
-			t.Fatalf("bat usage = %+v, want count 3 with the newest event", bat)
+		if bat.UsageCount != 0 || bat.LastUsedAt != time.Unix(1700000600, 0).UnixMilli() {
+			t.Fatalf("bat usage = %+v, want unchanged count 0 with the newest event", bat)
 		}
 	})
 
