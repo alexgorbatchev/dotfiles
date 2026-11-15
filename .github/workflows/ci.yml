@@ -35,11 +35,8 @@ jobs:
       - name: Setup Just
         uses: taiki-e/install-action@just
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Generate embedded assets
-        run: just prepare
+      - name: Prepare validation inputs
+        run: just setup
 
       - name: Run checks
         run: bun run check:ci

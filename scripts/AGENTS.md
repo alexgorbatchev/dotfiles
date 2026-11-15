@@ -29,6 +29,7 @@ Repository automation, build orchestration, code generation, release management,
 
 ## Local gotchas
 
+- Release publication is gated on `just setup` followed by `bun run check` before compilation and any commit/tag/push or asset upload. Release dry runs restore the original package contents, including pre-existing edits, after success or failure; once Git integration starts, preserve its state for recovery.
 - **Release automation safety:** `scripts/release.ts` bumps versions, generates tags, and pushes to git remotes. It requires a completely clean git status (`git status --porcelain`) before running.
 - **Asset generation prerequisite:** Fresh checkouts require running `just prepare` before Go packages can compile or pass vet/tests.
 

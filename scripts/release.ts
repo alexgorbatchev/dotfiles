@@ -1,14 +1,6 @@
 #!/usr/bin/env bun
 
-/**
- * Release Script
- *
- * Orchestrates the complete release process: version bump, build, and publish.
- */
-
-import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 function log(msg: string): void {
   process.stdout.write(`${msg}\n`);
@@ -18,12 +10,12 @@ function logError(msg: string): void {
   process.stderr.write(`${msg}\n`);
 }
 
-function getRepoRoot(): string {
-  let currentDir = path.dirname(fileURLToPath(import.meta.url));
+async function getRepoRoot(): Promise<string> {
+  let currentDir = import.meta.dir;
   while (currentDir !== path.parse(currentDir).root) {
     const packageJsonPath = path.join(currentDir, "package.json");
-    if (fs.existsSync(packageJsonPath)) {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    if (await Bun.file(packageJsonPath).exists()) {
+      const packageJson = await Bun.file(packageJsonPath).json();
       if (packageJson.workspaces) {
         return currentDir;
       }
@@ -33,7 +25,7 @@ function getRepoRoot(): string {
   throw new Error("Could not find repository root");
 }
 
-process.chdir(getRepoRoot());
+process.chdir(await getRepoRoot());
 
 const rootDir = process.cwd();
 const packageJsonPath = path.join(rootDir, "package.json");
@@ -50,9 +42,8 @@ function isValidBumpType(value: string): value is VersionBumpType {
   );
 }
 
-function readCurrentVersion(): string {
-  const content = fs.readFileSync(packageJsonPath, "utf-8");
-  const packageJson = JSON.parse(content);
+async function readCurrentVersion(): Promise<string> {
+  const packageJson = await Bun.file(packageJsonPath).json();
   return packageJson.version;
 }
 
@@ -85,7 +76,7 @@ async function executeCommand(args: string[], opts: IExecuteCommandOptions = {})
 }
 
 async function bumpVersion(bumpType: VersionBumpType): Promise<string> {
-  const previousVersion = readCurrentVersion();
+  const previousVersion = await readCurrentVersion();
   log(`📦 Current version: ${previousVersion}`);
   log(`🔄 Bumping ${bumpType} version...`);
 
@@ -95,15 +86,22 @@ async function bumpVersion(bumpType: VersionBumpType): Promise<string> {
   }
 
   await executeCommand(["bun", "pm", "version", bumpType, "--no-git-tag-version"]);
-  const newVersion = readCurrentVersion();
+  const newVersion = await readCurrentVersion();
   log(`✅ Version bumped: ${previousVersion} → ${newVersion}`);
   return newVersion;
 }
 
-async function revertVersionChange(): Promise<void> {
+async function revertVersionChange(originalPackage: string): Promise<void> {
+  if ((await Bun.file(packageJsonPath).text()) === originalPackage) return;
   log("🔄 Reverting version change...");
-  await executeCommand(["git", "checkout", "package.json"]);
+  await Bun.write(packageJsonPath, originalPackage);
   log("✅ Version change reverted");
+}
+
+async function runValidation(): Promise<void> {
+  log("🔎 Preparing and validating the release...");
+  await executeCommand(["just", "setup"]);
+  await executeCommand(["bun", "run", "check"]);
 }
 
 async function runBuild(): Promise<void> {
@@ -130,13 +128,13 @@ async function pushRelease(version: string): Promise<void> {
 }
 
 async function hasUncommittedChanges(): Promise<boolean> {
-  const result = await Bun.$`git status --porcelain`.quiet().nothrow();
+  const result = await Bun.$`git status --porcelain`.quiet();
   return result.stdout.toString().trim().length > 0;
 }
 
-function verifyPublicReadme(): void {
+async function verifyPublicReadme(): Promise<void> {
   const releaseReadmePath = path.join(distDir, "README.md");
-  if (!fs.existsSync(releaseReadmePath)) {
+  if (!(await Bun.file(releaseReadmePath).exists())) {
     throw new Error(`Built README is missing: ${releaseReadmePath}`);
   }
 }
@@ -159,32 +157,34 @@ async function release(): Promise<void> {
     throw new Error("Working directory is not clean. Release requires a clean git state.");
   }
 
-  let newVersion: string | undefined;
-  let didBumpVersion = false;
+  const originalPackage = await Bun.file(packageJsonPath).text();
+  let shouldRestoreVersion = true;
 
   try {
-    const previousVersion = readCurrentVersion();
-    newVersion = await bumpVersion(bumpType);
-    didBumpVersion = newVersion !== previousVersion;
+    const previousVersion = await readCurrentVersion();
+    const newVersion = await bumpVersion(bumpType);
+    const didBumpVersion = newVersion !== previousVersion;
 
+    await runValidation();
     await runBuild();
-    verifyPublicReadme();
+    await verifyPublicReadme();
 
     if (dryRun) {
-      if (didBumpVersion) await revertVersionChange();
-      log(`\n✅ Dry run complete — build succeeded for version ${newVersion}.`);
+      log(`\n✅ Dry run complete — validation and build succeeded for version ${newVersion}.`);
       return;
     }
 
+    // Once integration starts, retain the release state if Git fails so it can
+    // be inspected and resumed without rewriting a partially committed release.
+    shouldRestoreVersion = false;
     await commitAndTag(newVersion, didBumpVersion);
     await pushRelease(newVersion);
     log(`\n🎉 Version updated, tagged, and pushed!`);
   } catch (error) {
-    logError(`\n❌ Release push failed: ${error instanceof Error ? error.message : String(error)}`);
-    if (newVersion && didBumpVersion && !dryRun) {
-      await revertVersionChange();
-    }
-    process.exit(1);
+    logError(`\n❌ Release failed: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  } finally {
+    if (shouldRestoreVersion) await revertVersionChange(originalPackage);
   }
 }
 

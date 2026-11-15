@@ -25,6 +25,7 @@ To trigger a release:
    ```
 3. The script will automatically:
    - Calculate the new version
+   - Prepare fresh validation inputs (`just setup`) and require the full check to pass (`bun run check`)
    - Verify the build compiles properly locally (`bun run compile`)
    - Commit the `package.json` changes
    - Create a `vX.Y.Z` git tag
@@ -49,7 +50,7 @@ Always test modifications or release processes locally first:
 bun scripts/release.ts --dry-run
 ```
 
-This runs the full pipeline (version bump and `bun run compile`) but **skips git commit and tagging**, reverting the version bump at the end.
+This runs version preparation, `just setup`, `bun run check`, and `bun run compile`, but **skips git commit, tagging, and publication**. It restores the original package contents after success or failure, preserving any edits present before the dry run. A failed validation stops before compilation or Git integration.
 
 ## Release Notes Standard
 
@@ -68,7 +69,7 @@ If the publish pipeline fails, the issue is within GitHub Actions (`.github/work
 or the produced artifacts inside the compiled `.dist/` directory.
 
 - The release artifacts are compiled by `bun run compile` (`just compile`).
-- `.github/workflows/publish.yml` verifies that `package.json`'s `version` matches the `vX.Y.Z` tag, runs `bun run compile`, uploads `.dist/dotfiles_*.tar.gz` and `.dist/checksums.txt` to the GitHub Release, and marks the release as published/latest.
+- `.github/workflows/publish.yml` verifies that `package.json`'s `version` matches the `vX.Y.Z` tag, runs `just setup` and `bun run check`, then runs `bun run compile`, uploads `.dist/dotfiles_*.tar.gz` and `.dist/checksums.txt` to the GitHub Release, and marks the release as published/latest.
 - You can manually test the release build locally via:
   ```bash
   bun scripts/release.ts --dry-run
