@@ -148,6 +148,9 @@ func InitializeSchema(ctx context.Context, db *sql.DB) error {
 		original_tag TEXT,
 		install_method TEXT,
 		app_bundle_path TEXT,
+		app_bundle_identifier TEXT,
+		app_bundle_info_plist_hash TEXT,
+		app_bundle_pending_removal TEXT,
 		package_identity TEXT
 	);`
 
@@ -213,6 +216,9 @@ var driftColumns = []column{
 var toolInstallationColumns = []column{
 	{name: "install_method", definition: "TEXT"},
 	{name: "app_bundle_path", definition: "TEXT"},
+	{name: "app_bundle_identifier", definition: "TEXT"},
+	{name: "app_bundle_info_plist_hash", definition: "TEXT"},
+	{name: "app_bundle_pending_removal", definition: "TEXT"},
 	{name: "package_identity", definition: "TEXT"},
 }
 

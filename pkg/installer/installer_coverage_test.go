@@ -209,8 +209,9 @@ func TestDmgAndPkgInstallSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
+	registerBundlePlutil(runner)
 	// Mock hdiutil for DMG
-	archivetest.Hdiutil{FS: memFS, Volume: archivetest.VolumeFile(memFS, "Sample.app/Contents/PkgInfo", "APPL")}.Register(runner)
+	archivetest.Hdiutil{FS: memFS, Volume: dmgVolumeFile(memFS, "Sample.app/Contents/PkgInfo", "APPL")}.Register(runner)
 
 	dmgInst := NewDmgInstaller(runner, memFS, dl, sysCtx)
 	dmgInst.httpClient = server.Client()

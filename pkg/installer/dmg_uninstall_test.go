@@ -2,9 +2,10 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"slices"
+	"os"
 	"strings"
 	"testing"
 
@@ -26,6 +27,7 @@ func newDarwinDmgInstaller(t *testing.T, volume func(fsys fs.FS) func(mountPoint
 	t.Cleanup(server.Close)
 
 	runner := exec.NewMockRunner()
+	registerBundlePlutil(runner)
 	fsys := fs.NewMemFS()
 	inst := NewDmgInstaller(runner, fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "darwin", Arch: "arm64"})
 	inst.BinDir = "/stage"
@@ -34,29 +36,12 @@ func newDarwinDmgInstaller(t *testing.T, volume func(fsys fs.FS) func(mountPoint
 	return inst, runner, fsys, tool
 }
 
-// rmCalls reports the arguments of every rm the runner was asked to run.
-func rmCalls(runner *exec.MockRunner) [][]string {
-	var calls [][]string
-	for _, cmd := range runner.History {
-		if cmd.Name == "rm" {
-			calls = append(calls, cmd.Args)
-		}
-	}
-	return calls
-}
-
-// bundleRm is the rm that uninstalls /Applications/<name>: the bundle and the two
-// hidden siblings installAppBundle can leave beside it.
-func bundleRm(name string) []string {
-	return []string{"-rf", "/Applications/" + name, "/Applications/.dotfiles-new-" + name, "/Applications/.dotfiles-old-" + name}
-}
-
 // TestDmgUninstallRemovesTheInstalledBundle is the regression test for issue #174:
 // the bundle whose name Install took from the volume is the one Uninstall removes,
 // not one named after the tool.
 func TestDmgUninstallRemovesTheInstalledBundle(t *testing.T) {
-	inst, runner, _, tool := newDarwinDmgInstaller(t, func(fsys fs.FS) func(string) error {
-		return archivetest.VolumeFile(fsys, "Visual Studio Code.app/Contents/MacOS/code", "code-bin")
+	inst, runner, fsys, tool := newDarwinDmgInstaller(t, func(fsys fs.FS) func(string) error {
+		return dmgVolumeFile(fsys, "Visual Studio Code.app/Contents/MacOS/code", "code-bin")
 	})
 	tool.InstallParams["binaryName"] = "code"
 
@@ -70,12 +55,17 @@ func TestDmgUninstallRemovesTheInstalledBundle(t *testing.T) {
 	}
 
 	runner.Clear()
-	if err := inst.Uninstall(context.Background(), tool, Installation{AppBundlePath: res.AppBundlePath}); err != nil {
+	registerBundlePlutil(runner)
+	if err := inst.Uninstall(context.Background(), tool, Installation{AppBundlePath: res.AppBundlePath, AppBundleIdentifier: res.AppBundleIdentifier, AppBundleInfoPlistHash: res.AppBundleInfoPlistHash}); err != nil {
 		t.Fatalf("Uninstall: %v", err)
 	}
-	want := [][]string{bundleRm("Visual Studio Code.app")}
-	if got := rmCalls(runner); !slices.EqualFunc(got, want, slices.Equal) {
-		t.Errorf("Uninstall ran rm %q, want rm %q", got, want)
+	if _, err := fsys.Lstat(bundle); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("bundle survived: %v", err)
+	}
+	for _, cmd := range runner.History {
+		if cmd.Name == "rm" {
+			t.Fatal("uninstall shelled out to rm")
+		}
 	}
 }
 
@@ -83,7 +73,7 @@ func TestDmgUninstallRemovesTheInstalledBundle(t *testing.T) {
 // reported as installed too, so the record never depends on where the name came from.
 func TestDmgInstallReportsTheNamedBundle(t *testing.T) {
 	inst, _, _, tool := newDarwinDmgInstaller(t, func(fsys fs.FS) func(string) error {
-		return archivetest.VolumeFile(fsys, "Code.app/Contents/MacOS/vscode", "code-bin")
+		return dmgVolumeFile(fsys, "Code.app/Contents/MacOS/vscode", "code-bin")
 	})
 	tool.InstallParams["appName"] = "Code.app"
 
@@ -96,82 +86,29 @@ func TestDmgInstallReportsTheNamedBundle(t *testing.T) {
 	}
 }
 
-func TestDmgUninstallChoosesTheBundle(t *testing.T) {
-	tests := []struct {
-		name      string
-		appName   string
-		installed Installation
-		wantRm    []string
-		wantErr   string
-	}{
-		{
-			name:      "the recorded bundle",
-			installed: Installation{AppBundlePath: "/Applications/Other Name.app"},
-			wantRm:    bundleRm("Other Name.app"),
-		},
-		{
-			// The record says what is on disk; appName may have changed since.
-			name:      "the recorded bundle over appName",
-			appName:   "Renamed.app",
-			installed: Installation{AppBundlePath: "/Applications/Other Name.app"},
-			wantRm:    bundleRm("Other Name.app"),
-		},
-		{
-			name:    "appName without a record",
-			appName: "Slack.app",
-			wantRm:  bundleRm("Slack.app"),
-		},
-		{
-			name:    "neither a record nor appName",
-			wantErr: "the app bundle installed for vscode is not known",
-		},
-		{
-			name:      "a recorded path outside /Applications",
-			installed: Installation{AppBundlePath: "/Users/me/Other Name.app"},
-			wantErr:   `refusing to remove "/Users/me/Other Name.app"`,
-		},
-		{
-			name:      "a recorded path that is not a bundle",
-			installed: Installation{AppBundlePath: "/Applications/Other Name"},
-			wantErr:   `refusing to remove "/Applications/Other Name"`,
-		},
-		{
-			name:    "an appName that leaves /Applications",
-			appName: "../Users.app",
-			wantErr: `refusing to remove "/Applications/../Users.app"`,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			runner := exec.NewMockRunner()
-			inst := NewDmgInstaller(runner, fs.NewMemFS(), nil, &SystemContext{OS: "darwin", Arch: "arm64"})
-			tool := &config.ToolConfig{Name: "vscode", InstallParams: map[string]interface{}{}}
-			if tt.appName != "" {
-				tool.InstallParams["appName"] = tt.appName
-			}
-
-			err := inst.Uninstall(context.Background(), tool, tt.installed)
-			if tt.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("Uninstall = %v, want an error containing %q", err, tt.wantErr)
-				}
-				if got := rmCalls(runner); len(got) != 0 {
-					t.Errorf("Uninstall ran rm %q after failing", got)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("Uninstall: %v", err)
-			}
-			if got := rmCalls(runner); !slices.EqualFunc(got, [][]string{tt.wantRm}, slices.Equal) {
-				t.Errorf("Uninstall ran rm %q, want rm %q", got, tt.wantRm)
-			}
-		})
+func TestDmgUninstallRequiresRecordedIdentity(t *testing.T) {
+	for _, installed := range []Installation{{}, {AppBundlePath: "/Applications/Other.app"}, {AppBundlePath: "/Users/Other.app", AppBundleIdentifier: "test.app", AppBundleInfoPlistHash: "hash"}} {
+		runner := exec.NewMockRunner()
+		mem := fs.NewMemFS()
+		if err := dmgVolumeFile(mem, "Other.app/Contents/MacOS/app", "binary")("/Applications"); err != nil {
+			t.Fatal(err)
+		}
+		inst := NewDmgInstaller(runner, mem, nil, &SystemContext{OS: "darwin"})
+		if err := inst.Uninstall(context.Background(), &config.ToolConfig{Name: "tool", InstallParams: map[string]any{"appName": "Other.app"}}, installed); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := mem.Lstat("/Applications/Other.app"); err != nil {
+			t.Fatalf("unverified bundle removed: %v", err)
+		}
+		if len(runner.History) != 0 {
+			t.Fatal("unverified uninstall ran command")
+		}
 	}
 }
 
 func TestDmgUninstallOffMacOSIsANoOp(t *testing.T) {
 	runner := exec.NewMockRunner()
+	registerBundlePlutil(runner)
 	inst := NewDmgInstaller(runner, fs.NewMemFS(), nil, &SystemContext{OS: "linux", Arch: "amd64"})
 	if err := inst.Uninstall(context.Background(), &config.ToolConfig{Name: "vscode"}, Installation{}); err != nil {
 		t.Fatalf("Uninstall: %v", err)
@@ -186,7 +123,7 @@ func TestDmgUninstallOffMacOSIsANoOp(t *testing.T) {
 // path that is not there, or record a bundle that was never installed.
 func TestDmgInstallFailsWithoutABundle(t *testing.T) {
 	inst, runner, fsys, tool := newDarwinDmgInstaller(t, func(fsys fs.FS) func(string) error {
-		return archivetest.VolumeFile(fsys, "README.txt", "read me")
+		return dmgVolumeFile(fsys, "README.txt", "read me")
 	})
 
 	_, err := inst.Install(context.Background(), tool)
@@ -225,7 +162,7 @@ func TestDmgInstallRefusesABundleItCouldNotUninstall(t *testing.T) {
 	for _, appName := range []string{"../Users.app", "MyApp", "Sub/MyApp.app"} {
 		t.Run(appName, func(t *testing.T) {
 			inst, runner, fsys, tool := newDarwinDmgInstaller(t, func(fsys fs.FS) func(string) error {
-				return archivetest.VolumeFile(fsys, appName+"/Contents/MacOS/vscode", "code-bin")
+				return dmgVolumeFile(fsys, appName+"/Contents/MacOS/vscode", "code-bin")
 			})
 			tool.InstallParams["appName"] = appName
 

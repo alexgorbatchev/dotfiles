@@ -2,7 +2,7 @@
 
 Install macOS applications distributed as DMG disk images. The plugin mounts the DMG read-only and hidden from the Finder, copies the `.app` bundle to `/Applications`, and is silently skipped on non-macOS platforms. The copy keeps the bundle's directory structure, file contents and permission bits, and recreates every symlink with its original target (extended attributes and resource forks are not copied). It replaces a bundle of the same name that is already installed rather than merging into it; the installed bundle stays in place until the new copy is complete. When the image cannot be detached afterwards, even with `hdiutil detach -force` (a process can hold a file on the volume open), the install fails with an error naming the mount point, which is left in place; detach the image yourself before installing again.
 
-Without `appName`, the bundle installed is the first `.app` at the root of the volume, and a volume that holds none fails the install. The bundle installed is recorded, so [`dotfiles tool uninstall`](../getting-started/cli-reference.md#dotfiles-tool-uninstall-tool) removes that bundle (with the hidden `.dotfiles-new-` and `.dotfiles-old-` copies an interrupted install can leave beside it) even when its name is not the tool's. A tool with no recorded installation is uninstalled by `appName`; with neither, it removes nothing from `/Applications` rather than a guessed bundle.
+Without `appName`, the bundle installed is the first `.app` at the root of the volume, and a volume that holds none fails the install. The bundle must contain a readable `Contents/Info.plist` with a nonempty `CFBundleIdentifier`; dotfiles checks it before replacing an installed app. The installed copy's identifier and the SHA-256 hash of its Info.plist are recorded with its path for [verified removal](#removal).
 
 The DMG source is configured via a required `source` object. Sources can be direct URLs or GitHub releases.
 
@@ -11,6 +11,15 @@ GitHub sources share [release download authentication and integrity checks](gith
 If the resolved source points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
 
 DMG-installed applications are externally managed: temporary files (download, mount point, optional archive extraction) use `stagingDir`, the final `.app` is installed to `/Applications`, and `.bin()` names the command-line executables inside the bundle so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).
+
+## Contents
+
+- [Basic Usage](#basic-usage)
+- [Parameters](#parameters)
+- [Examples](#examples)
+- [Removal](#removal)
+- [Platform Behavior](#platform-behavior)
+- [When to Use](#when-to-use)
 
 ## Basic Usage
 
@@ -104,6 +113,14 @@ install("dmg", {
   versionRegex: /v(\d+\.\d+\.\d+)/,
 });
 ```
+
+## Removal
+
+[`dotfiles tool uninstall`](../getting-started/cli-reference.md#dotfiles-tool-uninstall-tool), orphan cleanup during generation, and [`dotfiles state cleanup`](../getting-started/cli-reference.md#dotfiles-state-cleanup) share the same verification. On macOS, they remove only the recorded real `.app` directory directly inside a real `/Applications` directory, with both its bundle identifier and Info.plist hash unchanged. A tool's current `appName` is not evidence of ownership. After verification, cleanup removes its exact `.dotfiles-new-<App>.app` and `.dotfiles-old-<App>.app` siblings before removing the app. Each removed root gets one `rm` history entry and a removal log message.
+
+A legacy installation without recorded identity, an unsafe path, a symlink, a replacement app, or an app whose Info.plist changed through self-update is left in place with a warning explaining why. Other dotfiles-owned artifacts are still cleaned up. No app bundle is removed on a non-macOS target or during a dry run.
+
+A read, deletion, or history-write failure retains the receipt for retry, reports the error, and allows independent tools to continue. A deletion that succeeds before its history commits is reconciled on retry using the recorded pending path; an existing replacement still has to pass identity verification. If a partial deletion destroys Info.plist, restore the recorded plist or remove the remaining bundle manually before retrying. Cleanup never guesses ownership from a partially removed app.
 
 ## Platform Behavior
 

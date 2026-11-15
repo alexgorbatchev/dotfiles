@@ -43,6 +43,9 @@ type InstallResult struct {
 	// because the bundle's name comes from the volume, not the configuration, so an
 	// uninstall has no other way to know it.
 	AppBundlePath string
+	// AppBundleIdentifier and AppBundleInfoPlistHash identify the installed copy.
+	AppBundleIdentifier    string
+	AppBundleInfoPlistHash string
 }
 
 // Installation is what the registry recorded about an earlier Install of the tool
@@ -51,6 +54,11 @@ type Installation struct {
 	Package *PackageIdentity
 	// AppBundlePath is InstallResult.AppBundlePath as that install reported it.
 	AppBundlePath string
+	// AppBundleIdentifier and AppBundleInfoPlistHash identify the installed copy.
+	AppBundleIdentifier    string
+	AppBundleInfoPlistHash string
+	// AppBundlePendingRemoval is an interrupted deletion awaiting history reconciliation.
+	AppBundlePendingRemoval string
 }
 
 // UpdateCheckResult is what an installer observed, not what it concluded. Whether an

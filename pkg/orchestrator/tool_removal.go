@@ -138,16 +138,16 @@ func (o *Orchestrator) isLeftoverInstallDir(dir string) (bool, error) {
 	return true, nil
 }
 
-// removeOrphanedTool invokes an installer only with a real configuration or a
-// recorded package identity. Otherwise it removes owned artifacts and reports the
-// external installation left in place.
+// removeOrphanedTool uses matching configuration, recorded package identity, or
+// the DMG installer's receipt verification. Otherwise it removes owned artifacts
+// and reports the external installation left in place.
 func (o *Orchestrator) removeOrphanedTool(ctx context.Context, toolName string, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	rec, err := o.recordedInstallation(ctx, toolName)
 	if err != nil {
 		return err
 	}
 	configuredMethod := tool != nil && rec != nil && rec.InstallMethod != nil && tool.InstallationMethod == *rec.InstallMethod
-	if rec != nil && (configuredMethod || rec.PackageIdentity != nil) {
+	if rec != nil && (configuredMethod || rec.PackageIdentity != nil || (rec.InstallMethod != nil && *rec.InstallMethod == "dmg")) {
 		if tool == nil {
 			tool = &config.ToolConfig{Name: toolName}
 		}
@@ -251,6 +251,18 @@ func (o *Orchestrator) toolsWithRecordedArtifacts(ctx context.Context) ([]string
 // Any failure leaves the records of what could not be removed, and the installation
 // record, in place, and is returned once everything else has been tried.
 func (o *Orchestrator) removeToolArtifacts(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
+	if err := o.removeToolArtifactsKeepingReceipt(ctx, toolName, projCfg); err != nil {
+		return err
+	}
+	if o.reg == nil {
+		return nil
+	}
+	return o.reg.WithTx(ctx, func(tx *sql.Tx) error { return o.reg.RemoveToolInstallation(ctx, tx, toolName) })
+}
+
+// removeToolArtifactsKeepingReceipt cleans independent artifacts after an external
+// removal failed. The installation identity stays available for a later retry.
+func (o *Orchestrator) removeToolArtifactsKeepingReceipt(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
 	if toolName == "" || toolName == "." || toolName == ".." || filepath.Base(toolName) != toolName {
 		return fmt.Errorf("refusing to remove the artifacts of a tool named %q", toolName)
 	}
@@ -309,12 +321,7 @@ func (o *Orchestrator) removeToolArtifacts(ctx context.Context, toolName string,
 		}
 	}
 
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-		return o.reg.RemoveToolInstallation(ctx, tx, toolName)
-	})
+	return errors.Join(errs...)
 }
 
 // toolInstallDirs returns the directories a tool's installations live in: the one

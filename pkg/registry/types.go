@@ -46,7 +46,11 @@ type ToolInstallationRecord struct {
 	// AppBundlePath is the application bundle the install placed in /Applications,
 	// nil for an installer that places none. It is what an uninstall removes, since a
 	// bundle's name can come from the disk image rather than the configuration.
-	AppBundlePath *string `db:"app_bundle_path"`
+	AppBundlePath          *string `db:"app_bundle_path"`
+	AppBundleIdentifier    *string `db:"app_bundle_identifier"`
+	AppBundleInfoPlistHash *string `db:"app_bundle_info_plist_hash"`
+	// AppBundlePendingRemoval persists the exact deletion intent until its rm history commits.
+	AppBundlePendingRemoval *string `db:"app_bundle_pending_removal"`
 	// PackageIdentity is the installer-reported JSON identity used for removal.
 	PackageIdentity *string `db:"package_identity"`
 }

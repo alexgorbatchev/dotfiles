@@ -15,8 +15,8 @@ func (r *Registry) RecordToolInstallation(ctx context.Context, tx *sql.Tx, recor
 
 	query := `
 	INSERT OR REPLACE INTO tool_installations (
-		tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, package_identity
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+		tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, app_bundle_identifier, app_bundle_info_plist_hash, app_bundle_pending_removal, package_identity
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
 
 	res, err := tx.ExecContext(ctx, query,
 		record.ToolName,
@@ -31,6 +31,9 @@ func (r *Registry) RecordToolInstallation(ctx context.Context, tx *sql.Tx, recor
 		record.OriginalTag,
 		record.InstallMethod,
 		record.AppBundlePath,
+		record.AppBundleIdentifier,
+		record.AppBundleInfoPlistHash,
+		record.AppBundlePendingRemoval,
 		record.PackageIdentity,
 	)
 	if err != nil {
@@ -70,16 +73,19 @@ func (r *Registry) IsToolInstalled(ctx context.Context, toolName string, version
 
 // ToolInstallationUpdate specifies fields to update on an existing tool installation record.
 type ToolInstallationUpdate struct {
-	Version           *string
-	InstallPath       *string
-	Timestamp         *string
-	BinaryPaths       *string
-	DownloadURL       *string
-	AssetName         *string
-	ConfiguredVersion *string
-	OriginalTag       *string
-	InstallMethod     *string
-	AppBundlePath     *string
+	Version                 *string
+	InstallPath             *string
+	Timestamp               *string
+	BinaryPaths             *string
+	DownloadURL             *string
+	AssetName               *string
+	ConfiguredVersion       *string
+	OriginalTag             *string
+	InstallMethod           *string
+	AppBundlePath           *string
+	AppBundleIdentifier     *string
+	AppBundleInfoPlistHash  *string
+	AppBundlePendingRemoval *string
 }
 
 // UpdateToolInstallation performs a partial update on a tool installation record.
@@ -132,6 +138,20 @@ func (r *Registry) UpdateToolInstallation(ctx context.Context, tx *sql.Tx, toolN
 		args = append(args, *updates.AppBundlePath)
 	}
 
+	if updates.AppBundleIdentifier != nil {
+		fields = append(fields, "app_bundle_identifier = ?")
+		args = append(args, *updates.AppBundleIdentifier)
+	}
+	if updates.AppBundleInfoPlistHash != nil {
+		fields = append(fields, "app_bundle_info_plist_hash = ?")
+		args = append(args, *updates.AppBundleInfoPlistHash)
+	}
+
+	if updates.AppBundlePendingRemoval != nil {
+		fields = append(fields, "app_bundle_pending_removal = ?")
+		args = append(args, *updates.AppBundlePendingRemoval)
+	}
+
 	if len(fields) == 0 {
 		return nil
 	}
@@ -165,7 +185,7 @@ func (r *Registry) RemoveToolInstallation(ctx context.Context, tx *sql.Tx, toolN
 // GetToolInstallation retrieves a tool installation by its name.
 func (r *Registry) GetToolInstallation(ctx context.Context, toolName string) (*ToolInstallationRecord, error) {
 	query := `
-	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, package_identity
+	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, app_bundle_identifier, app_bundle_info_plist_hash, app_bundle_pending_removal, package_identity
 	FROM tool_installations WHERE tool_name = ?;`
 
 	row := r.db.QueryRowContext(ctx, query, toolName)
@@ -185,6 +205,9 @@ func (r *Registry) GetToolInstallation(ctx context.Context, toolName string) (*T
 		&rec.OriginalTag,
 		&rec.InstallMethod,
 		&rec.AppBundlePath,
+		&rec.AppBundleIdentifier,
+		&rec.AppBundleInfoPlistHash,
+		&rec.AppBundlePendingRemoval,
 		&rec.PackageIdentity,
 	)
 	if err == sql.ErrNoRows {
@@ -203,7 +226,7 @@ func (r *Registry) GetAllToolInstallations(ctx context.Context) ([]*ToolInstalla
 		return nil, nil
 	}
 	query := `
-	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, package_identity
+	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, app_bundle_identifier, app_bundle_info_plist_hash, app_bundle_pending_removal, package_identity
 	FROM tool_installations ORDER BY tool_name ASC;`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -229,6 +252,9 @@ func (r *Registry) GetAllToolInstallations(ctx context.Context) ([]*ToolInstalla
 			&rec.OriginalTag,
 			&rec.InstallMethod,
 			&rec.AppBundlePath,
+			&rec.AppBundleIdentifier,
+			&rec.AppBundleInfoPlistHash,
+			&rec.AppBundlePendingRemoval,
 			&rec.PackageIdentity,
 		)
 		if err != nil {

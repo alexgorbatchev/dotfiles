@@ -15,9 +15,11 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
 const (
@@ -479,6 +481,10 @@ func TestCleanupOrphanedToolsReportsWhatAPackageManagerInstalled(t *testing.T) {
 			var logBuf bytes.Buffer
 			orch.logger = logger.New(logger.Config{Writer: &logBuf})
 			writeDecl(t, memFS, "/home/user/.generated/binaries/pkg-tool/current/pkg-bin", "link")
+			orch.SetTarget(vm.Target{OS: "darwin", Arch: "arm64"})
+			if err := orch.instRegistry.Register(installer.NewDmgInstaller(orch.runner, memFS, nil, nil)); err != nil {
+				t.Fatal(err)
+			}
 			rec := tt.record
 			rec.ToolName = "pkg-tool"
 			rec.Version = "1.0.0"

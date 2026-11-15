@@ -27,6 +27,7 @@ func TestDmgInstaller(t *testing.T) {
 	defer server.Close()
 
 	runner := exec.NewMockRunner()
+	registerBundlePlutil(runner)
 	fsys := fs.NewMemFS()
 	dl := downloader.NewDownloader(fsys, nil)
 
@@ -60,6 +61,7 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Install success on macOS", func(t *testing.T) {
 		runner.Clear()
+		registerBundlePlutil(runner)
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg"
@@ -73,7 +75,7 @@ func TestDmgInstaller(t *testing.T) {
 		}
 
 		// The volume the mocked hdiutil attaches.
-		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin")}.Register(runner)
+		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin")}.Register(runner)
 
 		// A previous install left a file the new version no longer ships.
 		const staleFile = "/Applications/Slack.app/Contents/Resources/removed-in-this-version"
@@ -107,6 +109,7 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Install mount failure on macOS", func(t *testing.T) {
 		runner.Clear()
+		registerBundlePlutil(runner)
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg-fail"
@@ -131,6 +134,7 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Uninstall on macOS", func(t *testing.T) {
 		runner.Clear()
+		registerBundlePlutil(runner)
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 
@@ -146,14 +150,8 @@ func TestDmgInstaller(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if len(runner.History) == 0 {
-			t.Fatal("expected uninstall command to run")
-		}
-		// What an interrupted or partly failed install left beside the bundle goes too.
-		cmd := runner.History[0]
-		wantArgs := []string{"-rf", "/Applications/Slack.app", "/Applications/.dotfiles-new-Slack.app", "/Applications/.dotfiles-old-Slack.app"}
-		if cmd.Name != "rm" || !slices.Equal(cmd.Args, wantArgs) {
-			t.Errorf("unexpected command: %s %v, want rm %v", cmd.Name, cmd.Args, wantArgs)
+		if len(runner.History) != 0 {
+			t.Fatal("legacy uninstall must not invoke a command")
 		}
 	})
 
@@ -167,6 +165,7 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Install success with GitHub Release", func(t *testing.T) {
 		runner.Clear()
+		registerBundlePlutil(runner)
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg-gh"
@@ -209,7 +208,7 @@ func TestDmgInstaller(t *testing.T) {
 		}
 
 		// The volume the mocked hdiutil attaches.
-		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin-github")}.Register(runner)
+		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin-github")}.Register(runner)
 
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
@@ -223,6 +222,7 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Install success from zipped DMG", func(t *testing.T) {
 		runner.Clear()
+		registerBundlePlutil(runner)
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg-zip"
@@ -255,7 +255,7 @@ func TestDmgInstaller(t *testing.T) {
 		}
 
 		// The volume the mocked hdiutil attaches.
-		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin-zip")}.Register(runner)
+		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "Slack.app/Contents/MacOS/slack", "mock-slack-bin-zip")}.Register(runner)
 
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
@@ -269,12 +269,13 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Install failures ensure cleanup and unmounting on copy error", func(t *testing.T) {
 		runner.Clear()
+		registerBundlePlutil(runner)
 
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg-fail-copy"
-		// An empty volume: the bundle the tool names is not on it.
-		archivetest.Hdiutil{FS: fsys}.Register(runner)
+		inst.SetFS(bundleFaultFS{FS: fsys, fail: func(op, path string) bool { return op == "copy" }})
+		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "FailCopy.app/Contents/MacOS/failcopy", "binary")}.Register(runner)
 
 		tool := &config.ToolConfig{
 			Name: "failcopy",
@@ -311,6 +312,7 @@ func TestDmgInstaller(t *testing.T) {
 
 	t.Run("Install auto-detect appName and custom binaryPath", func(t *testing.T) {
 		runner.Clear()
+		registerBundlePlutil(runner)
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 		inst.BinDir = "/test/dmg-autodetect"
@@ -324,7 +326,7 @@ func TestDmgInstaller(t *testing.T) {
 		}
 
 		// The volume the mocked hdiutil attaches.
-		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "AutoDetect.app/Contents/MacOS/autobinary", "bin")}.Register(runner)
+		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "AutoDetect.app/Contents/MacOS/autobinary", "bin")}.Register(runner)
 
 		res, err := inst.Install(context.Background(), tool)
 		if err != nil {
@@ -395,9 +397,10 @@ func TestDmgInstallerDetach(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fsys := fs.NewMemFS()
 			runner := exec.NewMockRunner()
+			registerBundlePlutil(runner)
 			fake := tt.fake
 			fake.FS = fsys
-			fake.Volume = archivetest.VolumeFile(fsys, volumeBin, "app-bin")
+			fake.Volume = dmgVolumeFile(fsys, volumeBin, "app-bin")
 			fake.Register(runner)
 			inst := NewDmgInstaller(runner, fsys, downloader.NewDownloader(fsys, server.Client()), &SystemContext{OS: "darwin", Arch: "arm64"})
 			inst.BinDir = staging

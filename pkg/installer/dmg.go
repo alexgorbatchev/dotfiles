@@ -190,8 +190,18 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (re
 	appSource := filepath.Join(mountPoint, appName)
 	appDest := applicationsPath(appName)
 
+	// Reject a bundle without usable ownership evidence before replacing an installed app.
+	if _, err := readAppBundleIdentity(ctx, d.fsys, d.runner, appSource); err != nil {
+		return nil, fmt.Errorf("identifying source bundle %s: %w", appSource, err)
+	}
+
 	if err := installAppBundle(d.fsys, toolLogger(d.log, tool.Name), appSource, appDest); err != nil {
 		return nil, fmt.Errorf("copying App bundle to %s: %w", appDest, err)
+	}
+
+	identity, err := readAppBundleIdentity(ctx, d.fsys, d.runner, appDest)
+	if err != nil {
+		return nil, fmt.Errorf("identifying installed bundle %s: %w", appDest, err)
 	}
 
 	binaryName := getStringParam(tool.InstallParams, "binaryName", tool.Name)
@@ -204,9 +214,11 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (re
 	}
 
 	return &InstallResult{
-		Binaries:      []string{finalBinPath},
-		Version:       macPackageVersion(ctx, d.runner, tool, finalBinPath, payload.releaseTag),
-		AppBundlePath: appDest,
+		Binaries:               []string{finalBinPath},
+		Version:                macPackageVersion(ctx, d.runner, tool, finalBinPath, payload.releaseTag),
+		AppBundlePath:          appDest,
+		AppBundleIdentifier:    identity.identifier,
+		AppBundleInfoPlistHash: identity.hash,
 	}, nil
 }
 
@@ -241,42 +253,6 @@ func volumeAppBundle(fsys fs.FS, mountPoint string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no .app bundle found in %s; set appName to the bundle to install", mountPoint)
-}
-
-// Uninstall removes the bundle Install placed in /Applications. That is the one the
-// installation record names, since a bundle found on the volume need not be named
-// after the tool or match the current appName; without a record it is the bundle
-// appName names, and with neither it is not known and nothing is removed.
-func (d *DmgInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	if d.sysCtx.OS != "darwin" {
-		return nil
-	}
-	appDest, err := installedAppBundle(tool, installed)
-	if err != nil {
-		return err
-	}
-	// installAppBundle can leave either sibling behind (an interrupted copy, or a
-	// replaced bundle it could not remove); an uninstall takes them with the app.
-	rmCmd := d.runner.CommandContext(ctx, "rm", "-rf", appDest,
-		bundleSibling(appDest, stagingBundlePrefix), bundleSibling(appDest, previousBundlePrefix))
-	return rmCmd.Run()
-}
-
-// installedAppBundle returns the bundle Uninstall removes. The path is handed to
-// rm -rf, so whatever its source, it must be a .app directly inside /Applications.
-func installedAppBundle(tool *config.ToolConfig, installed Installation) (string, error) {
-	bundle := installed.AppBundlePath
-	if bundle == "" {
-		appName := getStringParam(tool.InstallParams, "appName", "")
-		if appName == "" {
-			return "", fmt.Errorf("the app bundle installed for %s is not known: no installation of it is recorded and it sets no appName", tool.Name)
-		}
-		bundle = applicationsPath(appName)
-	}
-	if !isApplicationsBundle(bundle) {
-		return "", fmt.Errorf("refusing to remove %q: it is not an app bundle directly inside %s", bundle, applicationsDir)
-	}
-	return bundle, nil
 }
 
 func (d *DmgInstaller) CheckUpdate(ctx context.Context, tool *config.ToolConfig) (*UpdateCheckResult, error) {

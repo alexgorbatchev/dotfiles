@@ -123,3 +123,78 @@ func assertNoInstallationRecord(t *testing.T, h *TestHarness, toolName string) {
 		t.Errorf("the registry still records an installation of %s", toolName)
 	}
 }
+
+// The CLI uses real installers here, but every reachable application is inside the
+// harness. Canonical /Applications receipts lack identity or target Linux, so these
+// cases exercise refusal before any native command or host bundle access.
+func TestE2EAppBundleCleanupPreservesUnverifiedApplications(t *testing.T) {
+	for _, route := range []string{"generate", "cleanup", "uninstall"} {
+		for _, kind := range []string{"legacy", "unsafe", "linux"} {
+			t.Run(route+"/"+kind, func(t *testing.T) {
+				h := NewTestHarness(t, HarnessOptions{ConfigContent: `export default { paths: { generatedDir: "{configFileDir}/.generated", homeDir: "{paths.generatedDir}/home", targetDir: "{paths.generatedDir}/bin", toolConfigsDir: "{configFileDir}/tools" } };`, Env: map[string]string{"DOTFILES_E2E_USE_REAL_INSTALLERS": "true"}})
+				if err := os.MkdirAll(filepath.Join(h.TempDir, "tools"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if out, stderr, code, err := h.Generate(); err != nil || code != 0 {
+					t.Fatalf("generate: %v %d %s%s", err, code, out, stderr)
+				}
+				if route == "uninstall" {
+					source := `import { defineTool } from "@dotfiles/cli"; export default defineTool(install => install("dmg", { source: {type:"url",url:"https://example.com/app.dmg"} }));`
+					if err := os.WriteFile(filepath.Join(h.TempDir, "tools", "recorded-app.tool.ts"), []byte(source), 0644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				ownApp := filepath.Join(h.TempDir, "Recorded.app")
+				if err := os.MkdirAll(ownApp, 0755); err != nil {
+					t.Fatal(err)
+				}
+				marker := filepath.Join(ownApp, "unrelated")
+				if err := os.WriteFile(marker, []byte("keep"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				bundle, platform, want := "/Applications/Recorded.app", "macos", "no identity was recorded"
+				var id, hash any
+				switch kind {
+				case "unsafe":
+					bundle = ownApp
+					id, hash = "example.recorded", "hash"
+					want = "not an app bundle directly"
+				case "linux":
+					platform = "linux"
+					id, hash = "example.recorded", "hash"
+					want = "target is not macOS"
+				}
+				installDir := filepath.Join(h.TempDir, ".generated", "binaries", "recorded-app")
+				if err := os.MkdirAll(filepath.Join(installDir, "current"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				database, err := sql.Open("sqlite", filepath.Join(h.TempDir, ".generated", "registry.db"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, err = database.Exec("INSERT INTO tool_installations(tool_name,version,install_path,timestamp,installed_at,binary_paths,install_method,app_bundle_path,app_bundle_identifier,app_bundle_info_plist_hash) VALUES('recorded-app','1',?,'now',0,'[]','dmg',?,?,?)", installDir, bundle, id, hash)
+				if closeErr := database.Close(); err == nil {
+					err = closeErr
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				args := []string{"state", route, "--config", h.ConfigPath, "--platform", platform}
+				if route == "uninstall" {
+					args = []string{"tool", "uninstall", "recorded-app", "--config", h.ConfigPath, "--platform", platform}
+				}
+				out, stderr, code, err := h.RunCommand(args...)
+				if err != nil || code != 0 || !strings.Contains(out+stderr, want) {
+					t.Fatalf("cleanup: %v %d, want %q in %s%s", err, code, want, out, stderr)
+				}
+				if data, err := os.ReadFile(marker); err != nil || string(data) != "keep" {
+					t.Fatalf("unverified app changed: %q %v", data, err)
+				}
+				if _, err := os.Lstat(installDir); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("owned install directory survived: %v", err)
+				}
+				assertNoInstallationRecord(t, h, "recorded-app")
+			})
+		}
+	}
+}

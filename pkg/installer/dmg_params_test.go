@@ -86,13 +86,14 @@ func TestDmgInstallerReleaseParameters(t *testing.T) {
 	newInstaller := func(t *testing.T, server *recordingServer) (*DmgInstaller, *exec.MockRunner, fs.FS) {
 		t.Helper()
 		runner := exec.NewMockRunner()
+		registerBundlePlutil(runner)
 		fsys := fs.NewMemFS()
 		inst := NewDmgInstaller(runner, fsys, downloader.NewDownloader(fsys, server.Client()), &SystemContext{OS: "darwin", Arch: "arm64"})
 		inst.SetHTTPClient(server.Client())
 		inst.BaseURL = server.URL
 		inst.BinDir = "/test/dmg-params"
 		// The mounted image the mock hdiutil "attaches".
-		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "App.app/Contents/MacOS/app", "app-bin")}.Register(runner)
+		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "App.app/Contents/MacOS/app", "app-bin")}.Register(runner)
 		return inst, runner, fsys
 	}
 

@@ -472,6 +472,12 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			}
 			if res != nil && res.AppBundlePath != "" {
 				instRecord.AppBundlePath = &res.AppBundlePath
+				if res.AppBundleIdentifier != "" {
+					instRecord.AppBundleIdentifier = &res.AppBundleIdentifier
+				}
+				if res.AppBundleInfoPlistHash != "" {
+					instRecord.AppBundleInfoPlistHash = &res.AppBundleInfoPlistHash
+				}
 			}
 			if res != nil && res.Package != nil {
 				identity, err := json.Marshal(res.Package)
@@ -569,6 +575,15 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		if rec.AppBundlePath != nil {
 			installed.AppBundlePath = *rec.AppBundlePath
 		}
+		if rec.AppBundleIdentifier != nil {
+			installed.AppBundleIdentifier = *rec.AppBundleIdentifier
+		}
+		if rec.AppBundleInfoPlistHash != nil {
+			installed.AppBundleInfoPlistHash = *rec.AppBundleInfoPlistHash
+		}
+		if rec.AppBundlePendingRemoval != nil {
+			installed.AppBundlePendingRemoval = *rec.AppBundlePendingRemoval
+		}
 		if rec.PackageIdentity != nil {
 			if err := json.Unmarshal([]byte(*rec.PackageIdentity), &installed.Package); err != nil {
 				return fmt.Errorf("reading package identity for %s: %w", tool.Name, err)
@@ -604,13 +619,29 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 			return fmt.Errorf("uninstalling %s with %s: %w", tool.Name, method, err)
 		}
 		inst = installer.Clone(inst)
+		installer.SetFS(inst, o.fs)
+		installer.SetLogger(inst, o.logger)
+		installer.SetSystemContext(inst, installer.NewSystemContext(o.target))
+		var bundleFS *appBundleRemovalFS
+		if method == "dmg" {
+			bundleFS = &appBundleRemovalFS{FS: o.fs, orch: o, ctx: ctx, toolName: tool.Name, pending: installed.AppBundlePendingRemoval}
+			installer.SetFS(inst, bundleFS)
+		}
 		if tool.InstallationMethod == "" {
 			toolCopy := *tool
 			toolCopy.InstallationMethod = method
 			tool = &toolCopy
 		}
-		if err := inst.Uninstall(ctx, tool, installed); err != nil {
-			return fmt.Errorf("uninstalling %s with %s: %w", tool.Name, method, err)
+		uninstallErr := inst.Uninstall(ctx, tool, installed)
+		if uninstallErr == nil && bundleFS != nil && bundleFS.pending != "" {
+			uninstallErr = fmt.Errorf("pending removal of %s cannot be verified; restore the recorded bundle identity or remove the leftover manually before retrying", bundleFS.pending)
+		}
+		if err := uninstallErr; err != nil {
+			uninstallErr := fmt.Errorf("uninstalling %s with %s: %w", tool.Name, method, err)
+			if method == "dmg" {
+				return errors.Join(uninstallErr, o.removeToolArtifactsKeepingReceipt(ctx, tool.Name, projCfg))
+			}
+			return uninstallErr
 		}
 	}
 

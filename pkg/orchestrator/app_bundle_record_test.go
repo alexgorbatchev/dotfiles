@@ -16,6 +16,8 @@ import (
 // Installation each Uninstall is handed.
 type bundleInstaller struct {
 	bundle          string
+	identifier      string
+	plistHash       string
 	packageIdentity *installer.PackageIdentity
 	uninstalled     []installer.Installation
 }
@@ -23,7 +25,7 @@ type bundleInstaller struct {
 func (b *bundleInstaller) Name() string       { return "bundle" }
 func (b *bundleInstaller) SupportsSudo() bool { return false }
 func (b *bundleInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
-	return &installer.InstallResult{AppBundlePath: b.bundle, Package: b.packageIdentity}, nil
+	return &installer.InstallResult{AppBundlePath: b.bundle, AppBundleIdentifier: b.identifier, AppBundleInfoPlistHash: b.plistHash, Package: b.packageIdentity}, nil
 }
 func (b *bundleInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	b.uninstalled = append(b.uninstalled, installed)
@@ -55,6 +57,10 @@ func TestUninstallToolHandsTheInstallerTheRecordedBundle(t *testing.T) {
 			t.Cleanup(func() { _ = sqlDB.Close() })
 			reg := registry.NewRegistry(sqlDB)
 			inst := &bundleInstaller{bundle: tt.bundle}
+			if tt.bundle != "" {
+				inst.identifier = "example.app"
+				inst.plistHash = "installed-hash"
+			}
 			instReg := installer.NewRegistry()
 			if err := instReg.Register(inst); err != nil {
 				t.Fatalf("Register: %v", err)
@@ -83,7 +89,7 @@ func TestUninstallToolHandsTheInstallerTheRecordedBundle(t *testing.T) {
 			if err := orch.UninstallTool(ctx, tool, projCfg); err != nil {
 				t.Fatalf("UninstallTool: %v", err)
 			}
-			want := installer.Installation{AppBundlePath: tt.bundle}
+			want := installer.Installation{AppBundlePath: tt.bundle, AppBundleIdentifier: inst.identifier, AppBundleInfoPlistHash: inst.plistHash}
 			if len(inst.uninstalled) != 1 || inst.uninstalled[0] != want {
 				t.Errorf("Uninstall was handed %+v, want [%+v]", inst.uninstalled, want)
 			}

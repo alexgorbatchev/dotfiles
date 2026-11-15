@@ -27,10 +27,11 @@ func macAssetInstaller(t *testing.T, method, apiURL string) (Installer, *exec.Mo
 		"source": map[string]interface{}{"type": "github-release", "repo": "owner/app"},
 	}}
 	if method == "dmg" {
+		registerBundlePlutil(runner)
 		inst := NewDmgInstaller(runner, fsys, dl, sys)
 		inst.BaseURL, inst.BinDir = apiURL, "/staging"
 		tool.InstallParams["appName"] = "App.app"
-		archivetest.Hdiutil{FS: fsys, Volume: archivetest.VolumeFile(fsys, "App.app/Contents/MacOS/app", "app-bin")}.Register(runner)
+		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "App.app/Contents/MacOS/app", "app-bin")}.Register(runner)
 		return inst, runner, fsys, tool
 	}
 	inst := NewPkgInstaller(runner, fsys, dl, sys)
