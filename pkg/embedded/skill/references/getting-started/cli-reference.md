@@ -370,8 +370,7 @@ other paths are still audited, confirmed conflicts are reported, and the command
 exits 1. An incomplete audit does not print a no-conflicts success message. Under
 `--json`, the report lists confirmed conflicts; stderr diagnostics and the nonzero
 exit status indicate incomplete inspection.
-Run audit without `--dry-run` to inspect existing files: the dry-run filesystem
-exposes host metadata but does not read host file contents.
+Existing files can also be inspected with [`--dry-run`](#global-flags).
 
 - `--json`: Output conflict analysis in JSON format.
 
@@ -508,7 +507,7 @@ Upgrades or downgrades the `dotfiles` CLI binary from GitHub Releases. With a ve
 The following flags are available on all commands:
 
 - `-c, --config <path>`: Path to configuration file (default: `dotfiles.config.ts`).
-- `-d, --dry-run`: Simulate operations using an isolated in-memory snapshot of the existing installation registry. Installed tools and recorded file operations remain visible; simulated writes and schema upgrades affect only the copy. A missing registry starts empty; an unreadable registry fails. Generated files and installation state on disk remain unchanged.
+- `-d, --dry-run`: Simulate operations using an in-memory filesystem overlay and an isolated snapshot of the existing installation registry. Existing source and destination contents, installed tools and recorded file operations remain visible. Filesystem changes and registry writes affect only these private copies. A missing registry starts empty; an unreadable registry fails. Generated files and installation state on disk remain unchanged.
 - `--prune-cache <bool>`: Override automatic cleanup after successful installs. When omitted, use [`downloader.pruneCache`](../configuration/project-configuration.md#downloader), whose default is `true`. See [cache cleanup](#dotfiles-cache-clear) for retention and manual clearing.
 - `--trace`: Enable source location tracing in logs.
 - `--log <level>`: Set log level (`verbose`, `default`, `quiet`).

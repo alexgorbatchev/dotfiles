@@ -1860,3 +1860,242 @@ func TestTrackedRemovalInspectionErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestDryRunFSReadsHostAndKeepsMutationsInMemory(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	if err := os.WriteFile(source, []byte("host"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	mem := NewDryRunFS()
+	data, err := mem.ReadFile(source)
+	if err != nil || string(data) != "host" {
+		t.Fatalf("ReadFile = %q, %v", data, err)
+	}
+	reader, err := mem.Open(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if string(read) != "host" {
+		t.Fatalf("Open = %q", read)
+	}
+	writer, err := mem.OpenFile(source, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write([]byte(" overlay")); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	copyPath := filepath.Join(root, "copy")
+	if err := mem.CopyFile(source, copyPath); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := mem.ReadFile(copyPath); err != nil || string(data) != "host overlay" {
+		t.Fatalf("copy = %q, %v", data, err)
+	}
+	if err := mem.Chmod(copyPath, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := mem.Rename(source, filepath.Join(root, "renamed")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mem.ReadFile(source); !os.IsNotExist(err) {
+		t.Fatalf("renamed source remained visible: %v", err)
+	}
+	if data, err := os.ReadFile(source); err != nil || string(data) != "host" {
+		t.Fatalf("host mutated = %q, %v", data, err)
+	}
+	if _, err := os.Stat(copyPath); !os.IsNotExist(err) {
+		t.Fatalf("copy reached host: %v", err)
+	}
+}
+
+func TestDryRunFSDirectoryOverlayAndTombstones(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "files")
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"keep", "remove"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(filepath.Join(dir, "remove"), link); err != nil {
+		t.Fatal(err)
+	}
+	mem := NewDryRunFS()
+	if err := mem.Remove(filepath.Join(dir, "remove")); err != nil {
+		t.Fatal(err)
+	}
+	if err := mem.WriteFile(filepath.Join(dir, "new"), []byte("new"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := mem.ReadDir(dir)
+	if err != nil || !slices.Equal(entries, []string{"keep", "new"}) {
+		t.Fatalf("ReadDir = %v, %v", entries, err)
+	}
+	if _, err := mem.ReadFile(link); !os.IsNotExist(err) {
+		t.Fatalf("symlink exposed removed host target: %v", err)
+	}
+	if exists, err := mem.Exists(link); err != nil || exists {
+		t.Fatalf("removed target Exists = %v, %v", exists, err)
+	}
+	if _, err := mem.Stat(link); !os.IsNotExist(err) {
+		t.Fatalf("removed target Stat = %v", err)
+	}
+	if err := mem.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := mem.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if entries, err := mem.ReadDir(dir); err != nil || len(entries) != 0 {
+		t.Fatalf("recreated directory = %v, %v", entries, err)
+	}
+	if _, err := mem.ReadFile(filepath.Join(dir, "keep")); !os.IsNotExist(err) {
+		t.Fatalf("recreated directory exposed old child: %v", err)
+	}
+	if host, err := os.ReadDir(dir); err != nil || len(host) != 2 {
+		t.Fatalf("host directory changed: %v, %v", host, err)
+	}
+}
+
+func TestDryRunFSCopiesAndRenamesHostTrees(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "tree")
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "source"), []byte("host"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Fatal(err)
+	}
+	mem := NewDryRunFS()
+	if entries, err := mem.ReadDir(link); err != nil || !slices.Equal(entries, []string{"source"}) {
+		t.Fatalf("directory symlink = %v, %v", entries, err)
+	}
+	if err := mem.CopyFile(filepath.Join(dir, "source"), filepath.Join(root, "copy")); err != nil {
+		t.Fatal(err)
+	}
+	if err := mem.Rename(dir, filepath.Join(root, "moved")); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := mem.ReadFile(filepath.Join(root, "moved", "source")); err != nil || string(data) != "host" {
+		t.Fatalf("moved child = %q, %v", data, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "source")); err != nil {
+		t.Fatalf("host tree changed: %v", err)
+	}
+}
+
+func TestDryRunFSDirectoryAliasesShareWritesAndRemovals(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "real")
+	alias := filepath.Join(root, "alias")
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "file"), []byte("host"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("file", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(dir, alias); err != nil {
+		t.Fatal(err)
+	}
+	mem := NewDryRunFS()
+	if data, err := mem.ReadFile(filepath.Join(alias, "file")); err != nil || string(data) != "host" {
+		t.Fatalf("alias read: %q, %v", data, err)
+	}
+	if err := mem.MkdirAll(alias, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := mem.WriteFile(filepath.Join(alias, "file"), []byte("overlay"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := mem.ReadFile(filepath.Join(dir, "file")); err != nil || string(data) != "overlay" {
+		t.Fatalf("alias write: %q, %v", data, err)
+	}
+	if err := mem.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{filepath.Join(alias, "file"), filepath.Join(alias, "link")} {
+		if _, err := mem.ReadFile(path); !os.IsNotExist(err) {
+			t.Errorf("ReadFile resurrected %s: %v", path, err)
+		}
+		if _, err := mem.Lstat(path); !os.IsNotExist(err) {
+			t.Errorf("Lstat resurrected %s: %v", path, err)
+		}
+		if _, err := mem.Readlink(path); !os.IsNotExist(err) {
+			t.Errorf("Readlink resurrected %s: %v", path, err)
+		}
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "file")); err != nil || string(data) != "host" {
+		t.Fatalf("host changed: %q, %v", data, err)
+	}
+}
+
+func TestDryRunFSContentWritesFollowHostSymlinks(t *testing.T) {
+	for _, method := range []string{"WriteFile", "Create", "OpenFile"} {
+		t.Run(method, func(t *testing.T) {
+			root := t.TempDir()
+			target, link := filepath.Join(root, "profile"), filepath.Join(root, "link")
+			if err := os.WriteFile(target, []byte("host"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink("profile", link); err != nil {
+				t.Fatal(err)
+			}
+			mem := NewDryRunFS()
+			want := "overlay"
+			if method == "WriteFile" {
+				if err := mem.WriteFile(link, []byte(want), 0600); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				var writer io.WriteCloser
+				var err error
+				if method == "Create" {
+					writer, err = mem.Create(link)
+				} else {
+					writer, err = mem.OpenFile(link, os.O_APPEND|os.O_WRONLY, 0600)
+					want = "hostoverlay"
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := writer.Write([]byte("overlay")); err != nil {
+					t.Fatal(err)
+				}
+				if err := writer.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if got, err := mem.Readlink(link); err != nil || got != "profile" {
+				t.Fatalf("link replaced: %q, %v", got, err)
+			}
+			if data, err := mem.ReadFile(target); err != nil || string(data) != want {
+				t.Fatalf("target contents: %q, %v", data, err)
+			}
+			if data, err := os.ReadFile(target); err != nil || string(data) != "host" {
+				t.Fatalf("host changed: %q, %v", data, err)
+			}
+		})
+	}
+}

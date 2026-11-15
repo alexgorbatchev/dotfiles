@@ -32,9 +32,10 @@ type MemFS struct {
 	// happens to be installed on the developer's machine makes the result of the
 	// test depend on which machine ran it.
 	//
-	// Reads never fall through. Only the existence and shape of a host path are
-	// visible, never its contents.
+	// Metadata-only fallback never exposes contents. NewDryRunFS additionally
+	// snapshots host entries into memory when an operation needs their contents.
 	hostFallback bool
+	hostReads    bool
 	files        map[string]*fileNode
 	removedHost  map[string]bool
 }
@@ -49,8 +50,8 @@ func NewMemFS() *MemFS {
 
 // NewMemFSWithHostFallback returns an in-memory filesystem that additionally
 // reports what the real one holds, for the metadata calls listed on MemFS. It is
-// what a dry run runs against, so that a simulated installation sees the machine
-// it would really install onto. Tests want NewMemFS instead.
+// useful when only the shape of the host is needed. Dry runs use NewDryRunFS;
+// isolated tests use NewMemFS instead.
 func NewMemFSWithHostFallback() *MemFS {
 	return &MemFS{
 		files:        make(map[string]*fileNode),
@@ -60,10 +61,14 @@ func NewMemFSWithHostFallback() *MemFS {
 }
 
 func (m *MemFS) resolveNodeLocked(path string) (string, *fileNode, error) {
+	if m.hostReads {
+		resolved, err := m.overlayPathLocked(path, true, 0)
+		return resolved, m.files[resolved], err
+	}
 	cleanPath := filepath.Clean(path)
-	node, ok := m.files[cleanPath]
-	if !ok {
-		return cleanPath, nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	node, err := m.readNodeLocked(cleanPath)
+	if err != nil {
+		return cleanPath, nil, err
 	}
 
 	visited := make(map[string]bool)
@@ -81,9 +86,9 @@ func (m *MemFS) resolveNodeLocked(path string) (string, *fileNode, error) {
 		}
 		currPath = filepath.Clean(target)
 
-		nextNode, ok := m.files[currPath]
-		if !ok {
-			return currPath, nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+		nextNode, err := m.readNodeLocked(currPath)
+		if err != nil {
+			return currPath, nil, err
 		}
 		currNode = nextNode
 	}
@@ -92,8 +97,8 @@ func (m *MemFS) resolveNodeLocked(path string) (string, *fileNode, error) {
 }
 
 func (m *MemFS) ReadFile(path string) ([]byte, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	_, node, err := m.resolveNodeLocked(path)
 	if err != nil {
@@ -113,7 +118,10 @@ func (m *MemFS) WriteFile(path string, data []byte, perm os.FileMode) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanPath := filepath.Clean(path)
+	cleanPath, err := m.prepareHostContentWriteLocked(path)
+	if err != nil {
+		return err
+	}
 
 	// Check if parent directory exists (mirroring actual OS behavior)
 	parent := filepath.Dir(cleanPath)
@@ -152,7 +160,10 @@ func (m *MemFS) Remove(path string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanPath := filepath.Clean(path)
+	cleanPath, err := m.overlayPathLocked(path, false, 0)
+	if err != nil {
+		return err
+	}
 	node, ok := m.files[cleanPath]
 	if !ok {
 		if !m.hostFallback || m.hostPathRemovedLocked(cleanPath) {
@@ -196,14 +207,14 @@ func (m *MemFS) Remove(path string) error {
 }
 
 func (m *MemFS) Exists(path string) (bool, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	_, _, err := m.resolveNodeLocked(path)
 	if err == nil {
 		return true, nil
 	}
-	if m.hostFallback && !m.hostPathRemovedLocked(path) {
+	if m.hostFallback && !m.hostReads && !m.hostPathRemovedLocked(path) {
 		if _, osErr := os.Stat(path); osErr == nil {
 			return true, nil
 		}
@@ -218,6 +229,9 @@ func (m *MemFS) MkdirAll(path string, perm os.FileMode) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.hostReads {
+		return m.mkdirAllHostLocked(path, perm)
+	}
 	return m.mkdirAllLocked(filepath.Clean(path), perm)
 }
 
@@ -298,7 +312,10 @@ func (m *MemFS) Create(path string) (io.WriteCloser, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanPath := filepath.Clean(path)
+	cleanPath, err := m.prepareHostContentWriteLocked(path)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check if parent directory exists (mirroring actual OS behavior)
 	parent := filepath.Dir(cleanPath)
@@ -331,7 +348,10 @@ func (m *MemFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteClose
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanPath := filepath.Clean(path)
+	cleanPath, err := m.prepareHostContentWriteLocked(path)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check if parent directory exists (mirroring actual OS behavior)
 	parent := filepath.Dir(cleanPath)
@@ -346,8 +366,8 @@ func (m *MemFS) OpenFile(path string, flag int, perm os.FileMode) (io.WriteClose
 	if ok && node.isDir {
 		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrExist}
 	}
-	// Like os.OpenFile, only O_CREATE creates a missing file. Host fallback never
-	// applies here: MemFS cannot write through to host content.
+	// Like os.OpenFile, only O_CREATE creates a missing file. A dry-run overlay
+	// appends to its private snapshot; metadata-only fallback cannot append.
 	if !ok && flag&os.O_CREATE == 0 {
 		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 	}
@@ -383,8 +403,8 @@ func (r *memFileReader) Close() error {
 }
 
 func (m *MemFS) Open(path string) (io.ReadCloser, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	_, node, err := m.resolveNodeLocked(path)
 	if err != nil {
@@ -398,10 +418,22 @@ func (m *MemFS) Open(path string) (io.ReadCloser, error) {
 }
 
 func (m *MemFS) ReadDir(path string) ([]string, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
+	return m.readDirLocked(path)
+}
+
+func (m *MemFS) readDirLocked(path string) ([]string, error) {
 	cleanPath := filepath.Clean(path)
+	if m.hostReads {
+		resolved, _, err := m.resolveNodeLocked(cleanPath)
+		if err != nil {
+			return nil, err
+		}
+		cleanPath = resolved
+	}
+
 	node, ok := m.files[cleanPath]
 	if ok && !node.isDir {
 		return nil, &os.PathError{Op: "readdir", Path: path, Err: os.ErrInvalid}
@@ -417,6 +449,22 @@ func (m *MemFS) ReadDir(path string) ([]string, error) {
 
 	var names []string
 	seen := make(map[string]bool)
+	if m.hostReads && !m.hostPathRemovedLocked(cleanPath) {
+		entries, err := os.ReadDir(cleanPath)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		if err == nil {
+			dirExists = true
+		}
+		for _, entry := range entries {
+			if m.hostPathRemovedLocked(filepath.Join(cleanPath, entry.Name())) {
+				continue
+			}
+			seen[entry.Name()] = true
+			names = append(names, entry.Name())
+		}
+	}
 	for k := range m.files {
 		if k == cleanPath {
 			continue
@@ -449,6 +497,14 @@ func (m *MemFS) Chmod(path string, perm os.FileMode) error {
 	defer m.mu.Unlock()
 
 	cleanPath := filepath.Clean(path)
+	if m.hostReads {
+		resolved, _, err := m.resolveNodeLocked(path)
+		if err != nil {
+			return err
+		}
+		cleanPath = resolved
+	}
+
 	node, ok := m.files[cleanPath]
 	if !ok {
 		return &os.PathError{Op: "chmod", Path: path, Err: os.ErrNotExist}
@@ -462,8 +518,19 @@ func (m *MemFS) Rename(oldname, newname string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanOld := filepath.Clean(oldname)
-	cleanNew := filepath.Clean(newname)
+	cleanOld, err := m.overlayPathLocked(oldname, false, 0)
+	if err != nil {
+		return err
+	}
+	cleanNew, err := m.prepareHostWriteLocked(newname)
+	if err != nil {
+		return err
+	}
+	if m.hostReads {
+		if err := m.readHostTreeLocked(cleanOld); err != nil {
+			return err
+		}
+	}
 
 	oldNode, ok := m.files[cleanOld]
 	if !ok {
@@ -498,6 +565,7 @@ func (m *MemFS) Rename(oldname, newname string) error {
 		m.files[cleanNew] = oldNode
 	}
 
+	m.hideHostPathLocked(cleanOld)
 	return nil
 }
 
@@ -520,8 +588,14 @@ func (m *MemFS) Link(oldname, newname string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanOld := filepath.Clean(oldname)
-	cleanNew := filepath.Clean(newname)
+	cleanOld, err := m.prepareHostWriteLocked(oldname)
+	if err != nil {
+		return err
+	}
+	cleanNew, err := m.prepareHostWriteLocked(newname)
+	if err != nil {
+		return err
+	}
 
 	oldNode, ok := m.files[cleanOld]
 	if !ok {
@@ -553,7 +627,10 @@ func (m *MemFS) Symlink(oldname, newname string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanNew := filepath.Clean(newname)
+	cleanNew, err := m.prepareHostWriteLocked(newname)
+	if err != nil {
+		return err
+	}
 
 	parent := filepath.Dir(cleanNew)
 	if filepath.Dir(parent) != parent {
@@ -579,16 +656,17 @@ func (m *MemFS) Symlink(oldname, newname string) error {
 }
 
 func (m *MemFS) Readlink(path string) (string, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	cleanPath := filepath.Clean(path)
+	cleanPath, err := m.overlayPathLocked(path, false, 0)
+	if err != nil {
+		return "", err
+	}
 	node, ok := m.files[cleanPath]
 	if !ok {
-		if m.hostFallback && !m.hostPathRemovedLocked(path) {
-			if linkTarget, osErr := os.Readlink(path); osErr == nil {
-				return linkTarget, nil
-			}
+		if m.hostFallback && !m.hostPathRemovedLocked(cleanPath) {
+			return os.Readlink(cleanPath)
 		}
 		return "", &os.PathError{Op: "readlink", Path: path, Err: os.ErrNotExist}
 	}
@@ -599,16 +677,17 @@ func (m *MemFS) Readlink(path string) (string, error) {
 }
 
 func (m *MemFS) Lstat(path string) (os.FileInfo, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	cleanPath := filepath.Clean(path)
+	cleanPath, err := m.overlayPathLocked(path, false, 0)
+	if err != nil {
+		return nil, err
+	}
 	node, ok := m.files[cleanPath]
 	if !ok {
-		if m.hostFallback && !m.hostPathRemovedLocked(path) {
-			if osInfo, osErr := os.Lstat(path); osErr == nil {
-				return osInfo, nil
-			}
+		if m.hostFallback && !m.hostPathRemovedLocked(cleanPath) {
+			return os.Lstat(cleanPath)
 		}
 		return nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrNotExist}
 	}
@@ -631,12 +710,12 @@ func (m *MemFS) Lstat(path string) (os.FileInfo, error) {
 }
 
 func (m *MemFS) Stat(path string) (os.FileInfo, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	currPath, currNode, err := m.resolveNodeLocked(path)
 	if err != nil {
-		if m.hostFallback && !m.hostPathRemovedLocked(path) {
+		if m.hostFallback && !m.hostReads && !m.hostPathRemovedLocked(path) {
 			if osInfo, osErr := os.Stat(path); osErr == nil {
 				return osInfo, nil
 			}
@@ -662,7 +741,13 @@ func (m *MemFS) RemoveAll(path string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanPath := filepath.Clean(path)
+	cleanPath, err := m.overlayPathLocked(path, false, 0)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
 	m.hideHostPathLocked(cleanPath)
 
 	separator := string(filepath.Separator)
@@ -720,17 +805,29 @@ func (m *MemFS) CopyFile(src, dest string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	cleanSrc := filepath.Clean(src)
+	cleanSrc, err := m.overlayPathLocked(src, false, 0)
+	if err != nil {
+		return err
+	}
 	cleanDest := filepath.Clean(dest)
+	if m.hostReads {
+		if err := m.mkdirAllHostLocked(filepath.Dir(dest), 0755); err != nil {
+			return err
+		}
+		cleanDest, err = m.prepareHostWriteLocked(dest)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Follow symlinks if cleanSrc is a symlink
 	curr := cleanSrc
 	depth := 0
 	var srcNode *fileNode
 	for {
-		node, ok := m.files[curr]
-		if !ok {
-			return &os.PathError{Op: "copyfile", Path: src, Err: os.ErrNotExist}
+		node, err := m.readNodeLocked(curr)
+		if err != nil {
+			return err
 		}
 		if !node.isSymlink {
 			srcNode = node
@@ -744,7 +841,10 @@ func (m *MemFS) CopyFile(src, dest string) error {
 		if !filepath.IsAbs(target) {
 			target = filepath.Join(filepath.Dir(curr), target)
 		}
-		curr = filepath.Clean(target)
+		curr, err = m.overlayPathLocked(target, false, 0)
+		if err != nil {
+			return err
+		}
 	}
 
 	if srcNode.isDir {

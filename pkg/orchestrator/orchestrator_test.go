@@ -5166,6 +5166,12 @@ func TestOrchestrator_ApplyUpdate(t *testing.T) {
 	if tool.Version == nil || *tool.Version != latest || tool.InstallParams["version"] != nil {
 		t.Errorf("tool configuration = %+v, want it untouched by the update", tool)
 	}
+	if reported, err := orch.ApplyUpdate(config.WithDryRun(ctx, true), tool, projCfg, UpdatePlan{Status: CheckStatusUpdateAvailable, TargetVersion: "3.0.0"}); err != nil || reported != "3.0.0" {
+		t.Fatalf("dry-run update reports %q, %v; want target 3.0.0", reported, err)
+	}
+	if record, err := reg.GetToolInstallation(ctx, tool.Name); err != nil || record == nil || record.Version != "2.0.0" {
+		t.Fatalf("dry-run update changed prior receipt: %+v, %v", record, err)
+	}
 
 	mockInst.err = errors.New("download failed")
 	if _, err := orch.ApplyUpdate(ctx, tool, projCfg, UpdatePlan{Status: CheckStatusUpdateAvailable, TargetVersion: "3.0.0"}); !errors.Is(err, mockInst.err) {
@@ -5570,6 +5576,21 @@ func TestOrchestrator_SafeRemoveAll_EdgeCases(t *testing.T) {
 	fsys := newMemFS()
 	runner := exec.NewMockRunner()
 	orch := NewOrchestrator(nil, fsys, runner, nil, nil)
+	t.Run("dry run preserves host mounts", func(t *testing.T) {
+		const mountPath = "/dry-run/example.dmg-mount"
+		if err := fsys.MkdirAll(mountPath, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := orch.safeRemoveAll(config.WithDryRun(ctx, true), fsys, mountPath); err != nil {
+			t.Fatal(err)
+		}
+		if len(runner.History) != 0 {
+			t.Fatalf("dry run invoked mount detachment: %+v", runner.History)
+		}
+		if exists, _ := fsys.Exists(mountPath); exists {
+			t.Fatal("dry run did not remove simulated mount directory")
+		}
+	})
 
 	// 1. Empty path returns nil
 	if err := orch.safeRemoveAll(ctx, fsys, ""); err != nil {

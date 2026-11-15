@@ -791,6 +791,11 @@ func (o *Orchestrator) safeRemoveAll(ctx context.Context, fsys fs.FS, path strin
 	if path == "" {
 		return nil
 	}
+	if config.IsDryRunEnabled(ctx) {
+		// The dry-run filesystem owns only simulated changes; never detach a host
+		// volume merely because its mount directory is visible in that overlay.
+		return fsys.RemoveAll(path)
+	}
 	exists, err := fsys.Exists(path)
 	if err != nil {
 		return err

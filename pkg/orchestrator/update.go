@@ -139,11 +139,14 @@ func (o *Orchestrator) ApplyUpdate(ctx context.Context, tool *config.ToolConfig,
 	if err := o.InstallTool(config.WithForce(ctx, true), tool, projCfg); err != nil {
 		return "", err
 	}
+	if config.IsDryRunEnabled(ctx) {
+		return plan.TargetVersion, nil
+	}
 	rec, err := o.reg.GetToolInstallation(ctx, tool.Name)
 	if err != nil {
 		return "", fmt.Errorf("%q was installed, but reading its installation record failed: %w", tool.Name, err)
 	}
-	// A dry run records nothing, so the target is all there is to report.
+	// An installer that could not detect its version leaves only the requested target.
 	if rec == nil || rec.Version == "" || rec.Version == "unknown" {
 		return plan.TargetVersion, nil
 	}
