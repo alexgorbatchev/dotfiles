@@ -349,6 +349,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	return &InstallResult{
 		Binaries: resolvedBinaries,
 		Version:  version,
+		Package:  &PackageIdentity{Name: formula, Cask: isCask},
 	}, nil
 }
 
@@ -391,7 +392,8 @@ func brewLinkArgs(link interface{}) []string {
 }
 
 func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
+	pkg := packageForUninstall(tool, installed, "formula")
+	formula := pkg.Name
 
 	if serviceVal, ok := tool.InstallParams["service"]; ok && serviceVal != nil {
 		hasService := false
@@ -414,7 +416,12 @@ func (b *BrewInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, 
 		}
 	}
 
-	cmd := b.brewCommand(ctx, "uninstall", "--", formula)
+	args := []string{"uninstall"}
+	if pkg.Cask {
+		args = append(args, "--cask")
+	}
+	args = append(args, "--", formula)
+	cmd := b.brewCommand(ctx, args...)
 	return cmd.Run()
 }
 

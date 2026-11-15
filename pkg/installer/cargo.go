@@ -744,6 +744,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		prerelease := cargoPrerelease(tool)
 		res, resolved, failure := c.installPrebuilt(ctx, tool, crateName, sources, pinned, prerelease)
 		if failure == nil {
+			res.Package = &PackageIdentity{Name: crateName, Managed: true}
 			return res, nil
 		}
 		fallback, fallbackErr := compileFallbackVersion(crateName, pinned, resolved, prerelease, failure.err)
@@ -793,13 +794,18 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	}
 
 	return &InstallResult{
+		Package:  &PackageIdentity{Name: crateName, Managed: c.BinDir != ""},
 		Binaries: promotedBinaries,
 		Version:  version,
 	}, nil
 }
 
 func (c *CargoInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
+	pkg := packageForUninstall(tool, installed, "crateName")
+	if pkg.Managed {
+		return nil
+	}
+	crateName := pkg.Name
 	args := []string{"uninstall"}
 	if c.BinDir != "" {
 		args = append(args, "--root", c.BinDir)

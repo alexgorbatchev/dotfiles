@@ -117,7 +117,7 @@ func TestInitializeSchemaMigratesLegacyTables(t *testing.T) {
 				install_method TEXT
 			);`,
 			table:   "tool_installations",
-			columns: []string{"app_bundle_path"},
+			columns: []string{"app_bundle_path", "package_identity"},
 		},
 	}
 

@@ -978,3 +978,21 @@ func TestToolInstallationRecordsTheAppBundle(t *testing.T) {
 		t.Errorf("GetAllToolInstallations bat AppBundlePath = %v, present %v; want a nil bundle", b, ok)
 	}
 }
+
+func TestToolInstallationRecordsPackageIdentity(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+	identity := `{"name":"actual-package","manager":"bun"}`
+	rec := &ToolInstallationRecord{ToolName: "alias", Version: "1", InstallPath: "/b/alias", BinaryPaths: "[]", PackageIdentity: &identity}
+	if err := reg.WithTx(ctx, func(tx *sql.Tx) error { return reg.RecordToolInstallation(ctx, tx, rec) }); err != nil {
+		t.Fatal(err)
+	}
+	got, err := reg.GetToolInstallation(ctx, "alias")
+	if err != nil || got == nil || got.PackageIdentity == nil || *got.PackageIdentity != identity {
+		t.Fatalf("record = %+v, error %v", got, err)
+	}
+	all, err := reg.GetAllToolInstallations(ctx)
+	if err != nil || len(all) != 1 || all[0].PackageIdentity == nil || *all[0].PackageIdentity != identity {
+		t.Fatalf("records = %+v, error %v", all, err)
+	}
+}

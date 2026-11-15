@@ -15,14 +15,15 @@ import (
 // bundleInstaller installs an app bundle, as the dmg installer does, and records the
 // Installation each Uninstall is handed.
 type bundleInstaller struct {
-	bundle      string
-	uninstalled []installer.Installation
+	bundle          string
+	packageIdentity *installer.PackageIdentity
+	uninstalled     []installer.Installation
 }
 
 func (b *bundleInstaller) Name() string       { return "bundle" }
 func (b *bundleInstaller) SupportsSudo() bool { return false }
 func (b *bundleInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
-	return &installer.InstallResult{AppBundlePath: b.bundle}, nil
+	return &installer.InstallResult{AppBundlePath: b.bundle, Package: b.packageIdentity}, nil
 }
 func (b *bundleInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed installer.Installation) error {
 	b.uninstalled = append(b.uninstalled, installed)

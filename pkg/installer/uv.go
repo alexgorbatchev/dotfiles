@@ -164,6 +164,7 @@ func (u *UvInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*In
 	}
 
 	return &InstallResult{
+		Package:  &PackageIdentity{Name: strings.Split(pkgName, "[")[0]},
 		Binaries: promotedBinaries,
 		Version:  detectedVersion,
 	}, nil
@@ -171,7 +172,8 @@ func (u *UvInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*In
 
 // Uninstall runs `uv tool uninstall <package>`.
 func (u *UvInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	pkgName := strings.Split(uvPackageName(tool), "[")[0]
+	pkg := packageForUninstall(tool, installed, "package")
+	pkgName := strings.Split(pkg.Name, "[")[0]
 	args := []string{"tool", "uninstall", pkgName}
 
 	if u.log != nil {

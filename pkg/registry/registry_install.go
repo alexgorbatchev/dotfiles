@@ -15,8 +15,8 @@ func (r *Registry) RecordToolInstallation(ctx context.Context, tx *sql.Tx, recor
 
 	query := `
 	INSERT OR REPLACE INTO tool_installations (
-		tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+		tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, package_identity
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
 
 	res, err := tx.ExecContext(ctx, query,
 		record.ToolName,
@@ -31,6 +31,7 @@ func (r *Registry) RecordToolInstallation(ctx context.Context, tx *sql.Tx, recor
 		record.OriginalTag,
 		record.InstallMethod,
 		record.AppBundlePath,
+		record.PackageIdentity,
 	)
 	if err != nil {
 		return fmt.Errorf("recording tool installation: %w", err)
@@ -164,7 +165,7 @@ func (r *Registry) RemoveToolInstallation(ctx context.Context, tx *sql.Tx, toolN
 // GetToolInstallation retrieves a tool installation by its name.
 func (r *Registry) GetToolInstallation(ctx context.Context, toolName string) (*ToolInstallationRecord, error) {
 	query := `
-	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path
+	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, package_identity
 	FROM tool_installations WHERE tool_name = ?;`
 
 	row := r.db.QueryRowContext(ctx, query, toolName)
@@ -184,6 +185,7 @@ func (r *Registry) GetToolInstallation(ctx context.Context, toolName string) (*T
 		&rec.OriginalTag,
 		&rec.InstallMethod,
 		&rec.AppBundlePath,
+		&rec.PackageIdentity,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -201,7 +203,7 @@ func (r *Registry) GetAllToolInstallations(ctx context.Context) ([]*ToolInstalla
 		return nil, nil
 	}
 	query := `
-	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path
+	SELECT id, tool_name, version, install_path, timestamp, installed_at, binary_paths, download_url, asset_name, configured_version, original_tag, install_method, app_bundle_path, package_identity
 	FROM tool_installations ORDER BY tool_name ASC;`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -227,6 +229,7 @@ func (r *Registry) GetAllToolInstallations(ctx context.Context) ([]*ToolInstalla
 			&rec.OriginalTag,
 			&rec.InstallMethod,
 			&rec.AppBundlePath,
+			&rec.PackageIdentity,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning tool installation record: %w", err)

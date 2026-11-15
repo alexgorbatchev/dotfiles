@@ -22,7 +22,18 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
 
+// PackageIdentity describes the package an installation actually selected.
+// Managed packages live entirely in dotfiles-owned directories and need no global uninstall.
+type PackageIdentity struct {
+	Name    string `json:"name"`
+	Manager string `json:"manager,omitempty"`
+	Cask    bool   `json:"cask,omitempty"`
+	Sudo    bool   `json:"sudo,omitempty"`
+	Managed bool   `json:"managed,omitempty"`
+}
+
 type InstallResult struct {
+	Package   *PackageIdentity
 	Binaries  []string
 	ShellEnv  map[string]string
 	ShellInit string
@@ -37,6 +48,7 @@ type InstallResult struct {
 // Installation is what the registry recorded about an earlier Install of the tool
 // being uninstalled. Its zero value means dotfiles holds no record of one.
 type Installation struct {
+	Package *PackageIdentity
 	// AppBundlePath is InstallResult.AppBundlePath as that install reported it.
 	AppBundlePath string
 }

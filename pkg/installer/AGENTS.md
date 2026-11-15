@@ -42,6 +42,8 @@ Tool installer plugins (github-release, curl-script, cargo, brew, apt, dnf, pacm
 - `UvInstaller` installs Python CLI tools into isolated virtual environments using `uv tool install`. It sets `UV_TOOL_BIN_DIR=${stagingDir}` so launcher binaries land directly in dotfiles' staging area, and passes `KeepOutsideLinks` to `PromoteBinaries` because uv populates the staging directory with symlinks pointing into uv's isolated tool virtual environment (`~/.local/share/uv/tools/<package>/bin/`). Forced reinstalls and automated updates (`config.IsForceEnabled(ctx)` or `force: true`) pass `--force` to `uv tool install` so native uv overwrites existing environments without error. Package names fall back to `tool.Name` when empty, and `_` and `.` are normalized to `-` when matching package names in `uv tool list`. `CheckUpdate` queries PyPI JSON API (`https://pypi.org/pypi/<package>/json`) using an HTTP client with a 30s timeout, respecting context deadlines.
 - Installer plugins implement `Cloner` (`Clone() Installer`) so orchestrators and callers can isolate per-install state (`BinDir`, `fsys`, `log`, `sysCtx`, cloned downloaders/extractors) during installation workflows while keeping HTTP clients, command runners, and release metadata caches shared.
 
+- Package-manager installers return the package identity actually installed in `InstallResult.Package`; uninstall prefers `Installation.Package` over current configuration, including the manager, cask and privilege options. Configuration is a fallback only for real configured tools with older installation records.
+
 ## Local gotchas
 
 - Unlogged network requests or asset downloads look like hung processes -> always log explicit progress steps (`Fetching release info...`, `Downloading...`, `Extracting...`).

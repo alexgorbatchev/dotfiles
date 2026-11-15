@@ -4516,7 +4516,7 @@ func TestCleanupBatchesContinueAfterFailure(t *testing.T) {
 	if rec := p.installation(t, "z-good"); rec != nil {
 		t.Fatalf("cleanup stopped before healthy orphan: %+v", rec)
 	}
-	mustContain(t, "stderr", out.Stderr, "[a-broken] Failed uninstalling orphaned tool: ", "cannot remove broken")
+	mustContain(t, "stderr", out.Stderr, "[a-broken] Failed to cleanup orphaned tool: ", "cannot remove broken")
 }
 
 func TestUninstallBatchesContinueAfterFailure(t *testing.T) {
@@ -4650,7 +4650,7 @@ func TestCleanupCommand_RemovesOrphans(t *testing.T) {
 	if err != nil {
 		t.Fatalf("state cleanup: %v\n%s", err, out.Combined)
 	}
-	mustContain(t, "stderr", out.Stderr, "[ghost] Removing orphaned tool...")
+	mustContain(t, "stderr", out.Stderr, "[ghost] Cleaning up orphaned tool...")
 	if rec := p.installation(t, "ghost"); rec != nil {
 		t.Fatalf("ghost is still recorded after cleanup: %+v", rec)
 	}
@@ -4670,7 +4670,7 @@ func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
 		if err == nil {
 			t.Fatalf("state cleanup succeeded despite unreadable installations\n%s", out.Combined)
 		}
-		mustContain(t, "stderr", out.Stderr, "Failed querying installed tools: ", unreadableInstallationCause)
+		mustContain(t, "stderr", out.Stderr, "finding orphaned tools: ", unreadableInstallationCause)
 	})
 
 	t.Run("an orphaned tool that cannot be removed", func(t *testing.T) {
@@ -4685,7 +4685,7 @@ func TestCleanupCommand_FailureLogsNameTheCause(t *testing.T) {
 		if err == nil {
 			t.Fatalf("state cleanup succeeded despite uninstall failure\n%s", out.Combined)
 		}
-		mustContain(t, "stderr", out.Stderr, "[ghost] Failed uninstalling orphaned tool: ", "installations are kept")
+		mustContain(t, "stderr", out.Stderr, "[ghost] Failed to cleanup orphaned tool: ", "installations are kept")
 	})
 }
 
@@ -4697,11 +4697,12 @@ func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
 		method := "brew"
 		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
 			return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
-				ToolName:      "orphan-brew",
-				Version:       "v1.0.0",
-				InstallPath:   filepath.Join(p.Root, "installed", "orphan-brew"),
-				InstallMethod: &method,
-				BinaryPaths:   "[]",
+				ToolName:        "orphan-brew",
+				Version:         "v1.0.0",
+				InstallPath:     filepath.Join(p.Root, "installed", "orphan-brew"),
+				InstallMethod:   &method,
+				BinaryPaths:     "[]",
+				PackageIdentity: func() *string { value := `{"name":"actual-package"}`; return &value }(),
 			})
 		})
 
@@ -4737,11 +4738,12 @@ func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
 		method := "brew"
 		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
 			return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
-				ToolName:      "orphan-brew",
-				Version:       "v1.0.0",
-				InstallPath:   filepath.Join(p.Root, "installed", "orphan-brew"),
-				InstallMethod: &method,
-				BinaryPaths:   "[]",
+				ToolName:        "orphan-brew",
+				Version:         "v1.0.0",
+				InstallPath:     filepath.Join(p.Root, "installed", "orphan-brew"),
+				InstallMethod:   &method,
+				BinaryPaths:     "[]",
+				PackageIdentity: func() *string { value := `{"name":"actual-package"}`; return &value }(),
 			})
 		})
 
@@ -4754,7 +4756,7 @@ func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
 		if err == nil {
 			t.Fatalf("state cleanup succeeded despite uninstall failure\n%s", out.Combined)
 		}
-		mustContain(t, "stderr", out.Stderr, "[orphan-brew] Failed uninstalling orphaned tool: ", "brew uninstall failed: formula has dependents")
+		mustContain(t, "stderr", out.Stderr, "[orphan-brew] Failed to cleanup orphaned tool: ", "brew uninstall failed: formula has dependents")
 		if rec := p.installation(t, "orphan-brew"); rec == nil {
 			t.Fatal("orphan-brew must remain recorded when uninstall fails")
 		}
@@ -4765,11 +4767,12 @@ func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
 		method := "nonexistent-pkg-mgr"
 		p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
 			return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{
-				ToolName:      "orphan-custom",
-				Version:       "v1.0.0",
-				InstallPath:   filepath.Join(p.Root, "installed", "orphan-custom"),
-				InstallMethod: &method,
-				BinaryPaths:   "[]",
+				ToolName:        "orphan-custom",
+				Version:         "v1.0.0",
+				InstallPath:     filepath.Join(p.Root, "installed", "orphan-custom"),
+				InstallMethod:   &method,
+				BinaryPaths:     "[]",
+				PackageIdentity: func() *string { value := `{"name":"actual-package"}`; return &value }(),
 			})
 		})
 
@@ -4777,7 +4780,7 @@ func TestCleanupCommand_InvokesRecordedInstaller(t *testing.T) {
 		if err == nil {
 			t.Fatalf("state cleanup succeeded despite unknown installer\n%s", out.Combined)
 		}
-		mustContain(t, "stderr", out.Stderr, "[orphan-custom] Failed uninstalling orphaned tool: ", "nonexistent-pkg-mgr")
+		mustContain(t, "stderr", out.Stderr, "[orphan-custom] Failed to cleanup orphaned tool: ", "nonexistent-pkg-mgr")
 		if rec := p.installation(t, "orphan-custom"); rec == nil {
 			t.Fatal("orphan-custom must remain recorded when unknown installer fails")
 		}
@@ -5452,4 +5455,42 @@ func TestToolAdd(t *testing.T) {
 			t.Errorf("expected 'Overwrote' in output, got: %s", out)
 		}
 	})
+}
+
+func TestCleanupCommandDoesNotGuessPackageIdentity(t *testing.T) {
+	for _, configured := range []bool{false, true} {
+		t.Run(fmt.Sprintf("configured=%t", configured), func(t *testing.T) {
+			tools := tsTools{}
+			if configured {
+				tools["alias"] = `install("brew", { formula: "real-package" }).disable()`
+			}
+			p := newE2EProject(t, tools)
+			method := "brew"
+			p.seedRegistry(t, func(ctx context.Context, reg *registry.Registry, tx *sql.Tx) error {
+				return reg.RecordToolInstallation(ctx, tx, &registry.ToolInstallationRecord{ToolName: "alias", Version: "1", InstallPath: filepath.Join(p.Root, "installed", "alias"), BinaryPaths: "[]", InstallMethod: &method})
+			})
+			called := false
+			mockInstallerUninstallHook = func(method string, tool *config.ToolConfig, installed installer.Installation) error {
+				called = true
+				if !configured || tool.InstallParams["formula"] != "real-package" {
+					t.Fatalf("unsafe uninstall config: %+v", tool)
+				}
+				return nil
+			}
+			defer func() { mockInstallerUninstallHook = nil }()
+			out, err := p.run("state", "cleanup")
+			if err != nil {
+				t.Fatalf("cleanup: %v\n%s", err, out.Combined)
+			}
+			if called != configured {
+				t.Fatalf("installer called=%t, want %t", called, configured)
+			}
+			if !configured {
+				mustContain(t, "stderr", out.Stderr, "The brew package it installed is left in place")
+			}
+			if p.installation(t, "alias") != nil {
+				t.Fatal("installation record remains after cleanup")
+			}
+		})
+	}
 }

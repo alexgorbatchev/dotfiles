@@ -6311,3 +6311,119 @@ func TestInstallTool_TargetedVsBatchLogging(t *testing.T) {
 		}
 	})
 }
+
+func TestPackageIdentitySurvivesConfigurationChanges(t *testing.T) {
+	ctx := context.Background()
+	conn, err := db.NewConnection(ctx, ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	reg := registry.NewRegistry(conn)
+	identity := &installer.PackageIdentity{Name: "original", Manager: "bun", Sudo: true}
+	inst := &bundleInstaller{packageIdentity: identity}
+	instances := installer.NewRegistry()
+	if err := instances.Register(inst); err != nil {
+		t.Fatal(err)
+	}
+	orch := NewOrchestrator(nil, newMemFS(), exec.NewMockRunner(), reg, instances)
+	cfg := &config.ProjectConfig{Paths: config.PathsConfig{HomeDir: "/home/user", TargetDir: "/home/user/bin", BinariesDir: "/home/user/binaries"}}
+	tool := &config.ToolConfig{Name: "alias", InstallationMethod: "bundle"}
+	if err := orch.InstallTool(ctx, tool, cfg); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := reg.GetToolInstallation(ctx, tool.Name)
+	if err != nil || rec.PackageIdentity == nil {
+		t.Fatalf("record = %+v, error %v", rec, err)
+	}
+	tool.InstallationMethod = "different-method"
+	tool.InstallParams = map[string]interface{}{"package": "changed"}
+	if err := orch.UninstallTool(ctx, tool, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if len(inst.uninstalled) != 1 || inst.uninstalled[0].Package == nil || *inst.uninstalled[0].Package != *identity {
+		t.Fatalf("uninstall identity = %+v", inst.uninstalled)
+	}
+}
+
+func TestUninstallRejectsInvalidPackageIdentity(t *testing.T) {
+	for _, value := range []string{"{", "null", `{}`, `{"name":""}`} {
+		t.Run(value, func(t *testing.T) {
+			ctx := context.Background()
+			orch, _ := declFixture(t)
+			method := "brew"
+			record := &registry.ToolInstallationRecord{ToolName: "alias", Version: "1", InstallPath: "/home/user/binaries/alias", BinaryPaths: "[]", InstallMethod: &method, PackageIdentity: &value}
+			if err := orch.reg.WithTx(ctx, func(tx *sql.Tx) error { return orch.reg.RecordToolInstallation(ctx, tx, record) }); err != nil {
+				t.Fatal(err)
+			}
+			err := orch.UninstallTool(ctx, &config.ToolConfig{Name: "alias", InstallationMethod: "brew"}, declProjectConfig())
+			if err == nil || !strings.Contains(err.Error(), "package identity") {
+				t.Fatalf("error=%v", err)
+			}
+			rec, err := orch.reg.GetToolInstallation(ctx, "alias")
+			if err != nil || rec == nil {
+				t.Fatalf("record lost on unsafe identity: %+v, %v", rec, err)
+			}
+		})
+	}
+}
+
+func TestUninstallPreservesLegacyReceiptAfterMethodChange(t *testing.T) {
+	ctx := context.Background()
+	orch, _ := declFixture(t)
+	method := "brew"
+	rec := &registry.ToolInstallationRecord{ToolName: "alias", Version: "1", InstallPath: "/home/user/binaries/alias", BinaryPaths: "[]", InstallMethod: &method}
+	if err := orch.reg.WithTx(ctx, func(tx *sql.Tx) error { return orch.reg.RecordToolInstallation(ctx, tx, rec) }); err != nil {
+		t.Fatal(err)
+	}
+	err := orch.UninstallTool(ctx, &config.ToolConfig{Name: "alias", InstallationMethod: "npm", InstallParams: map[string]interface{}{"package": "new-package"}}, declProjectConfig())
+	if err == nil || !strings.Contains(err.Error(), "no package identity") {
+		t.Fatalf("error=%v", err)
+	}
+	if rec, err := orch.reg.GetToolInstallation(ctx, "alias"); err != nil || rec == nil {
+		t.Fatalf("legacy receipt lost: %+v %v", rec, err)
+	}
+}
+
+func TestCleanupUvUsesRecordedIdentityOrWarns(t *testing.T) {
+	for _, tc := range []struct{ recorded, dryRun bool }{{}, {recorded: true}, {recorded: true, dryRun: true}} {
+		t.Run(fmt.Sprintf("recorded=%t/dryRun=%t", tc.recorded, tc.dryRun), func(t *testing.T) {
+			ctx := config.WithDryRun(context.Background(), tc.dryRun)
+			orch, memFS := declFixture(t)
+			runner := exec.NewMockRunner()
+			instances := installer.NewRegistry()
+			if err := instances.Register(installer.NewUvInstaller(runner, memFS, nil)); err != nil {
+				t.Fatal(err)
+			}
+			orch.instRegistry = instances
+			var logs bytes.Buffer
+			orch.logger = logger.New(logger.Config{Writer: &logs})
+			method := "uv"
+			rec := &registry.ToolInstallationRecord{ToolName: "http", Version: "1", InstallPath: "/home/user/.generated/binaries/http", BinaryPaths: "[]", InstallMethod: &method}
+			if tc.recorded {
+				identity := `{"name":"httpie"}`
+				rec.PackageIdentity = &identity
+			}
+			writeDecl(t, memFS, rec.InstallPath+"/current/http", "launcher")
+			if err := orch.reg.WithTx(ctx, func(tx *sql.Tx) error { return orch.reg.RecordToolInstallation(ctx, tx, rec) }); err != nil {
+				t.Fatal(err)
+			}
+			if err := orch.CleanupOrphanedTools(ctx, nil, declProjectConfig()); err != nil {
+				t.Fatal(err)
+			}
+			if tc.dryRun {
+				if len(runner.History) != 0 {
+					t.Fatalf("dry run invoked native uninstall: %+v", runner.History)
+				}
+			} else if tc.recorded {
+				if len(runner.History) != 1 || runner.History[0].Name != "uv" || strings.Join(runner.History[0].Args, " ") != "tool uninstall httpie" {
+					t.Fatalf("uninstall=%+v", runner.History)
+				}
+			} else if len(runner.History) != 0 || !strings.Contains(logs.String(), "uv tool uninstall") {
+				t.Fatalf("legacy receipt must warn without uninstall: commands=%+v logs=%s", runner.History, logs.String())
+			}
+			assertGone(t, memFS, rec.InstallPath)
+			assertForgotten(t, orch, "http")
+		})
+	}
+}

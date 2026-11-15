@@ -1,11 +1,6 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/logger"
-	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/spf13/cobra"
 )
 
@@ -20,49 +15,9 @@ var stateCleanupCmd = &cobra.Command{
 			return err
 		}
 		defer services.Close()
-
 		log := GetLogger("cleanup", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)
-
 		log.Info("Starting cleanup of orphaned tools and stale artifacts...")
-		var failures toolbatch.Failures
-
-		// Query database for all recorded tool installations
-		installedTools, err := services.Registry.GetAllToolInstallations(ctx)
-		if err != nil {
-			failures.Record(log, "system", fmt.Errorf("Failed querying installed tools: %w", err))
-			return failures.Err()
-		} else {
-			// Build map of configured tool names
-			activeMap := make(map[string]bool)
-			for _, tc := range services.ToolConfigs {
-				if !tc.Disabled {
-					activeMap[tc.Name] = true
-				}
-			}
-
-			// Identify orphaned installed tools
-			for _, instTool := range installedTools {
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-				if !activeMap[instTool.ToolName] {
-					log.WithTag(instTool.ToolName).Info(logger.Message("Removing orphaned tool..."))
-					var method string
-					if instTool.InstallMethod != nil {
-						method = *instTool.InstallMethod
-					}
-					err := services.Orchestrator.UninstallTool(ctx, &config.ToolConfig{
-						Name:               instTool.ToolName,
-						InstallationMethod: method,
-					}, services.ProjectConfig)
-					if err != nil {
-						failures.Record(log, instTool.ToolName, fmt.Errorf("Failed uninstalling orphaned tool: %w", err))
-					}
-				}
-			}
-		}
-
-		return failures.Err()
+		return services.Orchestrator.CleanupOrphanedTools(ctx, services.ToolConfigs, services.ProjectConfig)
 	},
 }

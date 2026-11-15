@@ -150,6 +150,7 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	})
 
 	return &InstallResult{
+		Package:  &PackageIdentity{Name: localPackageName, Sudo: tool.Sudo},
 		Binaries: resolvedBinaries,
 		Version:  detectedVersion,
 		ShellEnv: map[string]string{
@@ -159,13 +160,14 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 }
 
 func (p *PacmanInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	pkg := packageForUninstall(tool, installed, "package")
+	packageName := pkg.Name
 	localPackageName := packageName
 	if idx := strings.LastIndex(packageName, "/"); idx >= 0 {
 		localPackageName = packageName[idx+1:]
 	}
 	var cmd exec.Cmd
-	if tool.Sudo {
+	if pkg.Sudo {
 		cmd = p.runner.CommandContext(ctx, "sudo", "pacman", "-R", "--noconfirm", "--", localPackageName)
 	} else {
 		cmd = p.runner.CommandContext(ctx, "pacman", "-R", "--noconfirm", "--", localPackageName)

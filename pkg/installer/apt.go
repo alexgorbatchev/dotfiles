@@ -148,6 +148,7 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	// Step 3: Fetch version via dpkg-query
+	installedPackageName := packageName
 	var detectedVersion string
 	queryArgs := []string{"-W", "-f=${Version}", "--", packageName}
 	query := runQuery(a.runner.CommandContext(ctx, "dpkg-query", queryArgs...), "dpkg-query", queryArgs...)
@@ -163,6 +164,7 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 			providerPkg, _ = parseDpkgProvides(provQuery.stdout, packageName)
 		}
 		if providerPkg != "" {
+			installedPackageName = providerPkg
 			verArgs := []string{"-W", "-f=${Version}", "--", providerPkg}
 			verQuery := runQuery(a.runner.CommandContext(ctx, "dpkg-query", verArgs...), "dpkg-query", verArgs...)
 			if verQuery.err == nil && strings.TrimSpace(verQuery.stdout) != "" {
@@ -193,6 +195,7 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	})
 
 	return &InstallResult{
+		Package:  &PackageIdentity{Name: installedPackageName, Sudo: tool.Sudo},
 		Binaries: resolvedBinaries,
 		Version:  detectedVersion,
 		ShellEnv: map[string]string{
@@ -202,9 +205,10 @@ func (a *AptInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 }
 
 func (a *AptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	pkg := packageForUninstall(tool, installed, "package")
+	packageName := pkg.Name
 	var cmd exec.Cmd
-	if tool.Sudo {
+	if pkg.Sudo {
 		cmd = a.runner.CommandContext(ctx, "sudo", "apt-get", "remove", "-y", "--", packageName)
 	} else {
 		cmd = a.runner.CommandContext(ctx, "apt-get", "remove", "-y", "--", packageName)

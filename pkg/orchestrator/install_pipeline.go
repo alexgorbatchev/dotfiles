@@ -466,6 +466,14 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			if res != nil && res.AppBundlePath != "" {
 				instRecord.AppBundlePath = &res.AppBundlePath
 			}
+			if res != nil && res.Package != nil {
+				identity, err := json.Marshal(res.Package)
+				if err != nil {
+					return fmt.Errorf("encoding package identity: %w", err)
+				}
+				encoded := string(identity)
+				instRecord.PackageIdentity = &encoded
+			}
 			return o.reg.RecordToolInstallation(ctx, tx, instRecord)
 		})
 		if err != nil {
@@ -554,13 +562,33 @@ func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfi
 		if rec.AppBundlePath != nil {
 			installed.AppBundlePath = *rec.AppBundlePath
 		}
-		if method == "" && rec.InstallMethod != nil {
+		if rec.PackageIdentity != nil {
+			if err := json.Unmarshal([]byte(*rec.PackageIdentity), &installed.Package); err != nil {
+				return fmt.Errorf("reading package identity for %s: %w", tool.Name, err)
+			}
+			if installed.Package == nil || installed.Package.Name == "" {
+				return fmt.Errorf("recorded package identity for %s has no name", tool.Name)
+			}
+		}
+		if rec.InstallMethod != nil {
 			method = *rec.InstallMethod
 		}
 	}
 
-	// 1. Invoke the native installer plugin's Uninstall method if it exists
-	if method != "" {
+	// Cargo installations are promoted from a private --root or a prebuilt archive.
+	// Their complete payload is removed below; running global cargo uninstall could
+	// remove an unrelated crate, including for records made before identity tracking.
+	if method == "cargo" && rec != nil {
+		return o.removeToolArtifacts(ctx, tool.Name, projCfg)
+	}
+
+	if installed.Package == nil && installed.AppBundlePath == "" && tool.InstallationMethod != "" && tool.InstallationMethod != method {
+		return fmt.Errorf("uninstalling %s: installed with %s but configuration now selects %s and no package identity was recorded", tool.Name, method, tool.InstallationMethod)
+	}
+
+	// Native package managers mutate the host even when files and registry writes
+	// are isolated for a dry run. Only simulate artifact cleanup in that case.
+	if method != "" && !config.IsDryRunEnabled(ctx) {
 		if o.instRegistry == nil {
 			return fmt.Errorf("uninstalling %s with %s: installer registry is nil", tool.Name, method)
 		}

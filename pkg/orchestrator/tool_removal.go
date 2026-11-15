@@ -31,7 +31,9 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 	}
 
 	active := make(map[string]bool)
+	configured := make(map[string]*config.ToolConfig)
 	for _, tool := range tools {
+		configured[tool.Name] = tool
 		if tool.IsActive() {
 			active[tool.Name] = true
 		}
@@ -52,7 +54,7 @@ func (o *Orchestrator) CleanupOrphanedTools(ctx context.Context, tools []*config
 			return errors.Join(failures.Err(), err)
 		}
 		o.logger.WithTag(toolName).Info(logger.Message("Cleaning up orphaned tool..."))
-		if err := o.removeOrphanedTool(ctx, toolName, projCfg); err != nil {
+		if err := o.removeOrphanedTool(ctx, toolName, configured[toolName], projCfg); err != nil {
 			failures.Record(o.logger, toolName, fmt.Errorf("Failed to cleanup orphaned tool: %w", err))
 		}
 	}
@@ -136,14 +138,20 @@ func (o *Orchestrator) isLeftoverInstallDir(dir string) (bool, error) {
 	return true, nil
 }
 
-// removeOrphanedTool removes an orphaned tool's artifacts. Unlike an uninstall, it
-// runs no installer: a package manager is told what to remove by the tool's
-// configuration, which an orphan no longer has, so a package installed outside
-// dotfiles' own directories is reported rather than guessed at.
-func (o *Orchestrator) removeOrphanedTool(ctx context.Context, toolName string, projCfg *config.ProjectConfig) error {
+// removeOrphanedTool invokes an installer only with a real configuration or a
+// recorded package identity. Otherwise it removes owned artifacts and reports the
+// external installation left in place.
+func (o *Orchestrator) removeOrphanedTool(ctx context.Context, toolName string, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	rec, err := o.recordedInstallation(ctx, toolName)
 	if err != nil {
 		return err
+	}
+	configuredMethod := tool != nil && rec != nil && rec.InstallMethod != nil && tool.InstallationMethod == *rec.InstallMethod
+	if rec != nil && (configuredMethod || rec.PackageIdentity != nil) {
+		if tool == nil {
+			tool = &config.ToolConfig{Name: toolName}
+		}
+		return o.UninstallTool(ctx, tool, projCfg)
 	}
 	if err := o.removeToolArtifacts(ctx, toolName, projCfg); err != nil {
 		return err
@@ -163,10 +171,14 @@ func (o *Orchestrator) reportExternalInstallation(toolName string, rec *registry
 		log.Warn(logger.Message(fmt.Sprintf("%s is left in place: remove it if it is no longer needed", *rec.AppBundlePath)))
 		return
 	}
-	if rec.InstallMethod != nil && isExternallyManaged(*rec.InstallMethod) {
+	if rec.InstallMethod != nil && (isExternallyManaged(*rec.InstallMethod) || *rec.InstallMethod == "uv") {
+		command := *rec.InstallMethod
+		if command == "uv" {
+			command = "uv tool uninstall"
+		}
 		log.Warn(logger.Message(fmt.Sprintf(
-			"The %s package it installed is left in place: uninstalling it needs the tool's configuration; remove it with %s if it is no longer needed",
-			*rec.InstallMethod, *rec.InstallMethod,
+			"The %s package it installed is left in place: uninstalling it needs a recorded package identity or the tool's configuration; remove it with %s if it is no longer needed",
+			*rec.InstallMethod, command,
 		)))
 	}
 }

@@ -65,4 +65,4 @@ export default defineTool((install) =>
 1. **Virtual Environment Isolation**: `uv` creates and manages the isolated virtual environment in its standard data directory (`~/.local/share/uv/tools/<package>/`).
 2. **Dotfiles Launcher Isolation**: Installation sets `UV_TOOL_BIN_DIR=${stagingDir}` so launcher executables are placed directly into dotfiles' staging area rather than polluting `~/.local/bin`. Dotfiles then moves the staging directory to `.generated/binaries/<tool>/current/` and creates shims in `.generated/bin/`.
 3. **Update check**: Queries PyPI (`https://pypi.org/pypi/<package>/json`) to discover the latest published version ([`tool check`](../getting-started/cli-reference.md#dotfiles-tool-check-tool)).
-4. **Uninstall**: Runs `uv tool uninstall <package>`.
+4. **Uninstall**: Runs `uv tool uninstall <package>`. Orphan cleanup uses the recorded package identity; see the [orphan cleanup rules](../configuration/getting-started.md#orphaned-artifact-cleanup) for installations that lack that identity.

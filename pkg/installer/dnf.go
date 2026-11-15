@@ -172,6 +172,7 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	})
 
 	return &InstallResult{
+		Package:  &PackageIdentity{Name: packageName, Sudo: tool.Sudo},
 		Binaries: resolvedBinaries,
 		Version:  detectedVersion,
 		ShellEnv: map[string]string{
@@ -181,9 +182,10 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 }
 
 func (d *DnfInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
+	pkg := packageForUninstall(tool, installed, "package")
+	packageName := pkg.Name
 	var cmd exec.Cmd
-	if tool.Sudo {
+	if pkg.Sudo {
 		cmd = d.runner.CommandContext(ctx, "sudo", "dnf", "remove", "-y", packageName)
 	} else {
 		cmd = d.runner.CommandContext(ctx, "dnf", "remove", "-y", packageName)

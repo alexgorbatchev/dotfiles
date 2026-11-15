@@ -47,6 +47,8 @@ type ToolInstallationRecord struct {
 	// nil for an installer that places none. It is what an uninstall removes, since a
 	// bundle's name can come from the disk image rather than the configuration.
 	AppBundlePath *string `db:"app_bundle_path"`
+	// PackageIdentity is the installer-reported JSON identity used for removal.
+	PackageIdentity *string `db:"package_identity"`
 }
 
 type ToolUsageRecord struct {

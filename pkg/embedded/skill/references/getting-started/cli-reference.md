@@ -434,7 +434,7 @@ Reports state across all symlinks, copies, templates, and managed blocks: `in-sy
 
 #### `dotfiles state cleanup`
 
-Uninstalls every tool that is recorded as installed but is no longer configured or has been disabled: it runs the tool's installer uninstall, then removes what dotfiles recorded for it as [orphaned artifact cleanup](../configuration/getting-started.md#orphaned-artifact-cleanup) describes. Artifacts of tools that are still configured are reconciled by `dotfiles state generate`, not here.
+Runs [orphaned artifact cleanup](../configuration/getting-started.md#orphaned-artifact-cleanup) for tools that are removed, disabled, or excluded by hostname, including tools with recorded files but no installation record. It uses the same package-identity and artifact-ownership rules as `dotfiles state generate`. Artifacts of active tools are reconciled by `dotfiles state generate`.
 
 #### `dotfiles state log [tool]`
 

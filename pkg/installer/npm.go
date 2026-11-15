@@ -159,16 +159,17 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 
 	return &InstallResult{
+		Package:  &PackageIdentity{Name: pkgName, Manager: pkgManager},
 		Binaries: resolvedBinaries,
 	}, nil
 }
 
 func (n *NpmInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
-	pkgManager := getStringParam(tool.InstallParams, "packageManager", "npm")
-	pkgName := getStringParam(tool.InstallParams, "package", tool.Name)
+	pkg := packageForUninstall(tool, installed, "package")
+	pkgName := pkg.Name
 
 	var cmd exec.Cmd
-	if pkgManager == "bun" {
+	if pkg.Manager == "bun" {
 		cmd = n.runner.CommandContext(ctx, "bun", "remove", "-g", "--", pkgName)
 	} else {
 		cmd = n.runner.CommandContext(ctx, "npm", "uninstall", "-g", "--", pkgName)

@@ -147,7 +147,8 @@ func InitializeSchema(ctx context.Context, db *sql.DB) error {
 		configured_version TEXT,
 		original_tag TEXT,
 		install_method TEXT,
-		app_bundle_path TEXT
+		app_bundle_path TEXT,
+		package_identity TEXT
 	);`
 
 	if _, err := db.ExecContext(ctx, toolInstsSchema); err != nil {
@@ -212,6 +213,7 @@ var driftColumns = []column{
 var toolInstallationColumns = []column{
 	{name: "install_method", definition: "TEXT"},
 	{name: "app_bundle_path", definition: "TEXT"},
+	{name: "package_identity", definition: "TEXT"},
 }
 
 // ensureColumns adds every column the table is missing, and leaves the ones it
