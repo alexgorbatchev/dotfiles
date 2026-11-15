@@ -298,12 +298,18 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 				if binPath != "" {
 					binName := filepath.Base(binPath)
 					destBinSymlink := filepath.Join(externalDir, binName)
-					_ = activeFSWithTx.Remove(destBinSymlink)
-					_ = activeFSWithTx.Symlink(binPath, destBinSymlink)
+					if err := activeFSWithTx.Remove(destBinSymlink); err != nil && !errors.Is(err, os.ErrNotExist) {
+						return fmt.Errorf("removing external binary link %s: %w", destBinSymlink, err)
+					}
+					if err := activeFSWithTx.Symlink(binPath, destBinSymlink); err != nil {
+						return fmt.Errorf("linking external binary %s: %w", binPath, err)
+					}
 				}
 			}
 			currentSymlink := filepath.Join(toolDir, "current")
-			_ = activeFSWithTx.Remove(currentSymlink)
+			if err := activeFSWithTx.Remove(currentSymlink); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("removing current external link %s: %w", currentSymlink, err)
+			}
 			return activeFSWithTx.Symlink("external", currentSymlink)
 		})
 		if err != nil {

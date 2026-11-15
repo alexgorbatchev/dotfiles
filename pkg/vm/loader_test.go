@@ -2588,3 +2588,41 @@ if (typeof params.source.assetSelector !== "function") {
 		})
 	}
 }
+
+func TestProjectOnlyLoadPreservesProjectValidationAndSkipsTools(t *testing.T) {
+	root := t.TempDir()
+	toolsDir := filepath.Join(root, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(root, "dotfiles.config.ts")
+	toolPath := filepath.Join(toolsDir, "broken.tool.ts")
+	if err := os.Symlink(filepath.Join(root, "missing.ts"), toolPath); err != nil {
+		t.Fatal(err)
+	}
+	const project = `export default { paths: { dotfilesDir: %s }, platform: [{ match: [{ os: "macos" }], config: { paths: { targetDir: "{paths.dotfilesDir}/mac-bin" } } }] };`
+	if err := os.WriteFile(configPath, []byte(fmt.Sprintf(project, strconv.Quote(root))), 0644); err != nil {
+		t.Fatal(err)
+	}
+	log := logger.New(logger.Config{Writer: io.Discard})
+	fsys := fs.NewOSFS()
+	cfg, tools, eval, err := LoadTypeScriptConfig(log, fsys, configPath, WithProjectOnly(), WithTarget(Target{OS: "darwin", Arch: "arm64"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Paths.TargetDir != filepath.Join(root, "mac-bin") {
+		t.Fatalf("project paths/target lost: %+v", cfg.Paths)
+	}
+	if len(tools) != 0 || eval != nil {
+		t.Fatalf("project-only load evaluated tools: %+v, %v", tools, eval)
+	}
+	if _, _, _, err := LoadTypeScriptConfig(log, fsys, configPath); err == nil {
+		t.Fatal("normal load stopped checking broken tools")
+	}
+	if err := os.WriteFile(configPath, []byte(`export default { paths: { unsupportedPath: "invalid" } };`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := LoadTypeScriptConfig(log, fsys, configPath, WithProjectOnly()); err == nil {
+		t.Fatal("project-only load accepted an invalid project")
+	}
+}

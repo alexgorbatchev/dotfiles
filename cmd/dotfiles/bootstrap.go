@@ -157,8 +157,9 @@ func resolveConfigPath(configPath string) (string, error) {
 	return absConfigPath, nil
 }
 
-// BootstrapServices parses config files and initializes core services.
-func BootstrapServices(ctx context.Context, configPath string) (services *Services, err error) {
+// BootstrapServices parses config files and initializes core services. Provisioning
+// commands pass vm.WithProjectOnly so existing tool files cannot block repairs.
+func BootstrapServices(ctx context.Context, configPath string, loadOpts ...vm.Option) (services *Services, err error) {
 	absConfigPath, err := resolveConfigPath(configPath)
 	if err != nil {
 		return nil, err
@@ -189,9 +190,9 @@ func BootstrapServices(ctx context.Context, configPath string) (services *Servic
 
 	// --platform/--arch/--libc must reach the loader, because .platform() blocks and
 	// everything a tool file derives from ctx.systemInfo are evaluated while the
-	// configuration is being loaded. The loader also validates the project and every
-	// tool, so nothing below sees a configuration that fails either check.
-	projCfg, toolMap, eval, err := vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, vm.WithTarget(target))
+	// configuration is being loaded. The loader validates the project in every mode
+	// and validates tools when the command loads them.
+	projCfg, toolMap, eval, err := vm.LoadTypeScriptConfig(GetLogger("config", os.Stderr), fsys, absConfigPath, append(loadOpts, vm.WithTarget(target))...)
 	if err != nil {
 		return nil, fmt.Errorf("loading %s: %w", filepath.Base(absConfigPath), err)
 	}

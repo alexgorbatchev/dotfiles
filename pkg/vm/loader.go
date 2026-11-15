@@ -82,7 +82,8 @@ type unifiedLoaderResult struct {
 type Option func(*loadOptions)
 
 type loadOptions struct {
-	target Target
+	target      Target
+	projectOnly bool
 }
 
 // WithTarget evaluates platform-dependent configuration in tool files against the given
@@ -92,6 +93,13 @@ func WithTarget(target Target) Option {
 	return func(o *loadOptions) {
 		o.target = target
 	}
+}
+
+// WithProjectOnly loads and validates the project without discovering or evaluating
+// tool files. Provisioning commands use it so broken tool files remain repairable.
+// The returned tool map is empty and the retained evaluator is nil.
+func WithProjectOnly() Option {
+	return func(o *loadOptions) { o.projectOnly = true }
 }
 
 func newLoadOptions(opts []Option) loadOptions {
@@ -105,7 +113,8 @@ func newLoadOptions(opts []Option) loadOptions {
 // LoadTypeScriptConfig loads and compiles a TypeScript config file and all tool configs
 // dynamically, returning the unmarshaled ProjectConfig, map of ToolConfigs, and retained Evaluator.
 func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opts ...Option) (*config.ProjectConfig, map[string]*config.ToolConfig, *Evaluator, error) {
-	target := newLoadOptions(opts).target
+	options := newLoadOptions(opts)
+	target := options.target
 
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
@@ -130,6 +139,13 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 	// re-deriving them from the raw config.
 	if err := projCfg.ResolvePlaceholders(configFileDir); err != nil {
 		return nil, nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+	}
+
+	if options.projectOnly {
+		if err := projCfg.Validate(); err != nil {
+			return nil, nil, nil, fmt.Errorf("invalid configuration in %q: %w", filepath.Base(absConfigPath), err)
+		}
+		return projCfg, map[string]*config.ToolConfig{}, nil, nil
 	}
 
 	// Step 2: Scan the resolved ToolConfigsDir(s) for *.tool.ts files

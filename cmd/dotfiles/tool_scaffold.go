@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/scaffold"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +24,7 @@ directory if it does not exist.
 When a name is specified, generates a new <name>.tool.ts starter configuration.
 Existing files are left untouched unless --force is passed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		services, err := BootstrapServices(cmd.Context(), cfgFile)
+		services, err := BootstrapServices(cmd.Context(), cfgFile, vm.WithProjectOnly())
 		if err != nil {
 			return err
 		}
@@ -49,7 +50,11 @@ Existing files are left untouched unless --force is passed.`,
 			}
 			targetPath := filepath.Join(dirs[0], fileName)
 
-			exists, _ := services.FS.Exists(targetPath)
+			entry, err := toolConfigEntry(services.FS, targetPath)
+			if err != nil {
+				return err
+			}
+			exists := entry != nil
 			if exists && !toolScaffoldForce {
 				log.Info(logger.Message(fmt.Sprintf("%s already exists, skipping (use --force to overwrite)", targetPath)))
 				return nil
@@ -67,15 +72,24 @@ export default defineTool((install) =>
 );
 `, toolName, toolName)
 
+			action := "Created"
+			if exists {
+				action = "Overwrote"
+			}
 			if dryRun {
-				log.Info(logger.Message(fmt.Sprintf("Would create %s", targetPath)))
+				if exists {
+					action = "Would overwrite"
+				} else {
+					action = "Would create"
+				}
+				log.Info(logger.Message(fmt.Sprintf("%s %s", action, targetPath)))
 				return nil
 			}
 
-			if err := services.FS.WriteFile(targetPath, []byte(content), 0644); err != nil {
-				return fmt.Errorf("writing tool config %s: %w", targetPath, err)
+			if err := writeToolConfig(services.FS, targetPath, []byte(content), entry); err != nil {
+				return err
 			}
-			log.Info(logger.Message(fmt.Sprintf("Created %s", targetPath)))
+			log.Info(logger.Message(fmt.Sprintf("%s %s", action, targetPath)))
 			return nil
 		}
 

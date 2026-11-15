@@ -4237,7 +4237,7 @@ func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
 		t.Fatalf("seeding the registry: %v", err)
 	}
 
-	if err := orch.CleanupStaleShims(ctx, []*config.ToolConfig{tool}, projCfg); err != nil {
+	if err := orch.CleanupStaleShims(ctx, []*config.ToolConfig{tool}, projCfg); !errors.Is(err, removeErr) {
 		t.Fatalf("CleanupStaleShims: %v", err)
 	}
 
@@ -4247,9 +4247,6 @@ func TestCleanupStaleShims_DirectoriesAndRemoveFailures(t *testing.T) {
 	logged := logBuf.String()
 	if strings.Contains(logged, "Removing stale shim: "+orch.formatPath(projCfg, usageDir)) {
 		t.Errorf("expected cleanup not to treat the recorded directory as a shim, got:\n%s", logged)
-	}
-	if !strings.Contains(logged, "Failed to remove stale shim") || !strings.Contains(logged, removeErr.Error()) {
-		t.Errorf("expected the failed removal of %s to be reported, got:\n%s", staleShim, logged)
 	}
 }
 
@@ -6554,6 +6551,288 @@ func TestCleanupUvUsesRecordedIdentityOrWarns(t *testing.T) {
 			}
 			assertGone(t, memFS, rec.InstallPath)
 			assertForgotten(t, orch, "http")
+		})
+	}
+}
+
+type artifactFailureFS struct {
+	fs.FS
+	operation, path string
+	err             error
+}
+
+func (f *artifactFailureFS) Remove(path string) error {
+	if f.operation == "remove" && path == f.path {
+		return f.err
+	}
+	return f.FS.Remove(path)
+}
+func (f *artifactFailureFS) Lstat(path string) (os.FileInfo, error) {
+	if f.operation == "lstat" && path == f.path {
+		return nil, f.err
+	}
+	return f.FS.Lstat(path)
+}
+func (f *artifactFailureFS) ReadFile(path string) ([]byte, error) {
+	if f.operation == "read" && path == f.path {
+		return nil, f.err
+	}
+	return f.FS.ReadFile(path)
+}
+
+func (f *artifactFailureFS) Exists(path string) (bool, error) {
+	if f.operation == "exists" && path == f.path {
+		return false, f.err
+	}
+	return f.FS.Exists(path)
+}
+func (f *artifactFailureFS) Symlink(source, target string) error {
+	if f.operation == "symlink" && target == f.path {
+		return f.err
+	}
+	return f.FS.Symlink(source, target)
+}
+
+func seedStaleArtifact(t *testing.T, o *Orchestrator, mem *fs.MemFS, tool, path, kind string) {
+	t.Helper()
+	operation := "write"
+	if kind == "symlink" {
+		operation = "symlink"
+		if err := mem.Symlink("/missing-source", path); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		writeDecl(t, mem, path, "stale artifact")
+	}
+	hash := fs.HashContent([]byte("stale artifact"))
+	if err := o.reg.WithTx(context.Background(), func(tx *sql.Tx) error {
+		return o.reg.RecordFileOperation(context.Background(), tx, &registry.FileOperationRecord{
+			ToolName: tool, FilePath: path, FileType: kind, OperationType: operation, ContentHash: &hash,
+		})
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStaleCleanupErrorsPreserveReceiptsAndAllowRetry(t *testing.T) {
+	for _, kind := range []string{"shim", "symlink", "copy"} {
+		for _, failure := range []string{"remove", "record", "already absent"} {
+			t.Run(kind+"/"+failure, func(t *testing.T) {
+				o, mem := declFixture(t)
+				ctx := context.Background()
+				path := "/home/user/stale-" + kind
+				seedStaleArtifact(t, o, mem, "obsolete", path, kind)
+				fault := &artifactFailureFS{FS: mem, operation: failure, path: path, err: os.ErrPermission}
+				o.fs = fault
+				if failure == "record" {
+					if err := o.reg.WithTx(ctx, func(tx *sql.Tx) error {
+						_, err := tx.ExecContext(ctx, `CREATE TRIGGER reject_removal BEFORE INSERT ON file_operations WHEN NEW.operation_type = 'rm' BEGIN SELECT RAISE(FAIL, 'receipt unavailable'); END`)
+						return err
+					}); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if failure == "already absent" {
+					if err := mem.Remove(path); err != nil {
+						t.Fatal(err)
+					}
+				}
+				cleanup := map[string]func(context.Context, []*config.ToolConfig, *config.ProjectConfig) error{
+					"shim": o.CleanupStaleShims, "symlink": o.CleanupStaleSymlinks, "copy": o.CleanupStaleCopies,
+				}[kind]
+				tools := []*config.ToolConfig{{Name: "obsolete"}}
+				err := cleanup(ctx, tools, declProjectConfig())
+				if failure == "already absent" {
+					if err != nil {
+						t.Fatal(err)
+					}
+					assertRemovalRecorded(t, o, "obsolete", path)
+					return
+				}
+				if err == nil || !strings.Contains(err.Error(), "obsolete") {
+					t.Fatalf("missing tool failure: %v", err)
+				}
+				if failure == "remove" && !errors.Is(err, os.ErrPermission) {
+					t.Fatalf("lost cause: %v", err)
+				}
+				if failure == "record" && !strings.Contains(err.Error(), "receipt unavailable") {
+					t.Fatalf("lost transaction error: %v", err)
+				}
+				states, err := o.reg.GetFileStatesForTool(ctx, "obsolete")
+				if err != nil || len(states) != 1 || states[0].LastOperation == "rm" {
+					t.Fatalf("failed removal was forgotten: %+v, %v", states, err)
+				}
+				if failure == "remove" {
+					if _, err := mem.Lstat(path); err != nil {
+						t.Fatalf("failed path lost: %v", err)
+					}
+				}
+				fault.operation = ""
+				if failure == "record" {
+					if err := o.reg.WithTx(ctx, func(tx *sql.Tx) error { _, err := tx.ExecContext(ctx, "DROP TRIGGER reject_removal"); return err }); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := cleanup(ctx, tools, declProjectConfig()); err != nil {
+					t.Fatalf("retry: %v", err)
+				}
+				assertGone(t, mem, path)
+				assertRemovalRecorded(t, o, "obsolete", path)
+			})
+		}
+	}
+}
+
+func TestStaleCleanupReportsUnreadableRegistry(t *testing.T) {
+	for _, kind := range []string{"shim", "symlink", "copy"} {
+		t.Run(kind, func(t *testing.T) {
+			o, _ := declFixture(t)
+			ctx := context.Background()
+			closed, err := db.NewConnection(ctx, ":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := closed.Close(); err != nil {
+				t.Fatal(err)
+			}
+			o.reg = registry.NewRegistry(closed)
+			cleanup := map[string]func(context.Context, []*config.ToolConfig, *config.ProjectConfig) error{
+				"shim": o.CleanupStaleShims, "symlink": o.CleanupStaleSymlinks, "copy": o.CleanupStaleCopies,
+			}[kind]
+			if err := cleanup(ctx, []*config.ToolConfig{{Name: "unreadable"}}, declProjectConfig()); err == nil || !strings.Contains(err.Error(), "unreadable") || !strings.Contains(err.Error(), "closed") {
+				t.Fatalf("missing registry error: %v", err)
+			}
+		})
+	}
+}
+
+func TestStaleCleanupInspectionFailureContinuesOtherTools(t *testing.T) {
+	for _, kind := range []string{"shim", "symlink"} {
+		t.Run(kind, func(t *testing.T) {
+			o, mem := declFixture(t)
+			bad, good := "/home/user/bad", "/home/user/good"
+			seedStaleArtifact(t, o, mem, "bad", bad, kind)
+			seedStaleArtifact(t, o, mem, "good", good, kind)
+			o.fs = &artifactFailureFS{FS: mem, operation: "lstat", path: bad, err: os.ErrPermission}
+			err := o.CleanupStaleArtifacts(context.Background(), []*config.ToolConfig{{Name: "bad"}, {Name: "good"}}, declProjectConfig())
+			if err == nil || !strings.Contains(err.Error(), "bad") {
+				t.Fatalf("missing failed tool: %v", err)
+			}
+			if _, err := mem.Lstat(bad); err != nil {
+				t.Fatalf("uninspectable artifact lost: %v", err)
+			}
+			assertGone(t, mem, good)
+			assertRemovalRecorded(t, o, "good", good)
+			states, err := o.reg.GetFileStatesForTool(context.Background(), "bad")
+			if err != nil || len(states) != 1 || states[0].LastOperation == "rm" {
+				t.Fatalf("failed tool forgotten: %+v, %v", states, err)
+			}
+		})
+	}
+}
+
+func TestExternalInstallReportsRelinkingFailures(t *testing.T) {
+	for _, failure := range []struct{ operation, path string }{
+		{"remove", "/home/user/.generated/binaries/external/external/executable"},
+		{"symlink", "/home/user/.generated/binaries/external/external/executable"},
+		{"remove", "/home/user/.generated/binaries/external/current"},
+	} {
+		t.Run(failure.operation+failure.path, func(t *testing.T) {
+			o, mem := declFixture(t)
+			o.fs = &artifactFailureFS{FS: mem, operation: failure.operation, path: failure.path, err: os.ErrPermission}
+			if err := o.instRegistry.Register(&mockInstaller{name: "brew", binaries: []string{"/external/executable"}}); err != nil {
+				t.Fatal(err)
+			}
+			tool := &config.ToolConfig{Name: "external", InstallationMethod: "brew"}
+			if err := o.InstallTool(context.Background(), tool, declProjectConfig()); !errors.Is(err, os.ErrPermission) {
+				t.Fatalf("lost relink failure: %v", err)
+			}
+			receipt, err := o.reg.GetToolInstallation(context.Background(), tool.Name)
+			if err != nil || receipt != nil {
+				t.Fatalf("failed installation was recorded: %+v, %v", receipt, err)
+			}
+		})
+	}
+}
+
+func TestCompletionFilesystemFailuresSurface(t *testing.T) {
+	for _, failure := range []struct {
+		name, operation string
+		sourceForm      bool
+	}{
+		{"destination inspection", "exists", false},
+		{"source inspection", "exists", true},
+		{"source replacement removal", "remove", true},
+		{"source linking", "symlink", true},
+	} {
+		t.Run(failure.name, func(t *testing.T) {
+			o, mem := declFixture(t)
+			cfg := declProjectConfig()
+			cfg.Paths.ShellScriptsDir = "/home/user/shell"
+			path := "/home/user/shell/zsh/completions/_test"
+			source := "/home/user/completion-source"
+			writeDecl(t, mem, source, "completion")
+			binary := "/home/user/.generated/binaries/test/current/test"
+			writeDecl(t, mem, binary, "binary")
+			comp := any(map[string]interface{}{"cmd": "test completion zsh"})
+			if failure.sourceForm {
+				comp = source
+			}
+			if failure.sourceForm && failure.operation == "exists" {
+				path = source
+			}
+			o.fs = &artifactFailureFS{FS: mem, operation: failure.operation, path: path, err: os.ErrPermission}
+			tool := &config.ToolConfig{Name: "test", ShellConfigs: &config.ShellConfigs{Zsh: &config.ShellTypeConfig{Completions: comp}}}
+			if err := o.GenerateCompletionsForTool(context.Background(), tool, cfg); !errors.Is(err, os.ErrPermission) {
+				t.Fatalf("lost completion failure: %v", err)
+			}
+		})
+	}
+}
+
+func TestStaleCopiesPreserveUnreadableFilesAndReceipts(t *testing.T) {
+	for _, operation := range []string{"read", "lstat"} {
+		t.Run(operation, func(t *testing.T) {
+			o, mem := declFixture(t)
+			ctx := context.Background()
+			root, path := "/home/user/copied", "/home/user/copied/obsolete"
+			seedStaleArtifact(t, o, mem, "bad", path, "copy")
+			writeDecl(t, mem, path, "user changes")
+			seedStaleArtifact(t, o, mem, "good", "/home/user/good", "copy")
+			if err := mem.MkdirAll("/home/user/source", 0755); err != nil {
+				t.Fatal(err)
+			}
+			faultPath := path
+			if operation == "lstat" {
+				faultPath = root
+			}
+			fault := &artifactFailureFS{FS: mem, operation: operation, path: faultPath, err: os.ErrPermission}
+			o.fs = fault
+			tools := []*config.ToolConfig{
+				{Name: "bad", Copies: []config.CopyConfig{{Source: "/home/user/source", Target: root}}},
+				{Name: "good"},
+			}
+			if err := o.CleanupStaleArtifacts(ctx, tools, declProjectConfig()); err == nil || !strings.Contains(err.Error(), "bad") {
+				t.Fatalf("missing failed tool: %v", err)
+			}
+			if got := readDecl(t, mem, path); got != "user changes" {
+				t.Fatalf("unreadable content lost: %q", got)
+			}
+			states, err := o.reg.GetFileStatesForTool(ctx, "bad")
+			if err != nil || len(states) != 1 || states[0].LastOperation == "rm" {
+				t.Fatalf("uninspectable copy forgotten: %+v, %v", states, err)
+			}
+			assertGone(t, mem, "/home/user/good")
+			assertRemovalRecorded(t, o, "good", "/home/user/good")
+			fault.operation = ""
+			if err := o.CleanupStaleArtifacts(ctx, tools, declProjectConfig()); err != nil {
+				t.Fatalf("retry: %v", err)
+			}
+			assertGone(t, mem, path)
+			if got := readDecl(t, mem, path+".bak"); got != "user changes" {
+				t.Fatalf("retry lost user changes: %q", got)
+			}
+			assertRemovalRecorded(t, o, "bad", path)
 		})
 	}
 }

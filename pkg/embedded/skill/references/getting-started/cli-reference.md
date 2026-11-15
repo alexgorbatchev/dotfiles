@@ -263,7 +263,9 @@ Displays a tree view of files in the tool installation directory or lists all ma
 
 Writes starter `.tool.ts` configuration files into the primary tool configs directory, creating that directory if it does not exist. Loading a configuration never creates tool files. When a name is provided, generates a single starter `<name>.tool.ts` file.
 
-An existing file is left untouched, so running it again adds what is missing without discarding local edits.
+An existing file or symlink, including a dangling symlink, is left untouched, so running it again adds what is missing without discarding local edits. With `--force`, a symlink is replaced at its own path; its destination is never overwritten. Batch scaffolding backs up an existing symlink before replacement.
+
+Scaffolding loads the project configuration without evaluating existing tool configurations, so a broken tool file does not prevent its repair. Errors in the project configuration still fail the command.
 
 - `-f, --force`: Overwrite tool configurations that already exist.
 
@@ -294,7 +296,7 @@ my-tool/                 # repository, on its default branch
 
 The command requests only this root file. It does not search `tools/` or `.dotfiles/`, select another branch, or copy companion files used by imports, symlinks, templates, or shell configuration. Provide any required companion files separately. An upstream binary repository is usable only if it also publishes the required tool configuration at this location.
 
-Fails with an error if the remote configuration is missing or the local file already exists without `--force`.
+Fails with an error if the remote configuration is missing or the local file or symlink already exists without `--force`. A dangling symlink also counts as an existing configuration. With `--force`, the symlink itself is replaced without writing through to its destination. Existing tool configurations are not evaluated before the download; the project configuration must still be valid.
 
 - `-f, --force`: Overwrite existing tool configuration.
 

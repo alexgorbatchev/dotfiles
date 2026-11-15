@@ -447,7 +447,7 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 
 		fileStates, err := o.reg.GetFileStatesForTool(ctx, tool.Name)
 		if err != nil {
-			continue
+			return fmt.Errorf("reading stale shim records for %s: %w", tool.Name, err)
 		}
 
 		for _, state := range fileStates {
@@ -460,31 +460,34 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 				absFilePath = state.FilePath
 			}
 
-			// A recorded directory is never a shim: a shim is always a regular file or
-			// a symlink. Removing one would take everything it still holds with it.
-			if o.isDir(state.FilePath) || o.isDir(absFilePath) {
-				continue
-			}
-
 			if !expectedShimPaths[absFilePath] && !expectedShimPaths[state.FilePath] {
-				o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", o.formatPath(projCfg, state.FilePath))))
-
 				stalePaths := []string{state.FilePath}
 				if absFilePath != state.FilePath {
 					stalePaths = append(stalePaths, absFilePath)
 				}
+				// Older receipts may include shared directories. Inspect every spelling
+				// before removing anything, and preserve directories regardless of size.
+				isDirectory := false
+				for _, path := range stalePaths {
+					info, err := o.fs.Lstat(path)
+					if err != nil && !errors.Is(err, os.ErrNotExist) {
+						return fmt.Errorf("%s: inspecting stale shim %s: %w", tool.Name, path, err)
+					}
+					isDirectory = isDirectory || (err == nil && info.IsDir())
+				}
+				if isDirectory {
+					continue
+				}
+				o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale shim: %s", o.formatPath(projCfg, state.FilePath))))
 				for _, path := range stalePaths {
 					if err := o.fs.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-						o.logger.WithTag(tool.Name).Error(logger.Message(fmt.Sprintf("Failed to remove stale shim %s: %v", o.formatPath(projCfg, path), err)))
+						return fmt.Errorf("%s: removing stale shim %s: %w", tool.Name, path, err)
 					}
 				}
 
-				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "shim")
-					_ = activeFS.RecordRemoved(state.FilePath)
-					_ = activeFS.RecordRemoved(absFilePath)
-					return nil
-				})
+				if err := o.recordRemoved(ctx, tool.Name, state); err != nil {
+					return fmt.Errorf("%s: %w", tool.Name, err)
+				}
 			}
 		}
 	}
@@ -498,7 +501,6 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 		return nil
 	}
 
-	symEvaluator := o.getSymlinkEvaluator()
 	binariesDir := projCfg.Paths.BinariesDir
 	if binariesDir == "" {
 		binariesDir = filepath.Join(projCfg.Paths.GeneratedDir, "binaries")
@@ -529,7 +531,7 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 
 		fileStates, err := o.reg.GetFileStatesForTool(ctx, tool.Name)
 		if err != nil {
-			continue
+			return fmt.Errorf("reading stale symlink records for %s: %w", tool.Name, err)
 		}
 
 		for _, state := range fileStates {
@@ -564,37 +566,30 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 			}
 
 			if !expectedSymlinks[absFilePath] && !expectedSymlinks[expandedFilePath] && !expectedSymlinks[resolvedFilePath] && !expectedSymlinks[state.FilePath] {
-				// Verify via Lstat that the candidate path is actually a symbolic link before removing
-				info, err := o.fs.Lstat(expandedFilePath)
-				if err != nil {
-					info, err = o.fs.Lstat(resolvedFilePath)
+				seen := make(map[string]bool)
+				for _, path := range []string{expandedFilePath, resolvedFilePath, absFilePath, state.FilePath} {
+					if seen[path] {
+						continue
+					}
+					seen[path] = true
+					info, err := o.fs.Lstat(path)
+					if errors.Is(err, os.ErrNotExist) {
+						continue
+					}
+					if err != nil {
+						return fmt.Errorf("%s: inspecting stale symlink %s: %w", tool.Name, path, err)
+					}
+					if info.Mode()&os.ModeSymlink == 0 {
+						continue // A replacement file is no longer the recorded link.
+					}
+					if err := o.fs.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+						return fmt.Errorf("%s: removing stale symlink %s: %w", tool.Name, path, err)
+					}
+					o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, path))))
 				}
-				if err != nil {
-					info, err = o.fs.Lstat(absFilePath)
+				if err := o.recordRemoved(ctx, tool.Name, state); err != nil {
+					return fmt.Errorf("%s: %w", tool.Name, err)
 				}
-				if err != nil {
-					info, err = o.fs.Lstat(state.FilePath)
-				}
-				if err == nil && info.Mode()&os.ModeSymlink == 0 {
-					continue
-				}
-
-				o.logger.WithTag(tool.Name).Info(logger.Message(fmt.Sprintf("Removing stale symlink: %s", o.formatPath(projCfg, resolvedFilePath))))
-
-				_, _ = symEvaluator.RemoveSymlink(state.FilePath, "")
-				_ = o.fs.Remove(state.FilePath)
-				_ = o.fs.Remove(resolvedFilePath)
-				_ = o.fs.Remove(expandedFilePath)
-				_ = o.fs.Remove(absFilePath)
-
-				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-					activeFS := o.getTrackedFS(ctx, tx, tool.Name, "symlink")
-					_ = activeFS.RecordRemoved(state.FilePath)
-					_ = activeFS.RecordRemoved(resolvedFilePath)
-					_ = activeFS.RecordRemoved(expandedFilePath)
-					_ = activeFS.RecordRemoved(absFilePath)
-					return nil
-				})
 			}
 		}
 	}
@@ -712,7 +707,7 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 
 		fileStates, err := o.reg.GetFileStatesForTool(ctx, tool.Name)
 		if err != nil {
-			continue
+			return fmt.Errorf("reading stale copy records for %s: %w", tool.Name, err)
 		}
 
 		for _, state := range fileStates {
@@ -730,7 +725,11 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 			}
 
 			if !isExpected(absFilePath) && !isExpected(resolvedFilePath) && !isExpected(state.FilePath) {
-				if o.reachedThroughForeignEntry(copyRoots, resolvedFilePath) {
+				foreign, err := o.reachedThroughForeignEntry(copyRoots, resolvedFilePath)
+				if err != nil {
+					return fmt.Errorf("%s: inspecting stale %s %s: %w", tool.Name, state.FileType, resolvedFilePath, err)
+				}
+				if foreign {
 					// The recorded file is no longer where dotfiles put it: a directory
 					// above it was replaced by a symlink or a file, so what the path
 					// reaches now is not dotfiles' to remove. Only the record goes.
@@ -742,13 +741,9 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 					return err
 				}
 
-				_ = o.reg.WithTx(ctx, func(tx *sql.Tx) error {
-					activeFS := o.getTrackedFS(ctx, tx, tool.Name, state.FileType)
-					_ = activeFS.RecordRemoved(state.FilePath)
-					_ = activeFS.RecordRemoved(resolvedFilePath)
-					_ = activeFS.RecordRemoved(absFilePath)
-					return nil
-				})
+				if err := o.recordRemoved(ctx, tool.Name, state); err != nil {
+					return fmt.Errorf("%s: %w", tool.Name, err)
+				}
 			}
 		}
 	}
@@ -760,13 +755,17 @@ func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.T
 // the entries from that root down to its parent directory is a symlink or not a
 // directory (see drift.ForeignEntry), so that the path no longer names a file inside
 // the copy dotfiles made.
-func (o *Orchestrator) reachedThroughForeignEntry(roots []string, path string) bool {
+func (o *Orchestrator) reachedThroughForeignEntry(roots []string, path string) (bool, error) {
 	for _, root := range roots {
-		if dir, err := o.firstForeignDir(path, root); err != nil || dir != "" {
-			return true
+		dir, err := o.firstForeignDir(path, root)
+		if err != nil {
+			return false, err
+		}
+		if dir != "" {
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // removeStaleFile removes a recorded file that is no longer declared. A copy or
@@ -775,7 +774,11 @@ func (o *Orchestrator) reachedThroughForeignEntry(roots []string, path string) b
 // resolve to; the first is the one reported.
 func (o *Orchestrator) removeStaleFile(toolName string, state *registry.FileState, projCfg *config.ProjectConfig, paths ...string) error {
 	path := paths[0]
-	if o.editedSinceWritten(state, path) {
+	edited, err := o.editedSinceWritten(state, path)
+	if err != nil {
+		return fmt.Errorf("%s: checking stale %s %s for edits: %w", toolName, state.FileType, path, err)
+	}
+	if edited {
 		backupPath, err := backup.Move(o.fs, path)
 		if err != nil {
 			return fmt.Errorf("%s: backing up stale %s %s: %w", toolName, state.FileType, path, err)
@@ -800,18 +803,18 @@ func (o *Orchestrator) removeStaleFile(toolName string, state *registry.FileStat
 // editedSinceWritten reports whether a recorded copy or template at path no longer
 // holds what dotfiles wrote, measured against the base the drift engine uses. A file
 // that is gone, or a record without a base, has nothing of the user's to keep.
-func (o *Orchestrator) editedSinceWritten(state *registry.FileState, path string) bool {
-	if state.FileType != "copy" && state.FileType != "template" {
-		return false
-	}
-	if state.ContentHash == nil {
-		return false
+func (o *Orchestrator) editedSinceWritten(state *registry.FileState, path string) (bool, error) {
+	if (state.FileType != "copy" && state.FileType != "template") || state.ContentHash == nil {
+		return false, nil
 	}
 	data, err := o.fs.ReadFile(path)
-	if err != nil {
-		return false
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
 	}
-	return fs.HashContent(data) != *state.ContentHash
+	if err != nil {
+		return false, err
+	}
+	return fs.HashContent(data) != *state.ContentHash, nil
 }
 
 // CleanupStaleArtifacts isolates each tool's destructive cleanup. When a routine
@@ -839,6 +842,25 @@ func (o *Orchestrator) CleanupStaleArtifacts(ctx context.Context, tools []*confi
 		}
 	}
 	return failures.Err()
+}
+
+// linkCompletionSource leaves a missing optional source alone, but reports failed
+// inspection or replacement instead of pretending a completion was generated.
+func linkCompletionSource(fsys fs.FS, source, target string) error {
+	exists, err := fsys.Exists(source)
+	if err != nil {
+		return fmt.Errorf("inspecting completion source %s: %w", source, err)
+	}
+	if !exists {
+		return nil
+	}
+	if err := fsys.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("removing completion link %s: %w", target, err)
+	}
+	if err := fsys.Symlink(source, target); err != nil {
+		return fmt.Errorf("linking completion %s: %w", target, err)
+	}
+	return nil
 }
 
 func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
@@ -882,11 +904,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 				if err != nil {
 					return fmt.Errorf("%s: %s completions source %q: %w", tool.Name, sh, comp, err)
 				}
-				exists, err := fsys.Exists(srcPathResolved)
-				if err == nil && exists {
-					_ = fsys.Remove(completionFilePath)
-					_ = fsys.Symlink(srcPathResolved, completionFilePath)
-				}
+				return linkCompletionSource(fsys, srcPathResolved, completionFilePath)
 			case map[string]interface{}:
 				if cmdVal, ok := comp["cmd"].(string); ok && cmdVal != "" {
 					cmdValResolved, err := o.resolvePlaceholder(cmdVal, tool, projCfg)
@@ -926,7 +944,11 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 							return nil
 						}
 
-						if exists, _ := fsys.Exists(completionFilePath); exists && !shouldOverwrite(ctx) {
+						exists, err := fsys.Exists(completionFilePath)
+						if err != nil {
+							return fmt.Errorf("inspecting completion file %s: %w", completionFilePath, err)
+						}
+						if exists && !shouldOverwrite(ctx) {
 							return nil
 						}
 
@@ -965,11 +987,7 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 					if err != nil {
 						return fmt.Errorf("%s: %s completions source %q: %w", tool.Name, sh, srcVal, err)
 					}
-					exists, err := fsys.Exists(srcPathResolved)
-					if err == nil && exists {
-						_ = fsys.Remove(completionFilePath)
-						_ = fsys.Symlink(srcPathResolved, completionFilePath)
-					}
+					return linkCompletionSource(fsys, srcPathResolved, completionFilePath)
 				}
 			}
 			return nil

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/backup"
@@ -217,9 +218,25 @@ func Run(fsys fs.FS, opts Options) ([]Result, error) {
 
 func provisionTemplate(fsys fs.FS, opts Options, t template) (Result, error) {
 	path := filepath.Join(opts.Dir, t.name)
-	exists, err := fsys.Exists(path)
-	if err != nil {
+	entry, err := fsys.Lstat(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return Result{}, fmt.Errorf("checking %q: %w", path, err)
+	}
+	exists := err == nil
+	if exists && entry.Mode()&os.ModeSymlink != 0 {
+		if !opts.Force {
+			return Result{Path: path, Action: ActionSkipped}, nil
+		}
+		// Keep the original link, including a dangling one, as the backup. Reading
+		// or writing its destination would affect a file outside this operation.
+		backupPath, err := backup.Move(fsys, path)
+		if err != nil {
+			return Result{}, fmt.Errorf("backing up %q: %w", path, err)
+		}
+		if err := fsys.WriteFile(path, []byte(t.content), 0644); err != nil {
+			return Result{}, fmt.Errorf("writing %q: %w", path, err)
+		}
+		return Result{Path: path, Action: ActionOverwrote, BackupPath: backupPath}, nil
 	}
 	var existing []byte
 	if exists {

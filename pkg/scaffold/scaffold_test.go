@@ -324,14 +324,14 @@ func TestRunReportsAnUnreadableExistingFile(t *testing.T) {
 }
 
 func TestRunFSErrors(t *testing.T) {
-	t.Run("fails when Exists returns error", func(t *testing.T) {
+	t.Run("fails when Lstat returns error", func(t *testing.T) {
 		mem := fs.NewMemFS()
 		faulty := &faultyFS{
-			FS:        mem,
-			existsErr: errors.New("exists check failed"),
+			FS:      mem,
+			statErr: errors.New("stat failed"),
 		}
 		if _, err := Run(faulty, Options{Dir: "/tools", TargetOS: "linux"}); err == nil {
-			t.Error("expected error when Exists fails, got nil")
+			t.Error("expected error when Lstat fails, got nil")
 		}
 	})
 
@@ -366,16 +366,16 @@ func TestRunFSErrors(t *testing.T) {
 type faultyFS struct {
 	fs.FS
 	failurePath     string
-	existsErr       error
+	statErr         error
 	writeFileErr    error
 	writeBackupFail bool
 }
 
-func (f *faultyFS) Exists(path string) (bool, error) {
-	if f.existsErr != nil && (f.failurePath == "" || path == f.failurePath) {
-		return false, f.existsErr
+func (f *faultyFS) Lstat(path string) (os.FileInfo, error) {
+	if f.statErr != nil && (f.failurePath == "" || path == f.failurePath) {
+		return nil, f.statErr
 	}
-	return f.FS.Exists(path)
+	return f.FS.Lstat(path)
 }
 
 func (f *faultyFS) WriteFile(path string, data []byte, perm os.FileMode) error {
@@ -399,7 +399,7 @@ func TestRunContinuesAfterTemplateFailure(t *testing.T) {
 			faulty := &faultyFS{FS: mem, failurePath: "/tools/dotfiles.tool.ts"}
 			switch operation {
 			case "exists":
-				faulty.existsErr = failure
+				faulty.statErr = failure
 			case "write":
 				faulty.writeFileErr = failure
 			case "backup":
@@ -426,6 +426,51 @@ func TestRunContinuesAfterTemplateFailure(t *testing.T) {
 				if err != nil || string(original) != "// my settings" {
 					t.Errorf("failed backup did not preserve the user's file: %q, %v", original, err)
 				}
+			}
+		})
+	}
+}
+
+func TestRunPreservesSymlinkTargets(t *testing.T) {
+	for _, dangling := range []bool{false, true} {
+		t.Run(map[bool]string{false: "existing target", true: "dangling target"}[dangling], func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, "tools")
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "dotfiles.tool.ts")
+			target := filepath.Join(root, "outside.ts")
+			if !dangling {
+				if err := os.WriteFile(target, []byte("user content"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.Symlink(target, path); err != nil {
+				t.Fatal(err)
+			}
+			fsys := fs.NewOSFS()
+			results, err := Run(fsys, Options{Dir: dir, TargetOS: "linux"})
+			if err != nil || actionsByName(t, results)["dotfiles.tool.ts"] != ActionSkipped {
+				t.Fatalf("existing link not skipped: %+v, %v", results, err)
+			}
+			results, err = Run(fsys, Options{Dir: dir, TargetOS: "linux", Force: true})
+			if err != nil || actionsByName(t, results)["dotfiles.tool.ts"] != ActionOverwrote {
+				t.Fatalf("forced replacement: %+v, %v", results, err)
+			}
+			if data, err := os.ReadFile(path); err != nil || string(data) != dotfilesToolContent {
+				t.Fatalf("replacement content: %q, %v", data, err)
+			}
+			if got, err := os.Readlink(path + ".bak"); err != nil || got != target {
+				t.Fatalf("link backup: %q, %v", got, err)
+			}
+			data, err := os.ReadFile(target)
+			if dangling {
+				if !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("dangling target created: %q, %v", data, err)
+				}
+			} else if err != nil || string(data) != "user content" {
+				t.Fatalf("outside target changed: %q, %v", data, err)
 			}
 		})
 	}

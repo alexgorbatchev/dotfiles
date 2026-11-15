@@ -8,6 +8,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/github"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
+	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +68,7 @@ Load the generated shell configuration if you have not already set it up.`,
 		fileName := toolName + ".tool.ts"
 		repoSlug := owner + "/" + repo
 
-		services, err := BootstrapServices(cmd.Context(), cfgFile)
+		services, err := BootstrapServices(cmd.Context(), cfgFile, vm.WithProjectOnly())
 		if err != nil {
 			return err
 		}
@@ -80,7 +81,11 @@ Load the generated shell configuration if you have not already set it up.`,
 
 		targetPath := filepath.Join(dirs[0], fileName)
 
-		exists, _ := services.FS.Exists(targetPath)
+		entry, err := toolConfigEntry(services.FS, targetPath)
+		if err != nil {
+			return err
+		}
+		exists := entry != nil
 		if exists && !toolAddForce {
 			return fmt.Errorf("%s already exists (use --force to overwrite)", targetPath)
 		}
@@ -114,8 +119,8 @@ Load the generated shell configuration if you have not already set it up.`,
 			return fmt.Errorf("creating tool configs directory: %w", err)
 		}
 
-		if err := services.FS.WriteFile(targetPath, content, 0644); err != nil {
-			return fmt.Errorf("writing tool config %s: %w", targetPath, err)
+		if err := writeToolConfig(services.FS, targetPath, content, entry); err != nil {
+			return err
 		}
 
 		action := "Created"

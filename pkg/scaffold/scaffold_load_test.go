@@ -119,3 +119,30 @@ func TestScaffoldedBrewToolResolvesPerArchitecture(t *testing.T) {
 		})
 	}
 }
+
+func TestForcedScaffoldReplacesDanglingLinkWithLoadableTemplate(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "tools")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "absent.ts"), filepath.Join(dir, "dotfiles.tool.ts")); err != nil {
+		t.Fatal(err)
+	}
+	fsys := fs.NewOSFS()
+	if _, err := scaffold.Run(fsys, scaffold.Options{Dir: dir, TargetOS: "linux", Force: true}); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(root, "dotfiles.config.ts")
+	if err := os.WriteFile(configPath, []byte(`export default { paths: { dotfilesDir: `+strconv.Quote(filepath.ToSlash(root))+` } };`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	log := logger.New(logger.Config{Writer: io.Discard})
+	_, tools, _, err := vm.LoadTypeScriptConfig(log, fsys, configPath, vm.WithTarget(vm.Target{OS: "linux", Arch: "amd64"}))
+	if err != nil {
+		t.Fatalf("loading forced template: %v", err)
+	}
+	if tools["dotfiles"] == nil {
+		t.Fatal("replacement template was not loaded")
+	}
+}
