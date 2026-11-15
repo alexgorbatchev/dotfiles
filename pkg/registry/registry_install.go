@@ -270,7 +270,7 @@ func (r *Registry) GetAllToolInstallations(ctx context.Context) ([]*ToolInstalla
 	return records, nil
 }
 
-// RecordToolUsage increments or inserts a binary usage counter.
+// RecordToolUsage increments or inserts a binary usage counter and retains its latest timestamp.
 func (r *Registry) RecordToolUsage(ctx context.Context, tx *sql.Tx, record *ToolUsageRecord) error {
 	if tx == nil {
 		return ErrTransactionRequired
@@ -282,7 +282,7 @@ func (r *Registry) RecordToolUsage(ctx context.Context, tx *sql.Tx, record *Tool
 	) VALUES (?, ?, ?, ?)
 	ON CONFLICT(tool_name, binary_name) DO UPDATE SET
 		usage_count = tool_usage.usage_count + EXCLUDED.usage_count,
-		last_used_at = EXCLUDED.last_used_at;`
+		last_used_at = MAX(tool_usage.last_used_at, EXCLUDED.last_used_at);`
 
 	_, err := tx.ExecContext(ctx, query,
 		record.ToolName,

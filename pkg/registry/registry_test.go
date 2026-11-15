@@ -494,6 +494,33 @@ func TestToolUsageUpsert(t *testing.T) {
 	}
 }
 
+func TestToolUsagePreservesLatestTimestamp(t *testing.T) {
+	_, reg := setupTestDB(t)
+	ctx := context.Background()
+
+	for _, record := range []ToolUsageRecord{
+		{ToolName: "fzf", BinaryName: "fzf", UsageCount: 1, LastUsedAt: 2000},
+		{ToolName: "fzf", BinaryName: "fzf", UsageCount: 2, LastUsedAt: 1000},
+	} {
+		if err := reg.WithTx(ctx, func(tx *sql.Tx) error {
+			return reg.RecordToolUsage(ctx, tx, &record)
+		}); err != nil {
+			t.Fatalf("record usage: %v", err)
+		}
+	}
+
+	usage, err := reg.GetToolUsage(ctx, "fzf", "fzf")
+	if err != nil {
+		t.Fatalf("get usage: %v", err)
+	}
+	if usage == nil {
+		t.Fatal("missing usage record")
+	}
+	if usage.UsageCount != 3 || usage.LastUsedAt != 2000 {
+		t.Fatalf("late older usage must increment the count without moving last-used backward: %+v", usage)
+	}
+}
+
 func TestCompactAndValidate(t *testing.T) {
 	_, reg := setupTestDB(t)
 	ctx := context.Background()
