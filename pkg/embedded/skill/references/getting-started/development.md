@@ -20,6 +20,29 @@ bun check
 bun compile
 ```
 
+## CLI Development Invocation
+
+Use `just run`, `just test-project`, `just run-ai` or `just dashboard` when running
+the CLI from source. These recipes set `DOTFILES_REPO_ROOT` to the checkout root.
+Generated wrappers and shims then invoke `go -C <root> run ./cmd/dotfiles`, which
+continues to work when the shell's working directory is outside the checkout.
+The saved invocation carries its explicit source root into subsequent runs, without
+changing the calling shell's environment.
+For a direct `go run`, set `DOTFILES_REPO_ROOT` explicitly to the absolute checkout
+path when generated shell integration should invoke source code again.
+
+Without that variable, self-invocation uses the executing binary, including binaries
+installed beneath temporary directories or directories containing `_test` or
+`go-build`. A nearby `go.mod` does not select development mode or a configuration.
+`DOTFILES_REPO_ROOT` also enables configuration fallback to that root after the
+normal [configuration lookup](cli-reference.md#configuration-lookup).
+`DOTFILES_E2E_TEST=true` keeps self-invocation on the compiled test binary.
+
+`DOTFILES_CLI_COMMAND` overrides self-invocation. Its value is either a literal
+executable path or the legacy `go run ` prefix followed by one literal package path.
+It is not parsed as shell code; quotes, dollar signs and spaces in the path remain
+part of that path. The override takes precedence over development and E2E modes.
+
 ## Development HTTP Proxy
 
 Set `DEV_PROXY` to a port to run a command through the built-in HTTP caching proxy, so repeated installs against GitHub and other rate-limited APIs are answered locally:

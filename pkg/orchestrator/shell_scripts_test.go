@@ -101,7 +101,7 @@ func TestSourceFilesDirectEmission(t *testing.T) {
 	}
 	zshContent := string(zshData)
 
-	if !strings.Contains(zshContent, `[[ -f "/home/user/tools/shell.zsh" ]] && source "/home/user/tools/shell.zsh"`) {
+	if !strings.Contains(zshContent, `[[ -f /home/user/tools/shell.zsh ]] && source /home/user/tools/shell.zsh`) {
 		t.Errorf("expected main.zsh to contain direct source of shell.zsh, got:\n%s", zshContent)
 	}
 	if strings.Contains(zshContent, `source <(cat "/home/user/tools/shell.zsh")`) || strings.Contains(zshContent, `source <(cat /home/user/tools/shell.zsh)`) {
@@ -119,7 +119,7 @@ func TestSourceFilesDirectEmission(t *testing.T) {
 	}
 	bashContent := string(bashData)
 
-	if !strings.Contains(bashContent, `[[ -f "/home/user/tools/shell.sh" ]] && source "/home/user/tools/shell.sh"`) {
+	if !strings.Contains(bashContent, `[[ -f /home/user/tools/shell.sh ]] && source /home/user/tools/shell.sh`) {
 		t.Errorf("expected main.bash to contain direct source of shell.sh, got:\n%s", bashContent)
 	}
 	if strings.Contains(bashContent, `source <(cat "/home/user/tools/shell.sh")`) || strings.Contains(bashContent, `source <(cat /home/user/tools/shell.sh)`) {
@@ -196,7 +196,7 @@ func TestGenerateShellScripts_ToolBlockEmissionOrder(t *testing.T) {
 		"  echo zeta",
 		"}",
 		"alpha-init",
-		`[[ -f "/home/user/tools/init.sh" ]] && source "/home/user/tools/init.sh"`,
+		`[[ -f /home/user/tools/init.sh ]] && source /home/user/tools/init.sh`,
 		"__dotfiles_source_inline_order_tool_0() {",
 		"  echo 'export INLINE=1'",
 		"}",
@@ -336,15 +336,15 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 		t.Fatalf("reading main.zsh: %v", err)
 	}
 	zshContent := string(zshData)
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.local/share/fnm/aliases/default/bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/.local/share/fnm/aliases/default/bin`) {
 		t.Errorf("expected main.zsh to export fnm path, got:\n%s", zshContent)
 	}
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.custom/bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/.custom/bin`) {
 		t.Errorf("expected main.zsh to export custom path from map, got:\n%s", zshContent)
 	}
 	// Count occurrences of TargetDir in PATH modifications; the shims are placed first once more after the
 	// tool initializations, outside this section.
-	targetOccurrences := strings.Count(pathModificationsSection(zshContent), `__dotfiles_dir="/home/user/.generated/user-bin"`)
+	targetOccurrences := strings.Count(pathModificationsSection(zshContent), `__dotfiles_dir=/home/user/.generated/user-bin`)
 	if targetOccurrences != 1 {
 		t.Errorf("expected TargetDir to appear exactly once in PATH modifications, got %d occurrences", targetOccurrences)
 	}
@@ -355,7 +355,7 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 		t.Fatalf("reading main.bash: %v", err)
 	}
 	bashContent := string(bashData)
-	if !strings.Contains(bashContent, `__dotfiles_dir="/home/user/.local/share/fnm/aliases/default/bin"`) {
+	if !strings.Contains(bashContent, `__dotfiles_dir=/home/user/.local/share/fnm/aliases/default/bin`) {
 		t.Errorf("expected main.bash to export fnm path, got:\n%s", bashContent)
 	}
 
@@ -365,7 +365,7 @@ func TestGenerateShellScripts_PathModifications(t *testing.T) {
 		t.Fatalf("reading main.ps1: %v", err)
 	}
 	ps1Content := string(ps1Data)
-	if !strings.Contains(ps1Content, `$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne "/home/user/.local/share/fnm/aliases/default/bin" }) -join [IO.Path]::PathSeparator`) {
+	if !strings.Contains(ps1Content, `$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne '/home/user/.local/share/fnm/aliases/default/bin' }) -join [IO.Path]::PathSeparator`) {
 		t.Errorf("expected main.ps1 to format path, got:\n%s", ps1Content)
 	}
 }
@@ -426,46 +426,46 @@ func TestGenerateShellScripts_PathResolutionAndNormalization(t *testing.T) {
 	zshContent := string(zshData)
 
 	// Tilde expansion: ~/custom-bin -> /home/user/custom-bin
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/custom-bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/custom-bin`) {
 		t.Errorf("expected tilde expansion for ~/custom-bin, got:\n%s", zshContent)
 	}
 
 	// $HOME expansion: $HOME/.local/share/fnm/aliases/default/bin -> /home/user/.local/share/fnm/aliases/default/bin
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.local/share/fnm/aliases/default/bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/.local/share/fnm/aliases/default/bin`) {
 		t.Errorf("expected $HOME expansion for fnm path, got:\n%s", zshContent)
 	}
 
 	// ${HOME} expansion: ${HOME}/.cargo/bin -> /home/user/.cargo/bin
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/.cargo/bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/.cargo/bin`) {
 		t.Errorf("expected ${HOME} expansion for cargo path, got:\n%s", zshContent)
 	}
 
 	// Map path with $HOME: map[string]interface{}{"path": "$HOME/go/bin"} -> /home/user/go/bin
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/go/bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/go/bin`) {
 		t.Errorf("expected map path with $HOME to resolve to /home/user/go/bin, got:\n%s", zshContent)
 	}
 
 	// Relative path: ./rel-bin -> /home/user/tools/tool-a/rel-bin
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/tools/tool-a/rel-bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/tools/tool-a/rel-bin`) {
 		t.Errorf("expected relative path resolution for ./rel-bin, got:\n%s", zshContent)
 	}
 
 	// Spaced path: '   /home/user/spaced/bin/   ' -> /home/user/spaced/bin (exactly once)
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/spaced/bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/spaced/bin`) {
 		t.Errorf("expected trimmed/cleaned path for spaced bin, got:\n%s", zshContent)
 	}
-	spacedCount := strings.Count(zshContent, `__dotfiles_dir="/home/user/spaced/bin"`)
+	spacedCount := strings.Count(zshContent, `__dotfiles_dir=/home/user/spaced/bin`)
 	if spacedCount != 1 {
 		t.Errorf("expected spaced path to be deduplicated to 1 occurrence, got %d", spacedCount)
 	}
 
 	// Map path with tilde: map[string]interface{}{"path": "~/map-bin"} -> /home/user/map-bin
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/map-bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/map-bin`) {
 		t.Errorf("expected map path with tilde to resolve to /home/user/map-bin, got:\n%s", zshContent)
 	}
 
 	// TargetDir appears only once in PATH modifications
-	targetCount := strings.Count(pathModificationsSection(zshContent), `__dotfiles_dir="/home/user/.generated/user-bin"`)
+	targetCount := strings.Count(pathModificationsSection(zshContent), `__dotfiles_dir=/home/user/.generated/user-bin`)
 	if targetCount != 1 {
 		t.Errorf("expected TargetDir to appear exactly once in PATH modifications, got %d", targetCount)
 	}
@@ -537,7 +537,7 @@ func TestGenerateShellScripts_PowershellFullEmission(t *testing.T) {
 		t.Errorf("expected PowerShell function, got:\n%s", ps1Content)
 	}
 	// SourceFile
-	if !strings.Contains(ps1Content, `if (Test-Path "/home/user/tools/helpers.ps1") { . "/home/user/tools/helpers.ps1" }`) {
+	if !strings.Contains(ps1Content, `if (Test-Path -LiteralPath '/home/user/tools/helpers.ps1') { . '/home/user/tools/helpers.ps1' }`) {
 		t.Errorf("expected PowerShell SourceFile, got:\n%s", ps1Content)
 	}
 	// Sources
@@ -555,7 +555,7 @@ func TestGenerateShellScripts_PowershellFullEmission(t *testing.T) {
 		t.Errorf("expected PowerShell always script, got:\n%s", ps1Content)
 	}
 	// Script once loop
-	if !strings.Contains(ps1Content, `Get-ChildItem -Path "/home/user/.generated/shell-scripts/.once" -Filter "*.ps1"`) {
+	if !strings.Contains(ps1Content, `Get-ChildItem -LiteralPath '/home/user/.generated/shell-scripts/.once' -Filter "*.ps1"`) {
 		t.Errorf("expected PowerShell once loop, got:\n%s", ps1Content)
 	}
 
@@ -641,7 +641,7 @@ func TestGenerateShellScripts_DisabledAndHostnameFiltering(t *testing.T) {
 	if !strings.Contains(zshContent, `alias active_alias='echo active'`) {
 		t.Errorf("expected active_alias to be present in main.zsh")
 	}
-	if !strings.Contains(zshContent, `__dotfiles_dir="/home/user/active/bin"`) {
+	if !strings.Contains(zshContent, `__dotfiles_dir=/home/user/active/bin`) {
 		t.Errorf("expected active tool path to be present in main.zsh")
 	}
 
@@ -709,14 +709,14 @@ func TestGenerateShellScripts_CliWrapperConfigFlag(t *testing.T) {
 
 	zshData1, _ := memFS1.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
 	zshContent1 := string(zshData1)
-	expectedZsh1 := fmt.Sprintf("dotfiles() {\n  %s --config \"/home/user/.dotfiles/dotfiles.config.ts\" \"$@\"\n}", expectedCmdZsh)
+	expectedZsh1 := fmt.Sprintf("dotfiles() {\n  %s --config /home/user/.dotfiles/dotfiles.config.ts \"$@\"\n}", expectedCmdZsh)
 	if !strings.Contains(zshContent1, expectedZsh1) {
 		t.Errorf("expected zsh wrapper to contain %q, got:\n%s", expectedZsh1, zshContent1)
 	}
 
 	ps1Data1, _ := memFS1.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
 	ps1Content1 := string(ps1Data1)
-	expectedPs1 := fmt.Sprintf("function dotfiles {\n  & %s --config \"/home/user/.dotfiles/dotfiles.config.ts\" $args\n}", expectedCmdPs1)
+	expectedPs1 := fmt.Sprintf("function dotfiles {\n  & %s --config '/home/user/.dotfiles/dotfiles.config.ts' $args\n}", expectedCmdPs1)
 	if !strings.Contains(ps1Content1, expectedPs1) {
 		t.Errorf("expected powershell wrapper to contain %q, got:\n%s", expectedPs1, ps1Content1)
 	}
@@ -765,7 +765,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
-		wantZsh := "dotfiles() {\n  go run /custom/repo/cmd/dotfiles --config \"/home/user/dotfiles.config.ts\" \"$@\"\n}"
+		wantZsh := "dotfiles() {\n  go run /custom/repo/cmd/dotfiles --config /home/user/dotfiles.config.ts \"$@\"\n}"
 		if !strings.Contains(string(zshData), wantZsh) {
 			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
 		}
@@ -776,7 +776,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
-		wantPs1 := "function dotfiles {\n  & go run /custom/repo/cmd/dotfiles --config \"/home/user/dotfiles.config.ts\" $args\n}"
+		wantPs1 := "function dotfiles {\n  & 'go' 'run' '/custom/repo/cmd/dotfiles' --config '/home/user/dotfiles.config.ts' $args\n}"
 		if !strings.Contains(string(ps1Data), wantPs1) {
 			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
 		}
@@ -802,7 +802,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
-		wantPs1 := "function dotfiles {\n  & /opt/dotfiles/bin/dotfiles $args\n}"
+		wantPs1 := "function dotfiles {\n  & '/opt/dotfiles/bin/dotfiles' $args\n}"
 		if !strings.Contains(string(ps1Data), wantPs1) {
 			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
 		}
@@ -817,7 +817,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
-		wantZsh := "dotfiles() {\n  go run \"/path with spaces/cmd/dotfiles\" \"$@\"\n}"
+		wantZsh := "dotfiles() {\n  go run '/path with spaces/cmd/dotfiles' \"$@\"\n}"
 		if !strings.Contains(string(zshData), wantZsh) {
 			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
 		}
@@ -828,7 +828,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
-		wantPs1 := "function dotfiles {\n  & go run \"/path with spaces/cmd/dotfiles\" $args\n}"
+		wantPs1 := "function dotfiles {\n  & 'go' 'run' '/path with spaces/cmd/dotfiles' $args\n}"
 		if !strings.Contains(string(ps1Data), wantPs1) {
 			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
 		}
@@ -843,7 +843,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
-		wantZsh := "dotfiles() {\n  command dotfiles --config \"/home/user/dotfiles.config.ts\" \"$@\"\n}"
+		wantZsh := "dotfiles() {\n  command dotfiles --config /home/user/dotfiles.config.ts \"$@\"\n}"
 		if !strings.Contains(string(zshData), wantZsh) {
 			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
 		}
@@ -854,7 +854,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
-		wantPs1 := "function dotfiles {\n  & \"/home/user/.generated/user-bin/dotfiles\" --config \"/home/user/dotfiles.config.ts\" $args\n}"
+		wantPs1 := "function dotfiles {\n  & '/home/user/.generated/user-bin/dotfiles' --config '/home/user/dotfiles.config.ts' $args\n}"
 		if !strings.Contains(string(ps1Data), wantPs1) {
 			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
 		}
@@ -869,7 +869,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		zshData, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.zsh")
-		wantZsh := "dotfiles() {\n  \"/virtual path with spaces/bin/dotfiles\" \"$@\"\n}"
+		wantZsh := "dotfiles() {\n  '/virtual path with spaces/bin/dotfiles' \"$@\"\n}"
 		if !strings.Contains(string(zshData), wantZsh) {
 			t.Errorf("expected main.zsh to contain %q, got:\n%s", wantZsh, string(zshData))
 		}
@@ -880,7 +880,7 @@ func TestGenerateShellScripts_CliWrapperCustomCommand(t *testing.T) {
 		}
 
 		ps1Data, _ := memFS.ReadFile("/home/user/.generated/shell-scripts/main.ps1")
-		wantPs1 := "function dotfiles {\n  & \"/virtual path with spaces/bin/dotfiles\" $args\n}"
+		wantPs1 := "function dotfiles {\n  & '/virtual path with spaces/bin/dotfiles' $args\n}"
 		if !strings.Contains(string(ps1Data), wantPs1) {
 			t.Errorf("expected main.ps1 to contain %q, got:\n%s", wantPs1, string(ps1Data))
 		}

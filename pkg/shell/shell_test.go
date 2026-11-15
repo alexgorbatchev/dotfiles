@@ -228,3 +228,16 @@ func TestQuote(t *testing.T) {
 		})
 	}
 }
+
+func TestQuotePowerShell(t *testing.T) {
+	for _, tc := range []struct{ word, want string }{
+		{"", "''"},
+		{"plain", "'plain'"},
+		{"it's", "'it''s'"},
+		{"$value `command` \"quoted\" \\path\nnext", "'$value `command` \"quoted\" \\path\nnext'"},
+	} {
+		if got := QuotePowerShell(tc.word); got != tc.want {
+			t.Errorf("QuotePowerShell(%q) = %q, want %q", tc.word, got, tc.want)
+		}
+	}
+}

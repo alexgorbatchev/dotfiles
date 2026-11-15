@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/shell"
 )
 
 func TestInjector_Inject(t *testing.T) {
@@ -39,7 +40,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
+			wantContent: "# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource /home/user/.dotfiles/init.sh\n# End of dotfiles initialization\n",
 			wantPerm:    0644,
 		},
 		{
@@ -56,7 +57,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource /home/user/.dotfiles/init.sh\n# End of dotfiles initialization\n",
 			wantPerm:    0644,
 		},
 		{
@@ -74,7 +75,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/new_init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/new_init.sh\"\nsome other setting\n",
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource /home/user/.dotfiles/new_init.sh\n# End of dotfiles initialization\nsome other setting\n",
 			wantPerm:    0644,
 		},
 		{
@@ -92,7 +93,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/new_init.sh",
 			},
 			wantUpdated: true,
-			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/new_init.sh\"\nsome other setting\n",
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource /home/user/.dotfiles/new_init.sh\n# End of dotfiles initialization\nsome other setting\n",
 			wantPerm:    0444,
 		},
 		{
@@ -100,7 +101,7 @@ func TestInjector_Inject(t *testing.T) {
 			setupFS: func() fs.FS {
 				mem := fs.NewMemFS()
 				_ = mem.MkdirAll("/home/user", 0755)
-				existing := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n"
+				existing := "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource /home/user/.dotfiles/init.sh\n# End of dotfiles initialization\n"
 				_ = mem.WriteFile("/home/user/.zshrc", []byte(existing), 0644)
 				return mem
 			},
@@ -110,7 +111,7 @@ func TestInjector_Inject(t *testing.T) {
 				ScriptPath:  "/home/user/.dotfiles/init.sh",
 			},
 			wantUpdated: false,
-			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource \"/home/user/.dotfiles/init.sh\"\n",
+			wantContent: "export FOO=bar\n\n# Generated via dotfiles generator - do not modify\n# ------------------------------------------------------------------------------\nsource /home/user/.dotfiles/init.sh\n# End of dotfiles initialization\n",
 			wantPerm:    0644,
 		},
 		{
@@ -586,8 +587,8 @@ func TestFormatPath(t *testing.T) {
 			name:      "powershell path append",
 			shell:     "powershell",
 			targetDir: "/home/user/bin",
-			want: `$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne "/home/user/bin" }) -join [IO.Path]::PathSeparator
-$env:PATH = if ($filtered) { "/home/user/bin" + [IO.Path]::PathSeparator + $filtered } else { "/home/user/bin" }`,
+			want: `$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne '/home/user/bin' }) -join [IO.Path]::PathSeparator
+$env:PATH = if ($filtered) { '/home/user/bin' + [IO.Path]::PathSeparator + $filtered } else { '/home/user/bin' }`,
 		},
 	}
 
@@ -603,7 +604,7 @@ $env:PATH = if ($filtered) { "/home/user/bin" + [IO.Path]::PathSeparator + $filt
 
 func TestFormatFpath(t *testing.T) {
 	completionsDir := "/home/user/.generated/shell-scripts/zsh/completions"
-	want := "typeset -U fpath\nfpath=(\"/home/user/.generated/shell-scripts/zsh/completions\" $fpath)"
+	want := "typeset -U fpath\nfpath=(/home/user/.generated/shell-scripts/zsh/completions $fpath)"
 	got := FormatFpath(completionsDir)
 	if got != want {
 		t.Errorf("FormatFpath(%q) =\n%q\nwant =\n%q", completionsDir, got, want)
@@ -627,7 +628,7 @@ func TestFormatCompletionLoad(t *testing.T) {
 			shell: "bash",
 			want: `__dotfiles_completion_nullglob="$(shopt -p nullglob)"
 shopt -s nullglob
-for completion_script in "/home/user/.generated/shell-scripts/bash/completions"/*; do
+for completion_script in /home/user/.generated/shell-scripts/bash/completions/*; do
   [[ -f "$completion_script" ]] && source "$completion_script"
 done
 eval "$__dotfiles_completion_nullglob"
@@ -636,8 +637,8 @@ unset __dotfiles_completion_nullglob`,
 		{
 			name:  "powershell dot-sources every script",
 			shell: "powershell",
-			want: `if (Test-Path "/home/user/.generated/shell-scripts/bash/completions") {
-  Get-ChildItem -Path "/home/user/.generated/shell-scripts/bash/completions" -Filter "*.ps1" | ForEach-Object { . $_.FullName }
+			want: `if (Test-Path -LiteralPath '/home/user/.generated/shell-scripts/bash/completions') {
+  Get-ChildItem -LiteralPath '/home/user/.generated/shell-scripts/bash/completions' -Filter "*.ps1" | ForEach-Object { . $_.FullName }
 }`,
 		},
 		{
@@ -668,7 +669,7 @@ func TestFormatOnceLoop(t *testing.T) {
 			name:    "zsh once loop",
 			shell:   "zsh",
 			onceDir: "/home/user/.once",
-			want: `for once_script in "/home/user/.once"/*.zsh(N); do
+			want: `for once_script in /home/user/.once/*.zsh(N); do
   [[ -f "$once_script" ]] && source "$once_script"
 done`,
 		},
@@ -678,7 +679,7 @@ done`,
 			onceDir: "/home/user/.once",
 			want: `__dotfiles_nullglob="$(shopt -p nullglob)"
 shopt -s nullglob
-for once_script in "/home/user/.once"/*.sh; do
+for once_script in /home/user/.once/*.sh; do
   [[ -f "$once_script" ]] && source "$once_script"
 done
 eval "$__dotfiles_nullglob"
@@ -688,8 +689,8 @@ unset __dotfiles_nullglob`,
 			name:    "powershell once loop",
 			shell:   "powershell",
 			onceDir: "/home/user/.once",
-			want: `if (Test-Path "/home/user/.once") {
-  Get-ChildItem -Path "/home/user/.once" -Filter "*.ps1" | ForEach-Object { & $_.FullName }
+			want: `if (Test-Path -LiteralPath '/home/user/.once') {
+  Get-ChildItem -LiteralPath '/home/user/.once' -Filter "*.ps1" | ForEach-Object { & $_.FullName }
 }`,
 		},
 		{
@@ -748,4 +749,102 @@ func TestHeaderFormatting(t *testing.T) {
 			t.Errorf("expected GenerateToolHeader without config path to omit file path comment, got:\n%s", gotEmpty)
 		}
 	})
+}
+
+func TestInitializationPreservesLiteralPathsInRealShells(t *testing.T) {
+	for _, sh := range []struct {
+		name, command, extension string
+		args                     []string
+	}{
+		{"bash", "bash", ".sh", []string{"--noprofile", "--norc"}},
+		{"zsh", "zsh", ".zsh", []string{"-f"}},
+		{"powershell", "pwsh", ".ps1", []string{"-NoLogo", "-NoProfile", "-File"}},
+	} {
+		t.Run(sh.name, func(t *testing.T) {
+			executable, err := osexec.LookPath(sh.command)
+			if err != nil {
+				t.Skipf("%s is unavailable: %v", sh.command, err)
+			}
+			for _, special := range []string{"two words", "$cash", "`tick`", `double"quote`, "single'quote", `back\slash`, "new\nline", "nonbreaking\u00a0space", "[brackets]"} {
+				t.Run(special, func(t *testing.T) {
+					fixtureRoot := t.TempDir()
+					root := filepath.Join(fixtureRoot, special)
+					// PowerShell's filesystem provider interprets backslashes as
+					// separators on every host. Exercise literal PATH here while
+					// keeping files it must open within its supported namespace.
+					if sh.name == "powershell" && special == `back\slash` {
+						root = fixtureRoot
+					}
+					completionDir := filepath.Join(root, "completions")
+					onceDir := filepath.Join(root, "once")
+					targetDir := filepath.Join(fixtureRoot, special, "bin")
+					for _, dir := range []string{completionDir, onceDir, targetDir} {
+						if err := os.MkdirAll(dir, 0755); err != nil {
+							t.Fatal(err)
+						}
+					}
+					completion := "COMPLETION_LOADED=yes\n"
+					once := "ONCE_LOADED=yes\n"
+					verify := "[[ $COMPLETION_LOADED == yes && $ONCE_LOADED == yes ]] || exit 31\nprintf '%s' \"$PATH\"\n"
+					if sh.name == "zsh" {
+						// Zsh loads completion functions lazily from fpath.
+						verify = "[[ $fpath[1] == " + shell.Quote(completionDir) + " && $ONCE_LOADED == yes ]] || exit 32\nprintf '%s' \"$PATH\"\n"
+					}
+					if sh.name == "powershell" {
+						completion = "$env:COMPLETION_LOADED = 'yes'\n"
+						once = "$env:ONCE_LOADED = 'yes'\n"
+						verify = "if ($env:COMPLETION_LOADED -ne 'yes' -or $env:ONCE_LOADED -ne 'yes') { exit 33 }\n[Console]::Write($env:PATH)\n"
+					}
+					for name, content := range map[string]string{
+						filepath.Join(completionDir, "completion"+sh.extension): completion,
+						filepath.Join(onceDir, "once"+sh.extension):             once,
+					} {
+						if err := os.WriteFile(name, []byte(content), 0644); err != nil {
+							t.Fatal(err)
+						}
+					}
+					code := GenerateFileHeader(root) + "\n" + GenerateToolHeader(filepath.Join(root, "tool.ts")) + "\n" + FormatPath(sh.name, targetDir) + "\n" + FormatPath(sh.name, targetDir) + "\n" + FormatCompletionLoad(sh.name, completionDir) + "\n" + FormatOnceLoop(sh.name, onceDir) + "\n" + verify
+					script := filepath.Join(root, "main"+sh.extension)
+					if err := os.WriteFile(script, []byte(code), 0644); err != nil {
+						t.Fatal(err)
+					}
+					profile := filepath.Join(root, "profile"+sh.extension)
+					const original = "# existing profile\n"
+					if err := os.WriteFile(profile, []byte(original), 0644); err != nil {
+						t.Fatal(err)
+					}
+					inj := NewInjector(fs.NewOSFS())
+					opts := InjectOptions{ProfilePath: profile, Shell: sh.name, ScriptPath: filepath.Join(root, "old"+sh.extension)}
+					if updated, err := inj.Inject(opts); err != nil || !updated {
+						t.Fatalf("inject old script: updated=%v err=%v", updated, err)
+					}
+					opts.ScriptPath = script
+					if updated, err := inj.Inject(opts); err != nil || !updated {
+						t.Fatalf("replace script: updated=%v err=%v", updated, err)
+					}
+					if updated, err := inj.Inject(opts); err != nil || updated {
+						t.Fatalf("unchanged script: updated=%v err=%v", updated, err)
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					cmd := osexec.CommandContext(ctx, executable, append(append([]string{}, sh.args...), profile)...)
+					cmd.Env = append(os.Environ(), "COMPLETION_LOADED=", "ONCE_LOADED=")
+					output, err := cmd.CombinedOutput()
+					if err != nil {
+						t.Fatalf("source profile: %v\n%s\nscript:\n%s", err, output, code)
+					}
+					if !strings.HasPrefix(string(output), targetDir+string(os.PathListSeparator)) || strings.Count(string(output), targetDir) != 1 {
+						t.Errorf("PATH should start with one literal target %q, got %q", targetDir, output)
+					}
+					if removed, err := inj.Remove(profile); err != nil || !removed {
+						t.Fatalf("remove block: removed=%v err=%v", removed, err)
+					}
+					remaining, err := os.ReadFile(profile)
+					if err != nil || string(remaining) != original {
+						t.Errorf("remove preserved profile: %q, %v", remaining, err)
+					}
+				})
+			}
+		})
+	}
 }

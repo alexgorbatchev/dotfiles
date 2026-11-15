@@ -1,10 +1,15 @@
 package e2e
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/shell"
 )
 
 const zshPluginToolName = "zsh-plugin-tool"
@@ -119,7 +124,22 @@ func TestE2EZshPluginAutoInstallDefault(t *testing.T) {
 				if statErr != nil {
 					t.Fatalf("expected generate to clone the plugin to %s: %v\nstdout: %s\nstderr: %s", pluginFile, statErr, stdout, stderr)
 				}
-				h.AssertShellInitContains("zsh", "source \""+filepath.ToSlash(pluginFile)+"\"")
+				h.AssertShellInitContains("zsh", "source "+shell.Quote(filepath.ToSlash(pluginFile)))
+				t.Run("generated initialization loads the plugin", func(t *testing.T) {
+					zsh, err := exec.LookPath("zsh")
+					if err != nil {
+						t.Skipf("zsh unavailable: %v", err)
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					initPath := filepath.Join(h.TempDir, ".generated", "shell-scripts", "main.zsh")
+					cmd := exec.CommandContext(ctx, zsh, "-f", "-c", "source "+shell.Quote(initPath))
+					cmd.Dir = h.TempDir
+					out, err := cmd.CombinedOutput()
+					if err != nil || strings.TrimSpace(string(out)) != "plugin loaded" {
+						t.Fatalf("sourcing generated init: %v\n%s", err, out)
+					}
+				})
 				return
 			}
 			if !os.IsNotExist(statErr) {

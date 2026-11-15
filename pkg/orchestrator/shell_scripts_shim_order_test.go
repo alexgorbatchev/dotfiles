@@ -40,7 +40,7 @@ func TestGenerateShellScripts_ShimsStayFirstAfterToolInitializations(t *testing.
 		t.Fatalf("generateShellScripts: %v", err)
 	}
 
-	shimPlacement := `__dotfiles_dir="` + shimDir + `"`
+	shimPlacement := `__dotfiles_dir=` + shimDir
 	for _, sh := range []string{"zsh", "bash"} {
 		data, err := memFS.ReadFile("/home/user/.generated/shell-scripts/main." + sh)
 		if err != nil {

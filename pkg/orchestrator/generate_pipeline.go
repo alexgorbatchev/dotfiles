@@ -239,7 +239,8 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			BinaryPath:     binaryPath,
 			BashPath:       bashPath,
 			Sudo:           tool.Sudo,
-			CliCommand:     o.getCliCommand(),
+			CliArgs:        o.getCliArgs(),
+			CliEnv:         o.getCliEnvironment(),
 			ConfigFilePath: o.getConfigFilePath(),
 			UsageLogPath:   usagelog.Path(projCfg.Paths.GeneratedDir),
 		}

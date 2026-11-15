@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/shell"
 )
 
 const pkgTestToolName = "pkg-test-tool"
@@ -255,7 +257,7 @@ func TestE2EPkgBootstrapShim(t *testing.T) {
 	// Nothing is installed yet, so the only defensible target is the
 	// dotfiles-managed entrypoint that the install pipeline links to the real binary.
 	currentEntrypoint := filepath.Join(generatedDir, "binaries", pkgTestToolName, "current", pkgTestToolName)
-	wantExecutable := `TOOL_EXECUTABLE="` + currentEntrypoint + `"`
+	wantExecutable := "TOOL_EXECUTABLE=" + shell.Quote(currentEntrypoint)
 	if !strings.Contains(shim, wantExecutable) {
 		t.Errorf("bootstrap shim must target the current entrypoint, want %s in:\n%s", wantExecutable, shim)
 	}

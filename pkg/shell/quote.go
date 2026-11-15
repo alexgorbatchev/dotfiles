@@ -41,3 +41,9 @@ func Quote(word string) string {
 }
 
 func isASCIIControl(r rune) bool { return r < 0x20 || r == 0x7f }
+
+// QuotePowerShell returns word as a literal PowerShell argument. Single-quoted
+// strings preserve dollar signs, backticks and backslashes; apostrophes double.
+func QuotePowerShell(word string) string {
+	return "'" + strings.ReplaceAll(word, "'", "''") + "'"
+}

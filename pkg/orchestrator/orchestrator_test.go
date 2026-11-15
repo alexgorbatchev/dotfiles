@@ -11,11 +11,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	osexec "os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
@@ -27,6 +29,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
+	"github.com/alexgorbatchev/dotfiles/pkg/shell"
 	"github.com/alexgorbatchev/dotfiles/pkg/usagelog"
 	"github.com/alexgorbatchev/dotfiles/pkg/vm"
 )
@@ -1522,7 +1525,7 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 	if !strings.Contains(scriptContent, "my_func() {") && !strings.Contains(scriptContent, "my-func() {") {
 		t.Errorf("expected script to contain function definition")
 	}
-	if !strings.Contains(scriptContent, "[[ -f \"/home/user/tools/shell.zsh\" ]] && source \"/home/user/tools/shell.zsh\"") {
+	if !strings.Contains(scriptContent, "[[ -f /home/user/tools/shell.zsh ]] && source /home/user/tools/shell.zsh") {
 		t.Errorf("expected script to contain sourceFile direct emission")
 	}
 	if !strings.Contains(scriptContent, "echo inline-source") {
@@ -1533,14 +1536,14 @@ func TestOrchestratorNativeShellGeneration(t *testing.T) {
 	}
 }
 
-func TestOrchestrator_GetCliCommand(t *testing.T) {
+func TestOrchestrator_GetCliArgs(t *testing.T) {
 	fsys := newMemFS()
 	reg := registry.NewRegistry(nil)
 	orch := NewOrchestrator(nil, fsys, nil, reg, nil)
 
 	// Case 1: DOTFILES_CLI_COMMAND is set
 	t.Setenv("DOTFILES_CLI_COMMAND", "custom-cli-command")
-	cmd := orch.getCliCommand()
+	cmd := orch.getCliArgs()[0]
 	if cmd != "custom-cli-command" {
 		t.Errorf("expected custom-cli-command, got %q", cmd)
 	}
@@ -1548,7 +1551,7 @@ func TestOrchestrator_GetCliCommand(t *testing.T) {
 	// Case 2: DOTFILES_CLI_COMMAND is not set, but DOTFILES_E2E_TEST is true
 	t.Setenv("DOTFILES_CLI_COMMAND", "")
 	t.Setenv("DOTFILES_E2E_TEST", "true")
-	cmd = orch.getCliCommand()
+	cmd = orch.getCliArgs()[0]
 	execPath, _ := os.Executable()
 	if cmd != execPath {
 		t.Errorf("expected %q, got %q", execPath, cmd)
@@ -1556,84 +1559,28 @@ func TestOrchestrator_GetCliCommand(t *testing.T) {
 }
 
 func TestOrchestrator_FormatCliCommandForShell(t *testing.T) {
-	fsys := newMemFS()
-	reg := registry.NewRegistry(nil)
-	orch := NewOrchestrator(nil, fsys, nil, reg, nil)
-	projCfg := &config.ProjectConfig{
-		Paths: config.PathsConfig{
-			TargetDir: "/home/user/.generated/bin",
-		},
+	orch := NewOrchestrator(nil, newMemFS(), nil, registry.NewRegistry(nil), nil)
+	project := &config.ProjectConfig{Paths: config.PathsConfig{TargetDir: "/home/user/.generated/bin"}}
+	for _, tc := range []struct{ command, posix, powershell string }{
+		{"go run /path/to/cmd/dotfiles", "go run /path/to/cmd/dotfiles", "'go' 'run' '/path/to/cmd/dotfiles'"},
+		{"go run /path with spaces/cmd/dotfiles", "go run '/path with spaces/cmd/dotfiles'", "'go' 'run' '/path with spaces/cmd/dotfiles'"},
+		{`C:\Users\bin\dotfiles`, `'C:\Users\bin\dotfiles'`, `'C:\Users\bin\dotfiles'`},
+		{"dotfiles", "command dotfiles", "'/home/user/.generated/bin/dotfiles'"},
+		{"/virtual/dir with spaces/bin/dotfiles", "'/virtual/dir with spaces/bin/dotfiles'", "'/virtual/dir with spaces/bin/dotfiles'"},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			t.Setenv("DOTFILES_CLI_COMMAND", tc.command)
+			for _, sh := range []string{"bash", "zsh", "powershell"} {
+				want := tc.posix
+				if sh == "powershell" {
+					want = tc.powershell
+				}
+				if got := orch.CliCommandForShell(sh, project); got != want {
+					t.Errorf("%s = %q, want %q", sh, got, want)
+				}
+			}
+		})
 	}
-
-	t.Run("multi-token go run without spaces", func(t *testing.T) {
-		t.Setenv("DOTFILES_CLI_COMMAND", "go run /path/to/cmd/dotfiles")
-		if got := orch.CliCommandForShell("zsh", projCfg); got != "go run /path/to/cmd/dotfiles" {
-			t.Errorf("expected %q, got %q", "go run /path/to/cmd/dotfiles", got)
-		}
-		if got := orch.CliCommandForShell("powershell", projCfg); got != "go run /path/to/cmd/dotfiles" {
-			t.Errorf("expected %q, got %q", "go run /path/to/cmd/dotfiles", got)
-		}
-	})
-
-	t.Run("multi-token go run with space in package path", func(t *testing.T) {
-		t.Setenv("DOTFILES_CLI_COMMAND", "go run /path with spaces/cmd/dotfiles")
-		want := `go run "/path with spaces/cmd/dotfiles"`
-		if got := orch.CliCommandForShell("zsh", projCfg); got != want {
-			t.Errorf("expected %q, got %q", want, got)
-		}
-	})
-
-	t.Run("windows backslashes converted for all shells", func(t *testing.T) {
-		t.Setenv("DOTFILES_CLI_COMMAND", `C:\Users\bin\dotfiles`)
-		if got := orch.CliCommandForShell("zsh", projCfg); got != "C:/Users/bin/dotfiles" {
-			t.Errorf("expected forward slashes for zsh, got %q", got)
-		}
-		if got := orch.CliCommandForShell("powershell", projCfg); got != "C:/Users/bin/dotfiles" {
-			t.Errorf("expected forward slashes for powershell, got %q", got)
-		}
-	})
-
-	t.Run("bare dotfiles prevents recursion with command in bash and zsh", func(t *testing.T) {
-		t.Setenv("DOTFILES_CLI_COMMAND", "dotfiles")
-		if got := orch.CliCommandForShell("zsh", projCfg); got != "command dotfiles" {
-			t.Errorf("expected 'command dotfiles' for zsh, got %q", got)
-		}
-		if got := orch.CliCommandForShell("bash", projCfg); got != "command dotfiles" {
-			t.Errorf("expected 'command dotfiles' for bash, got %q", got)
-		}
-		if got := orch.CliCommandForShell("powershell", projCfg); got != `"/home/user/.generated/bin/dotfiles"` {
-			t.Errorf("expected target bin for powershell, got %q", got)
-		}
-	})
-
-	t.Run("path with spaces quoted even if not on host disk", func(t *testing.T) {
-		t.Setenv("DOTFILES_CLI_COMMAND", "/virtual/dir with spaces/bin/dotfiles")
-		want := `"/virtual/dir with spaces/bin/dotfiles"`
-		if got := orch.CliCommandForShell("zsh", projCfg); got != want {
-			t.Errorf("expected %q, got %q", want, got)
-		}
-		if got := orch.CliCommandForShell("powershell", projCfg); got != want {
-			t.Errorf("expected %q, got %q", want, got)
-		}
-	})
-
-	t.Run("existing file with spaces quoted", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		spacedDir := filepath.Join(tmpDir, "spaced dir")
-		if err := os.MkdirAll(spacedDir, 0755); err != nil {
-			t.Fatal(err)
-		}
-		dummyBin := filepath.Join(spacedDir, "dotfiles")
-		if err := os.WriteFile(dummyBin, []byte("#!/bin/sh\n"), 0755); err != nil {
-			t.Fatal(err)
-		}
-
-		t.Setenv("DOTFILES_CLI_COMMAND", dummyBin)
-		want := fmt.Sprintf(`"%s"`, filepath.ToSlash(dummyBin))
-		if got := orch.CliCommandForShell("zsh", projCfg); got != want {
-			t.Errorf("expected quoted path %s, got %s", want, got)
-		}
-	})
 }
 
 func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
@@ -1689,7 +1636,7 @@ func TestGenerateShellScripts_ZshPlugin(t *testing.T) {
 	}
 
 	scriptContent := string(data)
-	expectedSource := `source "/home/user/.generated/binaries/my-plugin/current/my-plugin.plugin.zsh"`
+	expectedSource := `source /home/user/.generated/binaries/my-plugin/current/my-plugin.plugin.zsh`
 	if !strings.Contains(scriptContent, expectedSource) {
 		t.Errorf("expected script to contain %q, got %q", expectedSource, scriptContent)
 	}
@@ -1743,8 +1690,8 @@ func TestZshPlugin_UnclonedFallbackSource(t *testing.T) {
 	}
 
 	scriptContent := string(data)
-	expectedGuard := `if [ ! -f "/home/user/.generated/binaries/uncloned-plugin/current/uncloned-plugin/uncloned-plugin.plugin.zsh" ]; then`
-	expectedSource := `source "/home/user/.generated/binaries/uncloned-plugin/current/uncloned-plugin/uncloned-plugin.plugin.zsh"`
+	expectedGuard := `if [ ! -f /home/user/.generated/binaries/uncloned-plugin/current/uncloned-plugin/uncloned-plugin.plugin.zsh ]; then`
+	expectedSource := `source /home/user/.generated/binaries/uncloned-plugin/current/uncloned-plugin/uncloned-plugin.plugin.zsh`
 	if !strings.Contains(scriptContent, expectedGuard) {
 		t.Errorf("expected script to contain lazy install guard %q, got:\n%s", expectedGuard, scriptContent)
 	}
@@ -2638,7 +2585,7 @@ func TestManualBinaryPathResolvesLikeTheInstaller(t *testing.T) {
 			if err != nil {
 				t.Fatalf("expected the shim to exist: %v", err)
 			}
-			wantExecutable := `TOOL_EXECUTABLE="/home/user/.generated/binaries/probe/current/probe-bin-4f1d"`
+			wantExecutable := `TOOL_EXECUTABLE=/home/user/.generated/binaries/probe/current/probe-bin-4f1d`
 			if !strings.Contains(string(shim), wantExecutable) {
 				t.Errorf("generated shim lacks %s:\n%s", wantExecutable, shim)
 			}
@@ -2724,7 +2671,7 @@ func TestManualToolWithTildeBinaryPath_GenerateToolAndInstall(t *testing.T) {
 	if strings.Contains(string(shimContent), "/current/~/.local/bin/claude") {
 		t.Errorf("shim contains unexpanded tilde path: %s", string(shimContent))
 	}
-	wantExecutable := "TOOL_EXECUTABLE=\"/home/user/.generated/binaries/claude-code/current/claude\""
+	wantExecutable := "TOOL_EXECUTABLE=/home/user/.generated/binaries/claude-code/current/claude"
 	if !strings.Contains(string(shimContent), wantExecutable) {
 		t.Errorf("expected TOOL_EXECUTABLE to be %s, got: %s", wantExecutable, string(shimContent))
 	}
@@ -2805,7 +2752,7 @@ func TestManualToolMultiCallBinary_ShimsTargetPerNameFiles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected shim for %s to exist: %v", name, err)
 		}
-		want := `TOOL_EXECUTABLE="/home/user/.generated/binaries/rust/current/` + name + `"`
+		want := `TOOL_EXECUTABLE=/home/user/.generated/binaries/rust/current/` + name + ``
 		if !strings.Contains(string(shim), want) {
 			t.Errorf("generated shim for %s lacks %s:\n%s", name, want, shim)
 		}
@@ -2820,7 +2767,7 @@ func TestManualToolMultiCallBinary_ShimsTargetPerNameFiles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected shim for %s to exist after install: %v", name, err)
 		}
-		want := `TOOL_EXECUTABLE="/home/user/.generated/binaries/rust/current/` + name + `"`
+		want := `TOOL_EXECUTABLE=/home/user/.generated/binaries/rust/current/` + name + ``
 		if !strings.Contains(string(shim), want) {
 			t.Errorf("installed shim for %s lacks %s:\n%s", name, want, shim)
 		}
@@ -2878,7 +2825,7 @@ func TestGenerateTool_ExternalToolBootstrapShimTargetsCurrentEntrypoint(t *testi
 
 			// v1 pointed every shim at the dotfiles-managed entrypoint; the install
 			// pipeline materialises it as a symlink to the real binary on success.
-			wantExecutable := fmt.Sprintf("TOOL_EXECUTABLE=%q", filepath.Join("/home/user/binaries", tool.Name, "current", bootstrapTestBinName))
+			wantExecutable := "TOOL_EXECUTABLE=" + shell.Quote(filepath.Join("/home/user/binaries", tool.Name, "current", bootstrapTestBinName))
 			if !strings.Contains(shim, wantExecutable) {
 				t.Errorf("bootstrap shim must target the current entrypoint, want %s in:\n%s", wantExecutable, shim)
 			}
@@ -2954,9 +2901,9 @@ func TestInstallTool_ExternalToolShimTarget(t *testing.T) {
 			toolDir := filepath.Join("/home/user/binaries", tool.Name)
 			currentEntrypoint := filepath.Join(toolDir, "current", bootstrapTestBinName)
 
-			wantExecutable := fmt.Sprintf("TOOL_EXECUTABLE=%q", currentEntrypoint)
+			wantExecutable := "TOOL_EXECUTABLE=" + shell.Quote(currentEntrypoint)
 			if tt.binaryExists {
-				wantExecutable = fmt.Sprintf("TOOL_EXECUTABLE=%q", reportedBinary)
+				wantExecutable = "TOOL_EXECUTABLE=" + shell.Quote(reportedBinary)
 			}
 			if !strings.Contains(shim, wantExecutable) {
 				t.Errorf("want %s in shim:\n%s", wantExecutable, shim)
@@ -3048,7 +2995,7 @@ func TestGenerateTool_UninstalledToolNeverTargetsSameNamedSystemBinary(t *testin
 
 			// The shim installs the tool on first use only while its target is missing,
 			// so an uninstalled tool must target its own entrypoint, never /usr/bin/git.
-			want := fmt.Sprintf("TOOL_EXECUTABLE=%q", filepath.Join(projCfg.Paths.BinariesDir, binName, "current", binName))
+			want := "TOOL_EXECUTABLE=" + shell.Quote(filepath.Join(projCfg.Paths.BinariesDir, binName, "current", binName))
 			if !strings.Contains(shim, want) {
 				t.Errorf("want %s in shim:\n%s", want, shim)
 			}
@@ -3096,7 +3043,7 @@ func TestGenerateTool_InstalledToolWithMissingBinaryReportsSystemSubstitute(t *t
 	if err != nil {
 		t.Fatalf("expected shim to exist: %v", err)
 	}
-	if want := fmt.Sprintf("TOOL_EXECUTABLE=%q", "/usr/bin/"+binName); !strings.Contains(string(shimBytes), want) {
+	if want := "TOOL_EXECUTABLE=" + shell.Quote("/usr/bin/"+binName); !strings.Contains(string(shimBytes), want) {
 		t.Errorf("want %s in shim:\n%s", want, shimBytes)
 	}
 
@@ -3124,7 +3071,7 @@ func TestInstallThenGenerate_SystemSubstituteIsReportedEveryTime(t *testing.T) {
 		Binaries:           testutil.DeclaredBinaries(binName),
 	}
 	wantWarn := `Installed binary "docker" is missing at ~/binaries/orbstack/current/docker; its shim runs /usr/bin/docker, which dotfiles did not install`
-	wantTarget := fmt.Sprintf("TOOL_EXECUTABLE=%q", "/usr/bin/"+binName)
+	wantTarget := "TOOL_EXECUTABLE=" + shell.Quote("/usr/bin/"+binName)
 	shimPath := filepath.Join(projCfg.Paths.TargetDir, binName)
 
 	if err := orch.InstallTool(ctx, tool, projCfg); err != nil {
@@ -5243,7 +5190,7 @@ func TestGenerateToolPrefersCurrentOverRecordedVersion(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if target := fmt.Sprintf("TOOL_EXECUTABLE=%q", want); !strings.Contains(string(content), target) {
+			if target := "TOOL_EXECUTABLE=" + shell.Quote(want); !strings.Contains(string(content), target) {
 				t.Errorf("generated shim must contain %s", target)
 			}
 		})
@@ -5317,7 +5264,7 @@ func TestManualTool_ShimTargetUnifiedBetweenInstallAndGenerate(t *testing.T) {
 		t.Fatalf("reading shim after install: %v", err)
 	}
 	expectedTarget := "/home/user/.generated/binaries/" + toolName + "/current/mycmd"
-	expectedExecutable := fmt.Sprintf("TOOL_EXECUTABLE=%q", expectedTarget)
+	expectedExecutable := "TOOL_EXECUTABLE=" + shell.Quote(expectedTarget)
 	if !strings.Contains(string(shimBytes), expectedExecutable) {
 		t.Fatalf("InstallTool shim target mismatch:\nwant to contain %s\ngot:\n%s", expectedExecutable, string(shimBytes))
 	}
@@ -6555,6 +6502,8 @@ func TestCleanupUvUsesRecordedIdentityOrWarns(t *testing.T) {
 	}
 }
 
+// artifactFailureFS models a failed operation on one owned path while allowing
+// unrelated tools in the batch to proceed normally.
 type artifactFailureFS struct {
 	fs.FS
 	operation, path string
@@ -6790,6 +6739,127 @@ func TestCompletionFilesystemFailuresSurface(t *testing.T) {
 	}
 }
 
+func TestCliInvocationNeedsExplicitDevelopmentRoot(t *testing.T) {
+	orch := NewOrchestrator(nil, newMemFS(), nil, registry.NewRegistry(nil), nil)
+	t.Setenv("DOTFILES_CLI_COMMAND", "")
+	t.Setenv("DOTFILES_REPO_ROOT", "")
+	t.Setenv("DOTFILES_E2E_TEST", "")
+	if os.Getenv("DOTFILES_TEST_CLI_PATH") == "1" {
+		fmt.Print(orch.getCliArgs()[0])
+		os.Exit(0)
+	}
+	// A compiled executable under a temp directory with every former heuristic
+	// marker must still generate an invocation of that executable.
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	copyPath := filepath.Join(t.TempDir(), "go-build api_test $cash `tick` 'quote' binary")
+	if err := os.Link(executable, copyPath); err != nil {
+		content, err := os.ReadFile(executable)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(copyPath, content, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := osexec.CommandContext(ctx, copyPath, "-test.run=^TestCliInvocationNeedsExplicitDevelopmentRoot$")
+	cmd.Env = append(os.Environ(), "DOTFILES_TEST_CLI_PATH=1")
+	out, err := cmd.CombinedOutput()
+	if err != nil || string(out) != copyPath {
+		t.Fatalf("installed invocation = %q, %v; want %q", out, err, copyPath)
+	}
+	root := filepath.Join(t.TempDir(), "source $cash 'quotes'")
+	t.Setenv("DOTFILES_REPO_ROOT", root)
+	if got := orch.getCliArgs(); strings.Join(got, "\x00") != strings.Join([]string{"go", "-C", root, "run", "./cmd/dotfiles"}, "\x00") {
+		t.Fatalf("explicit development invocation = %q", got)
+	}
+	t.Setenv("DOTFILES_E2E_TEST", "true")
+	if got := orch.getCliArgs(); len(got) != 1 || got[0] != executable {
+		t.Fatalf("E2E invocation = %q", got)
+	}
+}
+
+func TestGeneratedCliWrappersPreserveLiteralArguments(t *testing.T) {
+	stubShell, err := osexec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh is unavailable for the executable fixture")
+	}
+	for _, sh := range []string{"bash", "zsh", "powershell"} {
+		t.Run(sh, func(t *testing.T) {
+			name := sh
+			if sh == "powershell" {
+				name = "pwsh"
+			}
+			executable, err := osexec.LookPath(name)
+			if err != nil {
+				t.Skipf("%s is unavailable: %v", name, err)
+			}
+			for _, special := range []string{"space name", "$cash", "`tick`", `double"quote`, "single'quote", `back\slash`, "line\nfeed", "non\u00a0breaking"} {
+				t.Run(special, func(t *testing.T) {
+					p := newBashRuntimeProject(t)
+					cli := filepath.Join(p.homeDir, "cli-"+special)
+					if err := os.WriteFile(cli, []byte("#!"+stubShell+"\nprintf '%s\\000' \"$@\" \"${DOTFILES_TEST_SOURCE:?source missing}\" > \"$DOTFILES_TEST_RECORD\"\n"), 0755); err != nil {
+						t.Fatal(err)
+					}
+					t.Setenv("DOTFILES_CLI_COMMAND", cli)
+					p.orch.configFilePath = filepath.Join(p.homeDir, "config-"+special+".ts")
+					sourceName := "source-" + special
+					sourceContent := "export DOTFILES_TEST_SOURCE=loaded\n"
+					if sh == "powershell" {
+						// PowerShell treats backslashes as directory separators.
+						if special == `back\slash` {
+							sourceName = "source-backslash"
+						}
+						sourceName += ".ps1"
+						sourceContent = "$env:DOTFILES_TEST_SOURCE = 'loaded'\n"
+					}
+					sourcePath := filepath.Join(p.homeDir, sourceName)
+					if err := os.WriteFile(sourcePath, []byte(sourceContent), 0644); err != nil {
+						t.Fatal(err)
+					}
+					stc := &config.ShellTypeConfig{Scripts: []config.ShellScript{{Kind: "sourceFile", Value: sourcePath}}}
+					tool := &config.ToolConfig{Name: "source-probe", ConfigFilePath: p.orch.configFilePath, ShellConfigs: &config.ShellConfigs{Bash: stc, Zsh: stc, Powershell: stc}}
+					if err := p.orch.generateShellScripts(context.Background(), []*config.ToolConfig{tool}, p.projCfg); err != nil {
+						t.Fatal(err)
+					}
+					ext := sh
+					quote := shell.Quote
+					prefix := "source "
+					flags := []string{"--noprofile", "--norc", "-c"}
+					if sh == "zsh" {
+						flags = []string{"-f", "-c"}
+					}
+					if sh == "powershell" {
+						ext = "ps1"
+						quote = shell.QuotePowerShell
+						prefix = ". "
+						flags = []string{"-NoLogo", "-NoProfile", "-NonInteractive", "-Command"}
+					}
+					script := prefix + quote(filepath.Join(p.projCfg.Paths.ShellScriptsDir, "main."+ext)) + "; dotfiles probe " + quote(special)
+					record := filepath.Join(p.homeDir, "args")
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					cmd := osexec.CommandContext(ctx, executable, append(flags, script)...)
+					cmd.Env = append(os.Environ(), "DOTFILES_TEST_RECORD="+record, "DOTFILES_TEST_SOURCE=")
+					out, err := cmd.CombinedOutput()
+					if err != nil {
+						t.Fatalf("%s wrapper failed: %v\n%s", sh, err, out)
+					}
+					got, err := os.ReadFile(record)
+					want := strings.Join([]string{"--config", p.orch.configFilePath, "probe", special, "loaded", ""}, "\x00")
+					if err != nil || string(got) != want {
+						t.Fatalf("arguments = %q, %v; want %q", got, err, want)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestStaleCopiesPreserveUnreadableFilesAndReceipts(t *testing.T) {
 	for _, operation := range []string{"read", "lstat"} {
 		t.Run(operation, func(t *testing.T) {
@@ -6833,6 +6903,62 @@ func TestStaleCopiesPreserveUnreadableFilesAndReceipts(t *testing.T) {
 				t.Fatalf("retry lost user changes: %q", got)
 			}
 			assertRemovalRecorded(t, o, "bad", path)
+		})
+	}
+}
+
+func TestDevelopmentCliRunsOutsideSourceModule(t *testing.T) {
+	if _, err := osexec.LookPath("go"); err != nil {
+		t.Skip("go is unavailable")
+	}
+	root := filepath.Join(t.TempDir(), "source $cash 'quoted'")
+	if err := os.MkdirAll(filepath.Join(root, "cmd", "dotfiles"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	for path, content := range map[string]string{
+		filepath.Join(root, "go.mod"):                     "module example.test/cli\ngo 1.23\n",
+		filepath.Join(root, "cmd", "dotfiles", "main.go"): "package main\nimport (\"fmt\"; \"os\")\nfunc main() { fmt.Printf(\"%s|%s\", os.Args[1], os.Getenv(\"DOTFILES_REPO_ROOT\")) }\n",
+	} {
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("DOTFILES_CLI_COMMAND", "")
+	t.Setenv("DOTFILES_REPO_ROOT", root)
+	t.Setenv("DOTFILES_E2E_TEST", "")
+	orch := NewOrchestrator(nil, newMemFS(), nil, registry.NewRegistry(nil), nil)
+	for _, sh := range []string{"bash", "zsh", "powershell"} {
+		t.Run(sh, func(t *testing.T) {
+			name := sh
+			flags := []string{"--noprofile", "--norc", "-c"}
+			if sh == "zsh" {
+				flags = []string{"-f", "-c"}
+			}
+			if sh == "powershell" {
+				name = "pwsh"
+				flags = []string{"-NoLogo", "-NoProfile", "-NonInteractive", "-Command"}
+			}
+			executable, err := osexec.LookPath(name)
+			if err != nil {
+				t.Skipf("%s unavailable: %v", name, err)
+			}
+			command := orch.CliCommandForShell(sh, nil) + " 'dev argument'"
+			if sh == "powershell" {
+				command = "& " + command + "; if ($env:DOTFILES_REPO_ROOT -ne 'caller value') { exit 34 }"
+			} else {
+				command += "; [[ $DOTFILES_REPO_ROOT == 'caller value' ]] || exit 34"
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			cmd := osexec.CommandContext(ctx, executable, append(flags, command)...)
+			cmd.Dir = t.TempDir()
+			// A future shell must use the generated root without retaining it after
+			// invocation or relying on the environment of the original Just recipe.
+			cmd.Env = append(os.Environ(), "DOTFILES_REPO_ROOT=caller value")
+			output, err := cmd.CombinedOutput()
+			if err != nil || string(output) != "dev argument|"+root {
+				t.Fatalf("development invocation from unrelated directory: %q, %v", output, err)
+			}
 		})
 	}
 }

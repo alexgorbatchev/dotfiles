@@ -103,7 +103,7 @@ func TestToolMakeRunsTheHarness(t *testing.T) {
 		Subject:        "https://github.com/muesli/duf with config",
 		ConfigPath:     p.ConfigPath,
 		ToolConfigsDir: filepath.Join(p.Root, "tools"),
-		CLI:            `"` + stubCLI + `"`,
+		CLI:            "'" + stubCLI + "'",
 	})
 	if len(run.Args) != 3 || run.Args[0] != "-p" || run.Args[1] != wantPrompt || run.Args[2] != "--verbose" {
 		t.Fatalf("harness arguments = %q, want [-p <prompt> --verbose] with prompt\n%s", run.Args, wantPrompt)
@@ -195,7 +195,7 @@ func TestToolMakeDryRunPrintsThePrompt(t *testing.T) {
 	if _, err := os.Stat(record); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("a dry run started the harness: %v", err)
 	}
-	wantPrompt := harness.ToolPrompt(harness.ToolRequest{Subject: "duf", ConfigPath: p.ConfigPath, ToolConfigsDir: filepath.Join(p.Root, "tools"), CLI: `"` + stubCLI + `"`})
+	wantPrompt := harness.ToolPrompt(harness.ToolRequest{Subject: "duf", ConfigPath: p.ConfigPath, ToolConfigsDir: filepath.Join(p.Root, "tools"), CLI: "'" + stubCLI + "'"})
 	if out.Stdout != wantPrompt {
 		t.Fatalf("stdout = %q, want the prompt %q", out.Stdout, wantPrompt)
 	}

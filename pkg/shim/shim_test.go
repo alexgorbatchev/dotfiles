@@ -1,8 +1,10 @@
 package shim
 
 import (
+	"context"
 	"fmt"
 	"os"
+	osexec "os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,7 +31,7 @@ func TestGenerator_Generate(t *testing.T) {
 				BinaryPath:           "/opt/mytool/bin/mytool",
 				BashPath:             "/opt/bash/bin/bash",
 				Sudo:                 false,
-				CliCommand:           "dotfiles",
+				CliArgs:              []string{"dotfiles"},
 				ConfigFilePath:       "dotfiles.config.ts",
 				UsageLogPath:         "usage.log",
 				MissingBinaryMessage: "Custom missing msg",
@@ -46,13 +48,13 @@ func TestGenerator_Generate(t *testing.T) {
 
 set -euo pipefail
 
-TOOL_NAME="mytool"
-BINARY_NAME="mytool"
-TOOL_EXECUTABLE="/opt/mytool/bin/mytool"
+TOOL_NAME=mytool
+BINARY_NAME=mytool
+TOOL_EXECUTABLE=/opt/mytool/bin/mytool
 TOOL_REQUIRES_SUDO="0"
-GENERATOR_CLI_EXECUTABLE="dotfiles"
-CONFIG_PATH="dotfiles.config.ts"
-USAGE_LOG_PATH="usage.log"
+GENERATOR_CLI=(dotfiles )
+CONFIG_PATH=dotfiles.config.ts
+USAGE_LOG_PATH=usage.log
 
 # Prevent self-referential infinite loops
 shim_self_path="${BASH_SOURCE[0]:-$0}"
@@ -206,7 +208,7 @@ func TestGenerator_GenerateUpdateDelegatesReporting(t *testing.T) {
 		BinaryName:     "mytool",
 		BinaryPath:     "/opt/mytool/bin/mytool",
 		BashPath:       "/opt/bash/bin/bash",
-		CliCommand:     "dotfiles",
+		CliArgs:        []string{"dotfiles"},
 		ConfigFilePath: "dotfiles.config.ts",
 		UsageLogPath:   "usage.log",
 	}
@@ -220,8 +222,7 @@ func TestGenerator_GenerateUpdateDelegatesReporting(t *testing.T) {
 
 	const updateBranch = `if [ $# -gt 0 ] && [ "$1" = "@update" ]; then
   # tool update --shim-mode reports what became of the tool, so the shim adds nothing.
-  # Use eval to properly handle GENERATOR_CLI_EXECUTABLE with spaces
-  eval "$GENERATOR_CLI_EXECUTABLE" tool update --shim-mode --config '"$CONFIG_PATH"' '"$TOOL_NAME"'
+  "${GENERATOR_CLI[@]}" tool update --shim-mode --config "$CONFIG_PATH" "$TOOL_NAME"
   exit $?
 fi`
 	if !strings.Contains(string(content), updateBranch) {
@@ -475,7 +476,7 @@ func TestGenerator_GenerateLeavesIdenticalShimAlone(t *testing.T) {
 		BinaryName:     "mytool",
 		BinaryPath:     filepath.Join(dir, "binaries", "mytool", "current", "mytool"),
 		BashPath:       "/bin/bash",
-		CliCommand:     "dotfiles",
+		CliArgs:        []string{"dotfiles"},
 		ConfigFilePath: filepath.Join(dir, "dotfiles.config.ts"),
 		UsageLogPath:   filepath.Join(dir, "usage", "shim-usage.log"),
 	}
@@ -521,5 +522,60 @@ func TestGenerator_GenerateLeavesIdenticalShimAlone(t *testing.T) {
 	changed, _ := os.ReadFile(shimPath)
 	if string(changed) == string(first) {
 		t.Errorf("shim content did not follow the new binary path")
+	}
+}
+
+func TestShimPreservesPathsDuringInstallAndUpdate(t *testing.T) {
+	bash, err := osexec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash is unavailable")
+	}
+	for _, special := range []string{"space name", "$cash", "`tick`", `double"quote`, "single'quote", `back\slash`, "line\nfeed", "non\u00a0breaking"} {
+		t.Run(special, func(t *testing.T) {
+			dir := t.TempDir()
+			cli := filepath.Join(dir, "cli-"+special)
+			binary := filepath.Join(dir, "binary-"+special)
+			calls, actual := filepath.Join(dir, "cli-args"), filepath.Join(dir, "tool-args")
+			tool := filepath.Join(dir, "tool-template")
+			toolScript := "#!" + bash + "\nprintf '%s\\000' \"$@\" > \"$DOTFILES_TEST_TOOL_ARGS\"\n"
+			if err := os.WriteFile(tool, []byte(toolScript), 0755); err != nil {
+				t.Fatal(err)
+			}
+			cliScript := "#!" + bash + "\nprintf '%s\\000' \"$@\" \"$DOTFILES_TEST_CLI_ENV\" > \"$DOTFILES_TEST_CLI_ARGS\"\nif [[ \"$3\" == install ]]; then cp -- \"$DOTFILES_TEST_TEMPLATE\" \"$DOTFILES_TEST_BINARY\"; fi\n"
+			if err := os.WriteFile(cli, []byte(cliScript), 0755); err != nil {
+				t.Fatal(err)
+			}
+			cfg := Config{ToolName: "tool-" + special, BinaryName: "binary-" + special, BinaryPath: binary, BashPath: bash, CliArgs: []string{cli, "fixed argument"}, CliEnv: "DOTFILES_TEST_CLI_ENV=" + special, ConfigFilePath: filepath.Join(dir, "config-"+special+".ts"), UsageLogPath: filepath.Join(dir, "usage-"+special)}
+			shimPath := filepath.Join(dir, "shim-"+special)
+			if err := NewGenerator(fs.NewOSFS()).Generate(shimPath, cfg); err != nil {
+				t.Fatal(err)
+			}
+			for _, action := range []string{"install", "update"} {
+				args := []string{"tool argument", special}
+				if action == "update" {
+					args = []string{"@update"}
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				cmd := osexec.CommandContext(ctx, bash, append([]string{shimPath}, args...)...)
+				cmd.Env = append(os.Environ(), "DOTFILES_LOCAL_USAGE_TRACKING=0", "DOTFILES_TEST_CLI_ENV=caller value", "DOTFILES_TEST_CLI_ARGS="+calls, "DOTFILES_TEST_TOOL_ARGS="+actual, "DOTFILES_TEST_TEMPLATE="+tool, "DOTFILES_TEST_BINARY="+binary)
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("%s: %v\n%s", action, err, out)
+				}
+				got, err := os.ReadFile(calls)
+				want := strings.Join([]string{"fixed argument", "tool", action, "--shim-mode", "--config", cfg.ConfigFilePath, cfg.ToolName, special, ""}, "\x00")
+				if err != nil || string(got) != want {
+					t.Fatalf("%s CLI arguments=%q, %v; want %q", action, got, err, want)
+				}
+				if action == "install" {
+					got, err := os.ReadFile(actual)
+					want := strings.Join(append(args, ""), "\x00")
+					if err != nil || string(got) != want {
+						t.Fatalf("tool arguments=%q, %v; want %q", got, err, want)
+					}
+				}
+			}
+		})
 	}
 }

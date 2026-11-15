@@ -262,45 +262,37 @@ func getStringParam(params map[string]interface{}, key string, defaultValue stri
 	return str
 }
 
-func (o *Orchestrator) getCliCommand() string {
-	if cmd := os.Getenv("DOTFILES_CLI_COMMAND"); cmd != "" {
-		return cmd
-	}
-
-	execPath, err := os.Executable()
-	if err != nil {
-		return "dotfiles"
-	}
-
-	tempDir := os.TempDir()
-	isTemp := strings.HasPrefix(execPath, tempDir) ||
-		strings.Contains(execPath, "go-build") ||
-		strings.Contains(execPath, "_test")
-
-	if isTemp {
-		if os.Getenv("DOTFILES_E2E_TEST") == "true" {
-			return execPath
+// getCliArgs returns executable and fixed arguments without shell parsing.
+// The legacy explicit override accepts either a literal executable path or
+// "go run " followed by one literal package path.
+func (o *Orchestrator) getCliArgs() []string {
+	if command := os.Getenv("DOTFILES_CLI_COMMAND"); command != "" {
+		if path, ok := strings.CutPrefix(command, "go run "); ok {
+			return []string{"go", "run", path}
 		}
-
-		repoRoot := os.Getenv("DOTFILES_REPO_ROOT")
-		if repoRoot == "" {
-			dir, _ := os.Getwd()
-			for dir != "/" && dir != "." {
-				if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-					repoRoot = dir
-					break
-				}
-				dir = filepath.Dir(dir)
-			}
-		}
-
-		if repoRoot != "" {
-			return fmt.Sprintf("go run %s", filepath.Join(repoRoot, "cmd", "dotfiles"))
-		}
-		return "dotfiles"
+		return []string{command}
 	}
+	// The source root is an explicit development signal, set by go-run recipes.
+	// -C makes generated wrappers work outside the source module as well.
+	if root := os.Getenv("DOTFILES_REPO_ROOT"); root != "" && os.Getenv("DOTFILES_E2E_TEST") != "true" {
+		return []string{"go", "-C", root, "run", "./cmd/dotfiles"}
+	}
+	if executable, err := os.Executable(); err == nil {
+		return []string{executable}
+	}
+	return []string{"dotfiles"}
+}
 
-	return execPath
+// getCliEnvironment carries explicit development mode into future generated
+// invocations, whose shell may no longer have the original recipe's environment.
+func (o *Orchestrator) getCliEnvironment() string {
+	if os.Getenv("DOTFILES_CLI_COMMAND") != "" || os.Getenv("DOTFILES_E2E_TEST") == "true" {
+		return ""
+	}
+	if root := os.Getenv("DOTFILES_REPO_ROOT"); root != "" {
+		return "DOTFILES_REPO_ROOT=" + root
+	}
+	return ""
 }
 
 func (o *Orchestrator) formatPath(projCfg *config.ProjectConfig, p string) string {

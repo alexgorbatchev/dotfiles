@@ -8,12 +8,18 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	shellquote "github.com/alexgorbatchev/dotfiles/pkg/shell"
 )
 
 const (
 	// HeaderMarker is the header block marker for dotfiles initialization.
 	HeaderMarker = "# Generated via dotfiles generator - do not modify"
+	footerMarker = "# End of dotfiles initialization"
 )
+
+// New blocks have an explicit end marker so multiline PowerShell literals remain
+// removable. The second alternative migrates blocks written by earlier versions.
+var profileBlock = regexp.MustCompile(`(?m)` + regexp.QuoteMeta(HeaderMarker) + `[\s\S]*?^` + regexp.QuoteMeta(footerMarker) + `$|` + regexp.QuoteMeta(HeaderMarker) + `[\s\S]*?^\s*(?:source|\.)\s+["'].*?["'].*?$`)
 
 // ErrProfileNotFound reports that the profile named in InjectOptions does not exist.
 // Inject never creates a profile: the file belongs to the user, so a missing one is
@@ -67,21 +73,21 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 
 	var sourceLine string
 	if opts.Shell == "powershell" {
-		sourceLine = fmt.Sprintf(". %q", opts.ScriptPath)
+		sourceLine = ". " + shellquote.QuotePowerShell(opts.ScriptPath)
 	} else {
-		sourceLine = fmt.Sprintf("source %q", opts.ScriptPath)
+		sourceLine = "source " + shellquote.Quote(opts.ScriptPath)
 	}
 
-	newBlock := fmt.Sprintf("%s\n# ------------------------------------------------------------------------------\n%s", HeaderMarker, sourceLine)
+	newBlock := fmt.Sprintf("%s\n# ------------------------------------------------------------------------------\n%s\n%s", HeaderMarker, sourceLine, footerMarker)
 
 	if strings.Contains(content, HeaderMarker) {
-		re := regexp.MustCompile(`(?m)# Generated via dotfiles generator - do not modify[\s\S]*?^\s*(?:source|\.)\s+["'].*?["'].*?$`)
+		re := profileBlock
 		if re.MatchString(content) {
 			oldBlock := re.FindString(content)
 			if oldBlock == newBlock {
 				return false, nil
 			}
-			if err := inj.writePreservingPerm(opts.ProfilePath, re.ReplaceAllString(content, newBlock), perm); err != nil {
+			if err := inj.writePreservingPerm(opts.ProfilePath, re.ReplaceAllStringFunc(content, func(string) string { return newBlock }), perm); err != nil {
 				return false, fmt.Errorf("updating profile with block: %w", err)
 			}
 			return true, nil
@@ -89,6 +95,7 @@ func (inj *Injector) Inject(opts InjectOptions) (bool, error) {
 	}
 
 	sourcePatterns := []string{
+		sourceLine,
 		fmt.Sprintf(`source %q`, opts.ScriptPath),
 		fmt.Sprintf(`source '%s'`, opts.ScriptPath),
 		fmt.Sprintf(`source %s`, opts.ScriptPath),
@@ -175,7 +182,7 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 		return false, nil
 	}
 
-	re := regexp.MustCompile(`(?m)# Generated via dotfiles generator - do not modify[\s\S]*?^\s*(?:source|\.)\s+["'].*?["'].*?$\n?`)
+	re := regexp.MustCompile("(?:" + profileBlock.String() + ")\\n?")
 	if re.MatchString(content) {
 		newContent := re.ReplaceAllString(content, "")
 
@@ -204,14 +211,14 @@ func (inj *Injector) Remove(profilePath string) (bool, error) {
 func FormatPath(shell, targetDir string) string {
 	switch shell {
 	case "powershell":
-		return fmt.Sprintf(`$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne "%s" }) -join [IO.Path]::PathSeparator
-$env:PATH = if ($filtered) { "%s" + [IO.Path]::PathSeparator + $filtered } else { "%s" }`, targetDir, targetDir, targetDir)
+		return fmt.Sprintf(`$filtered = ($env:PATH -split [IO.Path]::PathSeparator | Where-Object { $_ -and $_ -ne %s }) -join [IO.Path]::PathSeparator
+$env:PATH = if ($filtered) { %s + [IO.Path]::PathSeparator + $filtered } else { %s }`, shellquote.QuotePowerShell(targetDir), shellquote.QuotePowerShell(targetDir), shellquote.QuotePowerShell(targetDir))
 	default: // zsh, bash, sh, etc.
 		// The directory is matched through a variable: a "/" written into ${var/pattern/...}
 		// would end the pattern, and quoting the expansion matches it literally in bash 3.2
 		// (macOS's /bin/bash), current bash and zsh. The loop also stops when a replacement
 		// changes nothing, so no shell can hang its startup here.
-		return fmt.Sprintf(`__dotfiles_dir="%s"
+		return fmt.Sprintf(`__dotfiles_dir=%s
 if [[ ":$PATH:" != ":$__dotfiles_dir:"* ]]; then
   __dotfiles_path=":$PATH:"
   while [[ "$__dotfiles_path" == *":$__dotfiles_dir:"* ]]; do
@@ -224,13 +231,13 @@ if [[ ":$PATH:" != ":$__dotfiles_dir:"* ]]; then
   export PATH="$__dotfiles_dir${__dotfiles_path:+:$__dotfiles_path}"
   unset __dotfiles_path __dotfiles_next
 fi
-unset __dotfiles_dir`, targetDir)
+unset __dotfiles_dir`, shellquote.Quote(targetDir))
 	}
 }
 
 // FormatFpath returns Zsh code to unique and append the completionsDir to fpath.
 func FormatFpath(completionsDir string) string {
-	return fmt.Sprintf("typeset -U fpath\nfpath=(%q $fpath)", completionsDir)
+	return fmt.Sprintf("typeset -U fpath\nfpath=(%s $fpath)", shellquote.Quote(completionsDir))
 }
 
 // FormatCompletionLoad returns the code that makes the completion files dotfiles wrote
@@ -249,15 +256,15 @@ func FormatCompletionLoad(shell, completionsDir string) string {
 	case "bash":
 		return fmt.Sprintf(`__dotfiles_completion_nullglob="$(shopt -p nullglob)"
 shopt -s nullglob
-for completion_script in %q/*; do
+for completion_script in %s/*; do
   [[ -f "$completion_script" ]] && source "$completion_script"
 done
 eval "$__dotfiles_completion_nullglob"
-unset __dotfiles_completion_nullglob`, completionsDir)
+unset __dotfiles_completion_nullglob`, shellquote.Quote(completionsDir))
 	case "powershell":
-		return fmt.Sprintf(`if (Test-Path %q) {
-  Get-ChildItem -Path %q -Filter "*.ps1" | ForEach-Object { . $_.FullName }
-}`, completionsDir, completionsDir)
+		return fmt.Sprintf(`if (Test-Path -LiteralPath %s) {
+  Get-ChildItem -LiteralPath %s -Filter "*.ps1" | ForEach-Object { . $_.FullName }
+}`, shellquote.QuotePowerShell(completionsDir), shellquote.QuotePowerShell(completionsDir))
 	default:
 		return ""
 	}
@@ -271,21 +278,21 @@ unset __dotfiles_completion_nullglob`, completionsDir)
 func FormatOnceLoop(shell, onceDir string) string {
 	switch shell {
 	case "zsh":
-		return fmt.Sprintf(`for once_script in %q/*.zsh(N); do
+		return fmt.Sprintf(`for once_script in %s/*.zsh(N); do
   [[ -f "$once_script" ]] && source "$once_script"
-done`, onceDir)
+done`, shellquote.Quote(onceDir))
 	case "bash":
 		return fmt.Sprintf(`__dotfiles_nullglob="$(shopt -p nullglob)"
 shopt -s nullglob
-for once_script in %q/*.sh; do
+for once_script in %s/*.sh; do
   [[ -f "$once_script" ]] && source "$once_script"
 done
 eval "$__dotfiles_nullglob"
-unset __dotfiles_nullglob`, onceDir)
+unset __dotfiles_nullglob`, shellquote.Quote(onceDir))
 	case "powershell":
-		return fmt.Sprintf(`if (Test-Path %q) {
-  Get-ChildItem -Path %q -Filter "*.ps1" | ForEach-Object { & $_.FullName }
-}`, onceDir, onceDir)
+		return fmt.Sprintf(`if (Test-Path -LiteralPath %s) {
+  Get-ChildItem -LiteralPath %s -Filter "*.ps1" | ForEach-Object { & $_.FullName }
+}`, shellquote.QuotePowerShell(onceDir), shellquote.QuotePowerShell(onceDir))
 	default:
 		return ""
 	}
@@ -320,7 +327,7 @@ func GenerateFileHeader(dotfilesDir string) string {
 	lines = append(lines, HeaderLine("=", ""))
 	lines = append(lines, "")
 	if dotfilesDir != "" {
-		lines = append(lines, fmt.Sprintf("# Dotfiles directory: %s", dotfilesDir))
+		lines = append(lines, fmt.Sprintf("# Dotfiles directory: %s", commentText(dotfilesDir)))
 		lines = append(lines, "")
 	}
 	return strings.Join(lines, "\n")
@@ -336,7 +343,7 @@ func GenerateToolHeader(configFilePath string) string {
 	var lines []string
 	lines = append(lines, HeaderLine("=", ""))
 	if configFilePath != "" {
-		lines = append(lines, fmt.Sprintf("# %s", configFilePath))
+		lines = append(lines, fmt.Sprintf("# %s", commentText(configFilePath)))
 	}
 	lines = append(lines, HeaderLine("=", ""))
 	return strings.Join(lines, "\n")
@@ -345,4 +352,9 @@ func GenerateToolHeader(configFilePath string) string {
 // GenerateEndOfFile generates the end-of-file marker.
 func GenerateEndOfFile() string {
 	return GenerateSectionHeader("End of Generated File")
+}
+
+// commentText keeps a filesystem path on one comment line in every target shell.
+func commentText(value string) string {
+	return strings.NewReplacer("\r", `\r`, "\n", `\n`).Replace(value)
 }

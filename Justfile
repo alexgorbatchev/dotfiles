@@ -5,15 +5,15 @@ default: test
 
 # Run CLI in interactive human mode
 run *args:
-    go run ./cmd/dotfiles {{ args }}
+    DOTFILES_REPO_ROOT="$PWD" go run ./cmd/dotfiles {{ args }}
 
 # Run CLI against test-project in interactive human mode
 test-project *args="state generate":
-    go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
+    DOTFILES_REPO_ROOT="$PWD" go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Run CLI against test-project in agent mode (AGENT=1)
 run-ai *args="state generate":
-    AGENT=1 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
+    DOTFILES_REPO_ROOT="$PWD" AGENT=1 go run ./cmd/dotfiles --config test-project/dotfiles.config.ts {{ args }}
 
 # Full validation check (lint + typecheck + docs links + tests)
 check: lint typecheck unused docs-links test
@@ -130,7 +130,7 @@ build: compile
 
 # Run dashboard server against fixture project
 dashboard:
-    go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard
+    DOTFILES_REPO_ROOT="$PWD" go run ./cmd/dotfiles --config test-project/dotfiles.config.ts dashboard
 
 # Compile and deploy local development build into a target dotfiles directory for offline testing
 dev-bootstrap target="~/.dotfiles":

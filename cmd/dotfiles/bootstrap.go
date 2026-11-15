@@ -78,27 +78,13 @@ func (s *Services) Close() error {
 	return errors.Join(errs...)
 }
 
-// resolveConfigPath answers which configuration file a run uses, as an absolute path:
-// the --config value (with ~ expanded, and a relative path tried against the working
-// directory and then the repository root), or else the first default file found in
-// the active virtual environment, the working directory and the repository root.
+// resolveConfigPath answers which configuration file a run uses, as an absolute
+// path: --config relative to the working directory, or the first default file in
+// the active virtual environment and working directory. DOTFILES_REPO_ROOT adds
+// an explicit development fallback; unrelated go.mod files never affect lookup.
 // It only locates the file; BootstrapServices loads it.
 func resolveConfigPath(configPath string) (string, error) {
 	repoRoot := os.Getenv("DOTFILES_REPO_ROOT")
-	if repoRoot == "" {
-		// Find repo root from working directory
-		dir, _ := os.Getwd()
-		for dir != "/" && dir != "." {
-			if exists, _ := fileExists(filepath.Join(dir, "go.mod")); exists {
-				repoRoot = dir
-				break
-			}
-			dir = filepath.Dir(dir)
-		}
-	}
-	if repoRoot == "" {
-		repoRoot, _ = os.Getwd()
-	}
 
 	cwd, _ := os.Getwd()
 
@@ -144,8 +130,10 @@ func resolveConfigPath(configPath string) (string, error) {
 			cwdRel := filepath.Join(cwd, configPath)
 			if exists, _ := fileExists(cwdRel); exists {
 				configPath = cwdRel
-			} else {
+			} else if repoRoot != "" {
 				configPath = filepath.Join(repoRoot, configPath)
+			} else {
+				configPath = cwdRel
 			}
 		}
 	}

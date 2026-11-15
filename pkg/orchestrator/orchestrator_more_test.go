@@ -478,10 +478,10 @@ func TestAutoInstallAndCliCommandHelpers(t *testing.T) {
 		t.Error("expected true for auto: 'true' in InstallParams")
 	}
 
-	// getCliCommand with env var override
+	// getCliArgs with env var override
 	t.Setenv("DOTFILES_CLI_COMMAND", "dotfiles-custom")
-	if got := orch.getCliCommand(); got != "dotfiles-custom" {
-		t.Errorf("getCliCommand with env override = %q, want 'dotfiles-custom'", got)
+	if got := orch.getCliArgs()[0]; got != "dotfiles-custom" {
+		t.Errorf("getCliArgs with env override = %q, want 'dotfiles-custom'", got)
 	}
 }
 
@@ -1654,7 +1654,7 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 		t.Errorf("expected empty formatFunctionBody result")
 	}
 
-	// 8. getCliCommand with env & getTargetVersion with semver constraints
+	// 8. getCliArgs with env & getTargetVersion with semver constraints
 	_ = memFS.RemoveAll("/nonexistent-path-xyz")
 	_ = memFS.WriteFile("/remove-file.txt", []byte("data"), 0644)
 	_ = memFS.RemoveAll("/remove-file.txt")
@@ -1662,8 +1662,8 @@ func TestOrchestratorCoverageBoost(t *testing.T) {
 	_ = memFS.WriteFile("/dir-to-remove/subdir/file.txt", []byte("f"), 0644)
 	_ = memFS.RemoveAll("/dir-to-remove")
 	t.Setenv("DOTFILES_CLI_COMMAND", "/custom/dotfiles")
-	if orch.getCliCommand() != "/custom/dotfiles" {
-		t.Errorf("getCliCommand with env failed")
+	if orch.getCliArgs()[0] != "/custom/dotfiles" {
+		t.Errorf("getCliArgs with env failed")
 	}
 
 	constraintTool := &config.ToolConfig{
@@ -1733,7 +1733,7 @@ func TestInstallToolExternallyManaged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read shim: %v", err)
 	}
-	if !strings.Contains(string(shimBytes), `TOOL_EXECUTABLE="/home/test/.cache/.bun/bin/tokscale"`) {
+	if !strings.Contains(string(shimBytes), `TOOL_EXECUTABLE=/home/test/.cache/.bun/bin/tokscale`) {
 		t.Errorf("Shim content missing correct TOOL_EXECUTABLE path:\n%s", string(shimBytes))
 	}
 
@@ -1756,7 +1756,7 @@ func TestInstallToolExternallyManaged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read shim after GenerateTool: %v", err)
 	}
-	if !strings.Contains(string(shimBytesAfterGen), `TOOL_EXECUTABLE="/home/test/.cache/.bun/bin/tokscale"`) {
+	if !strings.Contains(string(shimBytesAfterGen), `TOOL_EXECUTABLE=/home/test/.cache/.bun/bin/tokscale`) {
 		t.Errorf("GenerateTool broke TOOL_EXECUTABLE path in shim:\n%s", string(shimBytesAfterGen))
 	}
 }
@@ -2655,7 +2655,7 @@ func TestWriteTypeCheckProgramCoverage(t *testing.T) {
 	}
 }
 
-func TestGetCliCommandAndFormatPathCoverage(t *testing.T) {
+func TestGetCliArgsAndFormatPathCoverage(t *testing.T) {
 	memFS := newMemFS()
 	orch := newTestOrchestrator(t, memFS, "")
 
@@ -2667,17 +2667,17 @@ func TestGetCliCommandAndFormatPathCoverage(t *testing.T) {
 		t.Errorf("formatPath empty home = %q, want /some/path", got)
 	}
 
-	// 2. getCliCommand with DOTFILES_CLI_COMMAND set
+	// 2. getCliArgs with DOTFILES_CLI_COMMAND set
 	t.Setenv("DOTFILES_CLI_COMMAND", "custom-dotfiles-cli")
-	if cmd := orch.getCliCommand(); cmd != "custom-dotfiles-cli" {
-		t.Errorf("getCliCommand = %q, want custom-dotfiles-cli", cmd)
+	if cmd := orch.getCliArgs()[0]; cmd != "custom-dotfiles-cli" {
+		t.Errorf("getCliArgs = %q, want custom-dotfiles-cli", cmd)
 	}
 
-	// 3. getCliCommand with DOTFILES_E2E_TEST set
+	// 3. getCliArgs with DOTFILES_E2E_TEST set
 	t.Setenv("DOTFILES_CLI_COMMAND", "")
 	t.Setenv("DOTFILES_E2E_TEST", "true")
-	if cmd := orch.getCliCommand(); cmd == "" {
-		t.Error("expected non-empty getCliCommand in E2E mode")
+	if cmd := orch.getCliArgs()[0]; cmd == "" {
+		t.Error("expected non-empty getCliArgs in E2E mode")
 	}
 }
 

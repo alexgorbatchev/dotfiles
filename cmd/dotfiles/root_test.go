@@ -109,7 +109,7 @@ func TestPlatformFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := runCommand("--platform", tt.value, "--config", "test-project/dotfiles.config.ts", "shell", "init")
+			out, err := runCommand("--platform", tt.value, "--config", filepath.Join(findRepoRoot(), "test-project/dotfiles.config.ts"), "shell", "init")
 			if tt.wantErr != "" {
 				if err == nil {
 					t.Fatalf("--platform %q was accepted, output:\n%s", tt.value, out.Combined)
@@ -153,7 +153,7 @@ func TestLibcFlag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := runCommand("--libc", tt.value, "--config", "test-project/dotfiles.config.ts", "shell", "init")
+			out, err := runCommand("--libc", tt.value, "--config", filepath.Join(findRepoRoot(), "test-project/dotfiles.config.ts"), "shell", "init")
 			if tt.wantErr != "" {
 				if err == nil {
 					t.Fatalf("--libc %q was accepted, output:\n%s", tt.value, out.Combined)
@@ -179,7 +179,7 @@ func TestLibcFlag(t *testing.T) {
 // Without --libc the loader is handed no override at all, so the configuration is
 // evaluated against whatever the host runs.
 func TestLibcFlagDefaultsToDetection(t *testing.T) {
-	if _, err := runCommand("--config", "test-project/dotfiles.config.ts", "shell", "init"); err != nil {
+	if _, err := runCommand("--config", filepath.Join(findRepoRoot(), "test-project/dotfiles.config.ts"), "shell", "init"); err != nil {
 		t.Fatalf("env without --libc: %v", err)
 	}
 	if libc != "" {

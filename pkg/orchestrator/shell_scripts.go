@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/shell"
 	"github.com/alexgorbatchev/dotfiles/pkg/shellinit"
 	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/alexgorbatchev/dotfiles/pkg/utils"
@@ -69,9 +69,9 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 			var wrapper string
 			if o.configFilePath != "" {
 				if sh == "powershell" {
-					wrapper = fmt.Sprintf("function dotfiles {\n  & %s --config %q $args\n}", cliCmd, o.configFilePath)
+					wrapper = fmt.Sprintf("function dotfiles {\n  & %s --config %s $args\n}", cliCmd, shell.QuotePowerShell(o.configFilePath))
 				} else {
-					wrapper = fmt.Sprintf("dotfiles() {\n  %s --config %q \"$@\"\n}", cliCmd, o.configFilePath)
+					wrapper = fmt.Sprintf("dotfiles() {\n  %s --config %s \"$@\"\n}", cliCmd, shell.Quote(o.configFilePath))
 				}
 			} else {
 				if sh == "powershell" {
@@ -161,7 +161,7 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 				}
 				sort.Strings(envKeys)
 				if tool.ConfigFilePath != "" {
-					envLines = append(envLines, fmt.Sprintf("# %s", tool.ConfigFilePath))
+					envLines = append(envLines, shellinit.GenerateToolHeader(tool.ConfigFilePath))
 				}
 				for _, k := range envKeys {
 					vResolved, err := o.resolvePlaceholder(stc.Env[k], tool, projCfg)
@@ -242,10 +242,10 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						cfgFile := o.getConfigFilePath()
 
 						toolBlockLines = append(toolBlockLines,
-							fmt.Sprintf("if [ ! -f %q ]; then", fullSourcePath),
-							fmt.Sprintf("  %s install --shim-mode --config %q %q", cliCmd, cfgFile, tool.Name),
+							fmt.Sprintf("if [ ! -f %s ]; then", shell.Quote(fullSourcePath)),
+							fmt.Sprintf("  %s install --shim-mode --config %s %s", cliCmd, shell.Quote(cfgFile), shell.Quote(tool.Name)),
 							"fi",
-							fmt.Sprintf("source %q", fullSourcePath),
+							fmt.Sprintf("source %s", shell.Quote(fullSourcePath)),
 						)
 					}
 				}
@@ -341,9 +341,9 @@ func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config
 						case config.ShellScriptSourceFile:
 							resolvedPath := o.resolveSourceFilePath(scr.Value, tool)
 							if sh == "powershell" {
-								toolBlockLines = append(toolBlockLines, fmt.Sprintf("if (Test-Path %q) { . %q }", resolvedPath, resolvedPath))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("if (Test-Path -LiteralPath %s) { . %s }", shell.QuotePowerShell(resolvedPath), shell.QuotePowerShell(resolvedPath)))
 							} else {
-								toolBlockLines = append(toolBlockLines, fmt.Sprintf("[[ -f %q ]] && source %q", resolvedPath, resolvedPath))
+								toolBlockLines = append(toolBlockLines, fmt.Sprintf("[[ -f %s ]] && source %s", shell.Quote(resolvedPath), shell.Quote(resolvedPath)))
 							}
 
 						case config.ShellScriptSource:
@@ -514,52 +514,34 @@ func formatFunctionBody(body string) string {
 	return strings.Join(formatted, "\n")
 }
 
-// CliCommandForShell returns the command that runs this CLI, written for the shell sh
-// ("zsh", "bash" or "powershell"): the executing binary, the dev `go run` command, or
-// DOTFILES_CLI_COMMAND, quoted where a path holds spaces. Anything that tells a shell,
-// or a program driving one, to run the CLI uses it instead of naming "dotfiles".
+// CliCommandForShell returns this CLI's invocation with each argument quoted for
+// bash/zsh or PowerShell. Prompts and generated wrappers share this rendering.
 func (o *Orchestrator) CliCommandForShell(sh string, projCfg *config.ProjectConfig) string {
-	cliCmd := o.getCliCommand()
-
-	// Normalize Windows backslashes for all shells. Forward slashes are safe in
-	// Bash, Zsh, and PowerShell across macOS, Linux, and Windows.
-	cliCmd = strings.ReplaceAll(cliCmd, `\`, `/`)
-
-	// Avoid infinite recursion when the CLI command resolves to bare "dotfiles":
-	// In Bash/Zsh, shell functions override external executables on PATH, so we
-	// prefix with "command". In PowerShell, we target the installed TargetDir binary.
-	if cliCmd == "dotfiles" {
+	args := o.getCliArgs()
+	quote := shell.Quote
+	if sh == "powershell" {
+		quote = shell.QuotePowerShell
+	}
+	if len(args) == 1 && args[0] == "dotfiles" {
 		if sh != "powershell" {
 			return "command dotfiles"
 		}
 		if projCfg != nil && projCfg.Paths.TargetDir != "" {
-			return fmt.Sprintf(`"%s"`, filepath.ToSlash(filepath.Join(projCfg.Paths.TargetDir, "dotfiles")))
-		}
-		return "dotfiles"
-	}
-
-	// If it starts with "go run ", preserve it as an unquoted multi-token command
-	// but quote the target package path if it contains spaces.
-	if strings.HasPrefix(cliCmd, "go run ") {
-		pkgPath := strings.TrimPrefix(cliCmd, "go run ")
-		if strings.Contains(pkgPath, " ") && !strings.HasPrefix(pkgPath, `"`) {
-			return fmt.Sprintf(`go run "%s"`, pkgPath)
-		}
-		return cliCmd
-	}
-
-	// If it contains path separators and spaces, treat it as an executable path
-	// and quote it so shells don't split the path at whitespace.
-	if strings.Contains(cliCmd, "/") && strings.Contains(cliCmd, " ") && !strings.HasPrefix(cliCmd, `"`) {
-		return fmt.Sprintf(`"%s"`, cliCmd)
-	}
-
-	// If it's an existing file on disk and contains spaces, quote it.
-	if strings.Contains(cliCmd, " ") && !strings.HasPrefix(cliCmd, `"`) {
-		if _, err := os.Stat(cliCmd); err == nil {
-			return fmt.Sprintf(`"%s"`, cliCmd)
+			args[0] = filepath.Join(projCfg.Paths.TargetDir, "dotfiles")
 		}
 	}
-
-	return cliCmd
+	for i, arg := range args {
+		args[i] = quote(arg)
+	}
+	command := strings.Join(args, " ")
+	if assignment := o.getCliEnvironment(); assignment != "" {
+		name, value, _ := strings.Cut(assignment, "=")
+		if sh == "powershell" {
+			// Environment variables are process-wide, even inside a script block.
+			// Restore the caller's value after success or failure.
+			return fmt.Sprintf("{ $__dotfiles_previous_root = $env:%s; try { $env:%s = %s; & %s @args } finally { $env:%s = $__dotfiles_previous_root } }", name, name, quote(value), command, name)
+		}
+		return name + "=" + quote(value) + " " + command
+	}
+	return command
 }

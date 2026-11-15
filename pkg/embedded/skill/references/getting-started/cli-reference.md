@@ -510,6 +510,15 @@ Upgrades or downgrades the `dotfiles` CLI binary from GitHub Releases. With a ve
 
 ---
 
+## Configuration Lookup
+
+An explicit `--config` selects its named file. Relative paths are resolved from the
+working directory. When omitted, configuration lookup checks the active virtual
+environment (`DOTFILES_ENV_DIR`) before the working directory, using the supported
+default configuration filenames. A parent Go module does not change that lookup.
+The explicit development-root fallback is documented under
+[CLI development invocation](development.md#cli-development-invocation).
+
 ## Global Flags
 
 The following flags are available on all commands:

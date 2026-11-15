@@ -10,12 +10,13 @@ import (
 	"text/template"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
+	"github.com/alexgorbatchev/dotfiles/pkg/shell"
 )
 
 //go:embed shim.tmpl
 var shimTemplateStr string
 
-var shimTemplate = template.Must(template.New("shim").Parse(shimTemplateStr))
+var shimTemplate = template.Must(template.New("shim").Funcs(template.FuncMap{"quote": shell.Quote}).Parse(shimTemplateStr))
 
 // Generator manages creation and identification of wrapper script shims.
 type Generator struct {
@@ -36,9 +37,12 @@ type Config struct {
 	// shebang. A shim runs wherever its binary is invoked, including under a PATH that
 	// has no bash on it (launchd, cron, a test's PATH), where `#!/usr/bin/env bash`
 	// fails before the shim starts.
-	BashPath             string
-	Sudo                 bool
-	CliCommand           string
+	BashPath string
+	Sudo     bool
+	// CliArgs is the executable followed by fixed arguments, never shell source.
+	CliArgs []string
+	// CliEnv is an optional NAME=value assignment for explicit source invocation.
+	CliEnv               string
 	ConfigFilePath       string
 	UsageLogPath         string
 	MissingBinaryMessage string
@@ -94,8 +98,7 @@ func (g *Generator) Generate(shimPath string, cfg Config) error {
 
 	missingBinaryCmd := "echo \"Installation completed but binary not found at: $TOOL_EXECUTABLE\" >&2"
 	if cfg.MissingBinaryMessage != "" {
-		escapedMsg := strings.ReplaceAll(cfg.MissingBinaryMessage, "\"", "\\\"")
-		missingBinaryCmd = fmt.Sprintf("echo %q >&2", escapedMsg)
+		missingBinaryCmd = fmt.Sprintf("printf '%%s\\n' %s >&2", shell.Quote(cfg.MissingBinaryMessage))
 	}
 
 	type templateData struct {

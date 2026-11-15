@@ -51,6 +51,14 @@ Environment variables are hoisted into a section of their own above every tool b
 inside the tool's block, aliases come first, then functions, then that list -- which is
 why a function declared with `.functions()` can be called from a script that follows it.
 
+Resolved filesystem paths are emitted as literal arguments in Bash, Zsh and
+PowerShell, including paths containing spaces, quotes, dollar signs or backticks.
+PowerShell filesystem discovery uses literal paths so brackets do not become
+wildcards. Its filesystem provider still treats backslashes as directory separators,
+including on Unix; directory names containing a literal backslash cannot be used for
+PowerShell startup scripts. Shell code passed to `.always()`, `.once()`, `.source()`
+and `.sourceFunction()` retains its normal shell evaluation.
+
 ## Basic Example
 
 ```typescript
