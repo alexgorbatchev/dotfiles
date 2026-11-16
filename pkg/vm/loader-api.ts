@@ -431,6 +431,7 @@ function createToolContext(toolName: string, eventContext: Record<string, unknow
     targetDir: (globalThis.configFileDir || "") + "/.generated/bin",
     shellScriptsDir: (globalThis.configFileDir || "") + "/.generated/shell-scripts",
     binariesDir: (globalThis.configFileDir || "") + "/.generated/binaries",
+    devToolsDir: (globalThis.configFileDir || "") + "/.generated/dev-tools",
   };
   const activeProjCfg = (getGlobals()["projectConfig"] || {}) as Record<string, unknown>;
 

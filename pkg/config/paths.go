@@ -20,6 +20,7 @@ const (
 	pathToolConfigsDir  = "toolConfigsDir"
 	pathShellScriptsDir = "shellScriptsDir"
 	pathBinariesDir     = "binariesDir"
+	pathDevToolsDir     = "devToolsDir"
 )
 
 // pathDefaults is the value each setting falls back to when the configuration leaves it
@@ -36,6 +37,7 @@ var pathDefaults = map[string]string{
 	pathToolConfigsDir:  "{configFileDir}/tools",
 	pathShellScriptsDir: "{paths.generatedDir}/shell-scripts",
 	pathBinariesDir:     "{paths.generatedDir}/binaries",
+	pathDevToolsDir:     "{paths.generatedDir}/dev-tools",
 }
 
 // ResolvePlaceholders turns the paths block into the absolute directories the rest of
@@ -100,7 +102,7 @@ func (p *ProjectConfig) ResolvePlaceholders(configFileDir string) error {
 	}
 
 	p.Paths.assign(values)
-	return nil
+	return p.ValidateDevToolsDir()
 }
 
 // declaredValues collects what the configuration declared for each setting, falling back
@@ -115,6 +117,7 @@ func (p PathsConfig) declaredValues() map[string][]string {
 		pathToolConfigsDir:  p.GetToolConfigsDirs(),
 		pathShellScriptsDir: {p.ShellScriptsDir},
 		pathBinariesDir:     {p.BinariesDir},
+		pathDevToolsDir:     {p.DevToolsDir},
 	}
 	for key, entries := range values {
 		if len(entries) == 0 || entries[0] == "" {
@@ -133,6 +136,7 @@ func (p *PathsConfig) assign(values map[string][]string) {
 	p.ToolConfigsDir = values[pathToolConfigsDir]
 	p.ShellScriptsDir = values[pathShellScriptsDir][0]
 	p.BinariesDir = values[pathBinariesDir][0]
+	p.DevToolsDir = values[pathDevToolsDir][0]
 }
 
 // pathLookup answers what a placeholder inside the paths block stands for. It reads

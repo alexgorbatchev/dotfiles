@@ -184,7 +184,7 @@ func TestResolvePlaceholdersIsIdempotent(t *testing.T) {
 
 	if once.HomeDir != twice.HomeDir || once.DotfilesDir != twice.DotfilesDir ||
 		once.GeneratedDir != twice.GeneratedDir || once.TargetDir != twice.TargetDir ||
-		once.BinariesDir != twice.BinariesDir || once.ShellScriptsDir != twice.ShellScriptsDir {
+		once.BinariesDir != twice.BinariesDir || once.DevToolsDir != twice.DevToolsDir || once.ShellScriptsDir != twice.ShellScriptsDir {
 		t.Errorf("resolving twice changed the paths:\nfirst  %+v\nsecond %+v", once, twice)
 	}
 	if !slices.Equal(once.GetToolConfigsDirs(), twice.GetToolConfigsDirs()) {

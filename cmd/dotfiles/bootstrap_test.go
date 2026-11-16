@@ -298,7 +298,7 @@ func TestBootstrapServices_DiscoveryAndFailures(t *testing.T) {
 		t.Setenv("DOTFILES_E2E_TEST", "true")
 		dir := t.TempDir()
 		blocker := filepath.Join(dir, "generated")
-		if err := os.WriteFile(blocker, []byte("not a directory"), 0644); err != nil {
+		if err := os.MkdirAll(filepath.Join(blocker, "registry.db"), 0755); err != nil {
 			t.Fatalf("writing blocker: %v", err)
 		}
 		path := writeTSProject(t, dir, fmt.Sprintf(`"paths": {"homeDir": %q, "generatedDir": %q}`, filepath.ToSlash(dir), filepath.ToSlash(blocker)), nil)
@@ -395,5 +395,29 @@ func TestConfigDiscoveryIgnoresUnrelatedGoModule(t *testing.T) {
 	}
 	if _, err := BootstrapServices(context.Background(), "dotfiles.config.ts"); err == nil || !strings.Contains(err.Error(), missing) {
 		t.Fatalf("missing configuration error = %v; want the working-directory path %s", err, missing)
+	}
+}
+
+func TestBootstrapRejectsDevelopmentStorageAliasBeforeMutation(t *testing.T) {
+	p := newE2EProject(t, tsTools{})
+	managed := filepath.Join(p.GeneratedDir, "binaries")
+	if err := os.MkdirAll(managed, 0755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(p.Root, "alias")
+	if err := os.Symlink(managed, alias); err != nil {
+		t.Fatal(err)
+	}
+	content := fmt.Sprintf(`import { defineConfig } from "@alexgorbatchev/dotfiles";
+export default defineConfig({ paths: {%s, devToolsDir: %q} });`, projectPathsTS(p.Root), filepath.Join(alias, "local"))
+	if err := os.WriteFile(p.ConfigPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := p.run("tool", "dev", "list", "--json")
+	if err == nil || !strings.Contains(err.Error()+out.Stderr, "overlaps managed directory") {
+		t.Fatalf("alias validation: %v\n%s", err, out.Combined)
+	}
+	if _, err := os.Stat(filepath.Join(managed, "local")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid store created: %v", err)
 	}
 }

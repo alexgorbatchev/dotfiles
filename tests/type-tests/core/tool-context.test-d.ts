@@ -11,6 +11,7 @@ defineTool((install, ctx) => {
   expectType<string>(ctx.configFileDir);
   expectType<string>(ctx.projectConfig.paths.generatedDir);
   expectType<string>(ctx.projectConfig.paths.binariesDir);
+  expectType<string>(ctx.projectConfig.paths.devToolsDir);
   expectType<string>(ctx.projectConfig.paths.homeDir);
 
   // A non-optional toolDir keeps ShellPathGuard<T> inferable, so this no longer

@@ -23,6 +23,7 @@ import (
 	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/devtools"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -3163,5 +3164,48 @@ func TestToolMetadataUsesResolvedPlatformApplicability(t *testing.T) {
 	metadata := (&Server{installers: installer.DefaultRegistry()}).toolMetadata(tool, false)
 	if metadata.Applicability != "inactive-platform" || metadata.Actions.Install.Enabled || !strings.Contains(metadata.Reason, "No declarations apply") {
 		t.Fatalf("platform mismatch was presented as an explicit disable: %+v", metadata)
+	}
+}
+
+func TestDashboardDevelopmentOverrideSkipsReleaseUpdate(t *testing.T) {
+	mem := newMemFS()
+	if err := mem.MkdirAll("/build", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := mem.WriteFile("/build/example", []byte("development"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	project := &config.ProjectConfig{Paths: config.PathsConfig{GeneratedDir: "/generated", DevToolsDir: "/generated/dev-tools"}}
+	store := devtools.New(mem, project.Paths.DevToolsDir)
+	record, err := store.Use(context.Background(), "example", devtools.UseOptions{Binaries: map[string]string{"example": "/build/example"}, Version: "dev.local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &Server{fsys: mem, projectConfig: project}
+	// No registry, installer or orchestrator is available: neither request may ask
+	// for a release receipt or perform network/installer work, even for missing files.
+	if err := mem.Remove(record.Binaries["example"]); err != nil {
+		t.Fatal(err)
+	}
+	check := httptest.NewRecorder()
+	server.handleToolCheckUpdate(check, httptest.NewRequest(http.MethodPost, "/", nil), "example")
+	if !strings.Contains(check.Body.String(), `"status":"unsupported"`) || !strings.Contains(check.Body.String(), "dev.local") || !strings.Contains(check.Body.String(), "Development override active") {
+		t.Fatalf("check response: %s", check.Body.String())
+	}
+	update := httptest.NewRecorder()
+	server.handleToolUpdate(update, httptest.NewRequest(http.MethodPost, "/", nil), "example")
+	if update.Code != http.StatusBadRequest || !strings.Contains(update.Body.String(), "tool dev off example") {
+		t.Fatalf("update: %d %s", update.Code, update.Body.String())
+	}
+	manifest := filepath.Join(project.Paths.DevToolsDir, "example", "active.json")
+	if err := mem.WriteFile(manifest, []byte("invalid json"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, handler := range []func(http.ResponseWriter, *http.Request, string){server.handleToolCheckUpdate, server.handleToolUpdate} {
+		response := httptest.NewRecorder()
+		handler(response, httptest.NewRequest(http.MethodPost, "/", nil), "example")
+		if !strings.Contains(response.Body.String(), `"success":false`) || !strings.Contains(response.Body.String(), "decoding development override") {
+			t.Fatalf("corruption ignored: %s", response.Body.String())
+		}
 	}
 }

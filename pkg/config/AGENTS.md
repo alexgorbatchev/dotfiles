@@ -8,6 +8,8 @@ Project and tool configuration structures, platform resolution, and context help
 
 ## Local conventions
 
+- `paths.devToolsDir` defaults to `{paths.generatedDir}/dev-tools` and accepts an optional override through ordinary path resolution. Its default does not activate any tool; explicit development registration does. Keep the store eligible beneath `generatedDir`; protection belongs to lifecycle ownership rather than an outside-generated-directory restriction.
+
 - Preserve `features.catalog.generate` and `features.catalog.filePath` for the owner-selected replacement Markdown generator. They remain accepted but unconsumed until that generator is implemented; keep the consumer-test exception explicit and do not remove the public settings.
 
 - `downloader.pruneCache` controls automatic download-cache pruning and defaults to true. Explicit `--prune-cache` values override configuration; manual `cache clear` bypasses both policies.

@@ -136,6 +136,10 @@ export default defineTool((install) => install().zsh((shell) => shell.env({ FOO:
 
 ### Orphaned Artifact Cleanup
 
+An active [development registration](../getting-started/tool-dev.md) protects its
+tool from this cleanup, even when its configuration is removed or disabled.
+Disable that registration explicitly to resume ordinary cleanup.
+
 When a tool is removed from configuration, disabled, or excluded by its hostname restriction, the next `dotfiles generate` removes everything dotfiles recorded creating for that tool: its shims, symlinks, completions, copies, templates, managed blocks, the directories it created once they are empty, and its install directory under `paths.binariesDir` with the downloaded binaries in it. Each removal is recorded in the registry, so `dotfiles state log <tool>` shows what happened to every file. Removing a `.bin()` declaration from an existing tool also removes that tool's stale shim on the next `dotfiles generate`. No manual cleanup is needed.
 
 Cleanup only removes what is still dotfiles' own:

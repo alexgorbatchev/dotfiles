@@ -66,7 +66,7 @@ var platformMatchKeys = []string{"os", "arch"}
 // than inline in validateProjectSection so that the accepted surface is one readable
 // table, and so that TestEveryAcceptedProjectKeyIsAccountedFor can walk it.
 var (
-	pathsKeys            = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir}
+	pathsKeys            = []string{pathHomeDir, pathDotfilesDir, pathTargetDir, pathGeneratedDir, pathToolConfigsDir, pathShellScriptsDir, pathBinariesDir, pathDevToolsDir}
 	systemKeys           = []string{"sudoPrompt"}
 	cargoKeys            = []string{"cratesIo", "githubRaw", "githubRelease", "userAgent"}
 	cargoSubHosts        = []string{"cratesIo", "githubRaw", "githubRelease"}

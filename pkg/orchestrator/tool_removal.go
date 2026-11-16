@@ -112,7 +112,13 @@ func (o *Orchestrator) removeLeftoverInstallDirs(ctx context.Context, active map
 			continue
 		}
 		o.logger.WithTag(name).Info(logger.Message("Removing the install directory of a tool that is no longer configured..."))
-		if err := o.removeInstallDir(ctx, name, dir, projCfg); err != nil {
+		if err := o.withToolLock(ctx, name, projCfg, func(ctx context.Context) error {
+			preserved, err := o.preserveDevelopment(name, projCfg)
+			if err != nil || preserved {
+				return err
+			}
+			return o.removeInstallDir(ctx, name, dir, projCfg)
+		}); err != nil {
 			failures.Record(o.logger, name, fmt.Errorf("Failed to cleanup orphaned tool: %w", err))
 		}
 	}
@@ -142,6 +148,16 @@ func (o *Orchestrator) isLeftoverInstallDir(dir string) (bool, error) {
 // the DMG installer's receipt verification. Otherwise it removes owned artifacts
 // and reports the external installation left in place.
 func (o *Orchestrator) removeOrphanedTool(ctx context.Context, toolName string, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.withToolLock(ctx, toolName, projCfg, func(ctx context.Context) error {
+		preserved, err := o.preserveDevelopment(toolName, projCfg)
+		if err != nil || preserved {
+			return err
+		}
+		return o.removeReleaseOrphan(ctx, toolName, tool, projCfg)
+	})
+}
+
+func (o *Orchestrator) removeReleaseOrphan(ctx context.Context, toolName string, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	rec, err := o.recordedInstallation(ctx, toolName)
 	if err != nil {
 		return err

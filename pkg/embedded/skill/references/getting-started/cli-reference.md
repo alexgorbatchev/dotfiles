@@ -178,6 +178,16 @@ Named disabled tools, including tools disabled by a non-matching platform block,
 - `-f, --force`: Force reinstallation even if already installed.
 - `--shim-mode`: Quiet output, used by generated shims when they install on first use.
 
+Registered [development tools](tool-dev.md) remain protected during install,
+uninstall, and update, including forced operations. Disable their development
+registration explicitly to resume managed installation.
+
+#### `dotfiles tool dev`
+
+Register a local build, list active registrations, or return a tool to its managed
+installation. See [Development Tools](tool-dev.md) for the command syntax,
+registration requirements, and maintenance behavior.
+
 #### `dotfiles tool uninstall [tool...]`
 
 Removes installed tools: runs each tool's installer uninstall, then removes what dotfiles recorded for it as [orphaned artifact cleanup](../configuration/getting-started.md#orphaned-artifact-cleanup) describes. With no argument, uninstalls every configured tool in reverse dependency order.
@@ -221,6 +231,9 @@ The dashboard's update action makes the same decisions as `dotfiles tool update 
 
 Checks available updates from upstream releases without installing.
 
+Active [development tools](tool-dev.md#maintenance-behavior) are reported without
+querying upstream, including when `--installed` is supplied.
+
 Each tool is reported with one status:
 
 | Status             | Output                                                                 | Meaning                                                                                                                                                                                                                                                             |
@@ -228,7 +241,7 @@ Each tool is reported with one status:
 | `update-available` | `<tool>: update available (<installed> -> <latest>)`                   | A newer release counts as an update.                                                                                                                                                                                                                                |
 | `up-to-date`       | `<tool>: up to date (<installed>)`                                     | The installed version is the latest, or no newer one counts as an update (the package manager says so, or [`updateCheck.constraint`](../api-reference/core-api.md#updatecheckconfig) excludes it).                                                                  |
 | `ahead-of-latest`  | `<tool> (<installed>) is ahead of the latest known version (<latest>)` | The installed version is newer than the latest release upstream. [`tool update`](#dotfiles-tool-update-tool) never replaces it with the older release.                                                                                                              |
-| `unsupported`      | `<tool>: update check not supported (<method>)`                        | The installation method cannot check for updates (see [`tool update`](#dotfiles-tool-update-tool)), so nothing was compared.                                                                                                                                        |
+| `unsupported`      | `<tool>: update check not supported (<method>)`                        | The installation method cannot check for updates (see [`tool update`](#dotfiles-tool-update-tool)), or a [development registration](tool-dev.md#maintenance-behavior) protects the tool, so nothing was compared.                                                   |
 | `not-installed`    | `<tool>: not installed (latest: <latest>)`, or `<tool>: not installed` | dotfiles has not installed the tool, so there is nothing to compare. The latest release is named when the installation method can find it without an installation. `brew`, `apt`, `dnf` and `pacman` can only describe an installed package, so they are not asked. |
 
 In agent mode (`AGENT=1`) each tool is one line, `tool:<tool> status:<status> current:<installed> latest:<latest> cached:<true|false>`, or `tool:<tool> status:unsupported current:<installed> installer:<method>`. `current` is empty for a tool that is not installed.
@@ -347,7 +360,7 @@ Queries configured system, target, binary, cache, and storage directories.
 
 With no arguments, `dotfiles path` prints all resolved directories. Specifying a path name (or using `dotfiles path get <name>`) prints that specific directory path.
 
-Supported directory names: `target`, `binaries`, `cache`, `dotfiles`, `generated`, `toolConfigs`, `shellScripts`, `home`.
+Supported directory names: `target`, `binaries`, `devTools`, `cache`, `dotfiles`, `generated`, `toolConfigs`, `shellScripts`, `home`. `devToolsDir` is also accepted for the development store.
 
 - `--json`: Output paths in JSON format.
 

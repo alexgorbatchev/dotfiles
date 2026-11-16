@@ -19,6 +19,7 @@ func resolveAllPaths(services *Services) map[string]string {
 	return map[string]string{
 		"target":       services.ProjectConfig.Paths.TargetDir,
 		"binaries":     services.ProjectConfig.Paths.BinariesDir,
+		"devTools":     services.ProjectConfig.Paths.DevToolsDir,
 		"cache":        cacheDir,
 		"dotfiles":     services.ProjectConfig.Paths.DotfilesDir,
 		"generated":    services.ProjectConfig.Paths.GeneratedDir,
@@ -53,7 +54,7 @@ var pathCmd = &cobra.Command{
 	Use:       "path [name]",
 	Short:     "Query configured system, binary, and storage directories",
 	Args:      cobra.MaximumNArgs(1),
-	ValidArgs: []string{"binaries", "cache", "dotfiles", "generated", "home", "shellScripts", "target", "toolConfigs"},
+	ValidArgs: []string{"binaries", "cache", "devTools", "dotfiles", "generated", "home", "shellScripts", "target", "toolConfigs"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 1 {
 			return runPathGet(cmd, args[0])

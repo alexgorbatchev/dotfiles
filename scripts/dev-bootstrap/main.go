@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -179,47 +178,24 @@ func Run(opts Options) error {
 		}
 	}
 
-	var stdoutBuf, stderrBuf bytes.Buffer
-	pathCmd := exec.Command(devBin, "--config", configPath, "path", "get", "binaries")
-	pathCmd.Stdout = &stdoutBuf
-	pathCmd.Stderr = &stderrBuf
-	if err := pathCmd.Run(); err != nil {
-		errMsg := strings.TrimSpace(stderrBuf.String())
-		if errMsg == "" {
-			errMsg = strings.TrimSpace(stdoutBuf.String())
-		}
-		if errMsg != "" {
-			return fmt.Errorf("resolving binaries directory: %w\n%s", err, errMsg)
-		}
-		return fmt.Errorf("resolving binaries directory: %w", err)
-	}
-	binariesDir := strings.TrimSpace(stdoutBuf.String())
-	if binariesDir == "" {
-		binariesDir = filepath.Join(absTarget, ".generated", "binaries")
-	}
-
-	// Step 4: Deploy local executable
-	finalBinName := binName("dotfiles")
-	destBin := filepath.Join(binariesDir, "dotfiles", "current", finalBinName)
-	fmt.Fprintf(stdout, "[dev-bootstrap] Deploying binary to %s...\n", destBin)
-
-	if err := os.MkdirAll(filepath.Dir(destBin), 0755); err != nil {
-		return fmt.Errorf("creating destination directory %s: %w", filepath.Dir(destBin), err)
-	}
-
-	devBinData, err := os.ReadFile(devBin)
+	// Step 4: Register an immutable development copy through the CLI. Release
+	// payloads and installation receipts remain independent of this selection.
+	fmt.Fprintln(stdout, "[dev-bootstrap] Registering development build...")
+	versionOutput, err := exec.Command(devBin, "self", "version").CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("reading compiled dev binary: %w", err)
+		return fmt.Errorf("reading development build version: %w\n%s", err, versionOutput)
 	}
-
-	_ = os.Remove(destBin)
-	if err := os.WriteFile(destBin, devBinData, 0755); err != nil {
-		return fmt.Errorf("writing deployed binary: %w", err)
+	registerCmd := exec.Command(devBin, "--config", configPath, "tool", "dev", "use", "dotfiles",
+		"--bin", "dotfiles="+devBin, "--source-repo", repoRoot, "--version", strings.TrimSpace(string(versionOutput)))
+	if out, err := registerCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("registering development build: %w\n%s", err, out)
+	} else if opts.Verbose {
+		fmt.Fprint(stderr, string(out))
 	}
 
 	// Step 5: Execute full generation
 	fmt.Fprintln(stdout, "[dev-bootstrap] Running state generate...")
-	generateCmd := exec.Command(destBin, "--config", configPath, "state", "generate")
+	generateCmd := exec.Command(devBin, "--config", configPath, "state", "generate")
 	if opts.Verbose {
 		generateCmd.Stdout = stdout
 		generateCmd.Stderr = stderr

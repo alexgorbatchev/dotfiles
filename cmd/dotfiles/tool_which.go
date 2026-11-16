@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/devtools"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/spf13/cobra"
 )
@@ -34,6 +36,24 @@ var toolWhichCmd = &cobra.Command{
 		defer services.Close()
 
 		targetTool := config.FindTool(services.ToolConfigs, query)
+		devStore := devtools.New(services.FS, services.ProjectConfig.Paths.DevToolsDir)
+		if targetTool == nil && toolWhichBin {
+			dev, err := devStore.Lookup(query)
+			if err != nil {
+				return err
+			}
+			if dev != nil {
+				targetTool = &config.ToolConfig{Name: dev.Tool}
+				names := make([]string, 0, len(dev.Binaries))
+				for name := range dev.Binaries {
+					names = append(names, name)
+				}
+				sort.Strings(names)
+				for _, name := range names {
+					targetTool.Binaries = append(targetTool.Binaries, config.BinaryConfig{Name: name})
+				}
+			}
+		}
 		if targetTool == nil {
 			return fmt.Errorf("tool or binary %q not found", query)
 		}
@@ -52,12 +72,26 @@ var toolWhichCmd = &cobra.Command{
 			}
 
 			binPath := filepath.Join(services.ProjectConfig.Paths.BinariesDir, targetTool.Name, "current", targetBin)
-			realPath, err := filepath.EvalSymlinks(binPath)
+			dev, err := devStore.Lookup(targetTool.Name)
 			if err != nil {
-				realPath = binPath
+				return err
 			}
-			if exists, _ := fileExists(realPath); !exists {
-				return fmt.Errorf("binary path does not exist: %s", binPath)
+			realPath := binPath
+			if dev != nil {
+				if err := devStore.Validate(dev); err != nil {
+					return err
+				}
+				realPath = dev.Binaries[targetBin]
+				if realPath == "" {
+					return fmt.Errorf("development override for %s has no binary %s; register the build again", targetTool.Name, targetBin)
+				}
+			} else {
+				if resolved, err := filepath.EvalSymlinks(binPath); err == nil {
+					realPath = resolved
+				}
+				if exists, _ := fileExists(realPath); !exists {
+					return fmt.Errorf("binary path does not exist: %s", binPath)
+				}
 			}
 
 			if toolWhichJSON {

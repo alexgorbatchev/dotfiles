@@ -106,8 +106,14 @@ is skipped with a warning, and whatever it generated before, its downloaded bina
 included, is removed on the next `dotfiles generate` as
 [orphaned artifact cleanup](../configuration/getting-started.md#orphaned-artifact-cleanup)
 describes -- the configuration is kept, the artifacts are not.
+An active [development registration](../getting-started/tool-dev.md) protects the
+tool from this cleanup until that registration is disabled explicitly.
 
 #### `.bin(name)` runtime behavior
+
+An active [development registration](../getting-started/tool-dev.md) takes priority
+over the managed installation behavior below. Its shim runs the registered build
+and reports a missing build instead of falling back to another executable.
 
 Declaring `.bin(name)` generates a shim for `name` in `paths.targetDir`. The one exception is a `manual` tool with neither `binaryPath` nor a `before-install` hook: nothing could ever place a binary where the shim would point, so no shim is written and `dotfiles generate` warns; such a command comes from shell functions instead (see [manual.md](../installation-methods/manual.md)).
 

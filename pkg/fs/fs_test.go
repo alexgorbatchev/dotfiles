@@ -20,6 +20,30 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
 )
 
+func TestUntrackedPreservesResolutionAndIsolation(t *testing.T) {
+	mem := NewMemFS()
+	home := filepath.Join(t.TempDir(), "home")
+	resolved := NewResolvedFS(NewTrackedFileSystem(mem, nil, nil, "tool"), home)
+	wrapped := NewTrackedFileSystem(resolved, nil, nil, "system")
+	untracked := Untracked(wrapped)
+	if err := untracked.MkdirAll("~/state", 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := untracked.WriteFile("~/state/manifest", []byte("local"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := mem.ReadFile(filepath.Join(home, "state", "manifest")); err != nil || string(data) != "local" {
+		t.Fatalf("lost underlying filesystem or home resolution: %q, %v", data, err)
+	}
+	got := untracked.(*ResolvedFS)
+	if got.inner != mem || got.homeDir != resolved.homeDir {
+		t.Fatalf("tracking retained or resolution changed: %+v", got)
+	}
+	if Untracked(mem) != mem {
+		t.Fatal("plain filesystem replaced")
+	}
+}
+
 // runCommonFSTests executes a suite of standard operations against any FS implementation.
 func runCommonFSTests(t *testing.T, filesystem FS, baseDir string) {
 	t.Helper()

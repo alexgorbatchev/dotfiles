@@ -592,6 +592,56 @@ func TestShimPreservesPathsDuringInstallAndUpdate(t *testing.T) {
 	}
 }
 
+func TestDevelopmentShimNeverInstallsMissingPayload(t *testing.T) {
+	bash, err := osexec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash is unavailable")
+	}
+	dir := t.TempDir()
+	binary := filepath.Join(dir, "development binary")
+	cli := filepath.Join(dir, "cli")
+	marker := filepath.Join(dir, "cli-calls")
+	if err := os.WriteFile(cli, []byte("#!"+bash+"\nprintf '%s\\n' \"$@\" > \"$DOTFILES_TEST_CLI_CALLS\"\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{ToolName: "example", BinaryName: "example", BinaryPath: binary, BashPath: bash, CliArgs: []string{cli}, ConfigFilePath: filepath.Join(dir, "config.ts"), UsageMarkerPath: filepath.Join(dir, "usage"), Development: true}
+	shimPath := filepath.Join(dir, "shim")
+	if err := NewGenerator(fs.NewOSFS()).Generate(shimPath, cfg); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) ([]byte, error) {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		cmd := osexec.CommandContext(ctx, bash, append([]string{shimPath}, args...)...)
+		cmd.Env = append(os.Environ(), "DOTFILES_TEST_CLI_CALLS="+marker)
+		return cmd.CombinedOutput()
+	}
+	out, err := run("argument")
+	if exit, ok := err.(*osexec.ExitError); !ok || exit.ExitCode() != 1 {
+		t.Fatalf("missing development payload exit: %v, output: %s", err, out)
+	}
+	if !strings.Contains(string(out), "Development executable "+binary) || !strings.Contains(string(out), "dotfiles tool dev off example") {
+		t.Fatalf("missing rebuild and deactivation diagnostic: %s", out)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("missing development payload invoked release installation: %v", err)
+	}
+	if out, err := run("@update"); err != nil {
+		t.Fatalf("update should delegate to the protected CLI: %v, %s", err, out)
+	}
+	want := strings.Join([]string{"tool", "update", "--shim-mode", "--config", cfg.ConfigFilePath, cfg.ToolName, ""}, "\n")
+	if actual, err := os.ReadFile(marker); err != nil || string(actual) != want {
+		t.Fatalf("update arguments: %q, %v; want %q", actual, err, want)
+	}
+	if err := os.WriteFile(binary, []byte("#!"+bash+"\nprintf '%s\\n' \"$@\"\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := run("space argument", "--flag"); err != nil || string(out) != "space argument\n--flag\n" {
+		t.Fatalf("restored development payload execution: %q, %v", out, err)
+	}
+}
+
 func TestShimUsageMarkerPreservesToolExecution(t *testing.T) {
 	bash, err := osexec.LookPath("bash")
 	if err != nil {

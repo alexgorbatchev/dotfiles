@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -1292,6 +1293,47 @@ func TestValidateToolConfigsRejectsDuplicateToolNames(t *testing.T) {
 				if !strings.Contains(err.Error(), want) {
 					t.Errorf("ValidateToolConfigs() = %v, want it to contain %s", err, want)
 				}
+			}
+		})
+	}
+}
+
+// Development storage follows the resolved generated directory unless explicitly
+// overridden. Choosing a path does not activate an override for any tool.
+func TestProjectConfigDevelopmentStorage(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		raw    string
+		suffix string
+	}{
+		{"default", `{}`, ".generated/dev-tools"},
+		{"custom generated directory", `{"paths":{"generatedDir":"build"}}`, "build/dev-tools"},
+		{"explicit relative directory", `{"paths":{"devToolsDir":"local-dev"}}`, "local-dev"},
+		{"generated descendant", `{"paths":{"generatedDir":"build","devToolsDir":"{paths.generatedDir}/local"}}`, "build/local"},
+		{"empty uses default", `{"paths":{"devToolsDir":""}}`, ".generated/dev-tools"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateProjectConfigRawJSON([]byte(tc.raw)); err != nil {
+				t.Fatal(err)
+			}
+			var project ProjectConfig
+			if err := json.Unmarshal([]byte(tc.raw), &project); err != nil {
+				t.Fatal(err)
+			}
+			root := t.TempDir()
+			if err := project.ResolvePlaceholders(root); err != nil {
+				t.Fatal(err)
+			}
+			want := filepath.Join(root, filepath.FromSlash(tc.suffix))
+			if project.Paths.DevToolsDir != want {
+				t.Fatalf("DevToolsDir = %q, want %q", project.Paths.DevToolsDir, want)
+			}
+			resolved, err := ResolvePlaceholders("{paths.devToolsDir}/probe", "probe", &project)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resolved != filepath.Join(want, "probe") {
+				t.Errorf("resolved dev tool path = %q", resolved)
 			}
 		})
 	}

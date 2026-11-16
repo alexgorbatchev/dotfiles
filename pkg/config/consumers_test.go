@@ -99,6 +99,7 @@ var projectConfigConsumers = map[string]string{
 	"paths.toolConfigsDir":  "PathsConfig.GetToolConfigsDirs, resolved by ProjectConfig.ResolvePlaceholders",
 	"paths.shellScriptsDir": "shellinit script generation",
 	"paths.binariesDir":     "orchestrator install pipeline staging and promotion",
+	"paths.devToolsDir":     "development override storage and shim selection",
 
 	"system.sudoPrompt": "installer sudo elevation (sudo -p)",
 

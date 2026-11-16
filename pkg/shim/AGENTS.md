@@ -14,6 +14,7 @@ Wrapper script shim generator.
 - A shim's shebang names bash by absolute path (`Config.BashPath`), never `#!/usr/bin/env bash`: a shim runs under whatever PATH invokes its binary (launchd, cron, tests), and one without bash would fail before the shim starts. The orchestrator resolves it with `findSystemBinary("bash")`, which passes over this project's own shims and shim directory, so a dotfiles-managed bash never becomes another shim's interpreter. `Generate` rejects a relative path or one containing whitespace, which the kernel would split.
 - Orchestrator and dashboard tests build their filesystem with the package's `newMemFS()`, which models a host with `/bin/bash`; a test that needs no bash, or a specific one, uses `fs.NewMemFS()` and writes what it needs.
 - A shim's `@update` runs `tool update --shim-mode` and prints nothing of its own: only the CLI knows whether the tool is pinned, current or updated, and `--shim-mode` reports that outcome.
+- Set `Config.Development` when routing a registered development executable. If that payload disappears, the shim reports the rebuild/dev-off remedy and exits without triggering release installation; `@update` still delegates to the protected CLI update path.
 
 ## Local gotchas
 

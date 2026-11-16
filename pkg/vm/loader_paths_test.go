@@ -106,3 +106,36 @@ func TestLoadTypeScriptConfigRejectsUnknownPathsPlaceholder(t *testing.T) {
 		t.Errorf("error = %v, want it to name paths.generatedDir and the unknown placeholder", err)
 	}
 }
+
+// The resolved development storage path reaches tool factories unchanged, including
+// when a configuration uses a custom generated-directory name.
+func TestLoadTypeScriptConfigDevelopmentStorageContext(t *testing.T) {
+	dir := writePathsConfig(t, `{ generatedDir: "./output", devToolsDir: "{paths.generatedDir}/local-dev" }`)
+	toolsDir := filepath.Join(dir, "tools")
+	if err := os.MkdirAll(toolsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	source := `import { defineTool } from "@alexgorbatchev/dotfiles";
+export default defineTool((install, ctx) => install("manual", { binaryPath: ctx.projectConfig.paths.devToolsDir + "/probe" }).bin("probe"));`
+	if err := os.WriteFile(filepath.Join(toolsDir, "probe.tool.ts"), []byte(source), 0644); err != nil {
+		t.Fatal(err)
+	}
+	log := logger.New(logger.Config{Level: logger.LogLevelQuiet, Writer: io.Discard})
+	project, tools, _, err := LoadTypeScriptConfig(log, fs.NewOSFS(), filepath.Join(dir, "dotfiles.config.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(dir, "output", "local-dev")
+	if project.Paths.DevToolsDir != want {
+		t.Errorf("DevToolsDir = %q, want %q", project.Paths.DevToolsDir, want)
+	}
+	for _, tool := range tools {
+		if tool.Name == "probe" {
+			if got := tool.InstallParams["binaryPath"]; got != want+"/probe" {
+				t.Errorf("tool context devToolsDir = %v, want %q", got, want+"/probe")
+			}
+			return
+		}
+	}
+	t.Fatal("probe configuration was not loaded")
+}

@@ -5,11 +5,11 @@ description: >-
   installation methods (github-release, gitea-release, brew, cargo, npm, uv, curl-script, curl-tar, curl-binary, dmg, pkg, manual, zsh-plugin, apt, dnf, pacman),
   declarative file management (blocks, templates, ensureDir, symlinks, copies), shell integration (aliases, functions, completions, env, sourceFile),
   hooks (before-install, after-download, after-extract, after-install),
-  platform overrides, virtual environments, shim generation, dotfiles management.
+  platform overrides, virtual environments, shim generation, local development builds, dotfiles management.
 author: alexgorbatchev
 metadata:
   created_on: 2026-03-04 19:29
-  last_modified: 2026-11-15 14:39
+  last_modified: 2026-11-15 16:10
   status: current
 ---
 
@@ -51,6 +51,9 @@ Print this skill with `dotfiles skill`. To access the bundled reference files lo
 use [`dotfiles skill copy`](references/getting-started/cli-reference.md#dotfiles-skill-copy-path).
 
 Manage downloaded archives with [`dotfiles cache clear`](references/getting-started/cli-reference.md#dotfiles-cache-clear).
+
+For local builds and bootstrap scripts, read [Development Tools](references/getting-started/tool-dev.md).
+Register development builds through that workflow so maintenance can preserve them.
 
 ## Quick Reference
 
@@ -94,13 +97,15 @@ fi
 
 After any `.tool.ts` file change (create, delete, or modify), run `dotfiles generate` to sync generated artifacts.
 
-`dotfiles install <tool-or-binary>` is also a repair command: it checks the recorded installation, reinstalls the tool when the payload is missing or broken, and reconciles the tool's generated artifacts either way. What a shim points at, including for externally managed tools, is described under [`.bin(name)` runtime behavior](references/api-reference/core-api.md#binname-runtime-behavior).
+For managed installations, `dotfiles install <tool-or-binary>` is also a repair command: it checks the recorded installation, reinstalls the tool when the payload is missing or broken, and reconciles the tool's generated artifacts either way. What a shim points at, including for externally managed tools, is described under [`.bin(name)` runtime behavior](references/api-reference/core-api.md#binname-runtime-behavior).
 
 ## Reference Files
 
 Read these based on the task at hand:
 
 - **[make-tool.md](references/make-tool.md)** — Complete guide for creating `.tool.ts` configurations. Read when creating a new tool config or modifying an existing one. Includes tool investigation steps, method selection, examples, and quality checklist.
+
+- **[Development Tools](references/getting-started/tool-dev.md)** — Register local builds, preserve them during maintenance, and return to managed releases.
 
 - **API Reference** — Public API reference: `defineTool`, `defineConfig`, builder methods, shell configurator methods, `Platform`/`Architecture` enums, utilities (`replaceInFile`, `resolve`, `log`).
   - [core-api.md](references/api-reference/core-api.md)

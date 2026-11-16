@@ -100,6 +100,7 @@ func ResolvePlaceholdersWithStagingDir(val string, toolName string, projCfg *Pro
 		"paths.dotfilesDir":     projCfg.Paths.DotfilesDir,
 		"paths.targetDir":       projCfg.Paths.TargetDir,
 		"paths.binariesDir":     projCfg.Paths.BinariesDir,
+		"paths.devToolsDir":     projCfg.Paths.DevToolsDir,
 		"paths.generatedDir":    projCfg.Paths.GeneratedDir,
 		"paths.toolConfigsDir":  projCfg.Paths.GetPrimaryToolConfigsDir(),
 		"paths.shellScriptsDir": shellScriptsDir,

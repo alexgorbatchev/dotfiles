@@ -18,6 +18,7 @@ export interface PathsConfig {
   toolConfigsDir: string | string[];
   shellScriptsDir: string;
   binariesDir: string;
+  devToolsDir: string;
 }
 export interface SystemConfig {
   sudoPrompt: string;

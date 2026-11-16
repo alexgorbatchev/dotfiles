@@ -54,5 +54,6 @@ func init() {
 	toolCmd.AddCommand(toolScaffoldCmd)
 	toolCmd.AddCommand(toolAddCmd)
 	toolCmd.AddCommand(toolMakeCmd)
+	toolCmd.AddCommand(toolDevCmd)
 	rootCmd.AddCommand(toolCmd)
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/devtools"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
@@ -132,6 +133,7 @@ When run without arguments, checks all installed tools for updates and installs 
 		log := GetLogger("update", cmd.ErrOrStderr())
 		services.Orchestrator.SetLogger(log)
 		logs := newUpdateLogs(log, cmd.ErrOrStderr(), shimMode)
+		devStore := devtools.New(services.FS, services.ProjectConfig.Paths.DevToolsDir)
 		logs.progress.Info("Evaluating versions and checking for updates...")
 
 		if len(args) == 0 {
@@ -146,10 +148,20 @@ When run without arguments, checks all installed tools for updates and installs 
 				if err := ctx.Err(); err != nil {
 					return err
 				}
+				toolLogs := logs.withTag(targetTool.Name)
+				dev, err := devStore.Lookup(targetTool.Name)
+				if err != nil {
+					toolLogs.report.Error(logger.Message(err.Error()))
+					failed = true
+					continue
+				}
+				if dev != nil {
+					toolLogs.report.Info("Preserving development override; use tool dev off to resume managed updates")
+					continue
+				}
 				if targetTool.Disabled || targetTool.InstallationMethod == "" {
 					continue
 				}
-				toolLogs := logs.withTag(targetTool.Name)
 				installed, err := services.Registry.GetToolInstallation(ctx, targetTool.Name)
 				if err != nil {
 					toolLogs.report.Error(installationReadFailed(err))
@@ -227,6 +239,15 @@ When run without arguments, checks all installed tools for updates and installs 
 			targetTool := config.FindTargetTool(services.ToolConfigs, toolName)
 			if targetTool == nil {
 				failures.Record(logs.report, toolName, fmt.Errorf("tool %q not found in configuration", toolName))
+				continue
+			}
+			dev, err := devStore.Lookup(targetTool.Name)
+			if err != nil {
+				failures.Record(logs.report, targetTool.Name, err)
+				continue
+			}
+			if dev != nil {
+				logs.withTag(targetTool.Name).report.Info("Preserving development override; use tool dev off to resume managed updates")
 				continue
 			}
 

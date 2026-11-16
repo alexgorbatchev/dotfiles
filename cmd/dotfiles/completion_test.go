@@ -124,7 +124,7 @@ func TestCompletion_BinAcceptsBinaryOrToolName(t *testing.T) {
 		t.Fatalf("__complete path get returned error: %v\n%s", err, out.Combined)
 	}
 	got, _ = parseCompletionOutput(t, out.Stdout)
-	assertCandidates(t, got, []string{"binaries", "cache", "dotfiles", "generated", "home", "shellScripts", "target", "toolConfigs"})
+	assertCandidates(t, got, []string{"binaries", "cache", "devTools", "dotfiles", "generated", "home", "shellScripts", "target", "toolConfigs"})
 }
 
 func TestCompletion_ConfigLoadFailureReportsError(t *testing.T) {

@@ -45,6 +45,9 @@ fi
 if [ -x "$TOOL_EXECUTABLE" ]; then
   exec "$TOOL_EXECUTABLE" "$@"
 else
+{{if .Development}}  printf 'Development executable %s is missing or not executable. Rebuild it with dev-bootstrap or run: dotfiles tool dev off %s\n' "$TOOL_EXECUTABLE" "$TOOL_NAME" >&2
+  exit 1
+{{end}}
   # Tool not found, try to install it
   if [ "$TOOL_REQUIRES_SUDO" = "1" ] && { [ ! -t 0 ] || [ ! -t 2 ]; }; then
     echo "$TOOL_NAME requires an interactive install with sudo. Run: dotfiles tool install $TOOL_NAME" >&2

@@ -269,10 +269,10 @@ func TestInstallCommand_RefreshesShellOnlyConfiguration(t *testing.T) {
 
 func TestInstallCommand_ShellGenerationFailure(t *testing.T) {
 	p := newE2EProject(t, tsTools{"workspace": `install().zsh(sh => sh.always("echo workspace-ready"))`})
-	if err := os.MkdirAll(p.GeneratedDir, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(p.GeneratedDir, "shell-scripts"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(p.GeneratedDir, "shell-scripts"), []byte("not a directory"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(p.GeneratedDir, "shell-scripts", ".once"), []byte("not a directory"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	out, err := p.run("install", "workspace")

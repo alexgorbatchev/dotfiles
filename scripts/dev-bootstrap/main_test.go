@@ -9,6 +9,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/alexgorbatchev/dotfiles/pkg/devtools"
+	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
 
 // runMainEnv makes the test binary run main() instead of the tests, so
@@ -115,8 +118,13 @@ func newFakeRepoRoot(t *testing.T, relPath, source string) string {
 	return root
 }
 
-func deployedBinPath(target string) string {
-	return filepath.Join(target, ".generated", "binaries", "dotfiles", "current", binName("dotfiles"))
+func deployedBinPath(t *testing.T, target string) string {
+	t.Helper()
+	record, err := devtools.New(fs.NewOSFS(), filepath.Join(target, ".generated", "dev-tools")).Lookup("dotfiles")
+	if err != nil || record == nil {
+		t.Fatalf("reading development build: %#v, %v", record, err)
+	}
+	return record.Binaries["dotfiles"]
 }
 
 func TestDevBootstrap(t *testing.T) {
@@ -138,6 +146,8 @@ export default defineConfig(({ configFileDir }) => ({
 		if err := os.MkdirAll(filepath.Join(tmpTarget, "tools"), 0755); err != nil {
 			t.Fatalf("failed to create tools dir: %v", err)
 		}
+		releaseBinary := filepath.Join(tmpTarget, ".generated", "binaries", "dotfiles", "current", binName("dotfiles"))
+		writeTestFile(t, releaseBinary, "existing release payload", 0755)
 
 		var stdout, stderr bytes.Buffer
 		opts := Options{
@@ -153,7 +163,7 @@ export default defineConfig(({ configFileDir }) => ({
 			t.Fatalf("Run failed: %v\nstderr: %s\nstdout: %s", err, stderr.String(), stdout.String())
 		}
 
-		deployedBin := deployedBinPath(tmpTarget)
+		deployedBin := deployedBinPath(t, tmpTarget)
 		info, err := os.Stat(deployedBin)
 		if err != nil {
 			t.Fatalf("expected deployed binary at %s, but stat failed: %v", deployedBin, err)
@@ -165,11 +175,27 @@ export default defineConfig(({ configFileDir }) => ({
 		if out, err := exec.Command(deployedBin, "self", "version").CombinedOutput(); err != nil {
 			t.Errorf("failed to run the deployed binary: %v\n%s", err, out)
 		}
+		if release, err := os.ReadFile(releaseBinary); err != nil || string(release) != "existing release payload" {
+			t.Fatalf("bootstrap replaced release payload: %q, %v", release, err)
+		}
+		shim, err := os.ReadFile(filepath.Join(tmpTarget, "target", "dotfiles"))
+		if err != nil || !strings.Contains(string(shim), deployedBin) || strings.Contains(string(shim), devBin) {
+			t.Fatalf("shim does not use the durable build: %v\n%s", err, shim)
+		}
+		if err := Run(opts); err != nil {
+			t.Fatalf("repeat bootstrap: %v", err)
+		}
+		if deployedBinPath(t, tmpTarget) == deployedBin {
+			t.Fatal("repeat bootstrap overwrote an existing immutable build")
+		}
+		if _, err := os.Stat(deployedBin); err != nil {
+			t.Fatalf("repeat bootstrap removed a previously referenced build: %v", err)
+		}
 
 		outStr := stdout.String()
 		expectedPhrases := []string{
 			"[dev-bootstrap] Resolving target paths for " + tmpTarget,
-			"[dev-bootstrap] Deploying binary to " + deployedBin,
+			"[dev-bootstrap] Registering development build...",
 			"[dev-bootstrap] Running state generate...",
 			"[dev-bootstrap] Successfully bootstrapped " + tmpTarget + " with local development build.",
 		}
@@ -208,7 +234,7 @@ export default defineConfig(({ configFileDir }) => ({
 			t.Fatalf("Run failed: %v\nstderr: %s\nstdout: %s", err, stderr.String(), stdout.String())
 		}
 
-		if _, err := os.Stat(deployedBinPath(tmpTarget)); err != nil {
+		if _, err := os.Stat(deployedBinPath(t, tmpTarget)); err != nil {
 			t.Fatalf("expected deployed binary: %v", err)
 		}
 	})
@@ -238,7 +264,7 @@ export default defineConfig(({ configFileDir }) => ({
 		if _, err := os.Stat(configPath); err != nil {
 			t.Errorf("expected starter config at %s, but stat failed: %v", configPath, err)
 		}
-		if _, err := os.Stat(deployedBinPath(tmpTarget)); err != nil {
+		if _, err := os.Stat(deployedBinPath(t, tmpTarget)); err != nil {
 			t.Errorf("expected deployed binary: %v", err)
 		}
 	})
@@ -259,8 +285,7 @@ import (
 
 var Version = "unstamped"
 
-// Prints nothing for "path get binaries", so Run deploys to its fallback
-// directory, and succeeds for "state generate".
+// Reports its build version and accepts registration and generation.
 func main() {
 	if strings.HasSuffix(strings.Join(os.Args[1:], " "), "self version") {
 		fmt.Println(Version)
@@ -290,7 +315,7 @@ func main() {
 		t.Errorf("expected the dev binary in the repository root's .tmp: %v", err)
 	}
 
-	verOut, err := exec.Command(deployedBinPath(tmpTarget), "self", "version").Output()
+	verOut, err := exec.Command(devBin, "self", "version").Output()
 	if err != nil {
 		t.Fatalf("failed to run self version on deployed binary: %v", err)
 	}
@@ -588,7 +613,7 @@ func TestDevBootstrapErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("includes cli error output when resolving binaries directory fails", func(t *testing.T) {
+	t.Run("includes cli error output when reading development version fails", func(t *testing.T) {
 		mockBin := writeMockCLI(t, "echo 'simulated config failure' >&2; exit 1\n")
 		opts := Options{
 			RepoRoot:   repoRoot,
@@ -598,7 +623,7 @@ func TestDevBootstrapErrors(t *testing.T) {
 		}
 		err := Run(opts)
 		if err == nil {
-			t.Fatal("expected error when resolving binaries directory fails")
+			t.Fatal("expected error when reading development version fails")
 		}
 		if !strings.Contains(err.Error(), "simulated config failure") {
 			t.Errorf("expected error to contain CLI error output %q, got: %v", "simulated config failure", err)
@@ -606,10 +631,14 @@ func TestDevBootstrapErrors(t *testing.T) {
 	})
 
 	t.Run("fails when state generate fails in verbose and non-verbose mode", func(t *testing.T) {
-		// The path reaches the mock through the environment so the shell never parses it.
-		t.Setenv("MOCK_BINARIES_DIR", filepath.Join(t.TempDir(), "binaries"))
-		// Answers "path get binaries", fails "state generate".
-		mockBin := writeMockCLI(t, "for arg in \"$@\"; do\n  if [ \"$arg\" = \"binaries\" ]; then\n    printf '%s\\n' \"$MOCK_BINARIES_DIR\"\n    exit 0\n  fi\ndone\nexit 1\n")
+		mockBin := writeMockCLI(t, `for arg in "$@"; do
+  if [ "$arg" = "state" ]; then
+    echo 'generation failed' >&2
+    exit 1
+  fi
+done
+exit 0
+`)
 
 		opts := Options{
 			RepoRoot:   repoRoot,
@@ -640,37 +669,34 @@ func TestDevBootstrapErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("falls back to default binaries directory when path get returns empty", func(t *testing.T) {
-		tmpTarget := newConfiguredTarget(t, minimalConfig)
-		opts := Options{
-			RepoRoot:   repoRoot,
-			TargetDir:  tmpTarget,
-			DevBin:     writeMockCLI(t, "exit 0\n"),
-			SkipAssets: true,
-		}
-		if err := Run(opts); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if _, err := os.Stat(deployedBinPath(tmpTarget)); err != nil {
-			t.Errorf("expected binary at fallback path: %v", err)
+	t.Run("fails when development registration fails", func(t *testing.T) {
+		mockBin := writeMockCLI(t, `for arg in "$@"; do
+  if [ "$arg" = "use" ]; then
+    echo 'registration failed' >&2
+    exit 1
+  fi
+done
+exit 0
+`)
+		err := Run(Options{
+			RepoRoot: repoRoot, TargetDir: newConfiguredTarget(t, minimalConfig),
+			DevBin: mockBin, SkipAssets: true,
+		})
+		if err == nil || !strings.Contains(err.Error(), "registering development build") || !strings.Contains(err.Error(), "registration failed") {
+			t.Fatalf("registration failure = %v", err)
 		}
 	})
 
-	t.Run("fails when the deployment directory cannot be created", func(t *testing.T) {
-		// A regular file where the binaries directory should be makes MkdirAll fail.
+	t.Run("fails when the development directory cannot be created", func(t *testing.T) {
 		blocker := filepath.Join(t.TempDir(), "blocker")
 		writeTestFile(t, blocker, "", 0644)
-		t.Setenv("BLOCKED_BINARIES_DIR", filepath.Join(blocker, "binaries"))
-
-		opts := Options{
-			RepoRoot:   repoRoot,
-			TargetDir:  newConfiguredTarget(t, minimalConfig),
-			DevBin:     writeMockCLI(t, "printf '%s\\n' \"$BLOCKED_BINARIES_DIR\"\n"),
-			SkipAssets: true,
-		}
-		err := Run(opts)
-		if err == nil || !strings.Contains(err.Error(), "creating destination directory") {
-			t.Errorf("expected a destination directory error, got: %v", err)
+		config := fmt.Sprintf(`export default { paths: { generatedDir: "./.generated", devToolsDir: %q } };`, filepath.ToSlash(filepath.Join(blocker, "dev-tools")))
+		err := Run(Options{
+			RepoRoot: repoRoot, TargetDir: newConfiguredTarget(t, config),
+			DevBin: sharedDevBin(t), SkipAssets: true,
+		})
+		if err == nil || !strings.Contains(err.Error(), "registering development build") {
+			t.Fatalf("development directory failure = %v", err)
 		}
 	})
 

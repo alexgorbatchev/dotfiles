@@ -7,6 +7,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
+	"github.com/alexgorbatchev/dotfiles/pkg/devtools"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/orchestrator"
 	"github.com/alexgorbatchev/dotfiles/pkg/registry"
@@ -31,7 +32,7 @@ type ToolUpdateResult struct {
 	CurrentVersion string                   `json:"currentVersion,omitempty"`
 	LatestVersion  string                   `json:"latestVersion,omitempty"`
 	Cached         bool                     `json:"cached"`
-	// Error is why the check failed; set only with checkStatusFailed.
+	// Error explains a failed check or why a development override is not checked.
 	Error string `json:"error,omitempty"`
 }
 
@@ -56,6 +57,7 @@ var toolCheckCmd = &cobra.Command{
 		}
 
 		instReg := services.Installers
+		devStore := devtools.New(services.FS, services.ProjectConfig.Paths.DevToolsDir)
 		jsonResults := []ToolUpdateResult{}
 		failed := false
 		report := func(tool *config.ToolConfig, result ToolUpdateResult) {
@@ -89,15 +91,7 @@ var toolCheckCmd = &cobra.Command{
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			if tool.Disabled || tool.InstallationMethod == "" {
-				continue
-			}
-
 			toolLog := log.WithTag(tool.Name)
-			if !tool.UpdateCheckEnabled() {
-				toolLog.Debug(logger.Message("Update checks disabled by updateCheck.enabled"))
-				continue
-			}
 
 			// A tool that cannot be checked is logged with the cause, and in JSON listed
 			// as failed; the other tools are still checked, and the run then fails.
@@ -107,6 +101,25 @@ var toolCheckCmd = &cobra.Command{
 				if toolCheckJSON {
 					jsonResults = append(jsonResults, failedCheck(tool, installed, err))
 				}
+			}
+			dev, err := devStore.Lookup(tool.Name)
+			if err != nil {
+				fail(logger.Message(err.Error()), nil, err)
+				continue
+			}
+			if dev != nil {
+				report(tool, ToolUpdateResult{
+					ToolName: tool.Name, Status: orchestrator.CheckStatusUnsupported,
+					CurrentVersion: dev.Version, Error: "development override active",
+				})
+				continue
+			}
+			if tool.Disabled || tool.InstallationMethod == "" {
+				continue
+			}
+			if !tool.UpdateCheckEnabled() {
+				toolLog.Debug(logger.Message("Update checks disabled by updateCheck.enabled"))
+				continue
 			}
 			installed, err := services.Registry.GetToolInstallation(ctx, tool.Name)
 			if err != nil {
@@ -182,6 +195,10 @@ func failedCheck(tool *config.ToolConfig, installed *registry.ToolInstallationRe
 func logCheckResult(toolLog *logger.Logger, tool *config.ToolConfig, r ToolUpdateResult) {
 	switch r.Status {
 	case orchestrator.CheckStatusUnsupported:
+		if r.Error != "" {
+			toolLog.Info(logger.Message(r.Error + versionSuffix(r.CurrentVersion, false)))
+			return
+		}
 		toolLog.Info(logger.Message(orchestrator.UpdateCheckUnsupportedMessage(tool)))
 	case orchestrator.CheckStatusUpdateAvailable:
 		toolLog.Info(logger.Message(fmt.Sprintf("Update available: %s -> %s", r.CurrentVersion, r.LatestVersion)))
@@ -218,6 +235,10 @@ func updateCheckFailed(err error) logger.Message {
 func printCheckResult(w io.Writer, tool *config.ToolConfig, r ToolUpdateResult) {
 	if cliout.IsAgentMode() {
 		if r.Status == orchestrator.CheckStatusUnsupported {
+			if r.Error != "" {
+				fmt.Fprintf(w, "tool:%s status:%s current:%s error:%q\n", r.ToolName, r.Status, r.CurrentVersion, r.Error)
+				return
+			}
 			fmt.Fprintf(w, "tool:%s status:%s current:%s installer:%s\n", r.ToolName, r.Status, r.CurrentVersion, tool.InstallationMethod)
 			return
 		}
@@ -227,6 +248,10 @@ func printCheckResult(w io.Writer, tool *config.ToolConfig, r ToolUpdateResult) 
 
 	switch r.Status {
 	case orchestrator.CheckStatusUnsupported:
+		if r.Error != "" {
+			fmt.Fprintf(w, "%s: %s%s\n", r.ToolName, r.Error, versionSuffix(r.CurrentVersion, false))
+			return
+		}
 		fmt.Fprintf(w, "%s: update check not supported (%s)\n", r.ToolName, tool.InstallationMethod)
 	case orchestrator.CheckStatusUpdateAvailable:
 		fmt.Fprintf(w, "%s: update available (%s -> %s)\n", r.ToolName, r.CurrentVersion, r.LatestVersion)

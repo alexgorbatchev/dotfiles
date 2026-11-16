@@ -40,6 +40,7 @@ type PathsConfig struct {
 	ToolConfigsDir  interface{} `json:"toolConfigsDir" yaml:"toolConfigsDir"`
 	ShellScriptsDir string      `json:"shellScriptsDir" yaml:"shellScriptsDir"`
 	BinariesDir     string      `json:"binariesDir" yaml:"binariesDir"`
+	DevToolsDir     string      `json:"devToolsDir" yaml:"devToolsDir"`
 }
 
 // GetToolConfigsDirs returns every configured tool configuration directory, whether the

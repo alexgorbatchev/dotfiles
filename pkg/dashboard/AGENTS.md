@@ -9,6 +9,8 @@ Go backend REST API routes and embedded dashboard client server.
 
 ## Local conventions
 
+- Inspect development overrides before release receipts or upstream checks. `check-update` reports an active override as `unsupported` with its development version and reason; `update` refuses it with a `tool dev off` instruction. Missing payloads remain protected, and unreadable selection metadata is an error.
+
 - Embed compiled React/Preact client assets from `pkg/dashboard/dist/`.
 - `NewServer` accepts configurable `host` address (defaults to `127.0.0.1`, configurable via `--host` / `-H`).
 - `NewServer` also takes the shared `fs.FS` and the config file path, because route handlers need them to resolve paths the way the loader does.

@@ -58,9 +58,13 @@ There is no `os` field and no `timestamp` field on `systemInfo`.
 | ----------------------------------------- | ------------------------- |
 | `ctx.projectConfig.paths.dotfilesDir`     | Root dotfiles directory   |
 | `ctx.projectConfig.paths.binariesDir`     | Tool binaries directory   |
+| `ctx.projectConfig.paths.devToolsDir`     | Development build store   |
 | `ctx.projectConfig.paths.generatedDir`    | Generated files directory |
 | `ctx.projectConfig.paths.targetDir`       | Shim directory            |
 | `ctx.projectConfig.paths.shellScriptsDir` | Shell scripts directory   |
+
+These are the resolved [project paths](../configuration/project-configuration.md#paths),
+including their configured overrides and defaults.
 
 > **Note:** For home directory paths, use `~/` instead of `ctx.projectConfig.paths.homeDir`. Tilde expansion is automatic.
 

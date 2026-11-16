@@ -74,15 +74,16 @@ afterwards, and a value that is still relative is resolved against the directory
 configuration file, so the same configuration describes the same layout whichever
 directory the command was run from.
 
-| Key               | Default                         | Effect                                                                     |
-| ----------------- | ------------------------------- | -------------------------------------------------------------------------- |
-| `homeDir`         | the account's home directory    | What `~` expands to                                                        |
-| `dotfilesDir`     | `<config file directory>`       | Root of the dotfiles repository; everything below hangs off it             |
-| `generatedDir`    | `<dotfilesDir>/.generated`      | Everything the CLI writes, including the registry database                 |
-| `targetDir`       | `<generatedDir>/bin`            | Where shims are written; this is the directory that has to be on PATH      |
-| `binariesDir`     | `<generatedDir>/binaries`       | Installed tools, one versioned directory and a `current` link per tool     |
-| `shellScriptsDir` | `<generatedDir>/shell-scripts`  | `main.zsh`, `main.bash`, `main.ps1`, once-scripts and completions          |
-| `toolConfigsDir`  | `<config file directory>/tools` | Where `*.tool.ts` files are found; a string, or an array to search several |
+| Key               | Default                         | Effect                                                                                                               |
+| ----------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `homeDir`         | the account's home directory    | What `~` expands to                                                                                                  |
+| `dotfilesDir`     | `<config file directory>`       | Root of the dotfiles repository; everything below hangs off it                                                       |
+| `generatedDir`    | `<dotfilesDir>/.generated`      | Everything the CLI writes, including the registry database                                                           |
+| `targetDir`       | `<generatedDir>/bin`            | Where shims are written; this is the directory that has to be on PATH                                                |
+| `binariesDir`     | `<generatedDir>/binaries`       | Installed tools, one versioned directory and a `current` link per tool                                               |
+| `devToolsDir`     | `<generatedDir>/dev-tools`      | Local development build copies and their registration state; see [Development Tools](../getting-started/tool-dev.md) |
+| `shellScriptsDir` | `<generatedDir>/shell-scripts`  | `main.zsh`, `main.bash`, `main.ps1`, once-scripts and completions                                                    |
+| `toolConfigsDir`  | `<config file directory>/tools` | Where `*.tool.ts` files are found; a string, or an array to search several                                           |
 
 ```typescript config
 paths: {
@@ -90,6 +91,21 @@ paths: {
   toolConfigsDir: ["~/.dotfiles/tools", "~/.dotfiles/work-tools"],
 }
 ```
+
+`devToolsDir` is optional. Its default follows `generatedDir`, and an override may
+also live beneath `generatedDir`. Merely setting this path does not activate a
+development build; use the [development commands](../getting-started/tool-dev.md)
+to register one. Maintenance preserves registered builds through ownership checks,
+regardless of which permitted directory stores them. Manually deleting their store
+still deletes the builds and registration state.
+
+The development store must be separate from `binariesDir`,
+`shellScriptsDir`, and the `node_modules`, `cache`, and `usage` subdirectories of
+`generatedDir`: it cannot equal, contain, or sit inside one of those managed
+trees. Those directories have their own replacement and cleanup operations.
+It cannot equal or contain `targetDir`. A dedicated subtree beneath `targetDir`
+is allowed because shim generation owns individual entries, not that entire tree.
+The CLI checks existing symbolic links when validating these locations.
 
 ### features
 

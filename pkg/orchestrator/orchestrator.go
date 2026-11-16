@@ -384,6 +384,12 @@ func exactRequestedVersion(tool *config.ToolConfig) string {
 }
 
 func (o *Orchestrator) shouldSkipInstallation(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) (bool, error) {
+	if projCfg != nil {
+		development, err := o.DevelopmentOverride(tool.Name, projCfg)
+		if err != nil || development != nil {
+			return development != nil, err
+		}
+	}
 	if config.IsForceEnabled(ctx) {
 		return false, nil
 	}

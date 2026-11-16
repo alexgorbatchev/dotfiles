@@ -25,7 +25,11 @@ func resetContext(cmd *cobra.Command) {
 func resetFlags(cmd *cobra.Command) {
 	resetContext(cmd)
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		_ = f.Value.Set(f.DefValue)
+		if values, ok := f.Value.(pflag.SliceValue); ok && f.DefValue == "[]" {
+			_ = values.Replace(nil)
+		} else {
+			_ = f.Value.Set(f.DefValue)
+		}
 		f.Changed = false
 	})
 	for _, sub := range cmd.Commands() {

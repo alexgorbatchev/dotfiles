@@ -131,6 +131,19 @@ func isAutoInstall(tool *config.ToolConfig) bool {
 
 // InstallTool installs a single tool, generates shims, creates symlinks, and records the state.
 func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.withToolLock(ctx, tool.Name, projCfg, func(ctx context.Context) error {
+		preserved, err := o.preserveDevelopment(tool.Name, projCfg)
+		if err != nil {
+			return err
+		}
+		if preserved {
+			return o.GenerateTool(ctx, tool, projCfg)
+		}
+		return o.installTool(ctx, tool, projCfg)
+	})
+}
+
+func (o *Orchestrator) installTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
 	}
@@ -403,7 +416,7 @@ func (o *Orchestrator) InstallTool(ctx context.Context, tool *config.ToolConfig,
 			BinaryPath:      binaryPath,
 			BashPath:        bashPath,
 			Sudo:            tool.Sudo,
-			CliArgs:         o.getCliArgs(),
+			CliArgs:         o.cliArgsForProject(projCfg),
 			CliEnv:          o.getCliEnvironment(),
 			ConfigFilePath:  o.getConfigFilePath(),
 			UsageMarkerPath: usagelog.MarkerPath(projCfg.Paths.GeneratedDir, tool.Name, binName),
@@ -558,6 +571,16 @@ func (o *Orchestrator) discardStaging(ctx context.Context, toolName, stagingDir 
 
 // UninstallTool uninstalls a tool, deletes its registered shims, symlinks, and files, and purges its db entries.
 func (o *Orchestrator) UninstallTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.withToolLock(ctx, tool.Name, projCfg, func(ctx context.Context) error {
+		preserved, err := o.preserveDevelopment(tool.Name, projCfg)
+		if err != nil || preserved {
+			return err
+		}
+		return o.uninstallTool(ctx, tool, projCfg)
+	})
+}
+
+func (o *Orchestrator) uninstallTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
 	}

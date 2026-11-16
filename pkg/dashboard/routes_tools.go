@@ -688,6 +688,15 @@ func (s *Server) handleToolInstall(w http.ResponseWriter, r *http.Request, toolN
 
 func (s *Server) handleToolCheckUpdate(w http.ResponseWriter, r *http.Request, toolName string) {
 	ctx := r.Context()
+	development, err := s.developmentOverride(toolName)
+	if err != nil {
+		writeJSON(w, false, nil, err.Error())
+		return
+	}
+	if development != nil {
+		writeJSON(w, true, unsupportedCheckUpdate(development.Version, "Development override active; release updates are disabled until tool dev off"), "")
+		return
+	}
 
 	var targetTool *config.ToolConfig
 	for _, tc := range s.toolConfigs {
@@ -847,6 +856,15 @@ func orUnknown(v string) string {
 }
 
 func (s *Server) handleToolUpdate(w http.ResponseWriter, r *http.Request, toolName string) {
+	development, err := s.developmentOverride(toolName)
+	if err != nil {
+		writeJSON(w, false, nil, err.Error())
+		return
+	}
+	if development != nil {
+		writeJSONWithStatus(w, http.StatusBadRequest, false, nil, fmt.Sprintf("Development override for %s preserved; run dotfiles tool dev off %s before updating the release", toolName, toolName))
+		return
+	}
 	var targetTool *config.ToolConfig
 	for _, tc := range s.toolConfigs {
 		if tc.Name == toolName {

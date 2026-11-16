@@ -33,6 +33,9 @@ type Config struct {
 	ToolName   string
 	BinaryName string
 	BinaryPath string
+	// Development prevents a missing copied development build from triggering a
+	// release installation. Only explicit dev-off may surrender that selection.
+	Development bool
 	// BashPath is the absolute path of the bash that runs the shim, written into its
 	// shebang. A shim runs wherever its binary is invoked, including under a PATH that
 	// has no bash on it (launchd, cron, a test's PATH), where `#!/usr/bin/env bash`

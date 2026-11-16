@@ -30,6 +30,19 @@ func (o *Orchestrator) GenerateShellScripts(ctx context.Context, tools []*config
 }
 
 func (o *Orchestrator) generateShellScripts(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.WithShellGenerationLock(ctx, projCfg, func(ctx context.Context) error {
+		return o.generateShellScriptsLocked(ctx, tools, projCfg)
+	})
+}
+
+// WithShellGenerationLock serializes writes to shared initialization scripts with
+// development-selection rollback, which may need to restore their previous bytes.
+// Callers holding a tool lock acquire this lock second, never the reverse.
+func (o *Orchestrator) WithShellGenerationLock(ctx context.Context, projCfg *config.ProjectConfig, action func(context.Context) error) error {
+	return o.withToolLock(ctx, "_shell-generation", projCfg, action)
+}
+
+func (o *Orchestrator) generateShellScriptsLocked(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
 	shellScriptsDir := shellScriptsDirOf(projCfg)
 
 	var failures toolbatch.Failures
@@ -517,7 +530,7 @@ func formatFunctionBody(body string) string {
 // CliCommandForShell returns this CLI's invocation with each argument quoted for
 // bash/zsh or PowerShell. Prompts and generated wrappers share this rendering.
 func (o *Orchestrator) CliCommandForShell(sh string, projCfg *config.ProjectConfig) string {
-	args := o.getCliArgs()
+	args, searchPath := o.shellCLIArgsForProject(projCfg)
 	quote := shell.Quote
 	if sh == "powershell" {
 		quote = shell.QuotePowerShell
@@ -525,6 +538,9 @@ func (o *Orchestrator) CliCommandForShell(sh string, projCfg *config.ProjectConf
 	if len(args) == 1 && args[0] == "dotfiles" {
 		if sh != "powershell" {
 			return "command dotfiles"
+		}
+		if searchPath {
+			return "(Get-Command dotfiles -CommandType Application -ErrorAction Stop).Source"
 		}
 		if projCfg != nil && projCfg.Paths.TargetDir != "" {
 			args[0] = filepath.Join(projCfg.Paths.TargetDir, "dotfiles")

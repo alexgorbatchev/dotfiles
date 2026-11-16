@@ -16,6 +16,7 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/db"
+	"github.com/alexgorbatchev/dotfiles/pkg/devtools"
 	execRunner "github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 	"github.com/alexgorbatchev/dotfiles/pkg/installer"
@@ -212,6 +213,14 @@ func BootstrapServices(ctx context.Context, configPath string, loadOpts ...vm.Op
 
 	if rfs, ok := fsys.(*fs.ResolvedFS); ok {
 		rfs.SetHomeDir(projCfg.Paths.HomeDir)
+	}
+	if err := devtools.ValidateLocation(fsys, projCfg.Paths.DevToolsDir, []string{
+		projCfg.Paths.BinariesDir, projCfg.Paths.ShellScriptsDir,
+		filepath.Join(projCfg.Paths.GeneratedDir, "cache"),
+		filepath.Join(projCfg.Paths.GeneratedDir, "node_modules"),
+		filepath.Join(projCfg.Paths.GeneratedDir, "usage"),
+	}, projCfg.Paths.TargetDir); err != nil {
+		return nil, fmt.Errorf("validating development storage: %w", err)
 	}
 
 	sort.Slice(toolConfigs, func(i, j int) bool {

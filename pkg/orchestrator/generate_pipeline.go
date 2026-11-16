@@ -34,6 +34,10 @@ const completionCommandTimeout = 30 * time.Second
 // GenerateTools executes standalone shim, symlink, and shell script generation.
 // It skips the installation pipeline except for tools with "auto: true" in their install params.
 func (o *Orchestrator) GenerateTools(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	tools, err := o.includeDevelopmentCLI(tools, projCfg)
+	if err != nil {
+		return err
+	}
 	active, skipped := o.pruneToolsWithLogging(tools)
 	sorted, err := o.sortActiveTools(active, skipped)
 	if err != nil {
@@ -187,8 +191,18 @@ func (o *Orchestrator) ensureShimDirs(ctx context.Context, projCfg *config.Proje
 
 // GenerateTool generates shims and creates symlinks for a tool, recording file operations in the registry.
 func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.withToolLock(ctx, tool.Name, projCfg, func(ctx context.Context) error {
+		return o.generateTool(ctx, tool, projCfg)
+	})
+}
+
+func (o *Orchestrator) generateTool(ctx context.Context, tool *config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil {
 		return fmt.Errorf("project configuration is nil")
+	}
+	development, err := o.developmentBinaries(tool, projCfg)
+	if err != nil {
+		return err
 	}
 
 	if err := o.ensureShimDirs(ctx, projCfg); err != nil {
@@ -197,6 +211,14 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 
 	// 1. Resolve binaries to shim
 	binaryNames := shimBinaries(tool)
+	if development != nil {
+		binaryNames = nil
+		for _, binary := range tool.BinaryConfigs() {
+			if binary.WantsShim() {
+				binaryNames = append(binaryNames, binary.Name)
+			}
+		}
+	}
 	o.warnUnshimmedBinaries(tool)
 
 	// Check DB registry for recorded binary paths
@@ -215,7 +237,7 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	}
 
 	// 2. Generate Shims
-	if tool.InstallationMethod == "manual" {
+	if development == nil && tool.InstallationMethod == "manual" {
 		if _, err := installer.ResolveBinaryPath(o.fs, tool, projCfg); err != nil {
 			return err
 		}
@@ -231,6 +253,9 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 	for _, binName := range binaryNames {
 		shimPath := filepath.Join(shimDir, binName)
 		binaryPath, _ := o.resolveShimBinaryPath(ctx, tool, binName, projCfg, recordedBinaryPaths[binName], installed)
+		if development != nil {
+			binaryPath = development.Binaries[binName]
+		}
 
 		shimCfg := shim.Config{
 			ToolName:        tool.Name,
@@ -238,7 +263,8 @@ func (o *Orchestrator) GenerateTool(ctx context.Context, tool *config.ToolConfig
 			BinaryPath:      binaryPath,
 			BashPath:        bashPath,
 			Sudo:            tool.Sudo,
-			CliArgs:         o.getCliArgs(),
+			CliArgs:         o.cliArgsForProject(projCfg),
+			Development:     development != nil,
 			CliEnv:          o.getCliEnvironment(),
 			ConfigFilePath:  o.getConfigFilePath(),
 			UsageMarkerPath: usagelog.MarkerPath(projCfg.Paths.GeneratedDir, tool.Name, binName),
@@ -425,6 +451,10 @@ func (o *Orchestrator) isProtectedRepoPath(projCfg *config.ProjectConfig, tool *
 }
 
 func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.cleanupReleaseArtifacts(ctx, tools, projCfg, o.cleanupStaleShims)
+}
+
+func (o *Orchestrator) cleanupStaleShims(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil || o.reg == nil {
 		return nil
 	}
@@ -497,6 +527,10 @@ func (o *Orchestrator) CleanupStaleShims(ctx context.Context, tools []*config.To
 
 // CleanupStaleSymlinks removes symlinks recorded in the registry for active tools that are no longer declared in their symlinks list.
 func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.cleanupReleaseArtifacts(ctx, tools, projCfg, o.cleanupStaleSymlinks)
+}
+
+func (o *Orchestrator) cleanupStaleSymlinks(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil || o.reg == nil {
 		return nil
 	}
@@ -599,6 +633,10 @@ func (o *Orchestrator) CleanupStaleSymlinks(ctx context.Context, tools []*config
 
 // CleanupStaleCopies removes copies or completion files recorded in the registry for active tools that are no longer declared.
 func (o *Orchestrator) CleanupStaleCopies(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
+	return o.cleanupReleaseArtifacts(ctx, tools, projCfg, o.cleanupStaleCopies)
+}
+
+func (o *Orchestrator) cleanupStaleCopies(ctx context.Context, tools []*config.ToolConfig, projCfg *config.ProjectConfig) error {
 	if projCfg == nil || o.reg == nil {
 		return nil
 	}
@@ -871,6 +909,10 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 	if config.IsDryRunEnabled(ctx) {
 		return nil
 	}
+	development, err := o.developmentBinaries(tool, projCfg)
+	if err != nil {
+		return err
+	}
 
 	shellScriptsDir := shellScriptsDirOf(projCfg)
 
@@ -915,7 +957,9 @@ func (o *Orchestrator) GenerateCompletionsForTool(ctx context.Context, tool *con
 					if len(parts) > 0 {
 						cmdName := parts[0]
 						var execPath string
-						if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
+						if development != nil && development.Binaries[cmdName] != "" {
+							execPath = development.Binaries[cmdName]
+						} else if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
 							if exists, _ := fsys.Exists(cmdName); exists {
 								execPath = cmdName
 							}
