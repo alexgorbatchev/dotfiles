@@ -20,7 +20,7 @@ func TestE2ECrossToolConflicts(t *testing.T) {
 
 	h.CopyFixture("main")
 
-	// Add a tool with an alias that shadows binary "github-release-tool" from github-release-tool
+	// Add a tool with an alias that shadows shim "github-release-tool" from github-release-tool
 	toolContent := `import { defineTool } from "@dotfiles/cli";
 
 export default defineTool((install) =>
@@ -37,25 +37,27 @@ export default defineTool((install) =>
 		t.Fatalf("failed to write tool file: %v", err)
 	}
 
-	t.Run("generate warns about alias shadowing binary", func(t *testing.T) {
+	t.Run("generate warns about alias shadowing shim", func(t *testing.T) {
 		stdout, stderr, exitCode, err := h.Generate()
 		if err != nil || exitCode != 0 {
 			t.Fatalf("generate failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
 
 		output := stdout + stderr
-		wantWarning := `[flutter] alias "github-release-tool" ('echo shadow-grt') shadows binary "github-release-tool" from tools/github-release-tool/github-release-tool.tool.ts`
+		wantWarning := `[flutter] alias "github-release-tool" ('echo shadow-grt') shadows shim "github-release-tool" from tools/github-release-tool/github-release-tool.tool.ts`
 		if !strings.Contains(output, wantWarning) {
 			t.Fatalf("expected warning %q, got output:\n%s", wantWarning, output)
 		}
 	})
 
-	t.Run("validate warns about cross tool conflicts", func(t *testing.T) {
+	// The typecheck fixture declares tsc with `shim: false`, so it is never on PATH and
+	// an alias of the same name shadows nothing.
+	t.Run("validate ignores aliases matching shimless binaries", func(t *testing.T) {
 		hTypecheck := NewTestHarness(t, HarnessOptions{ConfigPath: "config.ts"})
 		hTypecheck.CopyFixture("typecheck")
 		installCompilerInSandbox(t, hTypecheck)
 
-		// Add flutter tool that shadows binary "tsc" from typescript tool
+		// Add flutter tool with an alias named after the shimless tsc binary
 		toolContent := `import { defineTool } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install) =>
@@ -77,11 +79,11 @@ export default defineTool((install) =>
 		}
 
 		output := stdout + stderr
-		if !strings.Contains(output, `[WARN] 1 warning(s) found:`) {
-			t.Fatalf("expected warning header in validate output, got:\n%s", output)
+		if strings.Contains(output, "warning(s) found") || strings.Contains(output, `alias "tsc"`) {
+			t.Fatalf("expected no conflict warning for shimless tsc, got:\n%s", output)
 		}
-		if !strings.Contains(output, `alias "tsc" ('echo shadow-tsc') shadows binary "tsc" from tools/typescript.tool.ts`) {
-			t.Fatalf("expected conflict warning text in validate output, got:\n%s", output)
+		if !strings.Contains(output, "all valid") {
+			t.Fatalf("expected validate to report all tools valid, got:\n%s", output)
 		}
 	})
 }

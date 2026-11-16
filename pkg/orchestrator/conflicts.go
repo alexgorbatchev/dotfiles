@@ -57,6 +57,9 @@ type binEntry struct {
 	toolName   string
 	configPath string
 	name       string
+	// shim reports whether generation writes a PATH shim for this binary. Only a
+	// shim is on PATH, so only a shimmed binary can be shadowed by an alias or function.
+	shim bool
 }
 
 // formatToolOrigin returns the tool's relative config file path if possible, or config path, or tool name.
@@ -91,6 +94,10 @@ func DetectConflicts(tools []*config.ToolConfig, dotfilesDir ...string) []Confli
 		}
 
 		// Binaries
+		shimmed := make(map[string]bool)
+		for _, binName := range shimBinaries(tool) {
+			shimmed[binName] = true
+		}
 		for _, binName := range installer.GetBinaryNames(tool.Name, tool.Binaries) {
 			if binName == "" {
 				continue
@@ -99,6 +106,7 @@ func DetectConflicts(tools []*config.ToolConfig, dotfilesDir ...string) []Confli
 				toolName:   tool.Name,
 				configPath: tool.ConfigFilePath,
 				name:       binName,
+				shim:       shimmed[binName],
 			})
 		}
 
@@ -226,12 +234,12 @@ func DetectConflicts(tools []*config.ToolConfig, dotfilesDir ...string) []Confli
 		}
 	}
 
-	// 4. Alias shadowing binary: A tool's alias shares a name with a binary provided by another tool
+	// 4. Alias shadowing a shim: A tool's alias shares a name with another tool's PATH shim
 	for _, a := range aliases {
 		for _, b := range binaries {
-			if a.toolName != b.toolName && a.name == b.name {
+			if b.shim && a.toolName != b.toolName && a.name == b.name {
 				originB := formatToolOrigin(b.toolName, b.configPath, dotDir)
-				msg := fmt.Sprintf("alias %q ('%s') shadows binary %q from %s",
+				msg := fmt.Sprintf("alias %q ('%s') shadows shim %q from %s",
 					a.name, a.value, b.name, originB)
 				key := fmt.Sprintf("alias_shadows_binary:%s:%s:%s:%s", a.toolName, b.toolName, a.name, a.value)
 				if !seenKeys[key] {
@@ -252,12 +260,12 @@ func DetectConflicts(tools []*config.ToolConfig, dotfilesDir ...string) []Confli
 		}
 	}
 
-	// 5. Function shadowing binary: A tool's shell function shares a name with a binary provided by another tool
+	// 5. Function shadowing a shim: A tool's shell function shares a name with another tool's PATH shim
 	for _, f := range functions {
 		for _, b := range binaries {
-			if f.toolName != b.toolName && f.name == b.name {
+			if b.shim && f.toolName != b.toolName && f.name == b.name {
 				originB := formatToolOrigin(b.toolName, b.configPath, dotDir)
-				msg := fmt.Sprintf("function %q shadows binary %q from %s",
+				msg := fmt.Sprintf("function %q shadows shim %q from %s",
 					f.name, b.name, originB)
 				key := fmt.Sprintf("function_shadows_binary:%s:%s:%s", f.toolName, b.toolName, f.name)
 				if !seenKeys[key] {

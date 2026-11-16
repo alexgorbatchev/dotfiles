@@ -77,14 +77,15 @@ See [shim activity tracking](../api-reference/core-api.md#binname-runtime-behavi
 
 **Messages**:
 
-- `WARN   [tool]         Binary 'name' shadows '/usr/bin/name'`
+- `WARN   [tool]         Shim "name" shadows /usr/bin/name`
 - `WARN   [tool]         [zsh] Alias "ls" shadows /bin/ls`
 - `WARN   [tool]         [zsh] Function "cd" shadows zsh builtin "cd"`
+- `WARN   [tool]         alias "fd" ('flutter doctor') shadows shim "fd" from tools/fd.tool.ts`
 
-`dotfiles state generate` inspects active tool configurations for potential shadowing against external commands found on system `PATH` and standard shell builtins for `zsh`, `bash`, and `powershell`.
+`dotfiles state generate` inspects active tool configurations for potential shadowing against external commands found on system `PATH` and standard shell builtins for `zsh`, `bash`, and `powershell`. A binary is reached through its generated shim, which precedes the system directories on `PATH`, so the shim is what shadows a system command of the same name. An alias or function shadows both external commands and another tool's shim.
 
 - **Intentional Binary Delegation**: If a tool's binary targets or delegates directly to the host system binary (e.g., via `install("manual", { binaryPath: "/usr/bin/..." })`), the warning is automatically suppressed.
-- **Shimless Binaries**: If a binary is configured with `.bin("name", { shim: false })`, it is not placed on PATH and will not trigger a binary shadow warning.
+- **Shimless Binaries**: If a binary is configured with `.bin("name", { shim: false })`, it is not placed on PATH, so it neither shadows a system command nor can be shadowed by another tool's alias or function.
 - **Resolving Conflicts**: If the shadowing is unintentional, consider renaming the conflicting alias or function, or scoping it appropriately.
 
 ### Hook Not Executing

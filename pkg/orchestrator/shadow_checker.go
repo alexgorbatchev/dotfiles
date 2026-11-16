@@ -775,7 +775,7 @@ func (sc *ShadowChecker) CheckTool(ctx context.Context, tool *config.ToolConfig,
 			}
 			warnings = append(warnings, ShadowWarning{
 				ToolName: tool.Name,
-				Message:  fmt.Sprintf("Binary '%s' shadows '%s'", binName, extPath),
+				Message:  fmt.Sprintf("Shim %q shadows %s", binName, extPath),
 			})
 		}
 	}

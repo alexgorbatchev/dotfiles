@@ -43,7 +43,7 @@ func TestDetectConflicts_AliasShadowsBinary(t *testing.T) {
 	if c.ToolName != "flutter" || c.Name != "fd" || c.OtherTool != "fd" {
 		t.Errorf("unexpected conflict fields: %+v", c)
 	}
-	wantMsg := `alias "fd" ('flutter doctor') shadows binary "fd" from tools/fd.tool.ts`
+	wantMsg := `alias "fd" ('flutter doctor') shadows shim "fd" from tools/fd.tool.ts`
 	if c.Message != wantMsg {
 		t.Errorf("got message %q, want %q", c.Message, wantMsg)
 	}
@@ -83,7 +83,7 @@ func TestDetectConflicts_FunctionShadowsBinary(t *testing.T) {
 	if c.ToolName != "custom-bat" || c.Name != "bat" || c.OtherTool != "bat" {
 		t.Errorf("unexpected conflict fields: %+v", c)
 	}
-	wantMsg := `function "bat" shadows binary "bat" from tools/bat.tool.ts`
+	wantMsg := `function "bat" shadows shim "bat" from tools/bat.tool.ts`
 	if c.Message != wantMsg {
 		t.Errorf("got message %q, want %q", c.Message, wantMsg)
 	}
@@ -238,6 +238,29 @@ func TestDetectConflicts_DisabledAndHostnameFiltering(t *testing.T) {
 	}
 }
 
+// Only a shim is on PATH, so an alias or function cannot shadow a binary that gets
+// none: one declared with `shim: false`, or a tool that declares no binaries at all.
+func TestDetectConflicts_UnshimmedBinariesAreNotShadowed(t *testing.T) {
+	shellConfigs := &config.ShellConfigs{
+		Zsh: &config.ShellTypeConfig{
+			Aliases:   map[string]string{"node": "node --inspect", "flutter": "flutter doctor"},
+			Functions: map[string]string{"node": "echo node", "flutter": "echo flutter"},
+		},
+	}
+	tools := []*config.ToolConfig{
+		{Name: "wrappers", ShellConfigs: shellConfigs},
+		{
+			Name:     "nodejs",
+			Binaries: []interface{}{map[string]interface{}{"name": "node", "shim": false}},
+		},
+		{Name: "flutter"},
+	}
+
+	if conflicts := DetectConflicts(tools); len(conflicts) != 0 {
+		t.Fatalf("expected no conflicts for binaries without shims, got %d: %+v", len(conflicts), conflicts)
+	}
+}
+
 func TestDetectConflicts_SameToolNoSelfConflict(t *testing.T) {
 	tools := []*config.ToolConfig{
 		{
@@ -331,14 +354,14 @@ func TestWarnConflicts(t *testing.T) {
 	orch.WarnConflicts(tools, projCfg)
 
 	output := buf.String()
-	if !strings.Contains(output, "WARN\t[flutter] alias \"fd\" ('flutter doctor') shadows binary \"fd\" from tools/fd.tool.ts") {
+	if !strings.Contains(output, "WARN\t[flutter] alias \"fd\" ('flutter doctor') shadows shim \"fd\" from tools/fd.tool.ts") {
 		t.Errorf("expected warning in log output, got:\n%s", output)
 	}
 
 	buf.Reset()
 	orch.WarnConflicts(tools, nil)
 	outputNil := buf.String()
-	if !strings.Contains(outputNil, "WARN\t[flutter] alias \"fd\" ('flutter doctor') shadows binary \"fd\" from /dotfiles/tools/fd.tool.ts") {
+	if !strings.Contains(outputNil, "WARN\t[flutter] alias \"fd\" ('flutter doctor') shadows shim \"fd\" from /dotfiles/tools/fd.tool.ts") {
 		t.Errorf("expected warning with full path when projCfg is nil, got:\n%s", outputNil)
 	}
 }
