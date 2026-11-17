@@ -44,6 +44,20 @@ func TestUntrackedPreservesResolutionAndIsolation(t *testing.T) {
 	}
 }
 
+func TestOSFSMkdirRefusesExistingDirectory(t *testing.T) {
+	fsys := NewOSFS()
+	dir := filepath.Join(t.TempDir(), "owned")
+	if err := fsys.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := fsys.Mkdir(dir, 0700); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("existing directory accepted: %v", err)
+	}
+	if err := fsys.Mkdir(filepath.Join(dir, "missing", "child"), 0700); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing parent accepted: %v", err)
+	}
+}
+
 // runCommonFSTests executes a suite of standard operations against any FS implementation.
 func runCommonFSTests(t *testing.T, filesystem FS, baseDir string) {
 	t.Helper()

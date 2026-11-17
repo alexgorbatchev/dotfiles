@@ -110,6 +110,27 @@ func newLoadOptions(opts []Option) loadOptions {
 	return resolved
 }
 
+// LoadProjectConfig evaluates the project configuration and resolves its paths,
+// without discovering or evaluating tool definitions or creating project state.
+func LoadProjectConfig(log *logger.Logger, fsys fs.FS, configPath string, opts ...Option) (*config.ProjectConfig, error) {
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolving absolute config path: %w", err)
+	}
+	configScript, err := compileFileWithSourceMap(absConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("compiling project config %q: %w", absConfigPath, err)
+	}
+	project, err := evaluateProjectConfig(log, fsys, configScript.code, absConfigPath, newLoadOptions(opts).target, configScript.sourceMap)
+	if err != nil {
+		return nil, fmt.Errorf("evaluating project config: %w", err)
+	}
+	if err := project.ResolvePlaceholders(filepath.Dir(absConfigPath)); err != nil {
+		return nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+	}
+	return project, nil
+}
+
 // LoadTypeScriptConfig loads and compiles a TypeScript config file and all tool configs
 // dynamically, returning the unmarshaled ProjectConfig, map of ToolConfigs, and retained Evaluator.
 func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opts ...Option) (*config.ProjectConfig, map[string]*config.ToolConfig, *Evaluator, error) {
@@ -123,22 +144,10 @@ func LoadTypeScriptConfig(log *logger.Logger, fsys fs.FS, configPath string, opt
 
 	configFileDir := filepath.Dir(absConfigPath)
 
-	// Step 1: Pre-evaluate config.ts to discover Paths.ToolConfigsDir
-	configScript, err := compileFileWithSourceMap(absConfigPath)
+	// Step 1: Evaluate the project and resolve its configured tool roots.
+	projCfg, err := LoadProjectConfig(log, fsys, absConfigPath, opts...)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("compiling project config %q: %w", absConfigPath, err)
-	}
-
-	projCfg, err := evaluateProjectConfig(log, fsys, configScript.code, absConfigPath, target, configScript.sourceMap)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("evaluating project config: %w", err)
-	}
-
-	// Resolve path placeholders and defaults once, here, so tool discovery, the values
-	// handed to the JS VM, and the config the caller receives all agree instead of each
-	// re-deriving them from the raw config.
-	if err := projCfg.ResolvePlaceholders(configFileDir); err != nil {
-		return nil, nil, nil, fmt.Errorf("resolving paths in %q: %w", filepath.Base(absConfigPath), err)
+		return nil, nil, nil, err
 	}
 
 	if options.projectOnly {

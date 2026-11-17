@@ -16,7 +16,7 @@ var catalogFlags struct {
 
 var catalogCmd = &cobra.Command{
 	Use:   "catalog",
-	Short: "Discover shared tool definitions",
+	Short: "Discover and fetch shared tool definitions",
 	Args:  catalogArgs(cobra.NoArgs),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmd.Help()

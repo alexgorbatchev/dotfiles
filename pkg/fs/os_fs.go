@@ -42,6 +42,12 @@ func (o *OSFS) MkdirAll(path string, perm os.FileMode) error {
 	return os.MkdirAll(path, perm)
 }
 
+// Mkdir creates one new directory, refusing any existing entry or missing parent.
+// Unlike MkdirAll, success establishes ownership of the newly created directory.
+func (o *OSFS) Mkdir(path string, perm os.FileMode) error {
+	return os.Mkdir(path, perm)
+}
+
 func (o *OSFS) Create(path string) (io.WriteCloser, error) {
 	return os.Create(path)
 }

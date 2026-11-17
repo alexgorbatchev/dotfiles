@@ -1,12 +1,6 @@
----
-created_on: 2026-10-07 09:59
-last_modified: 2026-10-07 09:59
-status: current
----
-
 # pkg/catalog
 
-Static catalog wire validation, bounded discovery transport, cached source inspection and deterministic queries.
+Static catalog discovery and Git retrieval of tool definitions and accompanying files.
 
 ## Commands
 
@@ -16,7 +10,7 @@ Static catalog wire validation, bounded discovery transport, cached source inspe
 
 ## Boundaries
 
-- The 2026-10-07 milestone includes discovery only. Do not add definition evaluation, imports, updates, provenance, planning, installation verification or transactions here.
+- Support static discovery and Git file retrieval. Retrieval reads the existing sharded source layout at one pinned commit, copies the selected tool directory, and refuses existing destinations. Never evaluate downloaded definitions during retrieval. Updates, durable provenance tracking, planning, installation verification and publishing remain outside this implementation.
 - Use `config.InstallMethods()` as the method vocabulary and the existing bounded downloader for static GETs. Suppress inherited installation callbacks and reject origin/API escape before dispatch.
 - Keep strict wire property/null/integer handling and exact object hash/size checks. Cached content remains a performance aid; it grants no source execution or project mutation authority.
 - Keep verification metadata validation and truthful display from the existing wire schema. Empty history is unverified; synthetic fixtures supply no published evidence.

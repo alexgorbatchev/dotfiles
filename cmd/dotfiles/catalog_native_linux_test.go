@@ -121,4 +121,35 @@ func TestCatalogNativeProcess(t *testing.T) {
 	if code != 1 || s.count() != before || out.Stdout != "" || json.Unmarshal([]byte(out.Stderr), &failure) != nil || failure.Code != "invalid-input" {
 		t.Fatalf("native parser failure bypassed typed JSON: exit %d %#v", code, out)
 	}
+	repo, commit, source := catalogFetchRepository(t)
+	projectDir := filepath.Join(dir, "fetch-project")
+	if err := os.MkdirAll(projectDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	config := writeTSProject(t, projectDir, `paths: { toolConfigsDir: ["custom", "secondary"] }`, nil)
+	fetchArgs := []string{"--config", config, "catalog", "fetch", "bat", "--repo", repo, "--ref", commit, "--json"}
+	out, code = run([]string{"DOTFILES_CATALOG_REPO=ext::invalid"}, append(fetchArgs[:len(fetchArgs):len(fetchArgs)], "--dry-run")...)
+	var fetched catalog.FetchResult
+	if code != 0 || json.Unmarshal([]byte(out.Stdout), &fetched) != nil || !fetched.DryRun || fetched.Commit != commit || out.Stderr != "" || s.count() != before {
+		t.Fatalf("native Git dry-run: exit %d %#v", code, out)
+	}
+	if _, err := os.Stat(filepath.Join(projectDir, "custom")); !os.IsNotExist(err) {
+		t.Fatalf("native dry-run wrote files: %v", err)
+	}
+	environmentFetchArgs := []string{"--config", config, "catalog", "fetch", "bat", "--ref", commit, "--json"}
+	out, code = run([]string{"AGENT=1", "DOTFILES_CATALOG_REPO=" + repo}, environmentFetchArgs...)
+	if code != 0 || json.Unmarshal([]byte(out.Stdout), &fetched) != nil || fetched.Repository != repo || fetched.DryRun || fetched.Commit != commit || out.Stderr != "" || strings.Contains(strings.TrimSpace(out.Stdout), "\n") {
+		t.Fatalf("native Git fetch: exit %d %#v", code, out)
+	}
+	actual, err := os.ReadFile(filepath.Join(fetched.Destination, "bat.tool.ts"))
+	if err != nil || string(actual) != source {
+		t.Fatalf("native imported source bytes: %v, %q", err, actual)
+	}
+	out, code = run(nil, fetchArgs...)
+	if code != 1 || out.Stdout != "" || json.Unmarshal([]byte(out.Stderr), &failure) != nil || failure.Code != "destination-exists" {
+		t.Fatalf("native repeat fetch: exit %d %#v", code, out)
+	}
+	if _, err := os.Stat(filepath.Join(projectDir, ".generated")); !os.IsNotExist(err) {
+		t.Fatalf("native fetch created installation state: %v", err)
+	}
 }

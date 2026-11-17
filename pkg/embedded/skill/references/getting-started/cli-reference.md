@@ -144,7 +144,7 @@ dotfiles cache clear --dry-run
 
 ### `dotfiles catalog`
 
-[Catalog discovery](catalog.md) documents search, list, show, their options, cached completion and result/error envelopes.
+[Catalog commands](catalog.md) documents fetching tool files from Git, discovery options, cached completion and result/error envelopes.
 
 ### `dotfiles tool`
 

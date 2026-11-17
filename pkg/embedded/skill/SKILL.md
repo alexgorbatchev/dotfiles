@@ -9,7 +9,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-03-04 19:29
-  last_modified: 2026-11-16 10:35
+  last_modified: 2026-11-16 12:00
   status: current
 ---
 
@@ -103,7 +103,8 @@ For managed installations, `dotfiles install <tool-or-binary>` is also a repair 
 
 Read these based on the task at hand:
 
-- **[Catalog discovery](references/getting-started/catalog.md)** — Search shared tools, inspect definition source, filter targets and use cached or offline discovery.
+- **[Catalog commands](references/getting-started/catalog.md)** — Fetch editable tool files from Git, or discover and inspect definitions through static catalog data.
+- **[Git retrieval Go API](references/api-reference/catalog-fetch.md)** — Retrieve tool files and resolve local project paths without loading tool definitions.
 - **[Catalog Go API](references/api-reference/catalog-discovery.md)** — Read when producing or consuming static catalog protocol data from Go.
 
 - **[make-tool.md](references/make-tool.md)** — Complete guide for creating `.tool.ts` configurations. Read when creating a new tool config or modifying an existing one. Includes tool investigation steps, method selection, examples, and quality checklist.

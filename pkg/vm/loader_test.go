@@ -54,6 +54,33 @@ func TestCompiledSourceMapResolvesEntryOutsideWorkingDirectory(t *testing.T) {
 	t.Fatal("compiled error statement missing")
 }
 
+func TestLoadProjectConfigDoesNotLoadToolDefinitions(t *testing.T) {
+	dir := writePathsConfig(t, `{ toolConfigsDir: ["custom", "secondary"] }`)
+	if err := os.MkdirAll(filepath.Join(dir, "custom"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "custom", "broken.tool.ts"), []byte("throw new Error('must not load existing tools');"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	log := logger.New(logger.Config{Writer: io.Discard})
+	project, err := LoadProjectConfig(log, fs.NewOSFS(), filepath.Join(dir, "dotfiles.config.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if project.Paths.GetPrimaryToolConfigsDir() != filepath.Join(dir, "custom") {
+		t.Fatalf("wrong primary tool directory: %#v", project.Paths)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".dotfiles-loader-entry") || entry.Name() == ".generated" {
+			t.Fatalf("project-only loading left state: %s", entry.Name())
+		}
+	}
+}
+
 func TestLoaderFileSystemWriteOperations(t *testing.T) {
 	var logBuf bytes.Buffer
 	log := logger.New(logger.Config{

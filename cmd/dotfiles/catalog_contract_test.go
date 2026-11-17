@@ -25,3 +25,19 @@ func TestCatalogDiscoveryCommandContract(t *testing.T) {
 		}
 	}
 }
+
+func TestCatalogFetchCommandContract(t *testing.T) {
+	out, err := runCommand("catalog", "fetch", "--help")
+	if err != nil || !strings.Contains(out.Stdout, "--repo") || !strings.Contains(out.Stdout, "--ref") || !strings.Contains(out.Stdout, "fetch <id>") {
+		t.Fatalf("fetch help: %v, %#v", err, out)
+	}
+	if !strings.Contains(out.Stdout, "https://github.com/alexgorbatchev/dotfiles-catalog") || !strings.Contains(out.Stdout, "DOTFILES_CATALOG_REPO") {
+		t.Fatalf("fetch help omits repository defaults: %#v", out)
+	}
+	for _, args := range [][]string{{"catalog", "fetch"}, {"catalog", "fetch", "bat", "extra"}, {"catalog", "fetch", "bat", "--repo="}} {
+		out, err := runCommand(args...)
+		if err == nil || strings.Contains(out.Combined, "loading") {
+			t.Fatalf("input must fail before project loading: %v: %v, %#v", args, err, out)
+		}
+	}
+}
