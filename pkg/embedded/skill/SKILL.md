@@ -103,6 +103,9 @@ For managed installations, `dotfiles install <tool-or-binary>` is also a repair 
 
 Read these based on the task at hand:
 
+- **[Catalog discovery](references/getting-started/catalog.md)** — Search shared tools, inspect definition source, filter targets and use cached or offline discovery.
+- **[Catalog Go API](references/api-reference/catalog-discovery.md)** — Read when producing or consuming static catalog protocol data from Go.
+
 - **[make-tool.md](references/make-tool.md)** — Complete guide for creating `.tool.ts` configurations. Read when creating a new tool config or modifying an existing one. Includes tool investigation steps, method selection, examples, and quality checklist.
 
 - **[Development Tools](references/getting-started/tool-dev.md)** — Register local builds, preserve them during maintenance, and return to managed releases.

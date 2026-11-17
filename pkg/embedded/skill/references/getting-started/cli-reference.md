@@ -142,6 +142,10 @@ dotfiles cache clear --prune-cache=false # manual cleanup still runs
 dotfiles cache clear --dry-run
 ```
 
+### `dotfiles catalog`
+
+[Catalog discovery](catalog.md) documents search, list, show, their options, cached completion and result/error envelopes.
+
 ### `dotfiles tool`
 
 Commands that manage configured tools, lifecycles, and binary lookups.

@@ -15,8 +15,9 @@ Main CLI entrypoint, Cobra subcommands, and service bootstrap.
 ## Local conventions
 
 - Use `.tmp/` inside the project folder for temporary scripts and manual sandboxing. Go test sandboxes may use the OS temporary directory under the test-only exception in the root `AGENTS.md`; keep automatic cleanup scoped to the owning test.
+- Catalog discovery (`catalog search/list/show`) and its cache-only completion do not bootstrap project services or execute source. Preserve typed JSON stdout/stderr behavior and document the interface in the canonical embedded catalog reference.
 - Set strict execution timeouts on subprocesses (max 1m for CLI generation runs). The interactive AI harness `tool make` starts is the exception (see `pkg/harness/AGENTS.md`).
-- Command structure follows subject-first noun-verb hierarchy (`tool`, `path`, `shell`, `venv`, `state`, `cache`, `dashboard`, `skill`, `self`).
+- Command structure follows subject-first noun-verb hierarchy (`tool`, `path`, `shell`, `venv`, `state`, `cache`, `catalog`, `dashboard`, `skill`, `self`).
 - `cache clear` retains downloads for recorded installed versions and bypasses `--prune-cache=false`; `--dry-run` skips cleanup. Keep command and flag documentation synchronized in the embedded skill's CLI reference.
 - Root-level aliases in `root_aliases.go` (`generate`, `pull`, `install`, `update`, `version`) delegate directly to their domain subcommands (`state generate`, `state pull`, `tool install`, `tool update`, `self version`) and are kept hidden from `--help` to preserve the clean domain hierarchy.
 - Command files must strictly follow domain naming: `cmd/dotfiles/<subject>.go` for domain parents and `cmd/dotfiles/<subject>_<verb>.go` for child subcommands. File names must strictly match what is inside.

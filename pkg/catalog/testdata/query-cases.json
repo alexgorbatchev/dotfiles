@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "index": {
+    "schemaVersion": 1,
+    "entries": [
+      {
+        "id": "arg",
+        "displayName": "Argument viewer",
+        "description": "Synthetic fixture",
+        "categories": ["terminal"],
+        "sourcePath": "tools/a/r/arg",
+        "detail": {
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size": 0
+        },
+        "definitions": [
+          {
+            "name": "default",
+            "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+            "minimumCliVersion": "2.6.0",
+            "summaries": [
+              {
+                "target": {
+                  "platform": "linux",
+                  "architecture": "amd64",
+                  "libc": "gnu"
+                },
+                "installationMethod": "github-release"
+              }
+            ],
+            "verification": []
+          }
+        ],
+        "verificationStatus": "unverified"
+      },
+      {
+        "id": "mixed",
+        "displayName": "Mixed",
+        "description": "Synthetic fixture",
+        "categories": ["terminal"],
+        "sourcePath": "tools/m/i/mixed",
+        "detail": {
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size": 0
+        },
+        "definitions": [
+          {
+            "name": "default",
+            "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+            "minimumCliVersion": "2.6.0",
+            "summaries": [
+              {
+                "target": {
+                  "platform": "linux",
+                  "architecture": "amd64",
+                  "libc": "gnu"
+                },
+                "installationMethod": "github-release"
+              }
+            ],
+            "verification": []
+          },
+          {
+            "name": "system",
+            "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+            "minimumCliVersion": "2.6.0",
+            "summaries": [
+              {
+                "target": {
+                  "platform": "macos",
+                  "architecture": "arm64",
+                  "libc": "unknown"
+                },
+                "installationMethod": "brew"
+              }
+            ],
+            "verification": []
+          }
+        ],
+        "verificationStatus": "unverified"
+      },
+      {
+        "id": "rg",
+        "displayName": "Ripgrep",
+        "description": "Synthetic file search",
+        "categories": ["terminal"],
+        "sourcePath": "tools/r/g/rg",
+        "detail": {
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size": 0
+        },
+        "definitions": [
+          {
+            "name": "default",
+            "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+            "minimumCliVersion": "2.6.0",
+            "summaries": [
+              {
+                "target": {
+                  "platform": "linux",
+                  "architecture": "amd64",
+                  "libc": "gnu"
+                },
+                "installationMethod": "github-release"
+              }
+            ],
+            "verification": []
+          }
+        ],
+        "verificationStatus": "unverified"
+      },
+      {
+        "id": "rgx",
+        "displayName": "RGX",
+        "description": "Synthetic file search",
+        "categories": ["terminal"],
+        "sourcePath": "tools/r/g/rgx",
+        "detail": {
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size": 0
+        },
+        "definitions": [
+          {
+            "name": "default",
+            "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+            "minimumCliVersion": "2.6.0",
+            "summaries": [
+              {
+                "target": {
+                  "platform": "linux",
+                  "architecture": "amd64",
+                  "libc": "gnu"
+                },
+                "installationMethod": "github-release"
+              }
+            ],
+            "verification": []
+          }
+        ],
+        "verificationStatus": "unverified"
+      },
+      {
+        "id": "x",
+        "displayName": "RG viewer",
+        "description": "Synthetic file reader",
+        "categories": ["terminal"],
+        "sourcePath": "tools/x/_/x",
+        "detail": {
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size": 0
+        },
+        "definitions": [
+          {
+            "name": "default",
+            "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+            "minimumCliVersion": "2.6.0",
+            "summaries": [
+              {
+                "target": {
+                  "platform": "linux",
+                  "architecture": "amd64",
+                  "libc": "gnu"
+                },
+                "installationMethod": "github-release"
+              }
+            ],
+            "verification": []
+          }
+        ],
+        "verificationStatus": "unverified"
+      },
+      {
+        "id": "z",
+        "displayName": "Reader",
+        "description": "Synthetic rg output",
+        "categories": ["terminal"],
+        "sourcePath": "tools/z/_/z",
+        "detail": {
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "size": 0
+        },
+        "definitions": [
+          {
+            "name": "default",
+            "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+            "minimumCliVersion": "2.6.0",
+            "summaries": [
+              {
+                "target": {
+                  "platform": "linux",
+                  "architecture": "amd64",
+                  "libc": "gnu"
+                },
+                "installationMethod": "github-release"
+              }
+            ],
+            "verification": []
+          }
+        ],
+        "verificationStatus": "unverified"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "rank every field",
+      "query": " RG ",
+      "filters": {
+        "categories": [],
+        "methods": [],
+        "platform": null,
+        "architecture": null,
+        "libc": null
+      },
+      "page": 1,
+      "limit": 20,
+      "expectedTotal": 5,
+      "expectedItems": [
+        {
+          "id": "rg",
+          "matchingDefinitions": ["default"]
+        },
+        {
+          "id": "rgx",
+          "matchingDefinitions": ["default"]
+        },
+        {
+          "id": "arg",
+          "matchingDefinitions": ["default"]
+        },
+        {
+          "id": "x",
+          "matchingDefinitions": ["default"]
+        },
+        {
+          "id": "z",
+          "matchingDefinitions": ["default"]
+        }
+      ]
+    },
+    {
+      "name": "list second page",
+      "query": null,
+      "filters": {
+        "categories": [],
+        "methods": [],
+        "platform": null,
+        "architecture": null,
+        "libc": null
+      },
+      "page": 2,
+      "limit": 2,
+      "expectedTotal": 6,
+      "expectedItems": [
+        {
+          "id": "rg",
+          "matchingDefinitions": ["default"]
+        },
+        {
+          "id": "rgx",
+          "matchingDefinitions": ["default"]
+        }
+      ]
+    },
+    {
+      "name": "empty high page",
+      "query": null,
+      "filters": {
+        "categories": [],
+        "methods": [],
+        "platform": null,
+        "architecture": null,
+        "libc": null
+      },
+      "page": 99,
+      "limit": 20,
+      "expectedTotal": 6,
+      "expectedItems": []
+    },
+    {
+      "name": "same tuple required",
+      "query": null,
+      "filters": {
+        "categories": [],
+        "methods": ["brew"],
+        "platform": "linux",
+        "architecture": null,
+        "libc": null
+      },
+      "page": 1,
+      "limit": 20,
+      "expectedTotal": 0,
+      "expectedItems": []
+    },
+    {
+      "name": "selected variant",
+      "query": null,
+      "filters": {
+        "categories": [],
+        "methods": ["brew"],
+        "platform": "macos",
+        "architecture": null,
+        "libc": null
+      },
+      "page": 1,
+      "limit": 20,
+      "expectedTotal": 1,
+      "expectedItems": [
+        {
+          "id": "mixed",
+          "matchingDefinitions": ["system"]
+        }
+      ]
+    },
+    {
+      "name": "all tokens",
+      "query": "rG\tfile",
+      "filters": {
+        "categories": [],
+        "methods": [],
+        "platform": null,
+        "architecture": null,
+        "libc": null
+      },
+      "page": 1,
+      "limit": 20,
+      "expectedTotal": 3,
+      "expectedItems": [
+        {
+          "id": "rg",
+          "matchingDefinitions": ["default"]
+        },
+        {
+          "id": "rgx",
+          "matchingDefinitions": ["default"]
+        },
+        {
+          "id": "x",
+          "matchingDefinitions": ["default"]
+        }
+      ]
+    },
+    {
+      "name": "category excluded from text",
+      "query": "terminal",
+      "filters": {
+        "categories": [],
+        "methods": [],
+        "platform": null,
+        "architecture": null,
+        "libc": null
+      },
+      "page": 1,
+      "limit": 20,
+      "expectedTotal": 0,
+      "expectedItems": []
+    }
+  ]
+}

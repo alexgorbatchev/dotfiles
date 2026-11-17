@@ -33,6 +33,7 @@ Monorepo for `@alexgorbatchev/dotfiles`. Go implementation (`pkg/`, `cmd/dotfile
 - Go backup package: `pkg/backup/` -> `pkg/backup/AGENTS.md`
 - Go block package: `pkg/block/` -> `pkg/block/AGENTS.md`
 - Go cliout package: `pkg/cliout/` -> `pkg/cliout/AGENTS.md`
+- Go catalog discovery package: `pkg/catalog/` -> `pkg/catalog/AGENTS.md`
 - Go config package: `pkg/config/` -> `pkg/config/AGENTS.md`
 - Go dashboard package: `pkg/dashboard/` -> `pkg/dashboard/AGENTS.md`
 - Go db package: `pkg/db/` -> `pkg/db/AGENTS.md`
