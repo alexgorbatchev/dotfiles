@@ -457,7 +457,7 @@ Without this step, the generated shims and shell configuration will be out of sy
 - ✅ Every tool that provides executables has at least one `.bin()` declaration
 - ✅ `.bin(name, pattern?)` declarations match actual executables
 - ✅ Binary patterns are correct for archive structures
-- ✅ `.dependsOn()` uses binary names (not tool names) from other tools' `.bin()` declarations
+- ✅ `.dependsOn()` names binaries from other tools' `.bin()` declarations; it names a tool only when that tool declares no binaries
 
 **Paths**
 
