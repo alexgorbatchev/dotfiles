@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -33,8 +34,9 @@ func TestAptInstaller(t *testing.T) {
 		runner.Register("dpkg-query", []byte("1.2.3-1"), nil)
 
 		tool := &config.ToolConfig{
-			Name: "jq",
-			Sudo: true,
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
+			Sudo:     true,
 			InstallParams: map[string]interface{}{
 				"package": "jq",
 				"update":  true,
@@ -73,8 +75,9 @@ func TestAptInstaller(t *testing.T) {
 	t.Run("Uninstall success", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
-			Name: "jq",
-			Sudo: true,
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
+			Sudo:     true,
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -96,7 +99,8 @@ func TestAptInstaller(t *testing.T) {
 		runner.Register("apt-get", nil, errors.New("apt error"))
 
 		tool := &config.ToolConfig{
-			Name: "jq",
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -111,6 +115,7 @@ func TestAptInstaller(t *testing.T) {
 		runner.Register("dpkg-query", []byte("1.6-1"), nil)
 		toolSudo := &config.ToolConfig{
 			Name:          "jq",
+			Binaries:      testutil.DeclaredBinaries("jq"),
 			Sudo:          true,
 			InstallParams: map[string]interface{}{"package": "jq"},
 		}
@@ -138,6 +143,7 @@ func TestAptInstaller(t *testing.T) {
 		runner.Register("dpkg-query", []byte("1.6-1"), nil)
 		toolNonSudo := &config.ToolConfig{
 			Name:          "jq",
+			Binaries:      testutil.DeclaredBinaries("jq"),
 			InstallParams: map[string]interface{}{"package": "jq"},
 		}
 		if _, err := inst.Install(context.Background(), toolNonSudo); err != nil {
@@ -174,7 +180,7 @@ func TestAptInstaller(t *testing.T) {
 		// 5. CheckUpdate
 		runner.Clear()
 		registerQuery(runner, "apt-cache", aptPolicyCurrent, "", nil)
-		if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "bash", InstallParams: map[string]interface{}{"package": "bash"}}); err != nil {
+		if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "bash", InstallParams: map[string]interface{}{"package": "bash"}, Binaries: testutil.DeclaredBinaries("bash")}); err != nil {
 			t.Fatalf("CheckUpdate failed: %v", err)
 		}
 		var aptCacheCmd *exec.MockCmd
@@ -209,7 +215,8 @@ func TestAptInstaller(t *testing.T) {
 		})
 
 		tool := &config.ToolConfig{
-			Name: "libz-dev",
+			Name:     "libz-dev",
+			Binaries: testutil.DeclaredBinaries("libz-dev"),
 			InstallParams: map[string]interface{}{
 				"package": "libz-dev",
 			},
@@ -242,7 +249,8 @@ func TestAptInstaller(t *testing.T) {
 		})
 
 		tool := &config.ToolConfig{
-			Name: "nonexistent",
+			Name:     "nonexistent",
+			Binaries: testutil.DeclaredBinaries("nonexistent"),
 			InstallParams: map[string]interface{}{
 				"package": "nonexistent",
 			},

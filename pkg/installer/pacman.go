@@ -64,7 +64,7 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
@@ -144,7 +144,7 @@ func (p *PacmanInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 		}
 	}
 
-	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	binNames := tool.BinaryNames()
 	resolvedBinaries := ResolveBinaryPaths(ctx, p.fsys, binNames, func(binName string) string {
 		return filepath.Join("/usr/bin", binName)
 	})

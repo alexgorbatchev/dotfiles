@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +47,7 @@ var toolListCmd = &cobra.Command{
 			if regTool != nil && regTool.Version != "" {
 				version = regTool.Version
 			}
-			bins := installer.GetBinaryNames(tc.Name, tc.Binaries)
+			bins := tc.BinaryNames()
 
 			items = append(items, ToolListItem{
 				Name:      tc.Name,

@@ -80,7 +80,9 @@ declared name in `argv[0]`.
 
 ### binaryPath and Binary Patterns
 
-`binaryPath` names the one file that is installed under every declared `.bin()` name. Each
+`binaryPath` names the one file that is installed under every declared `.bin()` name, so a
+tool that sets `binaryPath` must declare at least one `.bin()`; one that declares none is
+rejected when the configuration loads. Each
 declared `.bin()` name is what the program receives as `argv[0]`, which multi-call binaries
 rely on to dispatch the requested sub-command or persona. Because `binaryPath` directly
 names the file to install for each `.bin()`, nothing is searched for and a

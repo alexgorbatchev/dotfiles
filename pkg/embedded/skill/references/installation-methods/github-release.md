@@ -145,7 +145,7 @@ When several assets fit the platform, the selector takes an archive over a raw b
 The selected asset is then handled by its extension:
 
 - An archive in one of the formats listed under [curl-tar › Supported Formats](curl-tar.md#supported-formats) is extracted and the declared binaries are promoted from the extracted tree.
-- An asset with no archive extension (for example `tool-linux-amd64`) is installed as the binary itself.
+- An asset with no archive extension (for example `tool-linux-amd64`) is installed as the binary itself, under the tool's one declared `.bin()` name. A tool that declares several binaries cannot be served by one file and fails the install; one that declares none keeps the file under the tool's name with nothing on PATH.
 - Anything else fails the install: an archive format that cannot be extracted (`.rar`, `.7z`, `.tar.zst`, a bare `.xz` or `.bz2`) or a file that is not a program (checksums, signatures, `.deb`/`.rpm` packages). Use `assetPattern` to select a different asset.
 
 ## Asset Pattern Matching

@@ -2,6 +2,8 @@
 
 Download standalone binary files directly from URLs. Unlike `curl-tar`, this method does **not** extract an archive — the downloaded file is the binary itself.
 
+The download is saved under the tool's `.bin()` name, so a `curl-binary` tool declares exactly one `.bin()`; any other count is rejected when the configuration loads.
+
 ## Basic Usage
 
 ```typescript

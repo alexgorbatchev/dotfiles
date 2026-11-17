@@ -24,6 +24,7 @@ import { defineTool } from "@alexgorbatchev/dotfiles";
 export default defineTool((install, ctx) => {
   ctx.log.info("DEFINETOOL_BODY_EVALUATION_TOKEN");
   return install("manual")
+    .bin("eval-once-test")
     .hook("before-install", async ({ log }) => {
       log.info("BEFORE_INSTALL_HOOK_EXECUTED");
     })

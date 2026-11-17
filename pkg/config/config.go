@@ -508,9 +508,24 @@ func (ipc *InactivePlatformConfig) asToolConfig(toolName string) *ToolConfig {
 
 // Validate checks declarations and install parameters inside this inactive platform branch.
 func (ipc *InactivePlatformConfig) Validate(toolName string) error {
+	return ipc.validate(toolName, nil)
+}
+
+// validate checks this inactive branch as part of a tool that declares toolBinaries.
+// A binary declared on the tool rather than inside the branch belongs to the branch
+// too, so install parameters that need a binary are judged against both. The tool's
+// binaries also hold any declared only inside the branch that matched this machine,
+// which can let a branch pass here that its own target rejects; that target loads the
+// branch as its active configuration and checks it in full.
+func (ipc *InactivePlatformConfig) validate(toolName string, toolBinaries []interface{}) error {
 	branch := ipc.BranchName()
 
 	tc := ipc.asToolConfig(toolName)
+	if len(toolBinaries) > 0 {
+		merged := &ToolConfig{Binaries: slices.Clone(toolBinaries)}
+		merged.Merge(&ToolConfig{Binaries: ipc.Binaries}, nil)
+		tc.Binaries = merged.Binaries
+	}
 	if err := tc.validateInstallParams(); err != nil {
 		prefix := fmt.Sprintf("tool %q: ", toolName)
 		if strings.HasPrefix(err.Error(), prefix) {
@@ -712,7 +727,7 @@ func (tc *ToolConfig) Validate() error {
 	}
 
 	for _, ipc := range tc.InactivePlatformConfigs {
-		if err := ipc.Validate(tc.Name); err != nil {
+		if err := ipc.validate(tc.Name, tc.Binaries); err != nil {
 			return err
 		}
 	}

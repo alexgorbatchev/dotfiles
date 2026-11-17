@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -45,7 +46,8 @@ func TestPkgInstaller(t *testing.T) {
 		}
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},
@@ -67,8 +69,9 @@ func TestPkgInstaller(t *testing.T) {
 		inst.BinDir = "/test/pkg"
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
-			Sudo: true,
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
+			Sudo:     true,
 			InstallParams: map[string]interface{}{
 				"url":    server.URL,
 				"target": "/Volumes/Mac",
@@ -94,7 +97,7 @@ func TestPkgInstaller(t *testing.T) {
 		sysCtx := &SystemContext{OS: "darwin", Arch: "arm64"}
 		inst := NewPkgInstaller(runner, fsys, dl, sysCtx)
 
-		tool := &config.ToolConfig{Name: "mytool"}
+		tool := &config.ToolConfig{Name: "mytool", Binaries: testutil.DeclaredBinaries("mytool")}
 		err := inst.Uninstall(context.Background(), tool, Installation{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -106,7 +109,8 @@ func TestPkgInstaller(t *testing.T) {
 		inst := NewPkgInstaller(runner, fsys, dl, sysCtx)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -124,7 +128,8 @@ func TestPkgInstaller(t *testing.T) {
 		inst.BinDir = "/test/pkg"
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},
@@ -168,7 +173,8 @@ func TestPkgInstaller(t *testing.T) {
 		inst.BaseURL = githubServer.URL
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{
 					"type": "github-release",
@@ -215,7 +221,8 @@ func TestPkgInstaller(t *testing.T) {
 		defer zipServer.Close()
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{
 					"type": "url",
@@ -262,7 +269,8 @@ func TestPkgInstaller(t *testing.T) {
 		defer zipServer.Close()
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{
 					"type": "url",
@@ -325,7 +333,8 @@ func TestPkgInstaller(t *testing.T) {
 		inst.BaseURL = zipServer.URL
 
 		tool := &config.ToolConfig{
-			Name: "zipbin",
+			Name:     "zipbin",
+			Binaries: testutil.DeclaredBinaries("zipbin"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{
 					"type": "github-release",

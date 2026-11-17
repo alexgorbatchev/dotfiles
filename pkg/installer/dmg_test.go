@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -44,7 +45,8 @@ func TestDmgInstaller(t *testing.T) {
 		}
 
 		tool := &config.ToolConfig{
-			Name: "slack",
+			Name:     "slack",
+			Binaries: testutil.DeclaredBinaries("slack"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},
@@ -67,7 +69,8 @@ func TestDmgInstaller(t *testing.T) {
 		inst.BinDir = "/test/dmg"
 
 		tool := &config.ToolConfig{
-			Name: "slack",
+			Name:     "slack",
+			Binaries: testutil.DeclaredBinaries("slack"),
 			InstallParams: map[string]interface{}{
 				"url":     server.URL,
 				"appName": "Slack.app",
@@ -117,7 +120,8 @@ func TestDmgInstaller(t *testing.T) {
 		archivetest.Hdiutil{FS: fsys, Volume: func(string) error { return errors.New("attach failed") }}.Register(runner)
 
 		tool := &config.ToolConfig{
-			Name: "slack",
+			Name:     "slack",
+			Binaries: testutil.DeclaredBinaries("slack"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},
@@ -139,7 +143,8 @@ func TestDmgInstaller(t *testing.T) {
 		inst := NewDmgInstaller(runner, fsys, dl, sysCtx)
 
 		tool := &config.ToolConfig{
-			Name: "slack",
+			Name:     "slack",
+			Binaries: testutil.DeclaredBinaries("slack"),
 			InstallParams: map[string]interface{}{
 				"appName": "Slack.app",
 			},
@@ -162,6 +167,37 @@ func TestDmgInstaller(t *testing.T) {
 			t.Error("expected SupportsSudo() to be false")
 		}
 	})
+
+	// An application installed without a .bin() puts no command on PATH, and the
+	// executable a declared binary names defaults to that binary, not the tool.
+	for _, tt := range []struct {
+		name     string
+		binaries []interface{}
+		want     []string
+	}{
+		{name: "Install without a declared binary reports none"},
+		{name: "Install names the bundle executable after the declared binary", binaries: testutil.DeclaredBinaries("amp"), want: []string{"/Applications/Amp.app/Contents/MacOS/amp"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runner.Clear()
+			registerBundlePlutil(runner)
+			inst := NewDmgInstaller(runner, fsys, dl, &SystemContext{OS: "darwin", Arch: "arm64"})
+			inst.BinDir = "/test/dmg"
+			archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "Amp.app/Contents/MacOS/amp", "mock-amp-bin")}.Register(runner)
+
+			res, err := inst.Install(context.Background(), &config.ToolConfig{
+				Name:          "amp-desktop",
+				Binaries:      tt.binaries,
+				InstallParams: map[string]interface{}{"url": server.URL, "appName": "Amp.app"},
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !slices.Equal(res.Binaries, tt.want) {
+				t.Errorf("Binaries = %v, want %v", res.Binaries, tt.want)
+			}
+		})
+	}
 
 	t.Run("Install success with GitHub Release", func(t *testing.T) {
 		runner.Clear()
@@ -197,7 +233,8 @@ func TestDmgInstaller(t *testing.T) {
 		inst.BinDir = "/test/dmg-github"
 
 		tool := &config.ToolConfig{
-			Name: "slack",
+			Name:     "slack",
+			Binaries: testutil.DeclaredBinaries("slack"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{
 					"type": "github-release",
@@ -244,7 +281,8 @@ func TestDmgInstaller(t *testing.T) {
 		defer zipServer.Close()
 
 		tool := &config.ToolConfig{
-			Name: "slack",
+			Name:     "slack",
+			Binaries: testutil.DeclaredBinaries("slack"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{
 					"type": "url",
@@ -278,7 +316,8 @@ func TestDmgInstaller(t *testing.T) {
 		archivetest.Hdiutil{FS: fsys, Volume: dmgVolumeFile(fsys, "FailCopy.app/Contents/MacOS/failcopy", "binary")}.Register(runner)
 
 		tool := &config.ToolConfig{
-			Name: "failcopy",
+			Name:     "failcopy",
+			Binaries: testutil.DeclaredBinaries("failcopy"),
 			InstallParams: map[string]interface{}{
 				"url":     server.URL,
 				"appName": "FailCopy.app",
@@ -318,7 +357,8 @@ func TestDmgInstaller(t *testing.T) {
 		inst.BinDir = "/test/dmg-autodetect"
 
 		tool := &config.ToolConfig{
-			Name: "autotool",
+			Name:     "autotool",
+			Binaries: testutil.DeclaredBinaries("autotool"),
 			InstallParams: map[string]interface{}{
 				"url":        server.URL,
 				"binaryPath": "Contents/MacOS/autobinary",

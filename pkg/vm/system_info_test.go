@@ -44,7 +44,7 @@ const systemInfoFactoryProbe = `
 import { defineTool, Platform, Architecture } from "@alexgorbatchev/dotfiles";
 ` + describeSystemInfo + `
 export default defineTool((install, ctx) =>
-  install("manual", { binaryPath: "/probe/" + describe(ctx.systemInfo) }),
+  install("manual", { binaryPath: "/probe/" + describe(ctx.systemInfo) }).bin("probe"),
 );`
 
 // A tool factory's systemInfo describes the target the run was invoked for, in the
@@ -131,7 +131,7 @@ var (
 const constantsProbeTool = `
 import { defineTool, Platform, Architecture } from "@alexgorbatchev/dotfiles";
 export default defineTool((install) =>
-  install("manual", { binaryPath: JSON.stringify({ platform: Platform, architecture: Architecture }) }),
+  install("manual", { binaryPath: JSON.stringify({ platform: Platform, architecture: Architecture }) }).bin("probe"),
 );`
 
 // The Platform and Architecture objects a tool file compares systemInfo against are

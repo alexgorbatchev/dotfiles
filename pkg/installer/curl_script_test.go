@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -44,7 +45,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 		_ = fsys.MkdirAll("/test/bin", 0755)
 		_ = fsys.WriteFile("/test/bin/mytool", []byte("bin"), 0755)
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url":   server.URL,
 				"shell": "sh",
@@ -82,7 +84,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 		_ = fsys.MkdirAll("/test/bin", 0755)
 		_ = fsys.WriteFile("/test/bin/mytool", []byte("bin"), 0755)
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url":   server.URL,
 				"shell": "bash",
@@ -110,7 +113,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 		_ = fsys.WriteFile(destPath, []byte("content"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -137,7 +141,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 		_ = sysFsys.WriteFile("/usr/local/bin/mytool", []byte("bin-content"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url":   server.URL,
 				"shell": "sh",
@@ -161,7 +166,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 
 	t.Run("Install fails missing URL", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -177,7 +183,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 		badInst.BinDir = "/forbidden/dir"
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},
@@ -196,7 +203,8 @@ func TestCurlScriptInstaller(t *testing.T) {
 		chmodInst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},

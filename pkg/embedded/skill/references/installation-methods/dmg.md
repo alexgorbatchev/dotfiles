@@ -10,7 +10,7 @@ GitHub sources share [release download authentication and integrity checks](gith
 
 If the resolved source points to a supported archive (`.zip`, `.tar.gz`, etc.) containing a `.dmg` file, the archive is automatically extracted first. This is common for GitHub releases that compress DMGs into zip files.
 
-DMG-installed applications are externally managed: temporary files (download, mount point, optional archive extraction) use `stagingDir`, the final `.app` is installed to `/Applications`, and `.bin()` names the command-line executables inside the bundle so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)).
+DMG-installed applications are externally managed: temporary files (download, mount point, optional archive extraction) use `stagingDir`, the final `.app` is installed to `/Applications`, and `.bin()` names the command-line executables inside the bundle so dotfiles can shim them (see [`.bin()` runtime behavior](../api-reference/core-api.md#binname-runtime-behavior)). An application installed without a `.bin()` puts no command on PATH; `binaryName` and `binaryPath` then only name the executable `versionArgs` runs.
 
 ## Contents
 
@@ -42,7 +42,7 @@ export default defineTool((install) =>
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `source`       | **Required**. DMG source definition (see source variants below)                                                                              |
 | `appName`      | Name of the `.app` bundle (e.g., `'MyApp.app'`). Defaults to the first `.app` at the volume's root; it must end in `.app` and contain no `/` |
-| `binaryName`   | Executable inside `Contents/MacOS` of the bundle. Defaults to the tool name                                                                  |
+| `binaryName`   | Executable inside `Contents/MacOS` of the bundle. Defaults to the tool's first `.bin()` name, then to the tool name                          |
 | `binaryPath`   | Relative path to the binary inside `.app`, when it is not `Contents/MacOS/{binaryName}`                                                      |
 | `versionArgs`  | Arguments for version check (e.g., `['--version']`)                                                                                          |
 | `versionRegex` | Regex to extract version from output (`string` or `RegExp`)                                                                                  |

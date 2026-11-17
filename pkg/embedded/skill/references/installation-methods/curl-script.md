@@ -109,8 +109,9 @@ After the script succeeds, the declared binary in `stagingDir` becomes a symlink
   installation fails with an error naming the tool, the path as written and the path it
   resolved to:
   `<tool>: nothing exists at binaryPath "<as written>" (<resolved>) after the install script ran`.
-- **One binary only.** A single path cannot say which of several binaries it belongs to,
-  so a tool that sets `binaryPath` and declares more than one `.bin()` is rejected when the
+- **Exactly one binary.** A single path cannot say which of several binaries it belongs
+  to, and without a `.bin()` there is no name to link it as, so a tool that sets
+  `binaryPath` must declare exactly one `.bin()`; any other count is rejected when the
   configuration loads. Scripts that ship several binaries can usually be redirected
   instead: `https://astral.sh/uv/install.sh` honours `UV_INSTALL_DIR`, and
   `https://deno.land/install.sh` honours `DENO_INSTALL`.

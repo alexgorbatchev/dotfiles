@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/spf13/cobra"
 )
 
@@ -109,7 +108,7 @@ func completeBinaryOrToolName(cmd *cobra.Command, args []string, toComplete stri
 		seen[tc.Name] = true
 	}
 	for _, tc := range toolConfigs {
-		for _, bin := range installer.GetBinaryNames(tc.Name, tc.Binaries) {
+		for _, bin := range tc.BinaryNames() {
 			if seen[bin] {
 				continue
 			}

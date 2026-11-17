@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
@@ -101,7 +102,7 @@ func installDmgVolume(t *testing.T, osFS fs.FS, staging string, volume func(moun
 	assetPath := filepath.Join(staging, "mytool.dmg")
 	writeModeFile(t, osFS, assetPath, 0o644)
 	placer := releaseAssetInstaller{fsys: osFS, extractor: archive.NewExtractor(osFS, runner)}
-	return placer.install(context.Background(), assetPath, staging, &config.ToolConfig{Name: "mytool"})
+	return placer.install(context.Background(), assetPath, staging, &config.ToolConfig{Name: "mytool", Binaries: testutil.DeclaredBinaries("mytool")})
 }
 
 // TestDmgBinaryLinkOutsideExtraction is the regression test for issue #172: a .dmg
@@ -201,7 +202,7 @@ func TestCurlScriptBinaryLinkOutsideStaging(t *testing.T) {
 			symlinkOrFatal(t, osFS, store, link)
 
 			inst := &CurlScriptInstaller{fsys: osFS}
-			bins, err := inst.stageBinaries(&config.ToolConfig{Name: "mytool"}, layout.staging, "")
+			bins, err := inst.stageBinaries(&config.ToolConfig{Name: "mytool", Binaries: testutil.DeclaredBinaries("mytool")}, layout.staging, "")
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("stageBinaries = %v, nil; want an error", bins)
@@ -260,7 +261,7 @@ func TestPromoteBinariesOutsideLinkPolicy(t *testing.T) {
 			symlinkOrFatal(t, fsys, "mytool.stale", at("/dest/mytool"))
 
 			binaries := []interface{}{config.BinaryConfig{Name: "mytool", Pattern: "bin/mytool"}}
-			got, err := PromoteBinaries(fsys, dest, "mytool", binaries, tt.policy)
+			got, err := PromoteBinaries(fsys, dest, binaries, tt.policy)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) || !strings.Contains(err.Error(), at("/dest/bin/mytool")+" -> "+target) {
 					t.Fatalf("PromoteBinaries = %v, %v; want an error naming the link and containing %q", got, err, tt.wantErr)
@@ -389,7 +390,7 @@ func TestPromoteBinariesLinkEdgeCases(t *testing.T) {
 			}
 
 			binaries := []interface{}{config.BinaryConfig{Name: "mytool", Pattern: tt.pattern}}
-			got, err := PromoteBinaries(fsys, at("/dest"), "mytool", binaries, tt.policy)
+			got, err := PromoteBinaries(fsys, at("/dest"), binaries, tt.policy)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("PromoteBinaries = %v, %v; want an error containing %q", got, err, tt.wantErr)
@@ -430,7 +431,7 @@ func TestPromoteBinariesChmodsUnderDestDir(t *testing.T) {
 	fsys := &chmodRecorder{FS: osFS}
 
 	dest := at("/dotfiles/staging")
-	if _, err := PromoteBinaries(fsys, dest, "mytool", nil, RejectOutsideLinks); err != nil {
+	if _, err := PromoteBinaries(fsys, dest, []interface{}{config.BinaryConfig{Name: "mytool"}}, RejectOutsideLinks); err != nil {
 		t.Fatalf("PromoteBinaries: %v", err)
 	}
 	want := []string{filepath.Join(dest, "lib", "mytool")}
@@ -474,7 +475,7 @@ func TestExtractionInstallersRejectOutsideLinks(t *testing.T) {
 			install: func(fsys fs.FS, dl *downloader.Downloader, binDir, url string) error {
 				inst := NewCurlTarInstaller(exec.NewMockRunner(), fsys, dl, nil)
 				inst.BinDir = binDir
-				_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"url": url}})
+				_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"url": url}, Binaries: testutil.DeclaredBinaries("mytool")})
 				return err
 			},
 		},
@@ -483,7 +484,7 @@ func TestExtractionInstallersRejectOutsideLinks(t *testing.T) {
 			install: func(fsys fs.FS, dl *downloader.Downloader, binDir, url string) error {
 				inst := NewCargoInstaller(exec.NewMockRunner(), fsys, dl, &SystemContext{OS: "linux", Arch: "amd64"})
 				inst.BinDir = binDir
-				_, err := inst.installArchive(context.Background(), &config.ToolConfig{Name: "mytool"}, url, "mytool-quickinstall.tar.gz", "")
+				_, err := inst.installArchive(context.Background(), &config.ToolConfig{Name: "mytool", Binaries: testutil.DeclaredBinaries("mytool")}, url, "mytool-quickinstall.tar.gz", "")
 				return err
 			},
 		},
@@ -583,7 +584,7 @@ func TestCargoRootBinaryLinkOutsideRoot(t *testing.T) {
 	writeModeFile(t, fsys, store, 0o750)
 	symlinkOrFatal(t, fsys, store, at("/root/bin/mycrate"))
 
-	res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: map[string]interface{}{}})
+	res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: map[string]interface{}{}, Binaries: testutil.DeclaredBinaries("mycrate")})
 	if err != nil {
 		t.Fatalf("Install: %v", err)
 	}

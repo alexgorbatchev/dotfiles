@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -162,7 +163,7 @@ func TestCargoSettingsReachConfiguredHosts(t *testing.T) {
 			// receive it.
 			inst.SetGitHubSettings(GitHubSettings{Token: "github-api-secret"})
 
-			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params})
+			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: tt.params, Binaries: testutil.DeclaredBinaries("mycrate")})
 			if err != nil {
 				t.Fatalf("Install() error = %v", err)
 			}
@@ -371,7 +372,7 @@ func TestCargoTokensDoNotFollowRedirects(t *testing.T) {
 		{"crateName": "mycrate"},
 		{"crateName": "mycrate", "binarySource": "github-releases", "versionSource": "cargo-toml", "githubRepo": "owner/repo"},
 	} {
-		res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params})
+		res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mycrate", InstallParams: params, Binaries: testutil.DeclaredBinaries("mycrate")})
 		if err != nil || len(res.Binaries) != 1 {
 			t.Fatalf("Install(%v) = %+v, %v; want the prebuilt mycrate", params, res, err)
 		}

@@ -97,7 +97,7 @@ func (u *UvInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*In
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 
@@ -154,13 +154,13 @@ func (u *UvInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*In
 	// Promote/verify staged binaries
 	var promotedBinaries []string
 	if u.BinDir != "" {
-		promoted, err := PromoteBinaries(u.fsys, u.BinDir, tool.Name, tool.Binaries, KeepOutsideLinks)
+		promoted, err := PromoteBinaries(u.fsys, u.BinDir, tool.Binaries, KeepOutsideLinks)
 		if err != nil {
 			return nil, err
 		}
 		promotedBinaries = promoted
 	} else {
-		promotedBinaries = GetBinaryNames(tool.Name, tool.Binaries)
+		promotedBinaries = tool.BinaryNames()
 	}
 
 	return &InstallResult{

@@ -178,20 +178,34 @@ func (r releaseAssetInstaller) extract(ctx context.Context, assetPath, destDir s
 		return nil, fmt.Errorf("extracting asset archive: %w", err)
 	}
 	_ = r.fsys.Remove(assetPath)
-	return PromoteBinaries(r.fsys, destDir, tool.Name, tool.Binaries, RejectOutsideLinks)
+	return PromoteBinaries(r.fsys, destDir, tool.Binaries, RejectOutsideLinks)
 }
 
+// installRawBinary installs a release asset that is itself the executable. It is saved
+// under the tool's one declared binary name, so the shim for that binary finds it; a
+// tool that declares no binary keeps the file under the tool's name with nothing on
+// PATH, and one that declares several cannot be served by a single file.
 func (r releaseAssetInstaller) installRawBinary(assetPath, destDir string, tool *config.ToolConfig) ([]string, error) {
-	finalBinPath := filepath.Join(destDir, tool.Name)
+	binNames := tool.BinaryNames()
+	if len(binNames) > 1 {
+		_ = r.fsys.Remove(assetPath)
+		return nil, fmt.Errorf("release asset %q is a single executable, but %s declares %d binaries (%s); declare one .bin(), or set assetPattern to choose an archive",
+			filepath.Base(assetPath), tool.Name, len(binNames), strings.Join(binNames, ", "))
+	}
+	fileName := tool.Name
+	if len(binNames) == 1 {
+		fileName = binNames[0]
+	}
+	finalBinPath := filepath.Join(destDir, fileName)
 	if assetPath != finalBinPath {
 		if err := r.fsys.Rename(assetPath, finalBinPath); err != nil {
-			return nil, fmt.Errorf("renaming release asset %q to %q: %w", filepath.Base(assetPath), tool.Name, err)
+			return nil, fmt.Errorf("renaming release asset %q to %q: %w", filepath.Base(assetPath), fileName, err)
 		}
 	}
 	if err := r.fsys.Chmod(finalBinPath, 0755); err != nil {
 		return nil, fmt.Errorf("making %q executable: %w", finalBinPath, err)
 	}
-	return GetBinaryNames(tool.Name, tool.Binaries), nil
+	return binNames, nil
 }
 
 // toolLogger scopes log to a tool, or returns nil when there is no logger to scope.

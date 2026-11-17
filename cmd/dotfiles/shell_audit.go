@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/shim"
 	"github.com/alexgorbatchev/dotfiles/pkg/toolbatch"
 	"github.com/spf13/cobra"
@@ -44,7 +43,7 @@ var shellAuditCmd = &cobra.Command{
 			if err := ctx.Err(); err != nil {
 				return errors.Join(failures.Err(), err)
 			}
-			for _, binName := range installer.GetBinaryNames(tool.Name, tool.Binaries) {
+			for _, binName := range tool.BinaryNames() {
 				if binName == "" {
 					continue
 				}

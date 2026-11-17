@@ -531,7 +531,7 @@ func (c *CargoInstaller) installArchive(ctx context.Context, tool *config.ToolCo
 	}
 	_ = c.fsys.Remove(archivePath)
 
-	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries, RejectOutsideLinks)
+	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Binaries, RejectOutsideLinks)
 	if err != nil {
 		return nil, fmt.Errorf("promoting binaries: %w", err)
 	}
@@ -733,7 +733,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	crateName := getStringParam(tool.InstallParams, "crateName", tool.Name)
@@ -788,7 +788,7 @@ func (c *CargoInstaller) Install(ctx context.Context, tool *config.ToolConfig) (
 		writer.Flush()
 	}
 
-	promotedBinaries, err := PromoteBinaries(c.fsys, c.BinDir, tool.Name, tool.Binaries, KeepOutsideLinks)
+	promotedBinaries, err := PromoteBinaries(c.fsys, c.BinDir, tool.Binaries, KeepOutsideLinks)
 	if err != nil {
 		return nil, err
 	}

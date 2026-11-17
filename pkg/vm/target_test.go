@@ -59,9 +59,9 @@ import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 export default defineTool((install) =>
   install()
     .platform(Platform.MacOS, Architecture.Arm64, (install) =>
-      install("manual", { binaryPath: "/opt/homebrew/bin/brew" }))
+      install("manual", { binaryPath: "/opt/homebrew/bin/brew" }).bin("brew"))
     .platform(Platform.MacOS, Architecture.X86_64, (install) =>
-      install("manual", { binaryPath: "/usr/local/bin/brew" })),
+      install("manual", { binaryPath: "/usr/local/bin/brew" }).bin("brew")),
 );`
 
 // WithTarget backs --platform/--arch. Without it reaching the loader, .platform()
@@ -157,7 +157,7 @@ func TestCombinedPlatformBitmaskMatchesEachMember(t *testing.T) {
 import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
 export default defineTool((install) =>
   install().platform(Platform.Linux | Platform.MacOS, (install) =>
-    install("manual", { binaryPath: "/unix" })),
+    install("manual", { binaryPath: "/unix" }).bin("probe")),
 );`
 
 	for _, targetOS := range []string{"darwin", "linux"} {

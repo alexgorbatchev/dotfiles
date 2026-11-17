@@ -7,6 +7,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -43,7 +44,7 @@ func TestNpmInstallerPrefersGlobalBinaries(t *testing.T) {
 					prefix = filepath.Dir(globalDir)
 				}
 				runner.Register(manager, []byte(prefix+"\n"), nil)
-				tool := &config.ToolConfig{Name: "example", InstallParams: map[string]interface{}{"packageManager": manager}}
+				tool := &config.ToolConfig{Name: "example", InstallParams: map[string]interface{}{"packageManager": manager}, Binaries: testutil.DeclaredBinaries("example")}
 				res, err := NewNpmInstaller(runner, fsys, nil).Install(context.Background(), tool)
 				if err != nil {
 					t.Fatal(err)
@@ -76,6 +77,7 @@ func TestNpmInstaller(t *testing.T) {
 		ver := "2.1.0"
 		tool := &config.ToolConfig{
 			Name:               "prettier",
+			Binaries:           testutil.DeclaredBinaries("prettier"),
 			InstallationMethod: "npm",
 			Version:            &ver,
 			InstallParams:      map[string]interface{}{"package": "prettier", "version": "3.0.0"},
@@ -96,8 +98,9 @@ func TestNpmInstaller(t *testing.T) {
 		runner.Clear()
 		ver := "2.1.0"
 		tool := &config.ToolConfig{
-			Name:    "prettier",
-			Version: &ver,
+			Name:     "prettier",
+			Binaries: testutil.DeclaredBinaries("prettier"),
+			Version:  &ver,
 			InstallParams: map[string]interface{}{
 				"packageManager": "npm",
 				"package":        "prettier",
@@ -125,7 +128,8 @@ func TestNpmInstaller(t *testing.T) {
 	t.Run("Install success with bun", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
-			Name: "prettier",
+			Name:     "prettier",
+			Binaries: testutil.DeclaredBinaries("prettier"),
 			InstallParams: map[string]interface{}{
 				"packageManager": "bun",
 				"package":        "prettier",
@@ -149,7 +153,8 @@ func TestNpmInstaller(t *testing.T) {
 	t.Run("Uninstall success with bun", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
-			Name: "prettier",
+			Name:     "prettier",
+			Binaries: testutil.DeclaredBinaries("prettier"),
 			InstallParams: map[string]interface{}{
 				"packageManager": "bun",
 			},
@@ -174,7 +179,8 @@ func TestNpmInstaller(t *testing.T) {
 		runner.Register("npm", nil, errors.New("npm error"))
 
 		tool := &config.ToolConfig{
-			Name: "prettier",
+			Name:     "prettier",
+			Binaries: testutil.DeclaredBinaries("prettier"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -189,6 +195,7 @@ func TestNpmInstaller(t *testing.T) {
 		runner.Register("npm", []byte("/usr/local"), nil)
 		toolNpm := &config.ToolConfig{
 			Name:               "prettier",
+			Binaries:           testutil.DeclaredBinaries("prettier"),
 			InstallationMethod: "npm",
 			InstallParams:      map[string]interface{}{"package": "prettier", "version": "3.0.0"},
 		}
@@ -210,6 +217,7 @@ func TestNpmInstaller(t *testing.T) {
 		runner.Register("npm", []byte("/usr/local"), nil)
 		toolNpmForce := &config.ToolConfig{
 			Name:          "prettier",
+			Binaries:      testutil.DeclaredBinaries("prettier"),
 			InstallParams: map[string]interface{}{"package": "prettier", "force": true},
 		}
 		if _, err := inst.Install(context.Background(), toolNpmForce); err != nil {
@@ -230,6 +238,7 @@ func TestNpmInstaller(t *testing.T) {
 		runner.Register("bun", []byte("/usr/local/bin"), nil)
 		toolBun := &config.ToolConfig{
 			Name:          "prettier",
+			Binaries:      testutil.DeclaredBinaries("prettier"),
 			InstallParams: map[string]interface{}{"packageManager": "bun", "package": "prettier"},
 		}
 		if _, err := inst.Install(context.Background(), toolBun); err != nil {

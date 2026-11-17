@@ -7,7 +7,6 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +68,7 @@ var toolInfoCmd = &cobra.Command{
 			installPath = regTool.InstallPath
 		}
 
-		binNames := installer.GetBinaryNames(targetTool.Name, targetTool.Binaries)
+		binNames := targetTool.BinaryNames()
 		binLocations := make([]BinaryLocationInfo, 0, len(binNames))
 		for _, bName := range binNames {
 			shimPath := filepath.Join(services.ProjectConfig.Paths.TargetDir, bName)

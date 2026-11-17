@@ -32,7 +32,7 @@ func TestInstallerCoverageCases(t *testing.T) {
 	// 1. PromoteBinaries with a glob pattern reaching two directories down
 	_ = memFS.MkdirAll("/src/bin/sub", 0755)
 	_ = memFS.WriteFile("/src/bin/sub/mytool-bin", []byte("mytool"), 0755)
-	promoted, err := PromoteBinaries(memFS, "/src", "mytool", []interface{}{config.BinaryConfig{Name: "mytool-bin", Pattern: "bin/*/mytool-bin"}}, RejectOutsideLinks)
+	promoted, err := PromoteBinaries(memFS, "/src", []interface{}{config.BinaryConfig{Name: "mytool-bin", Pattern: "bin/*/mytool-bin"}}, RejectOutsideLinks)
 	if err != nil || len(promoted) == 0 {
 		t.Errorf("PromoteBinaries failed: promoted=%v, err=%v", promoted, err)
 	}
@@ -40,7 +40,7 @@ func TestInstallerCoverageCases(t *testing.T) {
 	// PromoteBinaries fallback
 	_ = memFS.MkdirAll("/src2/sub", 0755)
 	_ = memFS.WriteFile("/src2/sub/other", []byte("other"), 0755)
-	promoted2, err := PromoteBinaries(memFS, "/src2", "/dest2", testutil.DeclaredBinaries("other"), RejectOutsideLinks)
+	promoted2, err := PromoteBinaries(memFS, "/src2", testutil.DeclaredBinaries("other"), RejectOutsideLinks)
 	if err != nil || len(promoted2) == 0 {
 		t.Errorf("PromoteBinaries fallback failed: %v", err)
 	}
@@ -551,8 +551,9 @@ func TestInstallerDeepCoverage(t *testing.T) {
 
 	vStr := "1.0.0"
 	tGh := &config.ToolConfig{
-		Name:    "mycli",
-		Version: &vStr,
+		Name:     "mycli",
+		Binaries: testutil.DeclaredBinaries("mycli"),
+		Version:  &vStr,
 		InstallParams: map[string]interface{}{
 			"repo":         "owner/mycli",
 			"assetPattern": "*linux*",
@@ -568,8 +569,9 @@ func TestInstallerDeepCoverage(t *testing.T) {
 	gt := NewGiteaInstaller(runner, memFS, dl, sysCtx)
 	gt.httpClient = ghServer.Client()
 	resGtCheck, err := gt.CheckUpdate(ctx, &config.ToolConfig{
-		Name:    "mycli",
-		Version: &vStr,
+		Name:     "mycli",
+		Binaries: testutil.DeclaredBinaries("mycli"),
+		Version:  &vStr,
 		InstallParams: map[string]interface{}{
 			"repo":        "owner/mycli",
 			"instanceUrl": ghServer.URL,
@@ -583,8 +585,9 @@ func TestInstallerDeepCoverage(t *testing.T) {
 	curlBin := NewCurlBinaryInstaller(runner, memFS, dl, sysCtx)
 	curlBin.BinDir = "/test/curlbin"
 	tCurlBin := &config.ToolConfig{
-		Name:    "curltool",
-		Version: &vStr,
+		Name:     "curltool",
+		Binaries: testutil.DeclaredBinaries("curltool"),
+		Version:  &vStr,
 		InstallParams: map[string]interface{}{
 			"url": headServer.URL + "/download",
 		},
@@ -629,19 +632,19 @@ func TestInstallerDeepCoverage(t *testing.T) {
 		return errors.New("sudo failed")
 	})
 	aptFail := NewAptInstaller(errRunner, memFS, sysCtx)
-	_, errApt := aptFail.Install(ctx, &config.ToolConfig{Name: "apt-fail", Sudo: true})
+	_, errApt := aptFail.Install(ctx, &config.ToolConfig{Name: "apt-fail", Sudo: true, Binaries: testutil.DeclaredBinaries("apt-fail")})
 	if errApt == nil {
 		t.Errorf("Apt Install expected error on exec failure")
 	}
 
 	dnfFail := NewDnfInstaller(errRunner, memFS, sysCtx)
-	_, errDnf := dnfFail.Install(ctx, &config.ToolConfig{Name: "dnf-fail", Sudo: true})
+	_, errDnf := dnfFail.Install(ctx, &config.ToolConfig{Name: "dnf-fail", Sudo: true, Binaries: testutil.DeclaredBinaries("dnf-fail")})
 	if errDnf == nil {
 		t.Errorf("Dnf Install expected error on exec failure")
 	}
 
 	pacFail := NewPacmanInstaller(errRunner, memFS, sysCtx)
-	_, errPac := pacFail.Install(ctx, &config.ToolConfig{Name: "pac-fail", Sudo: true})
+	_, errPac := pacFail.Install(ctx, &config.ToolConfig{Name: "pac-fail", Sudo: true, Binaries: testutil.DeclaredBinaries("pac-fail")})
 	if errPac == nil {
 		t.Errorf("Pacman Install expected error on exec failure")
 	}

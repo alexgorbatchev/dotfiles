@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 )
 
@@ -98,7 +97,7 @@ func DetectConflicts(tools []*config.ToolConfig, dotfilesDir ...string) []Confli
 		for _, binName := range shimBinaries(tool) {
 			shimmed[binName] = true
 		}
-		for _, binName := range installer.GetBinaryNames(tool.Name, tool.Binaries) {
+		for _, binName := range tool.BinaryNames() {
 			if binName == "" {
 				continue
 			}

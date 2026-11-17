@@ -33,7 +33,7 @@ export default defineTool((install) =>
     `dotfiles update` refuses a tool it pins
     ([`tool update`](../getting-started/cli-reference.md#dotfiles-tool-update-tool)).
 - `target` (optional): target volume for `installer -target`. Defaults to `'/'`.
-- `binaryPath` (optional): absolute path to the primary installed binary. If omitted, each declared `.bin()` name is resolved from `PATH` after install.
+- `binaryPath` (optional): absolute path to the primary installed binary, which is installed as the first declared `.bin()`. A tool that sets `binaryPath` without declaring a `.bin()` is rejected when the configuration loads. If omitted, each declared `.bin()` name is resolved from `PATH` after install.
 - `versionArgs` (optional): args used for version detection.
 - `versionRegex` (optional): regex used for version detection.
 - `token` (optional): GitHub API token for a `github-release` source.

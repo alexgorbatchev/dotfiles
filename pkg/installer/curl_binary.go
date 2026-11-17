@@ -90,7 +90,7 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	url := getStringParam(tool.InstallParams, "url", "")
@@ -107,7 +107,10 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 		return nil, fmt.Errorf("creating directory %s: %w", destDir, err)
 	}
 
-	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	binNames := tool.BinaryNames()
+	if len(binNames) != 1 {
+		return nil, fmt.Errorf("%s: curl-binary needs exactly one .bin() to name the downloaded executable, got %d", tool.Name, len(binNames))
+	}
 	destPath := filepath.Join(destDir, binNames[0])
 	sha256 := getStringParam(tool.InstallParams, "sha256", "")
 
@@ -139,9 +142,9 @@ func (c *CurlBinaryInstaller) Install(ctx context.Context, tool *config.ToolConf
 func (c *CurlBinaryInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	destDir := c.BinDir
 	if destDir != "" {
-		binNames := GetBinaryNames(tool.Name, tool.Binaries)
-		destPath := filepath.Join(destDir, binNames[0])
-		return c.fsys.Remove(destPath)
+		if binNames := tool.BinaryNames(); len(binNames) > 0 {
+			return c.fsys.Remove(filepath.Join(destDir, binNames[0]))
+		}
 	}
 	return nil
 }

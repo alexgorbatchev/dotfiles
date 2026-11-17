@@ -43,24 +43,18 @@ func DeclaredBinaryPattern(b interface{}) (string, bool) {
 	return "", false
 }
 
-// GetBinaryNames returns the binary names declared in toolBinaries.
-// If toolName is non-empty and no binary names are declared, it falls back to []string{toolName}.
-func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
+// BinaryNames returns the binary names declared in toolBinaries. A tool provides
+// exactly the binaries it declares with .bin(); one that declares none provides none,
+// whatever its name, so a configuration-only tool or an application installed without
+// a command never claims a binary named after itself.
+func BinaryNames(toolBinaries []interface{}) []string {
 	names := make([]string, 0, len(toolBinaries))
 	for _, b := range toolBinaries {
 		if bc, ok := AsBinaryConfig(b); ok && bc.Name != "" {
 			names = append(names, bc.Name)
 		}
 	}
-	if len(names) == 0 && toolName != "" {
-		return []string{toolName}
-	}
 	return names
-}
-
-// BinaryNames returns the declared binary names in toolBinaries without fallback.
-func BinaryNames(toolBinaries []interface{}) []string {
-	return GetBinaryNames("", toolBinaries)
 }
 
 // GetPatternForBinary returns the pattern declared for binName in toolBinaries, or "".

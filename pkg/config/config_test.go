@@ -925,11 +925,67 @@ func TestToolConfigValidateInstallParams(t *testing.T) {
 			},
 		},
 		{
-			name: "curl-script binaryPath with no .bin() names the tool itself",
+			name: "curl-script binaryPath with no .bin() is rejected rather than named after the tool",
 			tool: ToolConfig{
 				Name:               "claude",
 				InstallationMethod: "curl-script",
 				InstallParams:      map[string]interface{}{"binaryPath": "~/.local/bin/claude"},
+			},
+			wantErrs: []string{`tool "claude"`, `curl-script binaryPath "~/.local/bin/claude"`, "declares no .bin()", "declare one .bin(), or drop binaryPath"},
+		},
+		{
+			name: "curl-binary with one binary",
+			tool: ToolConfig{
+				Name:               "amp-cli",
+				InstallationMethod: "curl-binary",
+				InstallParams:      map[string]interface{}{"url": "https://example.com/amp"},
+				Binaries:           []interface{}{bin("amp")},
+			},
+		},
+		{
+			name: "curl-binary without a binary",
+			tool: ToolConfig{
+				Name:               "amp-cli",
+				InstallationMethod: "curl-binary",
+				InstallParams:      map[string]interface{}{"url": "https://example.com/amp"},
+			},
+			wantErrs: []string{`tool "amp-cli"`, "curl-binary", "declares none", "declare one .bin()"},
+		},
+		{
+			name: "curl-binary with two binaries",
+			tool: ToolConfig{
+				Name:               "amp-cli",
+				InstallationMethod: "curl-binary",
+				InstallParams:      map[string]interface{}{"url": "https://example.com/amp"},
+				Binaries:           []interface{}{bin("amp"), bin("amp2")},
+			},
+			wantErrs: []string{`tool "amp-cli"`, "declares 2 binaries", `"amp", "amp2"`, "declare one .bin()"},
+		},
+		{
+			name: "manual binaryPath without a binary",
+			tool: ToolConfig{
+				Name:               "brew",
+				InstallationMethod: "manual",
+				InstallParams:      map[string]interface{}{"binaryPath": "/opt/homebrew/bin/brew"},
+			},
+			wantErrs: []string{`tool "brew"`, `manual binaryPath "/opt/homebrew/bin/brew"`, "declares no .bin()"},
+		},
+		{
+			name: "pkg binaryPath without a binary",
+			tool: ToolConfig{
+				Name:               "app",
+				InstallationMethod: "pkg",
+				InstallParams:      map[string]interface{}{"binaryPath": "/opt/app/bin/app"},
+			},
+			wantErrs: []string{`tool "app"`, `pkg binaryPath "/opt/app/bin/app"`, "declares no .bin()"},
+		},
+		{
+			name: "pkg binaryPath with a binary",
+			tool: ToolConfig{
+				Name:               "app",
+				InstallationMethod: "pkg",
+				InstallParams:      map[string]interface{}{"binaryPath": "/opt/app/bin/app"},
+				Binaries:           []interface{}{bin("app")},
 			},
 		},
 		{

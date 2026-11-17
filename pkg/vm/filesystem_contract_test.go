@@ -20,7 +20,7 @@ export default defineTool(async (install, ctx) => {
   } catch (error) {
     outcome = "threw";
   }
-  return install("manual", { binaryPath: outcome });
+  return install("manual", { binaryPath: outcome }).bin("probe");
 });`
 }
 

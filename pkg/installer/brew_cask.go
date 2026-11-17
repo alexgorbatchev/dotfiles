@@ -67,7 +67,7 @@ func (b *BrewInstaller) caskBinaries(ctx context.Context, formula string, tool *
 		}
 	}
 	var resolved []string
-	for _, name := range GetBinaryNames(tool.Name, tool.Binaries) {
+	for _, name := range tool.BinaryNames() {
 		if target := binaries[name]; target != "" {
 			resolved = append(resolved, target)
 			continue

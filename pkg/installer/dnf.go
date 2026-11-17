@@ -63,7 +63,7 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	packageName := getStringParam(tool.InstallParams, "package", tool.Name)
@@ -166,7 +166,7 @@ func (d *DnfInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		}
 	}
 
-	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	binNames := tool.BinaryNames()
 	resolvedBinaries := ResolveBinaryPaths(ctx, d.fsys, binNames, func(binName string) string {
 		return filepath.Join("/usr/bin", binName)
 	})

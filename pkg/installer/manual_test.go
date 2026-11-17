@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
 )
@@ -32,7 +33,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(srcPath, []byte("manual-payload"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 			},
@@ -63,7 +65,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(srcPath, []byte("copied-payload"), 0644)
 
 		tool := &config.ToolConfig{
-			Name: "copytool",
+			Name:     "copytool",
+			Binaries: testutil.DeclaredBinaries("copytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 				"copy":       true,
@@ -98,7 +101,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(srcPath, []byte("payload"), 0644)
 
 		tool := &config.ToolConfig{
-			Name: "symfalse-tool",
+			Name:     "symfalse-tool",
+			Binaries: testutil.DeclaredBinaries("symfalse-tool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 				"symlink":    false,
@@ -129,7 +133,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(srcPath, []byte("switch-payload"), 0755)
 
 		toolCopy := &config.ToolConfig{
-			Name: "switchtool",
+			Name:     "switchtool",
+			Binaries: testutil.DeclaredBinaries("switchtool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 				"copy":       true,
@@ -145,7 +150,8 @@ func TestManualInstaller(t *testing.T) {
 		}
 
 		toolLink := &config.ToolConfig{
-			Name: "switchtool",
+			Name:     "switchtool",
+			Binaries: testutil.DeclaredBinaries("switchtool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 			},
@@ -168,7 +174,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(srcPath, []byte("switch-payload"), 0755)
 
 		toolLink := &config.ToolConfig{
-			Name: "linktocopytool",
+			Name:     "linktocopytool",
+			Binaries: testutil.DeclaredBinaries("linktocopytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 			},
@@ -182,7 +189,8 @@ func TestManualInstaller(t *testing.T) {
 		}
 
 		toolCopy := &config.ToolConfig{
-			Name: "linktocopytool",
+			Name:     "linktocopytool",
+			Binaries: testutil.DeclaredBinaries("linktocopytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 				"copy":       true,
@@ -203,7 +211,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(srcPath, []byte("symlink-payload"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "symtool",
+			Name:     "symtool",
+			Binaries: testutil.DeclaredBinaries("symtool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 				"symlink":    true,
@@ -238,7 +247,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = homeFS.WriteFile("/home/user/.local/bin/claude", []byte("claude-payload"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "claude",
+			Name:     "claude",
+			Binaries: testutil.DeclaredBinaries("claude"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": "~/.local/bin/claude",
 				"symlink":    true,
@@ -288,7 +298,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(filepath.Join(inst.BinDir, "payload", "mybinary"), []byte("manual-payload-placeholder"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": "{stagingDir}/payload/mybinary",
 			},
@@ -335,7 +346,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = memFS.WriteFile(filepath.Join(stagingDir, "payload", "mybinary"), []byte("staged-payload"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": "{stagingDir}/payload/mybinary",
 			},
@@ -375,7 +387,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = memFS.WriteFile(filepath.Join(stagingDir, "payload", "mybinary"), []byte("first-install-payload"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": "{stagingDir}/payload/mybinary",
 			},
@@ -414,7 +427,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = memFS.WriteFile(filepath.Join(stagingDir, "payload", "mybinary"), []byte("symlink-payload"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": "{stagingDir}/payload/mybinary",
 				"symlink":    true,
@@ -459,7 +473,8 @@ func TestManualInstaller(t *testing.T) {
 	// the directory the command was run from.
 	t.Run("Install fails on a binaryPath placeholder nothing can fill", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": "{configFileDir}/mybinary",
 			},
@@ -482,7 +497,8 @@ func TestManualInstaller(t *testing.T) {
 
 	t.Run("Install fails missing source binary", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": "/nonexistent/path",
 			},
@@ -500,7 +516,8 @@ func TestManualInstaller(t *testing.T) {
 		_ = fsys.WriteFile(destPath, []byte("content"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -626,7 +643,7 @@ func TestManualInstallerLeavesBinaryPathIntactWhenAHookLinkedItIntoTheStagingDir
 	}
 	inst := NewManualInstaller(fsys, nil)
 	inst.BinDir = binDir
-	tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"binaryPath": binaryPath, "copy": true}}
+	tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"binaryPath": binaryPath, "copy": true}, Binaries: testutil.DeclaredBinaries("mytool")}
 
 	if _, err := inst.Install(context.Background(), tool); err != nil {
 		t.Fatalf("Install() error = %v", err)
@@ -733,7 +750,8 @@ func TestManualInstallerSymlinkClearingDestination(t *testing.T) {
 		}
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 				"symlink":    true,
@@ -779,7 +797,8 @@ func TestManualInstallerSymlinkClearingDestination(t *testing.T) {
 		}
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"binaryPath": srcPath,
 				"symlink":    true,

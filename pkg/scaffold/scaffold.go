@@ -115,6 +115,8 @@ const brewInstallScript = "INTERACTIVE=1 /bin/bash -c \"$(curl -fsSL https://raw
 // brewToolContent declares Homebrew once per macOS architecture because its install
 // prefix differs between them: /opt/homebrew on Apple Silicon and /usr/local on Intel
 // (https://docs.brew.sh/Installation). Both are released targets, so both are declared.
+// brew is declared without a shim: Homebrew's own shellenv already puts it on PATH, and
+// a shim in front of it would only add a hop to every brew command.
 const brewToolContent = `import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
 
 export default defineTool((install, _ctx) =>
@@ -124,6 +126,7 @@ export default defineTool((install, _ctx) =>
         binaryPath: "/opt/homebrew/bin/brew",
         symlink: true,
       })
+        .bin("brew", { shim: false })
         .hook("before-install", async ({ $ }) => {
           await $` + "`" + brewInstallScript + "`" + `;
         })
@@ -135,6 +138,7 @@ export default defineTool((install, _ctx) =>
         binaryPath: "/usr/local/bin/brew",
         symlink: true,
       })
+        .bin("brew", { shim: false })
         .hook("before-install", async ({ $ }) => {
           await $` + "`" + brewInstallScript + "`" + `;
         })
@@ -187,10 +191,42 @@ export default defineTool((install, _ctx) =>
 );
 `
 
+// legacyBrewToolPerArchitectureContent is the per-architecture brew template from
+// before a tool's binaries came only from .bin(): it relied on the tool's name to
+// declare brew, which no longer declares anything.
+const legacyBrewToolPerArchitectureContent = `import { Architecture, defineTool, Platform } from "@alexgorbatchev/dotfiles";
+
+export default defineTool((install, _ctx) =>
+  install()
+    .platform(Platform.MacOS, Architecture.Arm64, (install) =>
+      install("manual", {
+        binaryPath: "/opt/homebrew/bin/brew",
+        symlink: true,
+      })
+        .hook("before-install", async ({ $ }) => {
+          await $` + "`" + brewInstallScript + "`" + `;
+        })
+        .zsh((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"'))
+        .bash((shell) => shell.always('eval "$(/opt/homebrew/bin/brew shellenv)"')),
+    )
+    .platform(Platform.MacOS, Architecture.X86_64, (install) =>
+      install("manual", {
+        binaryPath: "/usr/local/bin/brew",
+        symlink: true,
+      })
+        .hook("before-install", async ({ $ }) => {
+          await $` + "`" + brewInstallScript + "`" + `;
+        })
+        .zsh((shell) => shell.always('eval "$(/usr/local/bin/brew shellenv)"'))
+        .bash((shell) => shell.always('eval "$(/usr/local/bin/brew shellenv)"')),
+    ),
+);
+`
+
 // legacyContents lists, per template, the exact contents this project generated in the
 // past. It is how an untouched but outdated file is told apart from one the user wrote.
 var legacyContents = map[string][]string{
-	"brew.tool.ts":     {legacyBrewToolContent},
+	"brew.tool.ts":     {legacyBrewToolContent, legacyBrewToolPerArchitectureContent},
 	"dotfiles.tool.ts": {legacyDotfilesToolContent},
 }
 

@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -48,8 +49,9 @@ func TestCargoInstaller(t *testing.T) {
 		runner.Clear()
 		ver := "0.10.1"
 		tool := &config.ToolConfig{
-			Name:    "exa",
-			Version: &ver,
+			Name:     "exa",
+			Binaries: testutil.DeclaredBinaries("exa"),
+			Version:  &ver,
 			InstallParams: map[string]interface{}{
 				"crateName": "exa",
 			},
@@ -85,7 +87,8 @@ func TestCargoInstaller(t *testing.T) {
 	t.Run("Uninstall success", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
-			Name: "exa",
+			Name:     "exa",
+			Binaries: testutil.DeclaredBinaries("exa"),
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -107,7 +110,8 @@ func TestCargoInstaller(t *testing.T) {
 		runner.Register("cargo", nil, errors.New("cargo error"))
 
 		tool := &config.ToolConfig{
-			Name: "broken",
+			Name:     "broken",
+			Binaries: testutil.DeclaredBinaries("broken"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -151,7 +155,8 @@ func TestCargoInstaller(t *testing.T) {
 		testInst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
-			Name: "exa",
+			Name:     "exa",
+			Binaries: testutil.DeclaredBinaries("exa"),
 			InstallParams: map[string]interface{}{
 				"crateName": "exa",
 			},
@@ -210,7 +215,8 @@ func TestCargoInstaller(t *testing.T) {
 		testInst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
-			Name: "exa",
+			Name:     "exa",
+			Binaries: testutil.DeclaredBinaries("exa"),
 			InstallParams: map[string]interface{}{
 				"crateName": "exa",
 			},
@@ -1429,7 +1435,8 @@ func TestCargoGithubReleasesResolvesLatestTag(t *testing.T) {
 	inst, _ := newCargoGithubInstaller(server, exec.NewMockRunner())
 
 	res, err := inst.Install(context.Background(), &config.ToolConfig{
-		Name: "mycrate",
+		Name:     "mycrate",
+		Binaries: testutil.DeclaredBinaries("mycrate"),
 		InstallParams: map[string]interface{}{
 			"binarySource": "github-releases",
 			"githubRepo":   "owner/mycrate",

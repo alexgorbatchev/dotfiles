@@ -41,7 +41,8 @@ func TestPkgInstallerReleaseParameters(t *testing.T) {
 		inst, _, _ := newInstaller(t, server)
 
 		res, err := inst.Install(context.Background(), &config.ToolConfig{
-			Name: "app",
+			Name:     "app",
+			Binaries: testutil.DeclaredBinaries("app"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{"type": "github-release", "repo": "owner/app", "prerelease": true},
 			},
@@ -66,6 +67,7 @@ func TestPkgInstallerReleaseParameters(t *testing.T) {
 
 		res, err := inst.Install(context.Background(), &config.ToolConfig{
 			Name:               "app",
+			Binaries:           testutil.DeclaredBinaries("app"),
 			InstallationMethod: "pkg",
 			Version:            &dotVersion,
 			InstallParams: map[string]interface{}{
@@ -89,7 +91,8 @@ func TestPkgInstallerReleaseParameters(t *testing.T) {
 		registerGhMock(runner, fsys, `{"tag_name":"v3.0.0","assets":[{"name":"app-darwin-arm64.pkg","browser_download_url":"http://unreachable.invalid/app.pkg"}]}`)
 
 		res, err := inst.Install(context.Background(), &config.ToolConfig{
-			Name: "app",
+			Name:     "app",
+			Binaries: testutil.DeclaredBinaries("app"),
 			InstallParams: map[string]interface{}{
 				"source": map[string]interface{}{"type": "github-release", "repo": "owner/app", "ghCli": true},
 			},
@@ -140,7 +143,8 @@ func TestPkgInstallerReleaseParameters(t *testing.T) {
 		inst, _, _ := newInstaller(t, server)
 
 		_, err := inst.Install(context.Background(), &config.ToolConfig{
-			Name: "app",
+			Name:     "app",
+			Binaries: testutil.DeclaredBinaries("app"),
 			InstallParams: map[string]interface{}{
 				"source":     urlSource(server),
 				"binaryPath": "/opt/app/bin/missing",
@@ -156,7 +160,8 @@ func TestPkgInstallerReleaseParameters(t *testing.T) {
 		inst, runner, _ := newInstaller(t, server)
 
 		res, err := inst.Install(context.Background(), &config.ToolConfig{
-			Name: "app",
+			Name:     "app",
+			Binaries: testutil.DeclaredBinaries("app"),
 			InstallParams: map[string]interface{}{
 				"source":     map[string]interface{}{"type": "github-release", "repo": "owner/stable"},
 				"binaryPath": installedBinary,

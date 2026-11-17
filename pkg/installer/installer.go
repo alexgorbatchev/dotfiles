@@ -392,11 +392,12 @@ func ResolveBinaryPaths(ctx context.Context, fsys fs.FS, binNames []string, fall
 	return resolved
 }
 
-// GetBinaryNames returns the binary names declared in a tool config's Binaries slice.
-// `.bin()` records one object per call (`{name, pattern?, shim?}`), so an entry is a map;
-// the typed forms are what Go code builds directly.
-func GetBinaryNames(toolName string, toolBinaries []interface{}) []string {
-	return config.GetBinaryNames(toolName, toolBinaries)
+// BinaryNames returns the binary names declared in a tool config's Binaries slice, and
+// nothing for a tool that declares none. `.bin()` records one object per call
+// (`{name, pattern?, shim?}`), so an entry is a map; the typed forms are what Go code
+// builds directly.
+func BinaryNames(toolBinaries []interface{}) []string {
+	return config.BinaryNames(toolBinaries)
 }
 
 // installedPackageChecker is implemented by the installers whose update check asks
@@ -542,8 +543,8 @@ func (e *BinaryNotFoundError) Error() string {
 // A binary that is a symlink is judged by the file its link chain finally names. Only a
 // file inside destDir is ever made executable; one outside it is handled as policy says
 // (see OutsideLinkPolicy), and every binary is checked before anything is changed.
-func PromoteBinaries(fsys fs.FS, destDir string, toolName string, toolBinaries []interface{}, policy OutsideLinkPolicy) ([]string, error) {
-	binaryNames := GetBinaryNames(toolName, toolBinaries)
+func PromoteBinaries(fsys fs.FS, destDir string, toolBinaries []interface{}, policy OutsideLinkPolicy) ([]string, error) {
+	binaryNames := BinaryNames(toolBinaries)
 
 	located := make([]string, len(binaryNames))
 	for i, binName := range binaryNames {

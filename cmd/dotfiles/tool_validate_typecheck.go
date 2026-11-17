@@ -11,7 +11,6 @@ import (
 
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	execRunner "github.com/alexgorbatchev/dotfiles/pkg/exec"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/alexgorbatchev/dotfiles/pkg/logger"
 	"github.com/alexgorbatchev/dotfiles/pkg/typecheck"
 )
@@ -31,7 +30,7 @@ const typeCheckToolName = "<typecheck>"
 // binary, or nil.
 func compilerTool(tools []*config.ToolConfig) *config.ToolConfig {
 	for _, tc := range tools {
-		if slices.Contains(installer.GetBinaryNames(tc.Name, tc.Binaries), compilerBinary) {
+		if slices.Contains(tc.BinaryNames(), compilerBinary) {
 			return tc
 		}
 	}

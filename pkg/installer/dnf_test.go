@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -33,8 +34,9 @@ func TestDnfInstaller(t *testing.T) {
 		runner.Register("rpm", []byte("1.7.0-1.fc38"), nil)
 
 		tool := &config.ToolConfig{
-			Name: "jq",
-			Sudo: true,
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
+			Sudo:     true,
 			InstallParams: map[string]interface{}{
 				"package": "jq",
 				"refresh": true,
@@ -75,8 +77,9 @@ func TestDnfInstaller(t *testing.T) {
 	t.Run("Uninstall success", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
-			Name: "jq",
-			Sudo: true,
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
+			Sudo:     true,
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -98,7 +101,8 @@ func TestDnfInstaller(t *testing.T) {
 		runner.Register("dnf", nil, errors.New("dnf error"))
 
 		tool := &config.ToolConfig{
-			Name: "jq",
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -118,7 +122,8 @@ func TestDnfInstaller(t *testing.T) {
 		})
 
 		tool := &config.ToolConfig{
-			Name: "pkgconfig-zlib",
+			Name:     "pkgconfig-zlib",
+			Binaries: testutil.DeclaredBinaries("pkgconfig-zlib"),
 			InstallParams: map[string]interface{}{
 				"package": "pkgconfig(zlib)",
 			},
@@ -162,7 +167,8 @@ func TestDnfInstaller(t *testing.T) {
 		})
 
 		tool := &config.ToolConfig{
-			Name: "nonexistent",
+			Name:     "nonexistent",
+			Binaries: testutil.DeclaredBinaries("nonexistent"),
 			InstallParams: map[string]interface{}{
 				"package": "nonexistent",
 			},
@@ -191,7 +197,8 @@ func TestDnfInstaller(t *testing.T) {
 		runner.Register("rpm", []byte(" \n"), nil)
 
 		tool := &config.ToolConfig{
-			Name: "empty",
+			Name:     "empty",
+			Binaries: testutil.DeclaredBinaries("empty"),
 			InstallParams: map[string]interface{}{
 				"package": "empty",
 			},

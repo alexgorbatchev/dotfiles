@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive/archivetest"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -23,7 +24,7 @@ func macAssetInstaller(t *testing.T, method, apiURL string) (Installer, *exec.Mo
 	dl := downloader.NewDownloader(fsys, nil)
 	dl.CacheEnabled = false
 	sys := &SystemContext{OS: "darwin", Arch: "arm64"}
-	tool := &config.ToolConfig{Name: "app", InstallationMethod: method, InstallParams: map[string]interface{}{
+	tool := &config.ToolConfig{Name: "app", InstallationMethod: method, Binaries: testutil.DeclaredBinaries("app"), InstallParams: map[string]interface{}{
 		"source": map[string]interface{}{"type": "github-release", "repo": "owner/app"},
 	}}
 	if method == "dmg" {

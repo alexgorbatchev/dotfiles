@@ -129,6 +129,7 @@ func TestInactivePlatformConfigValidateDeclarations(t *testing.T) {
 				Platforms:          PlatformLinux,
 				InstallationMethod: "manual",
 				InstallParams:      map[string]interface{}{"binaryPath": "/usr/bin/tool"},
+				Binaries:           []interface{}{map[string]interface{}{"name": "tool"}},
 				Blocks:             []BlockConfig{{Target: "~/.bashrc", ID: "linux-blk"}},
 			},
 			wantErrMsg: "",

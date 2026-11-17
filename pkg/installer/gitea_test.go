@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
@@ -35,6 +36,7 @@ func TestGiteaInstaller_InstallExtractsTarXz(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:          "mytool",
+		Binaries:      testutil.DeclaredBinaries("mytool"),
 		InstallParams: map[string]interface{}{"instanceUrl": server.URL, "repo": "owner/tool"},
 	}
 	res, err := inst.Install(context.Background(), tool)
@@ -143,7 +145,8 @@ func TestGiteaInstaller(t *testing.T) {
 
 	t.Run("Install success from Gitea", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 				"repo":        "myowner/mytool",
@@ -205,7 +208,8 @@ func TestGiteaInstaller(t *testing.T) {
 		gInst.BinDir = "/test/gitea-tar"
 
 		tool := &config.ToolConfig{
-			Name: "giteatool",
+			Name:     "giteatool",
+			Binaries: testutil.DeclaredBinaries("giteatool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": giteaServer.URL,
 				"repo":        "myowner/giteatool",
@@ -227,7 +231,8 @@ func TestGiteaInstaller(t *testing.T) {
 
 	t.Run("Install fails repo missing", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 			},
@@ -244,7 +249,8 @@ func TestGiteaInstaller(t *testing.T) {
 		_ = fsys.WriteFile(destPath, []byte("content"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -261,8 +267,9 @@ func TestGiteaInstaller(t *testing.T) {
 	t.Run("CheckUpdate and basic details", func(t *testing.T) {
 		currentVer := "v1.0.0"
 		tool := &config.ToolConfig{
-			Name:    "mytool",
-			Version: &currentVer,
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
+			Version:  &currentVer,
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 				"repo":        "myowner/mytool",
@@ -282,7 +289,8 @@ func TestGiteaInstaller(t *testing.T) {
 		gInst.CacheTTL = time.Hour
 
 		tool := &config.ToolConfig{
-			Name: "cache-gitea-tool",
+			Name:     "cache-gitea-tool",
+			Binaries: testutil.DeclaredBinaries("cache-gitea-tool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 				"repo":        "myowner/mytool",
@@ -321,7 +329,8 @@ func TestGiteaInstaller(t *testing.T) {
 
 		// 4. Install with cached release (fixed version)
 		toolFixed := &config.ToolConfig{
-			Name: "cache-gitea-tool",
+			Name:     "cache-gitea-tool",
+			Binaries: testutil.DeclaredBinaries("cache-gitea-tool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 				"repo":        "myowner/mytool",
@@ -537,7 +546,8 @@ func TestGiteaInstaller_AssetSizeIntegrity(t *testing.T) {
 		inst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
-			Name: "tool",
+			Name:     "tool",
+			Binaries: testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 				"repo":        "owner/tool",
@@ -589,7 +599,8 @@ func TestGiteaInstaller_AssetSizeIntegrity(t *testing.T) {
 		inst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
-			Name: "tool",
+			Name:     "tool",
+			Binaries: testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 				"repo":        "owner/tool",
@@ -641,7 +652,8 @@ func TestGiteaInstaller_AssetSizeIntegrity(t *testing.T) {
 		inst.BinDir = "/test/bin"
 
 		tool := &config.ToolConfig{
-			Name: "tool",
+			Name:     "tool",
+			Binaries: testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{
 				"instanceUrl": server.URL,
 				"repo":        "owner/tool",

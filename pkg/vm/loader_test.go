@@ -797,7 +797,7 @@ func TestLoadTypeScriptConfigNamesFailingToolFileAndMethod(t *testing.T) {
 
 			toolPath := filepath.Join(toolsDir, "probe.tool.ts")
 			toolContent := `import { defineTool } from "@alexgorbatchev/dotfiles";
-				export default defineTool((install) => install("manual", { binaryPath: "/usr/bin/true" })` + tt.call + `);`
+				export default defineTool((install) => install("manual", { binaryPath: "/usr/bin/true" }).bin("probe")` + tt.call + `);`
 			if err := os.WriteFile(toolPath, []byte(toolContent), 0644); err != nil {
 				t.Fatalf("writing tool file: %v", err)
 			}
@@ -848,7 +848,7 @@ func TestLoaderRecordsEveryDeclaredDependency(t *testing.T) {
 			}
 
 			toolContent := `import { defineTool } from "@alexgorbatchev/dotfiles";
-				export default defineTool((install) => install("manual", { binaryPath: "/usr/bin/true" })` + tt.call + `);`
+				export default defineTool((install) => install("manual", { binaryPath: "/usr/bin/true" }).bin("ghost")` + tt.call + `);`
 			if err := os.WriteFile(filepath.Join(toolsDir, "ghost.tool.ts"), []byte(toolContent), 0644); err != nil {
 				t.Fatalf("writing tool file: %v", err)
 			}
@@ -2239,8 +2239,13 @@ func TestLoaderRejectsUnknownInstallationMethod(t *testing.T) {
 func TestLoaderAcceptsEveryInstallationMethod(t *testing.T) {
 	for _, method := range config.InstallMethods() {
 		t.Run(method, func(t *testing.T) {
+			// curl-binary names its one download after its .bin(), so it cannot load without one.
+			bin := ""
+			if method == "curl-binary" {
+				bin = ".bin(\"probe\")"
+			}
 			tool := "import { defineTool } from \"@alexgorbatchev/dotfiles\";\n" +
-				"export default defineTool((install) => install(\"" + method + "\", {}));"
+				"export default defineTool((install) => install(\"" + method + "\", {})" + bin + ");"
 			toolConfigs, err := loadToolSource(t, tool)
 			if err != nil {
 				t.Fatalf("load failed: %v", err)

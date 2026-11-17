@@ -610,7 +610,7 @@ func TestRunHook_DirnameIsTheToolFilesDirectory(t *testing.T) {
 	toolContent := `
 		import { defineTool } from "@alexgorbatchev/dotfiles";
 		export default defineTool((install) =>
-			install("manual", { binaryPath: __dirname }).hook("after-install", async ({ fileSystem }) => {
+			install("manual", { binaryPath: __dirname }).bin("sample").hook("after-install", async ({ fileSystem }) => {
 				await fileSystem.writeFile("/captured", __dirname);
 			}),
 		);

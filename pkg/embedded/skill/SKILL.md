@@ -9,7 +9,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-03-04 19:29
-  last_modified: 2026-11-16 10:35
+  last_modified: 2026-11-17 12:44
   status: current
 ---
 
@@ -67,7 +67,7 @@ export default defineTool((install, ctx) =>
 );
 ```
 
-Every tool that provides executables **must** have `.bin()` — it generates a shim that makes the tool available system-wide and triggers installation on first use.
+Every tool that provides executables **must** have `.bin()` — it generates a shim that makes the tool available system-wide and triggers installation on first use. A tool without `.bin()` provides no executable, whatever its name.
 
 ## First Setup
 

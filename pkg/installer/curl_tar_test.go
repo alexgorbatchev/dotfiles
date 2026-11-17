@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/archive"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/downloader"
@@ -59,7 +60,8 @@ func TestCurlTarInstaller(t *testing.T) {
 	t.Run("Install success", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},
@@ -92,7 +94,8 @@ func TestCurlTarInstaller(t *testing.T) {
 		_ = fsys.WriteFile(destPath, []byte("content"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -108,7 +111,8 @@ func TestCurlTarInstaller(t *testing.T) {
 
 	t.Run("Install fails missing URL", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -124,7 +128,8 @@ func TestCurlTarInstaller(t *testing.T) {
 		badInst.BinDir = "/forbidden/dir"
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url": server.URL,
 			},
@@ -200,7 +205,8 @@ func TestCurlTarInstaller(t *testing.T) {
 		runner.Register("/test/vbin/mytool", []byte("mytool 3.1.4\n"), nil)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"url":          server.URL,
 				"versionArgs":  []interface{}{"--version"},

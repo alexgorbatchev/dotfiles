@@ -95,7 +95,7 @@ func (c *CurlScriptInstaller) Install(ctx context.Context, tool *config.ToolConf
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	url := getStringParam(tool.InstallParams, "url", "")
@@ -291,7 +291,7 @@ func substituteStagingDir(values []string, stagingDir string) []string {
 // repoints its launcher, keeps the managed binary current.
 func (c *CurlScriptInstaller) stageBinaries(tool *config.ToolConfig, stagingDir, binaryPath string) ([]string, error) {
 	if binaryPath == "" {
-		binaries, err := PromoteBinaries(c.fsys, stagingDir, tool.Name, tool.Binaries, KeepOutsideLinks)
+		binaries, err := PromoteBinaries(c.fsys, stagingDir, tool.Binaries, KeepOutsideLinks)
 		var notFound *BinaryNotFoundError
 		if errors.As(err, &notFound) {
 			return nil, fmt.Errorf("%s: the install script left no %q in the staging directory %s (nothing matches pattern %q); "+
@@ -313,7 +313,11 @@ func (c *CurlScriptInstaller) stageBinaries(tool *config.ToolConfig, stagingDir,
 		return nil, fmt.Errorf("%s: nothing exists at binaryPath %q (%s) after the install script ran", tool.Name, written, binaryPath)
 	}
 
-	binName := GetBinaryNames(tool.Name, tool.Binaries)[0]
+	binNames := tool.BinaryNames()
+	if len(binNames) != 1 {
+		return nil, fmt.Errorf("%s: curl-script binaryPath %q needs exactly one .bin() to link it as, got %d", tool.Name, written, len(binNames))
+	}
+	binName := binNames[0]
 	linkPath := filepath.Join(stagingDir, binName)
 	if filepath.Clean(binaryPath) != filepath.Clean(linkPath) {
 		if err := c.fsys.Remove(linkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -333,7 +337,7 @@ func (c *CurlScriptInstaller) stageBinaries(tool *config.ToolConfig, stagingDir,
 func (c *CurlScriptInstaller) Uninstall(ctx context.Context, tool *config.ToolConfig, installed Installation) error {
 	destDir := c.BinDir
 	if destDir != "" {
-		binNames := GetBinaryNames(tool.Name, tool.Binaries)
+		binNames := tool.BinaryNames()
 		for _, name := range binNames {
 			destPath := filepath.Join(destDir, name)
 			_ = c.fsys.Remove(destPath)

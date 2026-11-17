@@ -952,7 +952,9 @@ export interface IDmgInstallParams extends ICommonInstallParams {
    */
   appName?: string;
   /**
-   * Name of the executable inside `Contents/MacOS` of the bundle. Defaults to the tool name.
+   * Name of the executable inside `Contents/MacOS` of the bundle. Defaults to the
+   * tool's first `.bin()` name, then to the tool name. The executable is installed as
+   * the tool's binary only when the tool declares a `.bin()`.
    */
   binaryName?: string;
   /**

@@ -192,25 +192,24 @@ func TestPromoteBinaries(t *testing.T) {
 		files    map[string]os.FileMode
 		symlinks map[string]string
 		binaries []interface{}
-		tool     string
 		want     []string
 		wantErr  string
 		check    func(t *testing.T, fsys fs.FS)
 	}{
 		{
-			name:  "root binary is made executable in place",
-			files: map[string]os.FileMode{"tool": 0644},
-			tool:  "tool",
-			want:  []string{"tool"},
+			name:     "root binary is made executable in place",
+			files:    map[string]os.FileMode{"tool": 0644},
+			binaries: []interface{}{map[string]interface{}{"name": "tool"}},
+			want:     []string{"tool"},
 			check: func(t *testing.T, fsys fs.FS) {
 				assertExecutableFile(t, fsys, dest, "tool")
 			},
 		},
 		{
-			name:  "one-level binary is linked from the root",
-			files: map[string]os.FileMode{"tool-1.0/tool": 0755, "tool-1.0/LICENSE": 0644},
-			tool:  "tool",
-			want:  []string{"tool"},
+			name:     "one-level binary is linked from the root",
+			files:    map[string]os.FileMode{"tool-1.0/tool": 0755, "tool-1.0/LICENSE": 0644},
+			binaries: []interface{}{map[string]interface{}{"name": "tool"}},
+			want:     []string{"tool"},
 			check: func(t *testing.T, fsys fs.FS) {
 				assertLink(t, fsys, dest, "tool", "tool-1.0/tool")
 			},
@@ -219,7 +218,6 @@ func TestPromoteBinaries(t *testing.T) {
 			name:     "glob pattern reaches a bin subdirectory and keeps the layout",
 			files:    map[string]os.FileMode{"tool-1.2.3/bin/tool": 0644, "tool-1.2.3/lib/marker": 0644},
 			binaries: []interface{}{binary("tool", "tool-*/bin/tool")},
-			tool:     "tool",
 			want:     []string{"tool"},
 			check: func(t *testing.T, fsys fs.FS) {
 				assertLink(t, fsys, dest, "tool", "tool-1.2.3/bin/tool")
@@ -236,7 +234,6 @@ func TestPromoteBinaries(t *testing.T) {
 				config.BinaryConfig{Name: "go", Pattern: "go/bin/go"},
 				&config.BinaryConfig{Name: "gofmt", Pattern: "go/bin/gofmt"},
 			},
-			tool: "go",
 			want: []string{"go", "gofmt"},
 			check: func(t *testing.T, fsys fs.FS) {
 				assertLink(t, fsys, dest, "go", "go-root/bin/go")
@@ -250,7 +247,6 @@ func TestPromoteBinaries(t *testing.T) {
 			name:     "root match under another name is renamed to the binary",
 			files:    map[string]os.FileMode{"hermit-darwin-arm64": 0755, "hermit-darwin-arm64.sha256": 0644},
 			binaries: []interface{}{binary("hermit", "hermit-*")},
-			tool:     "hermit",
 			want:     []string{"hermit"},
 			check: func(t *testing.T, fsys fs.FS) {
 				assertExecutableFile(t, fsys, dest, "hermit")
@@ -263,7 +259,7 @@ func TestPromoteBinaries(t *testing.T) {
 			name:     "stale link from an earlier promotion is replaced",
 			files:    map[string]os.FileMode{"tool-2.0/tool": 0755},
 			symlinks: map[string]string{"tool": "tool-1.0/tool"},
-			tool:     "tool",
+			binaries: []interface{}{map[string]interface{}{"name": "tool"}},
 			want:     []string{"tool"},
 			check: func(t *testing.T, fsys fs.FS) {
 				assertLink(t, fsys, dest, "tool", "tool-2.0/tool")
@@ -273,7 +269,7 @@ func TestPromoteBinaries(t *testing.T) {
 			name:     "promotion is idempotent",
 			files:    map[string]os.FileMode{"tool-1.0/tool": 0755},
 			symlinks: map[string]string{"tool": "tool-1.0/tool"},
-			tool:     "tool",
+			binaries: []interface{}{map[string]interface{}{"name": "tool"}},
 			want:     []string{"tool"},
 			check: func(t *testing.T, fsys fs.FS) {
 				assertLink(t, fsys, dest, "tool", "tool-1.0/tool")
@@ -287,7 +283,6 @@ func TestPromoteBinaries(t *testing.T) {
 				map[string]interface{}{"name": "nested-bin"},
 				config.BinaryConfig{Name: "go-real", Pattern: "go/bin/go-real"},
 			},
-			tool: "test-tool",
 			want: []string{"flat-bin", "nested-bin", "go-real"},
 			check: func(t *testing.T, fsys fs.FS) {
 				for _, name := range []string{"flat-bin", "nested-bin", "go-real"} {
@@ -298,29 +293,42 @@ func TestPromoteBinaries(t *testing.T) {
 			},
 		},
 		{
-			name:    "binary missing names the pattern",
-			files:   map[string]os.FileMode{"other": 0755},
-			tool:    "tool",
-			wantErr: `binary "tool" not found in extracted archive under "/dest": nothing matches pattern "{,*/}tool"`,
+			name:     "binary missing names the pattern",
+			files:    map[string]os.FileMode{"other": 0755},
+			binaries: []interface{}{map[string]interface{}{"name": "tool"}},
+			wantErr:  `binary "tool" not found in extracted archive under "/dest": nothing matches pattern "{,*/}tool"`,
 		},
 		{
-			name:    "default pattern stops one directory deep",
-			files:   map[string]os.FileMode{"tool-1.0/bin/tool": 0755},
-			tool:    "tool",
-			wantErr: `nothing matches pattern "{,*/}tool"`,
+			name:     "default pattern stops one directory deep",
+			files:    map[string]os.FileMode{"tool-1.0/bin/tool": 0755},
+			binaries: []interface{}{map[string]interface{}{"name": "tool"}},
+			wantErr:  `nothing matches pattern "{,*/}tool"`,
 		},
 		{
 			name:     "malformed pattern is reported",
 			files:    map[string]os.FileMode{"tool": 0755},
 			binaries: []interface{}{binary("tool", "tool[")},
-			tool:     "tool",
 			wantErr:  `searching for binary "tool": invalid pattern "tool[": syntax error in pattern`,
+		},
+		{
+			name:  "a tool that declares no binaries promotes nothing",
+			files: map[string]os.FileMode{"tool": 0644},
+			want:  []string{},
+			check: func(t *testing.T, fsys fs.FS) {
+				info, err := fsys.Stat(filepath.Join(dest, "tool"))
+				if err != nil {
+					t.Fatalf("stat tool: %v", err)
+				}
+				if info.Mode().Perm()&0o111 != 0 {
+					t.Fatalf("tool mode = %v, want it left as shipped", info.Mode().Perm())
+				}
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fsys := extractedTree(t, dest, tt.files, tt.symlinks)
-			got, err := PromoteBinaries(fsys, dest, tt.tool, tt.binaries, RejectOutsideLinks)
+			got, err := PromoteBinaries(fsys, dest, tt.binaries, RejectOutsideLinks)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("PromoteBinaries error = %v, want it to contain %q", err, tt.wantErr)
@@ -583,7 +591,7 @@ func TestPromoteBinariesFileSystemErrors(t *testing.T) {
 	tests := []struct {
 		name     string
 		files    map[string]os.FileMode
-		binaries []interface{}
+		binaries []interface{} // nil declares one binary named "tool"
 		failOp   string
 		failPath string
 		wantErr  string
@@ -644,7 +652,11 @@ func TestPromoteBinariesFileSystemErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fsys := &faultyFS{FS: extractedTree(t, dest, tt.files, nil), failOp: tt.failOp, failPath: tt.failPath}
-			_, err := PromoteBinaries(fsys, dest, "tool", tt.binaries, RejectOutsideLinks)
+			binaries := tt.binaries
+			if binaries == nil {
+				binaries = []interface{}{config.BinaryConfig{Name: "tool"}}
+			}
+			_, err := PromoteBinaries(fsys, dest, binaries, RejectOutsideLinks)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("PromoteBinaries error = %v, want it to contain %q", err, tt.wantErr)

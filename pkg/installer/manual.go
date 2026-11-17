@@ -63,7 +63,7 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	binaryPath, err := ResolveBinaryPath(m.fsys, tool, config.GetProjectConfig(ctx), m.BinDir)
@@ -85,7 +85,7 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 			return nil, fmt.Errorf("creating directory %s: %w", destDir, err)
 		}
 
-		binNames := GetBinaryNames(tool.Name, tool.Binaries)
+		binNames := tool.BinaryNames()
 
 		if !shouldCopyBinary(tool.InstallParams) {
 			for _, binName := range binNames {
@@ -135,7 +135,7 @@ func (m *ManualInstaller) Install(ctx context.Context, tool *config.ToolConfig) 
 	if m.BinDir != "" && len(tool.Binaries) > 0 {
 		entries, err := m.fsys.ReadDir(m.BinDir)
 		if err == nil && len(entries) > 0 {
-			promoted, err := PromoteBinaries(m.fsys, m.BinDir, tool.Name, tool.Binaries, KeepOutsideLinks)
+			promoted, err := PromoteBinaries(m.fsys, m.BinDir, tool.Binaries, KeepOutsideLinks)
 			if err != nil {
 				return nil, err
 			}

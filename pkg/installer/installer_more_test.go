@@ -128,13 +128,12 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	_ = gh.matchAsset(assets, "*.tar.gz")
 	_ = gh.matchAsset(assets, "")
 
-	// 6. Test GetBinaryNames, PromoteBinaries
-	namesEmpty := GetBinaryNames("default-tool", nil)
-	if len(namesEmpty) != 1 || namesEmpty[0] != "default-tool" {
-		t.Errorf("expected ['default-tool'], got %v", namesEmpty)
+	// 6. Test BinaryNames, PromoteBinaries
+	if namesEmpty := BinaryNames(nil); len(namesEmpty) != 0 {
+		t.Errorf("expected no binaries for a tool that declares none, got %v", namesEmpty)
 	}
 
-	namesStruct := GetBinaryNames("tool", []interface{}{
+	namesStruct := BinaryNames([]interface{}{
 		config.BinaryConfig{Name: "b1"},
 		&config.BinaryConfig{Name: "b2"},
 	})
@@ -145,7 +144,7 @@ func TestInstallerHelperMethodsAndUninstall(t *testing.T) {
 	// PromoteBinaries in nested dir
 	_ = memFS.MkdirAll("/nested/deep", 0755)
 	_ = memFS.WriteFile("/nested/deep/nestedbin", []byte("bin"), 0755)
-	promoted, err := PromoteBinaries(memFS, "/nested", "nestedbin", nil, RejectOutsideLinks)
+	promoted, err := PromoteBinaries(memFS, "/nested", testutil.DeclaredBinaries("nestedbin"), RejectOutsideLinks)
 	if err != nil || len(promoted) != 1 || promoted[0] != "nestedbin" {
 		t.Errorf("PromoteBinaries nested failed: promoted=%v, err=%v", promoted, err)
 	}
@@ -209,7 +208,8 @@ func TestInstallersInstallPipeline(t *testing.T) {
 	curlBin := NewCurlBinaryInstaller(runner, memFS, dl, sysCtx)
 	curlBin.BinDir = "/test/curlbin"
 	tBin := &config.ToolConfig{
-		Name: "curlbin-tool",
+		Name:     "curlbin-tool",
+		Binaries: testutil.DeclaredBinaries("curlbin-tool"),
 		InstallParams: map[string]interface{}{
 			"url": server.URL + "/binary",
 		},
@@ -223,7 +223,8 @@ func TestInstallersInstallPipeline(t *testing.T) {
 	curlScript := NewCurlScriptInstaller(runner, memFS, dl, sysCtx)
 	curlScript.BinDir = "/test/curlscript"
 	tScript := &config.ToolConfig{
-		Name: "curlscript-tool",
+		Name:     "curlscript-tool",
+		Binaries: testutil.DeclaredBinaries("curlscript-tool"),
 		InstallParams: map[string]interface{}{
 			"url":   server.URL + "/binary",
 			"shell": "bash",
@@ -307,14 +308,13 @@ func TestInstallerParamsAndUtilities(t *testing.T) {
 			map[string]interface{}{"name": "bin2", "pattern": "*/bin2"},
 		},
 	}
-	bins := GetBinaryNames(tool.Name, tool.Binaries)
+	bins := tool.BinaryNames()
 	if len(bins) != 2 || bins[0] != "bin1" || bins[1] != "bin2" {
-		t.Errorf("GetBinaryNames failed: %v", bins)
+		t.Errorf("BinaryNames failed: %v", bins)
 	}
 
-	defBins := GetBinaryNames("fallback", nil)
-	if len(defBins) != 1 || defBins[0] != "fallback" {
-		t.Errorf("GetBinaryNames empty failed: %v", defBins)
+	if defBins := (&config.ToolConfig{Name: "fallback"}).BinaryNames(); len(defBins) != 0 {
+		t.Errorf("BinaryNames of a tool without .bin() = %v, want none", defBins)
 	}
 
 	memFS := fs.NewMemFS()
@@ -674,7 +674,7 @@ func TestPromoteBinaries_NotFound(t *testing.T) {
 	memFS := fs.NewMemFS()
 	_ = memFS.MkdirAll("/dest", 0755)
 
-	_, err := PromoteBinaries(memFS, "/dest", "missing-tool", testutil.DeclaredBinaries("missing-bin"), RejectOutsideLinks)
+	_, err := PromoteBinaries(memFS, "/dest", testutil.DeclaredBinaries("missing-bin"), RejectOutsideLinks)
 	if err == nil {
 		t.Errorf("expected error when binary is not found in destDir")
 	}
@@ -682,7 +682,7 @@ func TestPromoteBinaries_NotFound(t *testing.T) {
 	resolvedFS := fs.NewResolvedFS(memFS, "/home/user")
 	_ = resolvedFS.MkdirAll("/home/user/.dotfiles/.generated/binaries/bun/.staging", 0755)
 
-	_, err = PromoteBinaries(resolvedFS, "/home/user/.dotfiles/.generated/binaries/bun/.staging", "bun", nil, RejectOutsideLinks)
+	_, err = PromoteBinaries(resolvedFS, "/home/user/.dotfiles/.generated/binaries/bun/.staging", testutil.DeclaredBinaries("bun"), RejectOutsideLinks)
 	if err == nil {
 		t.Fatalf("expected error")
 	}

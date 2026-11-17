@@ -114,11 +114,7 @@ func topologicalSort(tools, skipped []*config.ToolConfig, warn func(string)) ([]
 
 	binaryProviders := make(map[string][]string)
 	for _, tool := range tools {
-		bins := getBinaryNames(tool.Binaries)
-		if len(bins) == 0 {
-			bins = []string{tool.Name}
-		}
-		for _, bin := range bins {
+		for _, bin := range getBinaryNames(tool.Binaries) {
 			binaryProviders[bin] = append(binaryProviders[bin], tool.Name)
 		}
 	}
@@ -130,11 +126,7 @@ func topologicalSort(tools, skipped []*config.ToolConfig, warn func(string)) ([]
 		}
 	}
 	for _, tool := range skipped {
-		bins := getBinaryNames(tool.Binaries)
-		if len(bins) == 0 {
-			bins = []string{tool.Name}
-		}
-		for _, bin := range bins {
+		for _, bin := range getBinaryNames(tool.Binaries) {
 			claimSkipped(bin, tool)
 		}
 	}

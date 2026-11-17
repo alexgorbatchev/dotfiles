@@ -206,8 +206,8 @@ func TestUpdateCommand_InstalledTools(t *testing.T) {
 		"unknown-current":    release(repoNewer),
 		"sudo-tool":          release(repoNewer) + `.sudo()`,
 		"same":               release(repoSame),
-		"manual-versioned":   manual,
-		"manual-unversioned": manual,
+		"manual-versioned":   manual + `.bin("manual-versioned")`,
+		"manual-unversioned": manual + `.bin("manual-unversioned")`,
 		"check-fails":        release(repoMissing),
 		"never-installed":    `install("manual")`,
 	})
@@ -423,7 +423,7 @@ func TestUpdateCommand_BulkExitStatus(t *testing.T) {
 				"same":            tool(repoSame),
 				"ahead":           tool(repoSame),
 				"pinned":          tool(repoSame) + `.version("v0.1.0")`,
-				"hand":            fmt.Sprintf(`install("manual", { binaryPath: %q })`, filepath.ToSlash(manualBin)),
+				"hand":            fmt.Sprintf(`install("manual", { binaryPath: %q }).bin("hand")`, filepath.ToSlash(manualBin)),
 				"never-installed": tool(repoMissing),
 				// Disabled after it was installed: skipped as install and check skip it,
 				// so its check, which would fail, never runs.
@@ -500,7 +500,7 @@ func TestUpdateCommand_SkipsConfigurationOnlyTools(t *testing.T) {
 	}
 	p := newE2EProject(t, tsTools{
 		"cfg":  `install()`,
-		"hand": fmt.Sprintf(`install("manual", { binaryPath: %q })`, filepath.ToSlash(manualBin)),
+		"hand": fmt.Sprintf(`install("manual", { binaryPath: %q }).bin("hand")`, filepath.ToSlash(manualBin)),
 	})
 	for _, name := range []string{"cfg", "hand"} {
 		p.seedInstallation(t, name, "v1.0.0", filepath.Join(p.Root, "installed", name))

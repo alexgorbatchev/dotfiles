@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -44,6 +45,7 @@ func TestUvInstaller_DryRun(t *testing.T) {
 	ctx := config.WithDryRun(context.Background(), true)
 	tool := &config.ToolConfig{
 		Name:               "ruff",
+		Binaries:           testutil.DeclaredBinaries("ruff"),
 		InstallationMethod: "uv",
 	}
 
@@ -101,6 +103,7 @@ func TestUvInstaller_Install_DefaultParams(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:               "ruff",
+		Binaries:           testutil.DeclaredBinaries("ruff"),
 		InstallationMethod: "uv",
 	}
 
@@ -423,6 +426,7 @@ func TestUvInstaller_Install_WithLogger(t *testing.T) {
 
 	tool := &config.ToolConfig{
 		Name:               "ruff",
+		Binaries:           testutil.DeclaredBinaries("ruff"),
 		InstallationMethod: "uv",
 	}
 

@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -196,30 +197,34 @@ func TestRunReportsWriteFailure(t *testing.T) {
 // so an existing repository can be told that it needs updating without anything being
 // overwritten behind the user's back.
 func TestRunReportsAnUntouchedOutdatedTemplate(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "tools")
-	osFS := fs.NewOSFS()
-	if err := osFS.MkdirAll(dir, 0755); err != nil {
-		t.Fatalf("creating dir: %v", err)
-	}
-	path := filepath.Join(dir, "brew.tool.ts")
-	if err := osFS.WriteFile(path, []byte(legacyBrewToolContent), 0644); err != nil {
-		t.Fatalf("seeding legacy file: %v", err)
-	}
+	for i, legacy := range legacyContents["brew.tool.ts"] {
+		t.Run(fmt.Sprintf("brew template %d", i), func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "tools")
+			osFS := fs.NewOSFS()
+			if err := osFS.MkdirAll(dir, 0755); err != nil {
+				t.Fatalf("creating dir: %v", err)
+			}
+			path := filepath.Join(dir, "brew.tool.ts")
+			if err := osFS.WriteFile(path, []byte(legacy), 0644); err != nil {
+				t.Fatalf("seeding legacy file: %v", err)
+			}
 
-	results, err := Run(osFS, Options{Dir: dir, TargetOS: "darwin"})
-	if err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-	if got := actionsByName(t, results)["brew.tool.ts"]; got != ActionOutdated {
-		t.Errorf("expected the legacy file to be reported outdated, got %q", got)
-	}
+			results, err := Run(osFS, Options{Dir: dir, TargetOS: "darwin"})
+			if err != nil {
+				t.Fatalf("Run failed: %v", err)
+			}
+			if got := actionsByName(t, results)["brew.tool.ts"]; got != ActionOutdated {
+				t.Errorf("expected the legacy file to be reported outdated, got %q", got)
+			}
 
-	content, err := osFS.ReadFile(path)
-	if err != nil {
-		t.Fatalf("reading back: %v", err)
-	}
-	if string(content) != legacyBrewToolContent {
-		t.Error("expected the outdated file to be left untouched without --force")
+			content, err := osFS.ReadFile(path)
+			if err != nil {
+				t.Fatalf("reading back: %v", err)
+			}
+			if string(content) != legacy {
+				t.Error("expected the outdated file to be left untouched without --force")
+			}
+		})
 	}
 }
 

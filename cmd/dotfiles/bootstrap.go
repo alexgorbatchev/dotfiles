@@ -389,7 +389,7 @@ func (m *mockInstaller) SupportsSudo() bool {
 }
 
 func (m *mockInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*installer.InstallResult, error) {
-	binaries := config.GetBinaryNames(tool.Name, tool.Binaries)
+	binaries := tool.BinaryNames()
 
 	// Write mock binaries to the active staging directory
 	if m.fsys != nil && m.projCfg != nil {

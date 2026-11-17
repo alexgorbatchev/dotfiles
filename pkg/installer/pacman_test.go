@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexgorbatchev/dotfiles/internal/testutil"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/exec"
 	"github.com/alexgorbatchev/dotfiles/pkg/fs"
@@ -33,8 +34,9 @@ func TestPacmanInstaller(t *testing.T) {
 		runner.Register("pacman", []byte("jq 1.7.0-1"), nil)
 
 		tool := &config.ToolConfig{
-			Name: "jq",
-			Sudo: true,
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
+			Sudo:     true,
 			InstallParams: map[string]interface{}{
 				"package":    "jq",
 				"sysupgrade": true,
@@ -68,8 +70,9 @@ func TestPacmanInstaller(t *testing.T) {
 	t.Run("Uninstall success", func(t *testing.T) {
 		runner.Clear()
 		tool := &config.ToolConfig{
-			Name: "jq",
-			Sudo: true,
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
+			Sudo:     true,
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -91,7 +94,8 @@ func TestPacmanInstaller(t *testing.T) {
 		runner.Register("pacman", nil, errors.New("pacman error"))
 
 		tool := &config.ToolConfig{
-			Name: "jq",
+			Name:     "jq",
+			Binaries: testutil.DeclaredBinaries("jq"),
 		}
 
 		_, err := inst.Install(context.Background(), tool)
@@ -106,6 +110,7 @@ func TestPacmanInstaller(t *testing.T) {
 
 		tool := &config.ToolConfig{
 			Name:               "ripgrep",
+			Binaries:           testutil.DeclaredBinaries("ripgrep"),
 			InstallationMethod: "pacman",
 			InstallParams: map[string]interface{}{
 				"package": "extra/ripgrep",
@@ -147,6 +152,7 @@ func TestPacmanInstaller(t *testing.T) {
 		runner.Register("pacman", []byte("jq 1.6-1"), nil)
 		toolSudo := &config.ToolConfig{
 			Name:          "jq",
+			Binaries:      testutil.DeclaredBinaries("jq"),
 			Sudo:          true,
 			InstallParams: map[string]interface{}{"package": "jq"},
 		}
@@ -174,6 +180,7 @@ func TestPacmanInstaller(t *testing.T) {
 		runner.Register("pacman", []byte("jq 1.6-1"), nil)
 		toolNonSudo := &config.ToolConfig{
 			Name:          "jq",
+			Binaries:      testutil.DeclaredBinaries("jq"),
 			InstallParams: map[string]interface{}{"package": "jq", "sysupgrade": true},
 		}
 		if _, err := inst.Install(context.Background(), toolNonSudo); err != nil {
@@ -210,7 +217,7 @@ func TestPacmanInstaller(t *testing.T) {
 		// 5. CheckUpdate
 		runner.Clear()
 		registerQuery(runner, "pacman", "jq 1.6-1 -> 1.7-1\n", "", nil)
-		if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "jq"}); err != nil {
+		if _, err := inst.CheckUpdate(context.Background(), &config.ToolConfig{Name: "jq", Binaries: testutil.DeclaredBinaries("jq")}); err != nil {
 			t.Fatalf("CheckUpdate failed: %v", err)
 		}
 		var quCmd *exec.MockCmd
@@ -235,7 +242,8 @@ func TestPacmanInstaller(t *testing.T) {
 		})
 
 		tool := &config.ToolConfig{
-			Name: "sh",
+			Name:     "sh",
+			Binaries: testutil.DeclaredBinaries("sh"),
 			InstallParams: map[string]interface{}{
 				"package": "sh",
 			},
@@ -271,7 +279,8 @@ func TestPacmanInstaller(t *testing.T) {
 		})
 
 		tool := &config.ToolConfig{
-			Name: "nonexistent",
+			Name:     "nonexistent",
+			Binaries: testutil.DeclaredBinaries("nonexistent"),
 			InstallParams: map[string]interface{}{
 				"package": "nonexistent",
 			},
@@ -300,7 +309,8 @@ func TestPacmanInstaller(t *testing.T) {
 		runner.Register("pacman", []byte("singleword\n"), nil)
 
 		tool := &config.ToolConfig{
-			Name: "malformed",
+			Name:     "malformed",
+			Binaries: testutil.DeclaredBinaries("malformed"),
 			InstallParams: map[string]interface{}{
 				"package": "malformed",
 			},

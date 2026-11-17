@@ -130,7 +130,7 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	// Gated on macOS only (unless testing override is enabled)
@@ -222,7 +222,7 @@ func (p *PkgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 // run; every other declared binary is looked up on PATH with /usr/local/bin as
 // the fallback, which is where macOS packages conventionally link commands.
 func (p *PkgInstaller) resolveBinaries(ctx context.Context, tool *config.ToolConfig) ([]string, error) {
-	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	binNames := tool.BinaryNames()
 
 	var resolved []string
 	if binaryPath := getStringParam(tool.InstallParams, "binaryPath", ""); binaryPath != "" {
@@ -234,6 +234,9 @@ func (p *PkgInstaller) resolveBinaries(ctx context.Context, tool *config.ToolCon
 		exists, err := p.fsys.Exists(binaryPath)
 		if err != nil || !exists {
 			return nil, fmt.Errorf("configured pkg binaryPath does not exist after installation: %s", binaryPath)
+		}
+		if len(binNames) == 0 {
+			return nil, fmt.Errorf("%s: pkg binaryPath %s needs a .bin() to install it as", tool.Name, binaryPath)
 		}
 		resolved = append(resolved, binaryPath)
 		binNames = binNames[1:]

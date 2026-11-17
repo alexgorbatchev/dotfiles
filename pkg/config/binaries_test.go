@@ -145,27 +145,17 @@ func TestBinaryReadersOverCollections(t *testing.T) {
 		42,
 	}
 
-	// 1. GetBinaryNames
+	// 1. BinaryNames returns only declared names; a tool that declares none
+	// provides none rather than a binary named after itself.
 	wantNames := []string{"b1", "b2", "b3", "b4", "b5", "b6"}
-	gotNames := GetBinaryNames("fallback", binaries)
-	if !reflect.DeepEqual(gotNames, wantNames) {
-		t.Errorf("GetBinaryNames() = %v, want %v", gotNames, wantNames)
+	if got := BinaryNames(binaries); !reflect.DeepEqual(got, wantNames) {
+		t.Errorf("BinaryNames() = %v, want %v", got, wantNames)
 	}
-
-	// 2. Fallback when empty
-	fallbackOnly := GetBinaryNames("my-tool", nil)
-	if !reflect.DeepEqual(fallbackOnly, []string{"my-tool"}) {
-		t.Errorf("GetBinaryNames(fallback) = %v, want ['my-tool']", fallbackOnly)
+	if got := BinaryNames(nil); len(got) != 0 {
+		t.Errorf("BinaryNames(nil) = %v, want empty", got)
 	}
-
-	// 3. BinaryNames (no fallback)
-	noFallbackEmpty := BinaryNames(nil)
-	if len(noFallbackEmpty) != 0 {
-		t.Errorf("BinaryNames(nil) = %v, want empty", noFallbackEmpty)
-	}
-	gotNoFallback := BinaryNames(binaries)
-	if !reflect.DeepEqual(gotNoFallback, wantNames) {
-		t.Errorf("BinaryNames() = %v, want %v", gotNoFallback, wantNames)
+	if got := (&ToolConfig{Name: "my-tool"}).BinaryNames(); len(got) != 0 {
+		t.Errorf("ToolConfig{Name: my-tool}.BinaryNames() = %v, want empty", got)
 	}
 
 	// 4. GetPatternForBinary

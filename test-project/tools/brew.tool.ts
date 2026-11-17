@@ -6,6 +6,7 @@ export default defineTool((install, _ctx) =>
       binaryPath: "/opt/homebrew/bin/brew",
       symlink: true,
     })
+      .bin("brew")
       .hook("before-install", async ({ $ }) => {
         await $`INTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`;
       })

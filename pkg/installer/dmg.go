@@ -132,7 +132,7 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (re
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	// Silent skip on non-macOS platforms
@@ -204,7 +204,15 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (re
 		return nil, fmt.Errorf("identifying installed bundle %s: %w", appDest, err)
 	}
 
-	binaryName := getStringParam(tool.InstallParams, "binaryName", tool.Name)
+	// The bundle's executable is the tool's binary only when the tool declares one: an
+	// application installed without a .bin() puts no command on PATH. It is still what
+	// versionArgs runs against.
+	binNames := tool.BinaryNames()
+	defaultBinaryName := tool.Name
+	if len(binNames) > 0 {
+		defaultBinaryName = binNames[0]
+	}
+	binaryName := getStringParam(tool.InstallParams, "binaryName", defaultBinaryName)
 	binaryPath := getStringParam(tool.InstallParams, "binaryPath", "")
 	var finalBinPath string
 	if binaryPath != "" {
@@ -212,9 +220,13 @@ func (d *DmgInstaller) Install(ctx context.Context, tool *config.ToolConfig) (re
 	} else {
 		finalBinPath = filepath.Join(appDest, "Contents", "MacOS", binaryName)
 	}
+	var binaries []string
+	if len(binNames) > 0 {
+		binaries = []string{finalBinPath}
+	}
 
 	return &InstallResult{
-		Binaries:               []string{finalBinPath},
+		Binaries:               binaries,
 		Version:                macPackageVersion(ctx, d.runner, tool, finalBinPath, payload.releaseTag),
 		AppBundlePath:          appDest,
 		AppBundleIdentifier:    identity.identifier,

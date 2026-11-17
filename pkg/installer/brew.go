@@ -145,7 +145,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	formula := getStringParam(tool.InstallParams, "formula", tool.Name)
@@ -298,7 +298,7 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 			return nil, err
 		}
 	} else {
-		binNames := GetBinaryNames(tool.Name, tool.Binaries)
+		binNames := tool.BinaryNames()
 		prefix, _ := b.getBrewPrefix(ctx, formula)
 		resolvedBinaries = make([]string, 0, len(binNames))
 		for _, binName := range binNames {
@@ -325,15 +325,10 @@ func (b *BrewInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*
 	versionArgs := getStringSliceParam(tool.InstallParams, "versionArgs")
 	versionRegex := getStringParam(tool.InstallParams, "versionRegex", "")
 
-	if len(versionArgs) > 0 && (!isCask || len(resolvedBinaries) > 0) {
-		binPath := ""
-		if isCask {
-			binPath = resolvedBinaries[0]
-		} else {
-			prefix, _ := b.getBrewPrefix(ctx, formula)
-			binPath = filepath.Join(prefix, "bin", tool.Name)
-		}
-		v, err := detectVersionViaCli(ctx, b.runner, binPath, versionArgs, versionRegex)
+	// versionArgs runs against the tool's first declared binary; a tool that declares
+	// none has no command to ask.
+	if len(versionArgs) > 0 && len(resolvedBinaries) > 0 {
+		v, err := detectVersionViaCli(ctx, b.runner, resolvedBinaries[0], versionArgs, versionRegex)
 		if err == nil && v != "" {
 			version = v
 		}

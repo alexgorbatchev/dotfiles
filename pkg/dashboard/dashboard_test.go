@@ -3146,7 +3146,7 @@ func TestToolMetadataUsesResolvedPlatformApplicability(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(toolPath, []byte(`import { defineTool, Platform } from "@alexgorbatchev/dotfiles";
- export default defineTool(install => install().platform(Platform.MacOS, install => install("manual", { binaryPath: "/opt/bin/example" })));`), 0644); err != nil {
+ export default defineTool(install => install().platform(Platform.MacOS, install => install("manual", { binaryPath: "/opt/bin/example" }).bin("example")));`), 0644); err != nil {
 		t.Fatal(err)
 	}
 	configPath := filepath.Join(dir, "dotfiles.config.ts")

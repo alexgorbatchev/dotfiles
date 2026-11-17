@@ -189,7 +189,7 @@ func TestLibcFlagDefaultsToDetection(t *testing.T) {
 
 const libcReportingTool = `
 import { defineTool } from "@alexgorbatchev/dotfiles";
-export default defineTool((install, ctx) => install("manual", { binaryPath: "/libc/" + ctx.systemInfo.libc }));`
+export default defineTool((install, ctx) => install("manual", { binaryPath: "/libc/" + ctx.systemInfo.libc }).bin("probe"));`
 
 // writeLibcProbeProject lays out a throwaway project whose only tool reports the libc
 // the configuration was evaluated for.

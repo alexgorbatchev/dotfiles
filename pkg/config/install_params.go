@@ -70,16 +70,23 @@ func (tc *ToolConfig) validateInstallParams() error {
 		}
 		_, err := tc.CargoSources()
 		return err
+	case "curl-binary":
+		return tc.validateCurlBinaryName()
 	case "curl-script":
 		if err := tc.validateCurlScriptBinaryPath(); err != nil {
 			return err
 		}
 		return tc.validateBinaryPathPatterns()
 	case "manual":
+		if err := tc.validateBinaryPathNamesBinary(); err != nil {
+			return err
+		}
 		if err := tc.validateBinaryPathPatterns(); err != nil {
 			return err
 		}
 		return tc.validateManualBinaryPatterns()
+	case "pkg":
+		return tc.validateBinaryPathNamesBinary()
 	case "zsh-plugin":
 		return tc.validateNoLeadingDash("url")
 	}
@@ -221,23 +228,63 @@ func declaredBinaryPattern(b interface{}) (string, bool) {
 	return DeclaredBinaryPattern(b)
 }
 
-// validateCurlScriptBinaryPath enforces that a curl-script binaryPath stands for one
-// binary. It is a single path, so with several binaries it cannot say which one it is,
-// and a script that installs several can be pointed at the staging directory instead.
+// validateCurlScriptBinaryPath enforces that a curl-script binaryPath stands for exactly
+// one binary. It is a single path, so with several binaries it cannot say which one it
+// is, and with none there is no name to link it under; a script that installs several
+// can be pointed at the staging directory instead.
 func (tc *ToolConfig) validateCurlScriptBinaryPath() error {
 	binaryPath := tc.binaryPath()
-	if binaryPath == "" || len(tc.Binaries) <= 1 {
+	names := tc.BinaryNames()
+	if binaryPath == "" || len(names) == 1 {
 		return nil
 	}
-
-	names := make([]string, 0, len(tc.Binaries))
-	for _, b := range tc.Binaries {
-		names = append(names, fmt.Sprintf("%q", getBinaryName(b)))
+	if len(names) == 0 {
+		return fmt.Errorf(
+			"tool %q: curl-script binaryPath %q names the installed binary, but the tool declares no .bin() to link it as; "+
+				"declare one .bin(), or drop binaryPath",
+			tc.Name, binaryPath)
 	}
 	return fmt.Errorf(
 		"tool %q: curl-script binaryPath %q is a single path, but the tool declares %d binaries (%s); "+
 			"declare one .bin(), or drop binaryPath and point the script at {stagingDir} through args or env",
-		tc.Name, binaryPath, len(tc.Binaries), strings.Join(names, ", "))
+		tc.Name, binaryPath, len(names), quoteNames(names))
+}
+
+// validateCurlBinaryName enforces that a curl-binary tool declares exactly one binary.
+// The download is a single executable that is saved under its .bin() name, so with
+// none there is nothing to call it and with several only one could ever exist.
+func (tc *ToolConfig) validateCurlBinaryName() error {
+	names := tc.BinaryNames()
+	switch len(names) {
+	case 1:
+		return nil
+	case 0:
+		return fmt.Errorf("tool %q: curl-binary downloads one executable and names it after its .bin(), but the tool declares none; declare one .bin()", tc.Name)
+	default:
+		return fmt.Errorf("tool %q: curl-binary downloads one executable, but the tool declares %d binaries (%s); declare one .bin()",
+			tc.Name, len(names), quoteNames(names))
+	}
+}
+
+// validateBinaryPathNamesBinary rejects a binaryPath on a tool that declares no
+// binary: binaryPath says where a binary is, and only a .bin() says what it is called,
+// so without one the path is never installed, linked or shimmed.
+func (tc *ToolConfig) validateBinaryPathNamesBinary() error {
+	binaryPath := tc.binaryPath()
+	if binaryPath == "" || len(tc.BinaryNames()) > 0 {
+		return nil
+	}
+	return fmt.Errorf("tool %q: %s binaryPath %q names a binary, but the tool declares no .bin() to install it as; declare one .bin(), or drop binaryPath",
+		tc.Name, tc.InstallationMethod, binaryPath)
+}
+
+// quoteNames renders binary names for an error message: "a", "b".
+func quoteNames(names []string) string {
+	quoted := make([]string, len(names))
+	for i, name := range names {
+		quoted[i] = fmt.Sprintf("%q", name)
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // RequestedVersion returns the version an installation of tc asks for, or "" when its

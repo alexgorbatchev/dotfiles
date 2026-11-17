@@ -64,7 +64,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	pkgManager := getStringParam(tool.InstallParams, "packageManager", "npm")
@@ -120,7 +120,7 @@ func (n *NpmInstaller) Install(ctx context.Context, tool *config.ToolConfig) (*I
 		writer.Flush()
 	}
 
-	binNames := GetBinaryNames(tool.Name, tool.Binaries)
+	binNames := tool.BinaryNames()
 	var resolvedBinaries []string
 
 	// Get npm/bun prefix

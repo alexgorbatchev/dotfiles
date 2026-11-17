@@ -20,7 +20,7 @@ export default defineTool((install, ctx) => {
     ctx.systemInfo.libc === Libc.Gnu ? "Gnu" : "",
     ctx.systemInfo.libc === Libc.Musl ? "Musl" : "",
   ].filter((name) => name !== "").join("+");
-  return install("manual", { binaryPath: "/probe/" + ctx.systemInfo.libc + "/" + matched });
+  return install("manual", { binaryPath: "/probe/" + ctx.systemInfo.libc + "/" + matched }).bin("probe");
 });`
 
 // memberNameOf reports the Libc member name the given detected value belongs to, so the
@@ -61,7 +61,7 @@ func TestLibcEnumMatchesDetectedValue(t *testing.T) {
 const unimportedLibcProbeTool = `
 import { defineTool } from "@alexgorbatchev/dotfiles";
 export default defineTool((install) =>
-  install("manual", { binaryPath: "/probe/" + Libc.Gnu + "/" + Libc.Musl + "/" + Libc.Unknown }),
+  install("manual", { binaryPath: "/probe/" + Libc.Gnu + "/" + Libc.Musl + "/" + Libc.Unknown }).bin("probe"),
 );`
 
 func TestLibcIsRegisteredAsGlobal(t *testing.T) {
@@ -114,7 +114,7 @@ func TestLibcDeclarationMatchesConstants(t *testing.T) {
 
 const libcReportingTool = `
 import { defineTool } from "@alexgorbatchev/dotfiles";
-export default defineTool((install, ctx) => install("manual", { binaryPath: "/libc/" + ctx.systemInfo.libc }));`
+export default defineTool((install, ctx) => install("manual", { binaryPath: "/libc/" + ctx.systemInfo.libc }).bin("probe"));`
 
 // WithTarget backs --libc the way it backs --platform and --arch: the configuration is
 // evaluated for the libc the caller names, and for the host's when it names none. Which

@@ -175,7 +175,7 @@ func (c *CurlTarInstaller) Install(ctx context.Context, tool *config.ToolConfig)
 	}
 	if config.IsDryRunEnabled(ctx) {
 		return &InstallResult{
-			Binaries: GetBinaryNames(tool.Name, tool.Binaries),
+			Binaries: tool.BinaryNames(),
 		}, nil
 	}
 	url := getStringParam(tool.InstallParams, "url", "")
@@ -209,7 +209,7 @@ func (c *CurlTarInstaller) Install(ctx context.Context, tool *config.ToolConfig)
 	// Remove downloaded archive
 	_ = c.fsys.Remove(archivePath)
 
-	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Name, tool.Binaries, RejectOutsideLinks)
+	promotedBinaries, err := PromoteBinaries(c.fsys, destDir, tool.Binaries, RejectOutsideLinks)
 	if err != nil {
 		return nil, err
 	}

@@ -85,7 +85,8 @@ func TestGitHubInstaller(t *testing.T) {
 
 	t.Run("Install success from GitHub", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"repo": "myowner/mytool",
 			},
@@ -121,6 +122,7 @@ func TestGitHubInstaller(t *testing.T) {
 		dotVersion := "v2.0.0"
 		tool := &config.ToolConfig{
 			Name:               "mytool",
+			Binaries:           testutil.DeclaredBinaries("mytool"),
 			InstallationMethod: "github-release",
 			Version:            &dotVersion,
 			InstallParams: map[string]interface{}{
@@ -140,7 +142,8 @@ func TestGitHubInstaller(t *testing.T) {
 
 	t.Run("Install fails repo missing", func(t *testing.T) {
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"token": "token123",
 			},
@@ -158,7 +161,8 @@ func TestGitHubInstaller(t *testing.T) {
 		_ = fsys.WriteFile(destPath, []byte("content"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 		}
 
 		err := inst.Uninstall(context.Background(), tool, Installation{})
@@ -194,7 +198,8 @@ func TestGitHubInstaller(t *testing.T) {
 		cInst.CacheTTL = time.Hour
 
 		tool := &config.ToolConfig{
-			Name: "cachetool",
+			Name:     "cachetool",
+			Binaries: testutil.DeclaredBinaries("cachetool"),
 			InstallParams: map[string]interface{}{
 				"repo": "owner/cachetool",
 			},
@@ -270,7 +275,8 @@ func TestGitHubInstaller(t *testing.T) {
 		_ = ghFsys.WriteFile("/test/bin/mytool-linux-amd64", []byte("gh-binary-payload"), 0755)
 
 		tool := &config.ToolConfig{
-			Name: "mytool",
+			Name:     "mytool",
+			Binaries: testutil.DeclaredBinaries("mytool"),
 			InstallParams: map[string]interface{}{
 				"repo": "myowner/mytool",
 			},
@@ -605,7 +611,7 @@ func TestGitHubInstaller_InstallExtractsArchiveFormats(t *testing.T) {
 			inst.BinDir = "/test/bin"
 			inst.SetLogger(logger.New(logger.Config{Level: logger.LogLevelVerbose, Writer: &logBuf}))
 
-			tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}}
+			tool := &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}, Binaries: testutil.DeclaredBinaries("mytool")}
 			res, err := inst.Install(context.Background(), tool)
 			if err != nil {
 				t.Fatalf("Install(%s) failed: %v", tt.asset, err)
@@ -670,7 +676,8 @@ func TestGitHubInstaller_InstallCargoDistTarXz(t *testing.T) {
 
 // TestGitHubInstaller_InstallRawBinaryAssets keeps the raw-binary path for assets that
 // carry no archive extension, including a cargo-dist self-updater a tool asks for
-// explicitly: refusing runnable files would be as wrong as chmod-ing tarballs.
+// explicitly: refusing runnable files would be as wrong as chmod-ing tarballs. The file
+// is saved under the tool's declared binary name, which need not be the tool's name.
 func TestGitHubInstaller_InstallRawBinaryAssets(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -683,36 +690,77 @@ func TestGitHubInstaller_InstallRawBinaryAssets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := newReleaseServer(t, "v1.0.0", []string{tt.asset}, []byte("raw-binary"))
-			fsys := fs.NewMemFS()
-			inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
-			inst.httpClient = server.Client()
-			inst.BaseURL = server.URL
-			inst.BinDir = "/test/bin"
-
+			fsys, inst := newRawBinaryInstaller(t, tt.asset)
 			params := map[string]interface{}{"repo": "owner/tool"}
 			if tt.pattern != "" {
 				params["assetPattern"] = tt.pattern
 			}
-			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: params})
+			res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: params, Binaries: testutil.DeclaredBinaries("mt")})
 			if err != nil {
 				t.Fatalf("Install(%s) failed: %v", tt.asset, err)
 			}
-			if len(res.Binaries) != 1 || res.Binaries[0] != "mytool" {
-				t.Errorf("Binaries = %v, want [mytool]", res.Binaries)
+			if len(res.Binaries) != 1 || res.Binaries[0] != "mt" {
+				t.Errorf("Binaries = %v, want [mt]", res.Binaries)
 			}
-			if got, err := fsys.ReadFile("/test/bin/mytool"); err != nil || string(got) != "raw-binary" {
-				t.Errorf("mytool = %q, %v; want the downloaded binary", string(got), err)
+			if got, err := fsys.ReadFile("/test/bin/mt"); err != nil || string(got) != "raw-binary" {
+				t.Errorf("mt = %q, %v; want the downloaded binary", string(got), err)
 			}
-			info, err := fsys.Stat("/test/bin/mytool")
+			info, err := fsys.Stat("/test/bin/mt")
 			if err != nil || info.Mode()&0111 == 0 {
-				t.Errorf("mytool mode = %v, %v; want executable", info, err)
+				t.Errorf("mt mode = %v, %v; want executable", info, err)
 			}
-			if exists, _ := fsys.Exists(filepath.Join("/test/bin", tt.asset)); exists && tt.asset != "mytool" {
+			if exists, _ := fsys.Exists(filepath.Join("/test/bin", tt.asset)); exists {
 				t.Errorf("download %s was left beside the renamed binary", tt.asset)
 			}
 		})
 	}
+}
+
+// TestGitHubInstaller_InstallRawBinaryWithoutDeclaredBinary keeps the file under the
+// tool's name and reports no binary: a tool that declares no .bin() puts nothing on
+// PATH, whatever its payload.
+func TestGitHubInstaller_InstallRawBinaryWithoutDeclaredBinary(t *testing.T) {
+	fsys, inst := newRawBinaryInstaller(t, "mytool-linux-amd64")
+	res, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}})
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+	if len(res.Binaries) != 0 {
+		t.Errorf("Binaries = %v, want none", res.Binaries)
+	}
+	if got, err := fsys.ReadFile("/test/bin/mytool"); err != nil || string(got) != "raw-binary" {
+		t.Errorf("mytool = %q, %v; want the downloaded file", string(got), err)
+	}
+}
+
+// TestGitHubInstaller_InstallRawBinaryRejectsSeveralBinaries refuses to pass one
+// executable off as several declared binaries, and leaves no download behind.
+func TestGitHubInstaller_InstallRawBinaryRejectsSeveralBinaries(t *testing.T) {
+	fsys, inst := newRawBinaryInstaller(t, "mytool-linux-amd64")
+	_, err := inst.Install(context.Background(), &config.ToolConfig{
+		Name:          "mytool",
+		InstallParams: map[string]interface{}{"repo": "owner/tool"},
+		Binaries:      testutil.DeclaredBinaries("a", "b"),
+	})
+	if err == nil || !strings.Contains(err.Error(), "is a single executable, but mytool declares 2 binaries (a, b)") {
+		t.Fatalf("Install error = %v, want the single-executable refusal", err)
+	}
+	if exists, _ := fsys.Exists("/test/bin/mytool-linux-amd64"); exists {
+		t.Error("the rejected download was left behind")
+	}
+}
+
+// newRawBinaryInstaller serves one release whose only asset, named asset, is a raw
+// executable, and returns an installer that installs into /test/bin.
+func newRawBinaryInstaller(t *testing.T, asset string) (fs.FS, *GitHubInstaller) {
+	t.Helper()
+	server := newReleaseServer(t, "v1.0.0", []string{asset}, []byte("raw-binary"))
+	fsys := fs.NewMemFS()
+	inst := NewGitHubInstaller(exec.NewMockRunner(), fsys, downloader.NewDownloader(fsys, nil), &SystemContext{OS: "linux", Arch: "amd64"})
+	inst.httpClient = server.Client()
+	inst.BaseURL = server.URL
+	inst.BinDir = "/test/bin"
+	return fsys, inst
 }
 
 // TestGitHubInstaller_InstallArchiveFailures covers the extraction path's own failures: a
@@ -743,7 +791,7 @@ func TestGitHubInstaller_InstallArchiveFailures(t *testing.T) {
 			inst.BaseURL = server.URL
 			inst.BinDir = "/test/bin"
 
-			_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}})
+			_, err := inst.Install(context.Background(), &config.ToolConfig{Name: "mytool", InstallParams: map[string]interface{}{"repo": "owner/tool"}, Binaries: testutil.DeclaredBinaries("mytool")})
 			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 				t.Fatalf("Install error = %v, want one containing %q", err, tt.wantErr)
 			}
@@ -895,7 +943,8 @@ func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
 	})
 
 	toolGhCli := &config.ToolConfig{
-		Name: "cli",
+		Name:     "cli",
+		Binaries: testutil.DeclaredBinaries("cli"),
 		InstallParams: map[string]interface{}{
 			"repo":  "owner/ghcli-unique-repo",
 			"ghCli": true,
@@ -931,7 +980,8 @@ func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
 	instTok.BaseURL = server.URL
 
 	toolToken := &config.ToolConfig{
-		Name: "tokentool",
+		Name:     "tokentool",
+		Binaries: testutil.DeclaredBinaries("tokentool"),
 		InstallParams: map[string]interface{}{
 			"repo":  "owner/tokentool",
 			"token": "secret-gh-token",
@@ -949,8 +999,9 @@ func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
 	// 3. CheckUpdate with ghCli and 403 fallback
 	currentVer := "v1.0.0"
 	toolGh := &config.ToolConfig{
-		Name:    "cli",
-		Version: &currentVer,
+		Name:     "cli",
+		Binaries: testutil.DeclaredBinaries("cli"),
+		Version:  &currentVer,
 		InstallParams: map[string]interface{}{
 			"repo":  "owner/ghcli-chk-repo",
 			"ghCli": true,
@@ -971,8 +1022,9 @@ func TestGitHubInstaller_GhCliAndToken(t *testing.T) {
 	instTok.BaseURL = server403.URL
 
 	tool403 := &config.ToolConfig{
-		Name:    "tool403",
-		Version: &currentVer,
+		Name:     "tool403",
+		Binaries: testutil.DeclaredBinaries("tool403"),
+		Version:  &currentVer,
 		InstallParams: map[string]interface{}{
 			"repo": "owner/tool403",
 		},
@@ -1175,6 +1227,7 @@ func TestGitHubAssetDownloadTokensDoNotFollowRedirects(t *testing.T) {
 
 			tool := &config.ToolConfig{
 				Name:          "redirect-tool",
+				Binaries:      testutil.DeclaredBinaries("redirect-tool"),
 				InstallParams: tt.params,
 			}
 
@@ -1319,6 +1372,7 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 
 		tool := &config.ToolConfig{
 			Name:          "tool",
+			Binaries:      testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{"repo": "owner/tool"},
 		}
 		_, err := inst.Install(context.Background(), tool)
@@ -1370,6 +1424,7 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 
 		tool := &config.ToolConfig{
 			Name:          "tool",
+			Binaries:      testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{"repo": "owner/tool"},
 		}
 		res, err := inst.Install(context.Background(), tool)
@@ -1421,6 +1476,7 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 
 		tool := &config.ToolConfig{
 			Name:          "tool",
+			Binaries:      testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{"repo": "owner/tool"},
 		}
 		res, err := inst.Install(context.Background(), tool)
@@ -1468,6 +1524,7 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 
 		tool := &config.ToolConfig{
 			Name:          "tool",
+			Binaries:      testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{"repo": "owner/tool"},
 		}
 		_, err := inst.Install(context.Background(), tool)
@@ -1519,6 +1576,7 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 
 		tool := &config.ToolConfig{
 			Name:          "tool",
+			Binaries:      testutil.DeclaredBinaries("tool"),
 			InstallParams: map[string]interface{}{"repo": "owner/tool"},
 		}
 		res, err := inst.Install(context.Background(), tool)
@@ -1571,7 +1629,8 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 			inst.BinDir = "/test/bin"
 
 			tool := &config.ToolConfig{
-				Name: "tool",
+				Name:     "tool",
+				Binaries: testutil.DeclaredBinaries("tool"),
 				InstallParams: map[string]interface{}{
 					"repo":  "owner/tool",
 					"ghCli": true,
@@ -1609,7 +1668,8 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 			inst.BinDir = "/test/bin"
 
 			tool := &config.ToolConfig{
-				Name: "tool",
+				Name:     "tool",
+				Binaries: testutil.DeclaredBinaries("tool"),
 				InstallParams: map[string]interface{}{
 					"repo":  "owner/tool",
 					"ghCli": true,
@@ -1643,7 +1703,8 @@ func TestGitHubInstaller_AssetDigestAndSizeIntegrity(t *testing.T) {
 			inst.BinDir = "/test/bin"
 
 			tool := &config.ToolConfig{
-				Name: "tool",
+				Name:     "tool",
+				Binaries: testutil.DeclaredBinaries("tool"),
 				InstallParams: map[string]interface{}{
 					"repo":  "owner/tool",
 					"ghCli": true,

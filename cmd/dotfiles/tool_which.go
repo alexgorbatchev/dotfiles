@@ -8,7 +8,6 @@ import (
 	"github.com/alexgorbatchev/dotfiles/pkg/cliout"
 	"github.com/alexgorbatchev/dotfiles/pkg/config"
 	"github.com/alexgorbatchev/dotfiles/pkg/devtools"
-	"github.com/alexgorbatchev/dotfiles/pkg/installer"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +58,7 @@ var toolWhichCmd = &cobra.Command{
 		}
 
 		if toolWhichBin {
-			bins := installer.GetBinaryNames(targetTool.Name, targetTool.Binaries)
+			bins := targetTool.BinaryNames()
 			targetBin := targetTool.Name
 			if len(bins) > 0 {
 				targetBin = bins[0]

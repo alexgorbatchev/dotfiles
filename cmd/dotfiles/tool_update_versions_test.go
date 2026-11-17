@@ -46,13 +46,13 @@ func TestUpdateCommand_RecordedVersion(t *testing.T) {
 
 	manual := fmt.Sprintf(`install("manual", { binaryPath: %q })`, filepath.ToSlash(manualBin))
 	p := newE2EProject(t, tsTools{
-		"stamped-forced": manual,
-		"stamped-named":  manual,
-		"stamped-batch":  manual,
+		"stamped-forced": manual + `.bin("stamped-forced")`,
+		"stamped-named":  manual + `.bin("stamped-named")`,
+		"stamped-batch":  manual + `.bin("stamped-batch")`,
 		"detected": fmt.Sprintf(`install("curl-script", {
 			url: %q, shell: "sh", env: { INSTALL_DIR: "{stagingDir}" },
 			versionArgs: ["--version"], versionRegex: "detected (\\d+\\.\\d+\\.\\d+)",
-		})`, scriptServer.URL+scriptPath),
+		}).bin("detected")`, scriptServer.URL+scriptPath),
 		"broken": fmt.Sprintf(`install("curl-script", { url: %q })`, scriptServer.URL+"/missing.sh"),
 	})
 
@@ -185,7 +185,7 @@ func TestUpdateCommand_RefusesPinnedTools(t *testing.T) {
 		"pinned":        release + `.version("v0.1.0")`,
 		"param-pinned":  releaseAt("v0.1.0") + `.version("latest")`,
 		"both-pinned":   releaseAt("v0.1.0") + `.version("v0.2.0")`,
-		"manual-pinned": fmt.Sprintf(`install("manual", { binaryPath: %q }).version("v1.0.0")`, filepath.ToSlash(manualBin)),
+		"manual-pinned": fmt.Sprintf(`install("manual", { binaryPath: %q }).bin("manual-pinned").version("v1.0.0")`, filepath.ToSlash(manualBin)),
 		"free":          release + `.version("latest")`,
 	})
 	pins := []struct{ name, version, message string }{
