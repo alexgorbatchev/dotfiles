@@ -321,7 +321,13 @@ func TestShutdownFailurePreservesScratch(t *testing.T) {
 		wait error
 		want string
 	}{
-		{"signal permission", func(int, syscall.Signal) error { return syscall.EPERM }, nil, nil, "sending"},
+		{"signal permission", func(int, syscall.Signal) error { return syscall.EPERM }, nil, nil, "did not finish after TERM and KILL: operation not permitted"},
+		{"send failure", func(_ int, sig syscall.Signal) error {
+			if sig != 0 {
+				return syscall.EINVAL
+			}
+			return nil
+		}, nil, nil, "sending terminated"},
 		{"probe failure", func(_ int, sig syscall.Signal) error {
 			if sig == 0 {
 				return syscall.EIO
@@ -351,6 +357,28 @@ func TestShutdownFailurePreservesScratch(t *testing.T) {
 				t.Fatalf("failure discarded diagnostics: %q, %v", content, err)
 			}
 		})
+	}
+}
+
+// On macOS a group whose last member is exiting answers EPERM, not ESRCH, for a
+// moment; shutdown waits that out instead of failing the suite.
+func TestShutdownWaitsOutTransientPermissionDenial(t *testing.T) {
+	probes := 0
+	g := &processGroup{pid: 123, waited: true, reap: func(int) error { return nil }, kill: func(_ int, sig syscall.Signal) error {
+		if sig != 0 {
+			return syscall.EPERM
+		}
+		probes++
+		if probes < 3 {
+			return syscall.EPERM
+		}
+		return syscall.ESRCH
+	}}
+	if err := g.shutdown(time.Second); err != nil {
+		t.Fatalf("shutdown = %v, want the group to finish once EPERM settles", err)
+	}
+	if probes != 3 {
+		t.Fatalf("probes = %d, want polling until ESRCH", probes)
 	}
 }
 

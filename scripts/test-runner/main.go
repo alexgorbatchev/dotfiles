@@ -24,6 +24,10 @@ type processGroup struct {
 	err    error
 	kill   func(int, syscall.Signal) error
 	reap   func(int) error
+	// denied holds the last EPERM a signal or probe returned. On macOS a group whose
+	// last member is exiting answers EPERM until it is gone, so EPERM means "not
+	// finished yet"; it is reported only if the group never finishes.
+	denied error
 }
 
 func startGroup(cmd *exec.Cmd) (*processGroup, error) {
@@ -72,15 +76,22 @@ func (g *processGroup) completed() (bool, error) {
 	if errors.Is(err, syscall.ESRCH) {
 		return true, nil
 	}
+	if errors.Is(err, syscall.EPERM) {
+		g.denied = err
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("checking process group %d: %w", g.pid, err)
 	}
+	g.denied = nil
 	return false, nil
 }
 
 func (g *processGroup) shutdown(grace time.Duration) error {
 	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGKILL} {
-		if err := g.kill(-g.pid, sig); err != nil && !errors.Is(err, syscall.ESRCH) {
+		if err := g.kill(-g.pid, sig); errors.Is(err, syscall.EPERM) {
+			g.denied = err
+		} else if err != nil && !errors.Is(err, syscall.ESRCH) {
 			return fmt.Errorf("sending %s to process group %d: %w", sig, g.pid, err)
 		}
 		deadline := time.Now().Add(grace)
@@ -97,6 +108,9 @@ func (g *processGroup) shutdown(grace time.Duration) error {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
+	}
+	if g.denied != nil {
+		return fmt.Errorf("process group %d did not finish after TERM and KILL: %w", g.pid, g.denied)
 	}
 	return fmt.Errorf("process group %d did not finish after TERM and KILL", g.pid)
 }

@@ -108,23 +108,39 @@ export class OwnedProcess {
     }
   }
 
-  private signal(signal: NodeJS.Signals): void {
-    try {
-      process.kill(-this.process.pid, signal);
-    } catch (error) {
-      if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error;
+  /**
+   * Signal the process group. On macOS a group whose last member is exiting answers
+   * EPERM rather than ESRCH for a moment, so EPERM is retried until the group is gone
+   * and rethrown only when it outlasts the shutdown timeout.
+   */
+  private async signal(signal: NodeJS.Signals): Promise<void> {
+    const deadline = Date.now() + this.options.shutdownTimeoutMs;
+    for (;;) {
+      try {
+        process.kill(-this.process.pid, signal);
+        return;
+      } catch (error) {
+        const code = error instanceof Error && "code" in error ? error.code : undefined;
+        if (code === "ESRCH") return;
+        if (code !== "EPERM" || Date.now() >= deadline) throw error;
+      }
+      await Bun.sleep(5);
     }
   }
 
   stop(): Promise<void> {
     this.stopped ??= (async () => {
-      this.signal("SIGTERM");
-      const timer = setTimeout(() => this.signal("SIGKILL"), this.options.shutdownTimeoutMs);
+      await this.signal("SIGTERM");
+      let escalation: Promise<void> | undefined;
+      const timer = setTimeout(() => {
+        escalation = this.signal("SIGKILL");
+      }, this.options.shutdownTimeoutMs);
       try {
         await this.completed;
       } finally {
         clearTimeout(timer);
-        this.signal("SIGKILL");
+        await escalation;
+        await this.signal("SIGKILL");
       }
     })();
     return this.stopped;
