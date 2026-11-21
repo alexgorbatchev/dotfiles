@@ -321,7 +321,7 @@ func main() {
 	}
 	// Whatever git reports for the fake root (usually "unknown", but a
 	// GIT_DIR in the environment points it elsewhere) must be stamped in.
-	if got, want := strings.TrimSpace(string(verOut)), "999.0.0-dev."+getGitShortSHA(repoRoot); got != want {
+	if got, want := strings.TrimSpace(string(verOut)), devVersionFor(repoRoot); got != want {
 		t.Errorf("deployed binary version = %q, want %q", got, want)
 	}
 }
@@ -423,6 +423,43 @@ func TestGetGitShortSHA(t *testing.T) {
 	shaNonGit := getGitShortSHA(t.TempDir())
 	if shaNonGit != "unknown" {
 		t.Errorf("expected 'unknown' from non-git dir, got: %q", shaNonGit)
+	}
+}
+
+func TestDevVersionFor(t *testing.T) {
+	// A GIT_DIR inherited from a hook would point git at another repository.
+	for _, key := range []string{"GIT_DIR", "GIT_WORK_TREE"} {
+		t.Setenv(key, "")
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatalf("unset %s: %v", key, err)
+		}
+	}
+	dir := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false"}, args...)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+
+	if got := devVersionFor(dir); got != "999.0.0-dev--0.0.0+unknown" {
+		t.Errorf("non-git dir: got %q", got)
+	}
+
+	git("init", "-q")
+	git("commit", "-q", "--allow-empty", "-m", "first")
+	if got, want := devVersionFor(dir), "999.0.0-dev--0.0.0+"+getGitShortSHA(dir); got != want {
+		t.Errorf("untagged history: got %q, want %q", got, want)
+	}
+
+	git("tag", "v1.2.3")
+	git("tag", "not-a-release")
+	git("commit", "-q", "--allow-empty", "-m", "second")
+	git("tag", "docs-snapshot")
+	if got, want := devVersionFor(dir), "999.0.0-dev--1.2.3+"+getGitShortSHA(dir); got != want {
+		t.Errorf("commit past v1.2.3: got %q, want %q", got, want)
 	}
 }
 

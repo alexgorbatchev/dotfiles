@@ -65,6 +65,30 @@ func getGitShortSHA(dir string) string {
 	return sha
 }
 
+// getGitBaseRelease returns the version of the nearest release tag reachable
+// from HEAD, without its "v" prefix, or "0.0.0" when no release tag is
+// reachable.
+func getGitBaseRelease(dir string) string {
+	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "0.0.0"
+	}
+	release := strings.TrimPrefix(strings.TrimSpace(string(out)), "v")
+	if release == "" {
+		return "0.0.0"
+	}
+	return release
+}
+
+// devVersionFor stamps a development build with the release it extends and
+// its commit, as in 999.0.0-dev--3.0.0+2c626e3d. The result is valid SemVer
+// and still sorts above every release.
+func devVersionFor(dir string) string {
+	return fmt.Sprintf("999.0.0-dev--%s+%s", getGitBaseRelease(dir), getGitShortSHA(dir))
+}
+
 func binName(base string) string {
 	if runtime.GOOS == "windows" {
 		return base + ".exe"
@@ -114,8 +138,7 @@ func Run(opts Options) error {
 		devBinName := binName("dotfiles-dev")
 		devBin = filepath.Join(tmpDir, devBinName)
 
-		shortSHA := getGitShortSHA(repoRoot)
-		devVersion := fmt.Sprintf("999.0.0-dev.%s", shortSHA)
+		devVersion := devVersionFor(repoRoot)
 		ldflags := fmt.Sprintf("-s -w -X main.Version=%s", devVersion)
 
 		compileCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", devBin, "./cmd/dotfiles")
