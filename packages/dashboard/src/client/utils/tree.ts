@@ -1,14 +1,7 @@
 import type { IFileState } from "../../shared/types";
+import type { IFileTreeNodeData } from "../IFileTreeNodeData";
 
-interface ITreeNodeData {
-  name: string;
-  path: string;
-  type: "file" | "directory";
-  fileType?: string;
-  children?: ITreeNodeData[];
-}
-
-function sortTreeNode(node: ITreeNodeData): void {
+function sortTreeNode(node: IFileTreeNodeData): void {
   if (node.children) {
     node.children.sort((leftNode, rightNode) => {
       if (leftNode.type !== rightNode.type) return leftNode.type === "directory" ? -1 : 1;
@@ -18,7 +11,7 @@ function sortTreeNode(node: ITreeNodeData): void {
   }
 }
 
-export function buildTreeForTool(files: IFileState[]): ITreeNodeData[] {
+export function buildTreeForTool(files: IFileState[]): IFileTreeNodeData[] {
   if (!files.length) return [];
 
   const paths = files.map((file) => file.filePath);
@@ -53,7 +46,7 @@ export function buildTreeForTool(files: IFileState[]): ITreeNodeData[] {
     }
   }
 
-  const tree = new Map<string, ITreeNodeData>();
+  const tree = new Map<string, IFileTreeNodeData>();
 
   for (const file of files) {
     let relativePath = file.filePath;
@@ -69,7 +62,7 @@ export function buildTreeForTool(files: IFileState[]): ITreeNodeData[] {
       currentPath = currentPath ? currentPath + "/" + part : "/" + part;
       const existingNode = tree.get(currentPath);
       if (!existingNode) {
-        const node: ITreeNodeData = {
+        const node: IFileTreeNodeData = {
           name: part,
           path: basePath + currentPath,
           type: "directory",
@@ -87,7 +80,7 @@ export function buildTreeForTool(files: IFileState[]): ITreeNodeData[] {
     const fileName = fileParts[fileParts.length - 1];
     if (fileName) {
       const filePath = currentPath ? currentPath + "/" + fileName : "/" + fileName;
-      const node: ITreeNodeData = {
+      const node: IFileTreeNodeData = {
         name: fileName,
         path: basePath + filePath,
         type: "file",
@@ -99,7 +92,7 @@ export function buildTreeForTool(files: IFileState[]): ITreeNodeData[] {
     }
   }
 
-  const roots: ITreeNodeData[] = [];
+  const roots: IFileTreeNodeData[] = [];
   for (const [path, node] of tree) {
     const parentPath = path.substring(0, path.lastIndexOf("/"));
     if (!parentPath || !tree.has(parentPath)) roots.push(node);

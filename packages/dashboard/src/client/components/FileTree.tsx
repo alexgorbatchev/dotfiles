@@ -1,4 +1,5 @@
 import { type JSX } from "preact";
+import type { IFileTreeNodeData } from "../IFileTreeNodeData";
 import {
   File,
   FileCode,
@@ -15,14 +16,6 @@ import {
 
 import { Badge } from "./ui/Badge";
 import { Tree, type ITreeItemData } from "./ui/Tree";
-
-interface IFileTreeNodeData {
-  name: string;
-  path: string;
-  type: "file" | "directory";
-  fileType?: string;
-  children?: IFileTreeNodeData[];
-}
 
 interface IFileTreeProps {
   nodes: IFileTreeNodeData[];

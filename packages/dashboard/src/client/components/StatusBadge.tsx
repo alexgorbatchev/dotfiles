@@ -1,11 +1,10 @@
 import { type JSX } from "preact";
+import type { ToolRuntimeStatus } from "../../shared/types";
 
 import { Badge } from "./ui/Badge";
 
-type ToolStatus = "installed" | "not-installed" | "error";
-
 interface IStatusBadgeProps {
-  status: ToolStatus;
+  status: ToolRuntimeStatus;
 }
 
 export function StatusBadge({ status }: IStatusBadgeProps): JSX.Element {
